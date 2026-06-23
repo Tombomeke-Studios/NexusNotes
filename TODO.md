@@ -19,10 +19,10 @@
 
 ## `feature/desktop-app` — Desktop App (Tauri + React)
 
-- [ ] Set up Tauri + React desktop app scaffold (#7)
-- [ ] Build markdown editor with live preview (#8)
-- [ ] Build file tree sidebar and vault navigation (#9)
-- [ ] Connect desktop app to sync service API (#10)
+- [x] Set up Tauri + React desktop app scaffold (#7)
+- [x] Build markdown editor with live preview (#8)
+- [x] Build file tree sidebar and vault navigation (#9)
+- [x] Connect desktop app to sync service API (#10)
 
 ## `feature/docker-stack` — Infrastructure
 

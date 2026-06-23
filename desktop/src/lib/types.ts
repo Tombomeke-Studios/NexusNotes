@@ -1,0 +1,51 @@
+export interface User {
+  id: string;
+  email: string;
+  display_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Vault {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Note {
+  id: string;
+  vault_id: string;
+  path: string;
+  title: string;
+  content: string;
+  checksum: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteVersion {
+  id: string;
+  note_id: string;
+  content: string;
+  checksum: string;
+  device_id: string;
+  created_at: string;
+}
+
+export interface ConflictInfo {
+  note_id: string;
+  server_content: string;
+  server_checksum: string;
+  client_content: string;
+  client_checksum: string;
+}
+
+export interface TreeNode {
+  name: string;
+  path: string;
+  type: "folder" | "note";
+  children?: TreeNode[];
+  noteId?: string;
+}

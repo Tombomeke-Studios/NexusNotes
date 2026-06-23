@@ -5,6 +5,20 @@
 
 ---
 
+## `feature/bugfixes-p1` — Phase 1 bug fixes
+
+- [ ] Fix null JSON arrays in note list and versions endpoints (#18)
+- [ ] Add vault ownership check on note Get and Update endpoints (#19)
+- [ ] Add auto-migration on server startup (#20)
+- [ ] Fix editor cursor reset on autosave (#21)
+- [ ] Fix autosave stale closure race condition (#22)
+- [ ] Add 401 auto-logout and WebSocket reconnect guard (#23)
+- [ ] Fetch real user profile on token restore (#24)
+
+## `feature/startup-docs` — Startup documentation
+
+- [ ] Update README with complete startup instructions (#25)
+
 ## Backlog
 
 _Empty — new discoveries go here._

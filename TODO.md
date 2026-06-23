@@ -21,13 +21,13 @@
 
 ## `feature/ui-overhaul` — UI polish, graph view, and features
 
-- [ ] Add [[wiki-link]] parsing and graph view (#33)
-- [ ] Add animations, transitions, and loading states (#34)
-- [ ] Add status bar with word count, sync status (#35)
-- [ ] Polish sidebar with SVG icons and context menu (#36)
-- [ ] Add code syntax highlighting in markdown preview (#37)
-- [ ] Add command palette Ctrl+Shift+P (#38)
-- [ ] Polish auth screen with logo and background (#39)
+- [x] Add [[wiki-link]] parsing and graph view (#33)
+- [x] Add animations, transitions, and loading states (#34)
+- [x] Add status bar with word count, sync status (#35)
+- [x] Polish sidebar with SVG icons and context menu (#36)
+- [x] Add code syntax highlighting in markdown preview (#37)
+- [x] Add command palette Ctrl+Shift+P (#38)
+- [x] Polish auth screen with logo and background (#39)
 
 ## Backlog
 

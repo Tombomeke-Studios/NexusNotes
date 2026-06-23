@@ -5,6 +5,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: slideInLeft 0.3s ease;
 }
 
 .sidebar-header {
@@ -13,12 +14,26 @@
   align-items: center;
   padding: 0 16px;
   border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.sidebar-logo-icon {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .sidebar-logo {
   font-size: 15px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
@@ -30,7 +45,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 12px;
+  padding: 6px 14px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -39,40 +54,44 @@
 }
 
 .sidebar-action-btn {
-  font-size: 16px;
-  width: 20px;
-  height: 20px;
+  font-size: 14px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 5px;
   color: var(--text-muted);
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .sidebar-action-btn:hover {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--accent);
 }
 
 .sidebar-new-item {
   padding: 4px 12px;
+  animation: fadeIn 0.15s ease;
 }
 
 .sidebar-new-item input {
   width: 100%;
   font-size: 13px;
-  padding: 4px 8px;
+  padding: 6px 10px;
 }
 
 .sidebar-vault {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   text-align: left;
-  padding: 6px 12px;
+  padding: 7px 14px;
   font-size: 13px;
   color: var(--text-secondary);
-  transition: all 0.1s;
+  transition: all var(--transition-fast);
+  border-left: 2px solid transparent;
 }
 
 .sidebar-vault:hover {
@@ -81,8 +100,14 @@
 }
 
 .sidebar-vault.active {
-  background: var(--bg-surface);
+  background: var(--accent-glow);
   color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.sidebar-vault-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .sidebar-files {
@@ -100,11 +125,12 @@
   align-items: center;
   width: 100%;
   text-align: left;
-  padding: 4px 12px;
+  padding: 5px 14px;
   font-size: 13px;
   color: var(--text-secondary);
   gap: 6px;
-  transition: all 0.1s;
+  transition: all var(--transition-fast);
+  border-radius: 0;
 }
 
 .tree-item:hover {
@@ -113,17 +139,38 @@
 }
 
 .tree-note.active {
-  background: var(--bg-surface);
+  background: var(--accent-glow);
   color: var(--accent);
 }
 
 .tree-icon {
-  font-size: 10px;
-  width: 12px;
-  text-align: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.tree-icon--expanded {
+  transform: rotate(90deg);
 }
 
 .tree-folder-label {
   font-weight: 500;
+}
+
+.tree-note-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.sidebar-empty {
+  padding: 16px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  animation: fadeIn 0.3s ease;
 }

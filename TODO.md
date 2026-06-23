@@ -11,11 +11,11 @@
 
 ## `feature/core-backend` — Sync Service (Go)
 
-- [ ] Create PostgreSQL schema and migrations (#2)
-- [ ] Implement Go sync service with note CRUD (#3)
-- [ ] Add authentication middleware with JWT (#4)
-- [ ] Implement WebSocket real-time sync (#5)
-- [ ] Add checksum-based conflict detection and version history (#6)
+- [x] Create PostgreSQL schema and migrations (#2)
+- [x] Implement Go sync service with note CRUD (#3)
+- [x] Add authentication middleware with JWT (#4)
+- [x] Implement WebSocket real-time sync (#5)
+- [x] Add checksum-based conflict detection and version history (#6)
 
 ## `feature/desktop-app` — Desktop App (Tauri + React)
 

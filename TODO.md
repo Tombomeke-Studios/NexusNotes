@@ -30,7 +30,7 @@
 
 ## `feature/docs` — Documentation
 
-- [ ] Write project documentation (#12)
+- [x] Write project documentation (#12)
 
 ## Backlog
 

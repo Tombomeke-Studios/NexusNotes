@@ -33,6 +33,10 @@ func main() {
 	}
 	defer pool.Close()
 
+	if err := repository.RunMigrations(ctx, pool, "migrations"); err != nil {
+		log.Fatalf("run migrations: %v", err)
+	}
+
 	userRepo := repository.NewUserRepo(pool)
 	vaultRepo := repository.NewVaultRepo(pool)
 	noteRepo := repository.NewNoteRepo(pool)

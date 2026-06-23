@@ -7,11 +7,12 @@ import "./Editor.css";
 interface EditorProps {
   note: Note | null;
   onSave: (content: string) => void;
+  onRename: (title: string) => void;
 }
 
 type ViewMode = "edit" | "preview" | "split";
 
-export function Editor({ note, onSave }: EditorProps) {
+export function Editor({ note, onSave, onRename }: EditorProps) {
   const [content, setContent] = useState("");
   const [mode, setMode] = useState<ViewMode>("split");
   const [hasChanges, setHasChanges] = useState(false);
@@ -79,7 +80,12 @@ export function Editor({ note, onSave }: EditorProps) {
   return (
     <div className="editor">
       <div className="editor-toolbar">
-        <span className="editor-title">{note.title}</span>
+        <input
+          className="editor-title-input"
+          value={note.title}
+          onChange={(e) => onRename(e.target.value)}
+          placeholder="Untitled"
+        />
         <div className="editor-toolbar-right">
           {hasChanges && <span className="editor-unsaved">Unsaved</span>}
           <div className="editor-mode-toggle">

@@ -1,0 +1,102 @@
+name: Validate
+
+on:
+  push:
+    branches: [dev, staging, main]
+  pull_request:
+    branches: [dev, staging, main]
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      desktop: ${{ steps.filter.outputs.desktop }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'services/sync-service/**'
+            desktop:
+              - 'desktop/**'
+
+  backend:
+    name: Backend (Go)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus_test
+          POSTGRES_DB: nexus_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Download dependencies
+        working-directory: services/sync-service
+        run: go mod download
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: services/sync-service
+
+      - name: Run tests
+        working-directory: services/sync-service
+        env:
+          DATABASE_URL: postgres://nexus:nexus_test@localhost:5432/nexus_test?sslmode=disable
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Build
+        working-directory: services/sync-service
+        run: go build -o /dev/null ./cmd/server
+
+  desktop:
+    name: Desktop (React)
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Lint
+        working-directory: desktop
+        run: npm run lint
+
+      - name: Type check
+        working-directory: desktop
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: desktop
+        run: npm test -- --run

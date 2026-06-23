@@ -1,0 +1,43 @@
+# Go
+services/sync-service/sync-service
+services/sync-service/tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Node / Desktop
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Test coverage
+coverage/
+*.cover
+*.prof
+
+# Build artifacts
+bin/
+build/

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Logo } from "../Logo";
 import type { TreeNode, Vault } from "../../lib/types";
 import "./Sidebar.css";
 
@@ -57,7 +58,7 @@ export function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo-icon">N</div>
+        <Logo size={28} />
         <span className="sidebar-logo">NexusNotes</span>
       </div>
 

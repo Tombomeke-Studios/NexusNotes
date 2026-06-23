@@ -1,6 +1,7 @@
 import { getToken } from "./api";
 
-const WS_BASE = import.meta.env.VITE_WS_URL || "ws://localhost:8080";
+const WS_BASE = import.meta.env.VITE_WS_URL ||
+  `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
 
 type MessageHandler = (type: string, payload: unknown) => void;
 

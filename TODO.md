@@ -7,7 +7,7 @@
 
 ## `feature/project-setup` — Project scaffolding
 
-- [ ] Set up project scaffolding and CI/CD (#1)
+- [x] Set up project scaffolding and CI/CD (#1)
 
 ## `feature/core-backend` — Sync Service (Go)
 

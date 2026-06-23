@@ -1,0 +1,129 @@
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.3px;
+}
+
+.sidebar-section {
+  padding: 8px 0;
+}
+
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.sidebar-action-btn {
+  font-size: 16px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+
+.sidebar-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-new-item {
+  padding: 4px 12px;
+}
+
+.sidebar-new-item input {
+  width: 100%;
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+.sidebar-vault {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: all 0.1s;
+}
+
+.sidebar-vault:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-vault.active {
+  background: var(--bg-surface);
+  color: var(--accent);
+}
+
+.sidebar-files {
+  flex: 1;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-tree {
+  padding: 4px 0;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  gap: 6px;
+  transition: all 0.1s;
+}
+
+.tree-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tree-note.active {
+  background: var(--bg-surface);
+  color: var(--accent);
+}
+
+.tree-icon {
+  font-size: 10px;
+  width: 12px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.tree-folder-label {
+  font-weight: 500;
+}

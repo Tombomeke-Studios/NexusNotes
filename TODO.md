@@ -19,9 +19,19 @@
 
 - [x] Update README with complete startup instructions (#25)
 
+## `feature/ui-overhaul` — UI polish, graph view, and features
+
+- [ ] Add [[wiki-link]] parsing and graph view (#33)
+- [ ] Add animations, transitions, and loading states (#34)
+- [ ] Add status bar with word count, sync status (#35)
+- [ ] Polish sidebar with SVG icons and context menu (#36)
+- [ ] Add code syntax highlighting in markdown preview (#37)
+- [ ] Add command palette Ctrl+Shift+P (#38)
+- [ ] Polish auth screen with logo and background (#39)
+
 ## Backlog
 
-_Empty — new discoveries go here._
+- [ ] Add Tauri wrapper for native desktop app (#31)
 
 ---
 

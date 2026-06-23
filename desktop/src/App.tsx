@@ -1,11 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Editor } from "./components/Editor";
 import { QuickSwitcher } from "./components/Search";
+import { GraphView } from "./components/Graph";
+import { CommandPalette } from "./components/CommandPalette";
+import { StatusBar } from "./components/StatusBar";
 import { Auth } from "./components/Auth";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
 import { syncClient } from "./lib/sync";
 import { buildTree } from "./lib/tree";
+import { buildGraphData } from "./lib/wikilinks";
 import type { User, Vault, Note } from "./lib/types";
 
 export default function App() {
@@ -14,7 +18,11 @@ export default function App() {
   const [activeVaultId, setActiveVaultId] = useState<string | null>(null);
   const [noteList, setNoteList] = useState<Note[]>([]);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
+  const [editorContent, setEditorContent] = useState("");
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
+  const [showGraph, setShowGraph] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
   const [loading, setLoading] = useState(true);
   const activeNoteRef = useRef(activeNote);
   activeNoteRef.current = activeNote;
@@ -109,7 +117,17 @@ export default function App() {
     const note = await notesApi.create(activeVaultId, title, "", "");
     setNoteList((prev) => [...prev, note]);
     setActiveNote(note);
+    setEditorContent("");
+    setSaveStatus("saved");
   }, [activeVaultId]);
+
+  const commands = useMemo(() => [
+    { id: "new-note", label: "New Note", shortcut: "Ctrl+N", action: handleCreateNote },
+    { id: "quick-switcher", label: "Quick Switcher", shortcut: "Ctrl+P", action: () => setShowQuickSwitcher(true) },
+    { id: "graph-view", label: "Graph View", shortcut: "Ctrl+G", action: () => setShowGraph(true) },
+    { id: "toggle-edit", label: "Toggle Edit Mode", shortcut: "Ctrl+E", action: () => {} },
+    { id: "logout", label: "Sign Out", action: () => { auth.logout(); setUser(null); syncClient.disconnect(); } },
+  ], [handleCreateNote]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -120,6 +138,14 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === "n") {
         e.preventDefault();
         handleCreateNote();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "g") {
+        e.preventDefault();
+        setShowGraph((v) => !v);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
+        e.preventDefault();
+        setShowCommandPalette(true);
       }
     };
     window.addEventListener("keydown", handler);
@@ -138,6 +164,7 @@ export default function App() {
     (id: string) => {
       setActiveVaultId(id);
       setActiveNote(null);
+      setSaveStatus("idle");
       loadNotes(id);
     },
     [loadNotes],
@@ -153,6 +180,8 @@ export default function App() {
   const handleSelectNote = useCallback(async (noteId: string) => {
     const note = await notesApi.get(noteId);
     setActiveNote(note);
+    setEditorContent(note.content);
+    setSaveStatus("saved");
   }, []);
 
   const handleRenameNote = useCallback((title: string) => {
@@ -163,11 +192,14 @@ export default function App() {
         return current && n.id === current.id ? { ...n, title } : n;
       }),
     );
+    setSaveStatus("unsaved");
   }, []);
 
   const handleSaveNote = useCallback(async (content: string) => {
     const current = activeNoteRef.current;
     if (!current) return;
+    setEditorContent(content);
+    setSaveStatus("saving");
     try {
       const updated = await notesApi.update(
         current.id,
@@ -182,13 +214,22 @@ export default function App() {
         setNoteList((prev) =>
           prev.map((n) => (n.id === note.id ? note : n)),
         );
+        setSaveStatus("saved");
       }
     } catch {
-      // conflict or error
+      setSaveStatus("unsaved");
     }
   }, []);
 
-  if (loading) return null;
+  const graphData = useMemo(() => buildGraphData(noteList), [noteList]);
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner" />
+      </div>
+    );
+  }
 
   if (!user) {
     return <Auth onAuth={handleAuth} />;
@@ -216,10 +257,39 @@ export default function App() {
           {activeNote?.path && (
             <span className="header-breadcrumb">{activeNote.path}</span>
           )}
+          <div className="header-actions">
+            <button
+              className={`header-btn ${showGraph ? "active" : ""}`}
+              onClick={() => setShowGraph(!showGraph)}
+              title="Graph view (Ctrl+G)"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
+                <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
+                <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M6 7.2L10.2 4.8M6 8.8L10.2 11.2" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+              Graph
+            </button>
+            <button
+              className="header-btn"
+              onClick={() => setShowCommandPalette(true)}
+              title="Command palette (Ctrl+Shift+P)"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M5 3l6 5-6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="editor-area">
           <Editor note={activeNote} onSave={handleSaveNote} onRename={handleRenameNote} />
         </div>
+        <StatusBar
+          content={editorContent}
+          saveStatus={activeNote ? saveStatus : "idle"}
+          noteTitle={activeNote?.title ?? null}
+        />
       </div>
 
       {showQuickSwitcher && (
@@ -227,6 +297,22 @@ export default function App() {
           notes={noteList}
           onSelect={handleSelectNote}
           onClose={() => setShowQuickSwitcher(false)}
+        />
+      )}
+
+      {showGraph && (
+        <GraphView
+          data={graphData}
+          activeNoteId={activeNote?.id ?? null}
+          onSelectNote={(id) => { handleSelectNote(id); setShowGraph(false); }}
+          onClose={() => setShowGraph(false)}
+        />
+      )}
+
+      {showCommandPalette && (
+        <CommandPalette
+          commands={commands}
+          onClose={() => setShowCommandPalette(false)}
         />
       )}
     </div>

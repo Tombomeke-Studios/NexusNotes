@@ -40,6 +40,10 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      setToken(null);
+      window.dispatchEvent(new CustomEvent("nexus:logout"));
+    }
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new ApiError(res.status, body.error || "Request failed");
   }
@@ -100,6 +104,8 @@ export const auth = {
   logout() {
     setToken(null);
   },
+
+  me: () => request<User>("/api/auth/me"),
 };
 
 export const vaults = {

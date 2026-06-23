@@ -9,8 +9,10 @@ export class SyncClient {
   private handlers: MessageHandler[] = [];
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 1000;
+  private stopped = false;
 
   connect() {
+    this.stopped = false;
     const token = getToken();
     if (!token) return;
 
@@ -33,7 +35,9 @@ export class SyncClient {
     };
 
     this.ws.onclose = () => {
-      this.scheduleReconnect();
+      if (!this.stopped && getToken()) {
+        this.scheduleReconnect();
+      }
     };
 
     this.ws.onerror = () => {
@@ -42,6 +46,7 @@ export class SyncClient {
   }
 
   disconnect() {
+    this.stopped = true;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

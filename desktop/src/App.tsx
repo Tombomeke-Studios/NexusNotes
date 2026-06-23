@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Editor } from "./components/Editor";
 import { QuickSwitcher } from "./components/Search";
@@ -16,6 +16,20 @@ export default function App() {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [loading, setLoading] = useState(true);
+  const activeNoteRef = useRef(activeNote);
+  activeNoteRef.current = activeNote;
+
+  useEffect(() => {
+    const handler = () => {
+      setUser(null);
+      setVaultList([]);
+      setNoteList([]);
+      setActiveNote(null);
+      syncClient.disconnect();
+    };
+    window.addEventListener("nexus:logout", handler);
+    return () => window.removeEventListener("nexus:logout", handler);
+  }, []);
 
   const loadNotes = useCallback(async (vaultId: string) => {
     try {
@@ -44,12 +58,20 @@ export default function App() {
   }, [loadNotes]);
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      setUser({} as User);
-      loadVaults();
+    async function restore() {
+      const token = getToken();
+      if (token) {
+        try {
+          const u = await auth.me();
+          setUser(u);
+          loadVaults();
+        } catch {
+          auth.logout();
+        }
+      }
+      setLoading(false);
     }
-    setLoading(false);
+    restore();
   }, [loadVaults]);
 
   useEffect(() => {
@@ -133,30 +155,28 @@ export default function App() {
     setActiveNote(note);
   }, []);
 
-  const handleSaveNote = useCallback(
-    async (content: string) => {
-      if (!activeNote) return;
-      try {
-        const updated = await notesApi.update(
-          activeNote.id,
-          activeNote.title,
-          activeNote.path,
-          content,
-          activeNote.checksum,
+  const handleSaveNote = useCallback(async (content: string) => {
+    const current = activeNoteRef.current;
+    if (!current) return;
+    try {
+      const updated = await notesApi.update(
+        current.id,
+        current.title,
+        current.path,
+        content,
+        current.checksum,
+      );
+      if ("checksum" in updated) {
+        const note = updated as Note;
+        setActiveNote(note);
+        setNoteList((prev) =>
+          prev.map((n) => (n.id === note.id ? note : n)),
         );
-        if ("checksum" in updated) {
-          const note = updated as Note;
-          setActiveNote(note);
-          setNoteList((prev) =>
-            prev.map((n) => (n.id === note.id ? note : n)),
-          );
-        }
-      } catch {
-        // conflict or error
       }
-    },
-    [activeNote],
-  );
+    } catch {
+      // conflict or error
+    }
+  }, []);
 
   if (loading) return null;
 

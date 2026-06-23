@@ -79,14 +79,14 @@ func main() {
 		}
 
 		if _, err := tx.Exec(ctx, string(content)); err != nil {
-			tx.Rollback(ctx)
+			_ = tx.Rollback(ctx)
 			log.Fatalf("apply migration %s: %v", file, err)
 		}
 
 		if _, err := tx.Exec(ctx,
 			"INSERT INTO schema_migrations (version) VALUES ($1)", file,
 		); err != nil {
-			tx.Rollback(ctx)
+			_ = tx.Rollback(ctx)
 			log.Fatalf("record migration %s: %v", file, err)
 		}
 

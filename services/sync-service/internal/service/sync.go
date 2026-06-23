@@ -106,7 +106,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 	if err != nil {
 		return nil, nil, fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	note, err := s.noteRepo.GetByID(ctx, update.NoteID)
 	if err != nil {

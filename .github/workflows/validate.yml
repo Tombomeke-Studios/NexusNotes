@@ -7,8 +7,27 @@ on:
     branches: [dev, staging, main]
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      desktop: ${{ steps.filter.outputs.desktop }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'services/sync-service/**'
+            desktop:
+              - 'desktop/**'
+
   backend:
     name: Backend (Go)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
 
     services:
@@ -55,6 +74,8 @@ jobs:
 
   desktop:
     name: Desktop (React)
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
     runs-on: ubuntu-latest
 
     steps:

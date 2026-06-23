@@ -4,15 +4,18 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
 )
 
 type AuthHandler struct {
 	authService *service.AuthService
+	userRepo    *repository.UserRepo
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService *service.AuthService, userRepo *repository.UserRepo) *AuthHandler {
+	return &AuthHandler{authService: authService, userRepo: userRepo}
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -81,4 +84,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"user":  user,
 		"token": token,
 	})
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+
+	user, err := h.userRepo.GetByID(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, user)
 }

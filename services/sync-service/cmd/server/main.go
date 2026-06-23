@@ -46,7 +46,7 @@ func main() {
 
 	hub := ws.NewHub()
 
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, userRepo)
 	vaultHandler := handler.NewVaultHandler(vaultRepo)
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
 	wsHandler := handler.NewWSHandler(hub, authService)
@@ -59,6 +59,7 @@ func main() {
 	authMw := middleware.Auth(authService)
 
 	protectedMux := http.NewServeMux()
+	protectedMux.HandleFunc("GET /api/auth/me", authHandler.Me)
 	protectedMux.HandleFunc("GET /api/vaults", vaultHandler.List)
 	protectedMux.HandleFunc("POST /api/vaults", vaultHandler.Create)
 	protectedMux.HandleFunc("GET /api/vaults/{id}", vaultHandler.Get)

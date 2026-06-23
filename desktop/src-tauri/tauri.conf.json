@@ -1,5 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "productName": "NexusNotes",
+  "version": "0.1.0",
+  "identifier": "com.tombomeke-studios.nexusnotes",
   "build": {
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
@@ -9,7 +12,6 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "identifier": "com.tombomeke-studios.nexusnotes",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -19,7 +21,6 @@
     ]
   },
   "app": {
-    "title": "NexusNotes",
     "windows": [
       {
         "title": "NexusNotes",

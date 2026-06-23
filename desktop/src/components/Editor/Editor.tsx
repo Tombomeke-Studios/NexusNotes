@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Note } from "../../lib/types";
@@ -17,39 +17,41 @@ export function Editor({ note, onSave }: EditorProps) {
   const [hasChanges, setHasChanges] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const onSaveRef = useRef(onSave);
+  const contentRef = useRef(content);
+  const prevNoteIdRef = useRef<string | null>(null);
+
+  onSaveRef.current = onSave;
+  contentRef.current = content;
 
   useEffect(() => {
-    if (note) {
+    if (note && note.id !== prevNoteIdRef.current) {
       setContent(note.content);
       setHasChanges(false);
+      prevNoteIdRef.current = note.id;
     }
   }, [note]);
 
-  const handleChange = useCallback(
-    (value: string) => {
-      setContent(value);
-      setHasChanges(true);
+  const handleChange = (value: string) => {
+    setContent(value);
+    setHasChanges(true);
 
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-      }
-      saveTimerRef.current = setTimeout(() => {
-        onSave(value);
-        setHasChanges(false);
-      }, 1000);
-    },
-    [onSave],
-  );
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(() => {
+      onSaveRef.current(value);
+      setHasChanges(false);
+    }, 1000);
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        if (hasChanges) {
-          if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-          onSave(content);
-          setHasChanges(false);
-        }
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        onSaveRef.current(contentRef.current);
+        setHasChanges(false);
       }
       if ((e.ctrlKey || e.metaKey) && e.key === "e") {
         e.preventDefault();
@@ -60,7 +62,7 @@ export function Editor({ note, onSave }: EditorProps) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [content, hasChanges, onSave]);
+  }, []);
 
   if (!note) {
     return (

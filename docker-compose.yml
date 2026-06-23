@@ -1,10 +1,18 @@
 services:
+  desktop:
+    build:
+      context: ./desktop
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - sync-service
+    restart: unless-stopped
+
   sync-service:
     build:
       context: ./services/sync-service
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
     environment:
       - PORT=8080
       - DATABASE_URL=postgres://nexus:nexus_pass@postgres:5432/nexus_notes?sslmode=disable
@@ -25,8 +33,6 @@ services:
       - POSTGRES_USER=nexus
       - POSTGRES_PASSWORD=nexus_pass
       - POSTGRES_DB=nexus_notes
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_notes"]
       interval: 5s
@@ -36,8 +42,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:

@@ -155,6 +155,16 @@ export default function App() {
     setActiveNote(note);
   }, []);
 
+  const handleRenameNote = useCallback((title: string) => {
+    setActiveNote((prev) => (prev ? { ...prev, title } : prev));
+    setNoteList((prev) =>
+      prev.map((n) => {
+        const current = activeNoteRef.current;
+        return current && n.id === current.id ? { ...n, title } : n;
+      }),
+    );
+  }, []);
+
   const handleSaveNote = useCallback(async (content: string) => {
     const current = activeNoteRef.current;
     if (!current) return;
@@ -208,7 +218,7 @@ export default function App() {
           )}
         </div>
         <div className="editor-area">
-          <Editor note={activeNote} onSave={handleSaveNote} />
+          <Editor note={activeNote} onSave={handleSaveNote} onRename={handleRenameNote} />
         </div>
       </div>
 

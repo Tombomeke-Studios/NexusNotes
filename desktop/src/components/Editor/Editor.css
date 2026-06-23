@@ -33,6 +33,27 @@
   min-height: 40px;
 }
 
+.editor-title-input {
+  font-size: 14px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--text-primary);
+  min-width: 120px;
+  max-width: 300px;
+}
+
+.editor-title-input:hover {
+  border-color: var(--border);
+}
+
+.editor-title-input:focus {
+  border-color: var(--accent);
+  background: var(--bg-surface);
+}
+
 .editor-title {
   font-size: 14px;
   font-weight: 600;

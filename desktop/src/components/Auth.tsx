@@ -37,9 +37,10 @@ export function Auth({ onAuth }: AuthProps) {
   return (
     <div className="auth-container">
       <div className="auth-card">
+        <div className="auth-logo">N</div>
         <h1 className="auth-title">NexusNotes</h1>
         <p className="auth-subtitle">
-          {isLogin ? "Sign in to your account" : "Create your account"}
+          {isLogin ? "Welcome back" : "Create your account"}
         </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -73,7 +74,9 @@ export function Auth({ onAuth }: AuthProps) {
           {error && <div className="auth-error">{error}</div>}
 
           <button type="submit" className="auth-button" disabled={loading}>
-            {loading ? "..." : isLogin ? "Sign In" : "Create Account"}
+            {loading ? (
+              <span className="spinner spinner--sm" style={{ margin: "0 auto", borderTopColor: "var(--bg-primary)" }} />
+            ) : isLogin ? "Sign In" : "Create Account"}
           </button>
         </form>
 

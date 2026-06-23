@@ -1,8 +1,37 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import hljs from "highlight.js/lib/core";
+import javascript from "highlight.js/lib/languages/javascript";
+import typescript from "highlight.js/lib/languages/typescript";
+import python from "highlight.js/lib/languages/python";
+import go from "highlight.js/lib/languages/go";
+import bash from "highlight.js/lib/languages/bash";
+import json from "highlight.js/lib/languages/json";
+import css from "highlight.js/lib/languages/css";
+import sql from "highlight.js/lib/languages/sql";
+import yaml from "highlight.js/lib/languages/yaml";
+import xml from "highlight.js/lib/languages/xml";
+import markdown from "highlight.js/lib/languages/markdown";
 import type { Note } from "../../lib/types";
 import "./Editor.css";
+
+hljs.registerLanguage("javascript", javascript);
+hljs.registerLanguage("js", javascript);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("python", python);
+hljs.registerLanguage("go", go);
+hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("sh", bash);
+hljs.registerLanguage("json", json);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("sql", sql);
+hljs.registerLanguage("yaml", yaml);
+hljs.registerLanguage("xml", xml);
+hljs.registerLanguage("html", xml);
+hljs.registerLanguage("markdown", markdown);
+hljs.registerLanguage("md", markdown);
 
 interface EditorProps {
   note: Note | null;
@@ -65,10 +94,34 @@ export function Editor({ note, onSave, onRename }: EditorProps) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const renderCode = useCallback(
+    ({ className, children, ...rest }: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }) => {
+      const match = /language-(\w+)/.exec(className || "");
+      const code = String(children).replace(/\n$/, "");
+      if (match && hljs.getLanguage(match[1])) {
+        const highlighted = hljs.highlight(code, { language: match[1] });
+        return (
+          <code
+            {...rest}
+            className={className}
+            dangerouslySetInnerHTML={{ __html: highlighted.value }}
+          />
+        );
+      }
+      return <code {...rest} className={className}>{children}</code>;
+    },
+    [],
+  );
+
   if (!note) {
     return (
       <div className="editor-empty">
-        <div className="editor-empty-icon">&#128221;</div>
+        <div className="editor-empty-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect x="8" y="6" width="32" height="36" rx="3" stroke="var(--text-muted)" strokeWidth="2" />
+            <path d="M16 16h16M16 22h12M16 28h8" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </div>
         <p>Select a note or create a new one</p>
         <p className="editor-empty-hint">
           Ctrl+N to create &middot; Ctrl+P to search
@@ -123,7 +176,10 @@ export function Editor({ note, onSave, onRename }: EditorProps) {
         )}
         {(mode === "preview" || mode === "split") && (
           <div className="editor-preview markdown-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{ code: renderCode }}
+            >
               {content}
             </ReactMarkdown>
           </div>

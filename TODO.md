@@ -17,7 +17,7 @@
 
 ## `feature/startup-docs` — Startup documentation
 
-- [ ] Update README with complete startup instructions (#25)
+- [x] Update README with complete startup instructions (#25)
 
 ## Backlog
 

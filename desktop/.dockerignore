@@ -1,0 +1,7 @@
+node_modules
+dist
+src-tauri
+.eslintrc.cjs
+vitest.config.ts
+*.test.ts
+*.test.tsx

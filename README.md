@@ -2,86 +2,63 @@
 
 A markdown-first note-taking platform with cross-device sync, full-text search, graph view, and native GitHub integration. Self-hostable via Docker.
 
-## Quick Start (Local Development)
+## Quick Start
 
 ### Prerequisites
 
-- [Go 1.23+](https://go.dev/dl/)
-- [Node.js 20+](https://nodejs.org/)
 - [Docker & Docker Compose](https://docs.docker.com/get-docker/)
 
-### 1. Start the database
+### Start everything
 
 ```bash
+docker compose up -d
+```
+
+That's it. Open `http://localhost:3000` in your browser.
+
+### First use
+
+1. Click **Create Account** (email + password, min 8 characters)
+2. Click **+** next to "Vaults" to create a vault
+3. Click **+** next to "Notes" to create a note (or press `Ctrl+N`)
+4. Write markdown — live preview updates in split view
+5. Notes auto-save after 1 second, or press `Ctrl+S`
+
+### Stop
+
+```bash
+docker compose down       # stop everything
+docker compose down -v    # stop + wipe database
+```
+
+## Local Development
+
+For working on the code with hot-reload, use the dev compose (infra only) and run services locally:
+
+```bash
+# Start databases
 docker compose -f docker-compose.dev.yml up -d
-```
 
-This starts PostgreSQL (port 5432), Redis (port 6379), and MinIO (port 9000).
-
-### 2. Start the backend
-
-```bash
+# Terminal 1: backend
 cd services/sync-service
-
-# Set environment variables
 export DATABASE_URL="postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
-export JWT_SECRET="dev-secret-change-in-production"
-
-# Run the server (auto-runs migrations on first start)
+export JWT_SECRET="dev-secret"
 go run cmd/server/main.go
-```
 
-The API is now running at `http://localhost:8080`. Verify with:
-
-```bash
-curl http://localhost:8080/health
-# {"status":"ok"}
-```
-
-**Windows (PowerShell):**
-```powershell
-cd services/sync-service
-$env:DATABASE_URL = "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
-$env:JWT_SECRET = "dev-secret-change-in-production"
-go run cmd/server/main.go
-```
-
-### 3. Start the desktop app
-
-Open a new terminal:
-
-```bash
+# Terminal 2: frontend
 cd desktop
 npm install
 npm run dev
 ```
 
-Open `http://localhost:1420` in your browser. Register a new account, create a vault, and start writing notes.
+Open `http://localhost:1420`. The frontend proxies API calls — set `VITE_API_URL=http://localhost:8080` if needed.
 
-### 4. Test the full flow
-
-1. Register at the login screen (email + password, min 8 characters)
-2. Create a vault (click + next to "Vaults" in the sidebar)
-3. Create a note (click + next to "Notes", or press `Ctrl+N`)
-4. Write markdown in the editor — live preview updates in real-time
-5. Notes auto-save after 1 second of inactivity, or press `Ctrl+S`
-6. Press `Ctrl+P` to open the quick switcher and search notes
-
-## Quick Start (Docker — Full Stack)
-
-```bash
-# Copy and edit environment variables
-cp .env.example .env
-# Edit .env — set a real JWT_SECRET
-
-# Start everything
-docker compose up -d
-
-# Check health
-curl http://localhost:8080/health
+**Windows (PowerShell):**
+```powershell
+$env:DATABASE_URL = "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
+$env:JWT_SECRET = "dev-secret"
+go run cmd/server/main.go
 ```
-
-Then open `http://localhost:1420` (if running desktop dev) or connect your client to `http://localhost:8080`.
 
 ## Tech Stack
 
@@ -98,38 +75,13 @@ Then open `http://localhost:1420` (if running desktop dev) or connect your clien
 ```
 NexusNotes/
 ├── services/sync-service/     # Go backend (REST + WebSocket)
-│   ├── cmd/server/            # Server entry point
-│   ├── cmd/migrate/           # Standalone migration runner
-│   ├── internal/              # Application code
-│   │   ├── handler/           # HTTP handlers
-│   │   ├── service/           # Business logic
-│   │   ├── repository/        # Database access
-│   │   ├── middleware/        # Auth, logging
-│   │   ├── model/             # Domain models
-│   │   ├── ws/                # WebSocket hub
-│   │   └── config/            # Environment config
-│   └── migrations/            # SQL migration files
-├── desktop/                   # React desktop app
-│   └── src/
-│       ├── components/        # Editor, Sidebar, Search, Auth
-│       └── lib/               # API client, sync, types
+├── desktop/                   # React app (served via nginx in Docker)
 ├── docs/                      # Documentation
-├── docker-compose.yml         # Production stack
-├── docker-compose.dev.yml     # Dev infrastructure only
+├── docker-compose.yml         # Full production stack
+├── docker-compose.dev.yml     # Dev: databases only
 ├── CLAUDE.md                  # AI agent workflow rules
 └── TODO.md                    # Task tracking
 ```
-
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `JWT_SECRET` | Yes | — | Secret key for JWT token signing |
-| `PORT` | No | `8080` | Backend server port |
-| `REDIS_URL` | No | `redis://localhost:6379` | Redis connection |
-| `VITE_API_URL` | No | `http://localhost:8080` | API URL for desktop app |
-| `VITE_WS_URL` | No | `ws://localhost:8080` | WebSocket URL for desktop app |
 
 ## Keyboard Shortcuts
 
@@ -140,20 +92,14 @@ NexusNotes/
 | `Ctrl+S` | Save current note |
 | `Ctrl+E` | Toggle edit / preview / split mode |
 
-## API
-
-See [docs/api.md](docs/api.md) for the full REST API and WebSocket protocol reference.
-
 ## Testing
 
 ```bash
 # Backend
-cd services/sync-service
-go test ./...
+cd services/sync-service && go test ./...
 
 # Desktop
-cd desktop
-npm test
+cd desktop && npm test
 ```
 
 ## Documentation

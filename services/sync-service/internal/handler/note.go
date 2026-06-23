@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/ws"
@@ -82,15 +83,26 @@ func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if notes == nil {
+		notes = []model.Note{}
+	}
+
 	writeJSON(w, http.StatusOK, notes)
 }
 
 func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	noteID := r.PathValue("noteId")
 
 	note, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "note not found")
+		return
+	}
+
+	vault, err := h.vaultRepo.GetByID(r.Context(), note.VaultID)
+	if err != nil || vault.UserID != userID {
+		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
 
@@ -100,6 +112,17 @@ func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	noteID := r.PathValue("noteId")
+
+	existing, err := h.syncService.GetNote(r.Context(), noteID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "note not found")
+		return
+	}
+	vault, err := h.vaultRepo.GetByID(r.Context(), existing.VaultID)
+	if err != nil || vault.UserID != userID {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
 
 	var req struct {
 		Title        string `json:"title"`
@@ -167,6 +190,10 @@ func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get versions")
 		return
+	}
+
+	if versions == nil {
+		versions = []model.NoteVersion{}
 	}
 
 	writeJSON(w, http.StatusOK, versions)

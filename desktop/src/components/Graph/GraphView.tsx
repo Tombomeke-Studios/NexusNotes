@@ -1,0 +1,132 @@
+import { useRef, useEffect, useCallback } from "react";
+import * as d3 from "d3";
+import type { GraphData } from "../../lib/wikilinks";
+import "./GraphView.css";
+
+interface GraphViewProps {
+  data: GraphData;
+  activeNoteId: string | null;
+  onSelectNote: (id: string) => void;
+  onClose: () => void;
+}
+
+interface SimNode extends d3.SimulationNodeDatum {
+  id: string;
+  title: string;
+  connections: number;
+}
+
+interface SimLink extends d3.SimulationLinkDatum<SimNode> {
+  source: SimNode;
+  target: SimNode;
+}
+
+export function GraphView({ data, activeNoteId, onSelectNote, onClose }: GraphViewProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const render = useCallback(() => {
+    const svg = d3.select(svgRef.current);
+    if (!svgRef.current) return;
+
+    svg.selectAll("*").remove();
+
+    const rect = svgRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+
+    const nodes: SimNode[] = data.nodes.map((n) => ({ ...n }));
+    const links: SimLink[] = data.links.map((l) => ({
+      source: nodes.find((n) => n.id === l.source)!,
+      target: nodes.find((n) => n.id === l.target)!,
+    }));
+
+    const g = svg.append("g");
+
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.2, 4])
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+      });
+    svg.call(zoom as unknown as (selection: d3.Selection<SVGSVGElement | null, unknown, null, undefined>) => void);
+
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id((d) => (d as SimNode).id).distance(100))
+      .force("charge", d3.forceManyBody().strength(-200))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collision", d3.forceCollide().radius(30));
+
+    const link = g.append("g")
+      .selectAll("line")
+      .data(links)
+      .join("line")
+      .attr("class", "graph-link");
+
+    const dragBehavior = d3.drag<SVGGElement, SimNode>()
+      .on("start", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      })
+      .on("drag", (event, d) => {
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on("end", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      });
+
+    const node = g.append("g")
+      .selectAll<SVGGElement, SimNode>("g")
+      .data(nodes)
+      .join("g")
+      .attr("class", (d) => `graph-node ${d.id === activeNoteId ? "graph-node--active" : ""} ${d.connections === 0 ? "graph-node--orphan" : ""}`)
+      .on("click", (_, d) => onSelectNote(d.id))
+      .call(dragBehavior);
+
+    node.append("circle")
+      .attr("r", (d) => 6 + Math.min(d.connections * 2, 12));
+
+    node.append("text")
+      .text((d) => d.title)
+      .attr("dy", (d) => -(10 + Math.min(d.connections * 2, 12)))
+      .attr("text-anchor", "middle");
+
+    simulation.on("tick", () => {
+      link
+        .attr("x1", (d) => d.source.x!)
+        .attr("y1", (d) => d.source.y!)
+        .attr("x2", (d) => d.target.x!)
+        .attr("y2", (d) => d.target.y!);
+
+      node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+    });
+
+    return () => { simulation.stop(); };
+  }, [data, activeNoteId, onSelectNote]);
+
+  useEffect(() => {
+    const cleanup = render();
+    return cleanup;
+  }, [render]);
+
+  return (
+    <div className="graph-overlay" onClick={onClose}>
+      <div className="graph-container" onClick={(e) => e.stopPropagation()}>
+        <div className="graph-header">
+          <span className="graph-title">Graph View</span>
+          <span className="graph-stats">
+            {data.nodes.length} notes &middot; {data.links.length} connections
+          </span>
+          <button className="graph-close" onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <svg ref={svgRef} className="graph-svg" />
+      </div>
+    </div>
+  );
+}

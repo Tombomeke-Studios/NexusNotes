@@ -26,7 +26,7 @@
 
 ## `feature/docker-stack` — Infrastructure
 
-- [ ] Set up Docker Compose stack (#11)
+- [x] Set up Docker Compose stack (#11)
 
 ## `feature/docs` — Documentation
 

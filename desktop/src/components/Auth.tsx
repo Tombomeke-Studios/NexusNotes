@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Logo } from "./Logo";
 import { auth } from "../lib/api";
 import type { User } from "../lib/types";
 
@@ -37,7 +38,7 @@ export function Auth({ onAuth }: AuthProps) {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="auth-logo">N</div>
+        <div className="auth-logo"><Logo size={36} /></div>
         <h1 className="auth-title">NexusNotes</h1>
         <p className="auth-subtitle">
           {isLogin ? "Welcome back" : "Create your account"}

@@ -405,7 +405,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Configure fuzzy matching and typo tolerance via Meilisearch settings (#85)
 - [x] Add tag-based, folder-based, and date-range filters to the search UI (#84)
 - [x] Index backlinks so that searching a note title surfaces its inbound references (#88)
-- [ ] Write integration tests for the search indexer and search handler (#89)
+- [x] Write integration tests for the search indexer and search handler (#89)
 
 ---
 

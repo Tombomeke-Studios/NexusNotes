@@ -51,6 +51,11 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 	now := time.Now().UTC()
 	checksum := ComputeChecksum(content)
 
+	fm, _ := ParseFrontmatter(content)
+	if fm.Title != "" {
+		title = fm.Title
+	}
+
 	note := &model.Note{
 		ID:        uuid.New().String(),
 		VaultID:   vaultID,
@@ -92,7 +97,7 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		return nil, fmt.Errorf("resolve links: %w", err)
 	}
 
-	if err := s.tagRepo.UpsertTagsTx(ctx, tx, note.ID, ParseTags(content)); err != nil {
+	if err := s.tagRepo.UpsertTagsTx(ctx, tx, note.ID, mergeTags(content)); err != nil {
 		return nil, fmt.Errorf("upsert tags: %w", err)
 	}
 
@@ -139,8 +144,14 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("get note for update: %w", err)
 	}
 
+	fm, _ := ParseFrontmatter(update.Content)
+	effectiveTitle := update.Title
+	if fm.Title != "" {
+		effectiveTitle = fm.Title
+	}
+
 	note.Content = update.Content
-	note.Title = update.Title
+	note.Title = effectiveTitle
 	note.Path = update.Path
 	note.Checksum = newChecksum
 	note.UpdatedAt = now
@@ -169,7 +180,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("resolve links: %w", err)
 	}
 
-	if err := s.tagRepo.UpsertTagsTx(ctx, tx, note.ID, ParseTags(update.Content)); err != nil {
+	if err := s.tagRepo.UpsertTagsTx(ctx, tx, note.ID, mergeTags(update.Content)); err != nil {
 		return nil, nil, fmt.Errorf("upsert tags: %w", err)
 	}
 

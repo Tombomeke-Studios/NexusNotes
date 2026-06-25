@@ -401,7 +401,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
 - [x] Render clickable tag pills in the editor status bar (#75)
 - [x] Add a tag filter panel to the sidebar (#76)
-- [ ] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
+- [x] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
 - [ ] Expose front-matter fields in the search index (#78)
 - [x] Write tests for the tag parser and tag repository (#79)
 

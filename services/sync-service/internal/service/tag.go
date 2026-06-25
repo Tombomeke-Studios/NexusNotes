@@ -13,6 +13,28 @@ var tagRe = regexp.MustCompile(`(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/\-]*)`)
 // so that tokens like #include inside code are ignored.
 var codeRe = regexp.MustCompile("(?s)```[^`]*```|`[^`\n]+`")
 
+// mergeTags combines #tag tokens from markdown content with tags declared in YAML front-matter.
+// Deduplication is applied across both sources.
+func mergeTags(content string) []string {
+	fm, _ := ParseFrontmatter(content)
+	seen := make(map[string]bool)
+	var tags []string
+	addTag := func(t string) {
+		t = strings.ToLower(strings.TrimSpace(t))
+		if t != "" && !seen[t] {
+			seen[t] = true
+			tags = append(tags, t)
+		}
+	}
+	for _, t := range fm.Tags {
+		addTag(t)
+	}
+	for _, t := range ParseTags(content) {
+		addTag(t)
+	}
+	return tags
+}
+
 // ParseTags extracts unique, normalised #tag tokens from markdown content.
 // Tags inside fenced code blocks and inline code spans are ignored.
 // All tags are lowercased.

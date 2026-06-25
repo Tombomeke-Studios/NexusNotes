@@ -409,16 +409,16 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/full-text-search` - Full-text search (Meilisearch)
 
-- [ ] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml`
-- [ ] Index note title, content, tags, and path asynchronously on create, update, and delete; do not block the save response
-- [ ] Skip content indexing for encrypted vaults; index title and path only
-- [ ] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=`
-- [ ] Return ranked results with context snippets per hit
-- [ ] Connect the `Ctrl+Shift+F` global search UI to the search endpoint
-- [ ] Configure fuzzy matching and typo tolerance via Meilisearch settings
-- [ ] Add tag-based, folder-based, and date-range filters to the search UI
-- [ ] Index backlinks so that searching a note title surfaces its inbound references
-- [ ] Write integration tests for the search indexer and search handler
+- [ ] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml` (#81)
+- [ ] Index note title, content, tags, and path asynchronously on create, update, and delete; do not block the save response (#82)
+- [ ] Skip content indexing for encrypted vaults; index title and path only (#86)
+- [ ] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=` (#83)
+- [ ] Return ranked results with context snippets per hit (#83)
+- [ ] Connect the `Ctrl+Shift+F` global search UI to the search endpoint (#84)
+- [ ] Configure fuzzy matching and typo tolerance via Meilisearch settings (#85)
+- [ ] Add tag-based, folder-based, and date-range filters to the search UI (#84)
+- [ ] Index backlinks so that searching a note title surfaces its inbound references (#88)
+- [ ] Write integration tests for the search indexer and search handler (#89)
 
 ---
 

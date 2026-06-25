@@ -28,10 +28,13 @@ interface SidebarProps {
   activeVaultId: string | null;
   tree: TreeNode[];
   activeNoteId: string | null;
+  tagCounts: Array<{ tag: string; count: number }>;
+  activeTagFilter: string | null;
   onSelectVault: (id: string) => void;
   onSelectNote: (id: string) => void;
   onCreateNote: () => void;
   onCreateVault: (name: string) => void;
+  onTagFilter: (tag: string | null) => void;
 }
 
 export function Sidebar({
@@ -39,13 +42,17 @@ export function Sidebar({
   activeVaultId,
   tree,
   activeNoteId,
+  tagCounts,
+  activeTagFilter,
   onSelectVault,
   onSelectNote,
   onCreateNote,
   onCreateVault,
+  onTagFilter,
 }: SidebarProps) {
   const [newVaultName, setNewVaultName] = useState("");
   const [showNewVault, setShowNewVault] = useState(false);
+  const [tagsExpanded, setTagsExpanded] = useState(true);
 
   const handleCreateVault = () => {
     if (newVaultName.trim()) {
@@ -110,20 +117,42 @@ export function Sidebar({
       {activeVaultId && (
         <div className="sidebar-section sidebar-files">
           <div className="sidebar-section-header">
-            <span>Notes</span>
-            <button
-              className="sidebar-action-btn"
-              onClick={onCreateNote}
-              title="New note (Ctrl+N)"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </button>
+            <span>
+              Notes
+              {activeTagFilter && (
+                <span className="sidebar-filter-badge">#{activeTagFilter}</span>
+              )}
+            </span>
+            <div style={{ display: "flex", gap: 4 }}>
+              {activeTagFilter && (
+                <button
+                  className="sidebar-action-btn"
+                  onClick={() => onTagFilter(null)}
+                  title="Clear tag filter"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+              <button
+                className="sidebar-action-btn"
+                onClick={onCreateNote}
+                title="New note (Ctrl+N)"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {tree.length === 0 && (
-            <div className="sidebar-empty">No notes yet. Create your first note.</div>
+            <div className="sidebar-empty">
+              {activeTagFilter
+                ? `No notes tagged #${activeTagFilter}`
+                : "No notes yet. Create your first note."}
+            </div>
           )}
 
           <div className="sidebar-tree">
@@ -137,6 +166,34 @@ export function Sidebar({
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {activeVaultId && tagCounts.length > 0 && (
+        <div className="sidebar-section sidebar-tags-section">
+          <button
+            className="sidebar-tags-toggle"
+            onClick={() => setTagsExpanded((v) => !v)}
+          >
+            <ChevronIcon expanded={tagsExpanded} />
+            <span>Tags</span>
+            <span className="sidebar-tags-count">{tagCounts.length}</span>
+          </button>
+          {tagsExpanded && (
+            <div className="sidebar-tags-list">
+              {tagCounts.map(({ tag, count }) => (
+                <button
+                  key={tag}
+                  className={`sidebar-tag-item ${activeTagFilter === tag ? "active" : ""}`}
+                  onClick={() => onTagFilter(activeTagFilter === tag ? null : tag)}
+                  title={`${count} note${count !== 1 ? "s" : ""}`}
+                >
+                  <span className="sidebar-tag-label">#{tag}</span>
+                  <span className="sidebar-tag-count">{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -396,29 +396,29 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/tags-and-metadata` - Inline tags and YAML front-matter
 
-- [ ] Parse `#tag` syntax from note content and extract a tags list on save (#72)
-- [ ] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
-- [ ] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
-- [ ] Render clickable tag pills in the editor status bar (#75)
-- [ ] Add a tag filter panel to the sidebar (#76)
-- [ ] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
+- [x] Parse `#tag` syntax from note content and extract a tags list on save (#72)
+- [x] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
+- [x] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
+- [x] Render clickable tag pills in the editor status bar (#75)
+- [x] Add a tag filter panel to the sidebar (#76)
+- [x] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
 - [ ] Expose front-matter fields in the search index (#78)
-- [ ] Write tests for the tag parser and tag repository (#79)
+- [x] Write tests for the tag parser and tag repository (#79)
 
 ---
 
 ## `feature/full-text-search` - Full-text search (Meilisearch)
 
-- [ ] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml`
-- [ ] Index note title, content, tags, and path asynchronously on create, update, and delete; do not block the save response
-- [ ] Skip content indexing for encrypted vaults; index title and path only
-- [ ] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=`
-- [ ] Return ranked results with context snippets per hit
-- [ ] Connect the `Ctrl+Shift+F` global search UI to the search endpoint
-- [ ] Configure fuzzy matching and typo tolerance via Meilisearch settings
-- [ ] Add tag-based, folder-based, and date-range filters to the search UI
-- [ ] Index backlinks so that searching a note title surfaces its inbound references
-- [ ] Write integration tests for the search indexer and search handler
+- [ ] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml` (#81)
+- [ ] Index note title, content, tags, and path asynchronously on create, update, and delete; do not block the save response (#82)
+- [ ] Skip content indexing for encrypted vaults; index title and path only (#86)
+- [ ] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=` (#83)
+- [ ] Return ranked results with context snippets per hit (#83)
+- [ ] Connect the `Ctrl+Shift+F` global search UI to the search endpoint (#84)
+- [ ] Configure fuzzy matching and typo tolerance via Meilisearch settings (#85)
+- [ ] Add tag-based, folder-based, and date-range filters to the search UI (#84)
+- [ ] Index backlinks so that searching a note title surfaces its inbound references (#88)
+- [ ] Write integration tests for the search indexer and search handler (#89)
 
 ---
 

@@ -18,13 +18,15 @@ type SyncService struct {
 	noteRepo  *repository.NoteRepo
 	vaultRepo *repository.VaultRepo
 	linkRepo  *repository.LinkRepo
+	tagRepo   *repository.TagRepo
 }
 
-func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo) *SyncService {
+func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo) *SyncService {
 	return &SyncService{
 		noteRepo:  noteRepo,
 		vaultRepo: vaultRepo,
 		linkRepo:  linkRepo,
+		tagRepo:   tagRepo,
 	}
 }
 
@@ -48,6 +50,11 @@ type ConflictInfo struct {
 func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, content, deviceID string) (*model.Note, error) {
 	now := time.Now().UTC()
 	checksum := ComputeChecksum(content)
+
+	fm, _ := ParseFrontmatter(content)
+	if fm.Title != "" {
+		title = fm.Title
+	}
 
 	note := &model.Note{
 		ID:        uuid.New().String(),
@@ -88,6 +95,10 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 	}
 	if err := s.linkRepo.ResolveTargetsTx(ctx, tx, vaultID, note.ID); err != nil {
 		return nil, fmt.Errorf("resolve links: %w", err)
+	}
+
+	if err := s.tagRepo.UpsertTagsTx(ctx, tx, note.ID, mergeTags(content)); err != nil {
+		return nil, fmt.Errorf("upsert tags: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -133,8 +144,14 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("get note for update: %w", err)
 	}
 
+	fm, _ := ParseFrontmatter(update.Content)
+	effectiveTitle := update.Title
+	if fm.Title != "" {
+		effectiveTitle = fm.Title
+	}
+
 	note.Content = update.Content
-	note.Title = update.Title
+	note.Title = effectiveTitle
 	note.Path = update.Path
 	note.Checksum = newChecksum
 	note.UpdatedAt = now
@@ -163,11 +180,19 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("resolve links: %w", err)
 	}
 
+	if err := s.tagRepo.UpsertTagsTx(ctx, tx, note.ID, mergeTags(update.Content)); err != nil {
+		return nil, nil, fmt.Errorf("upsert tags: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return note, nil, nil
+}
+
+func (s *SyncService) GetVaultTags(ctx context.Context, vaultID string) ([]model.TagCount, error) {
+	return s.tagRepo.GetVaultTags(ctx, vaultID)
 }
 
 func (s *SyncService) GetNote(ctx context.Context, noteID string) (*model.Note, error) {

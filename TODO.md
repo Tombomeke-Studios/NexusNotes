@@ -396,14 +396,14 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/tags-and-metadata` - Inline tags and YAML front-matter
 
-- [ ] Parse `#tag` syntax from note content and extract a tags list on save (#72)
-- [ ] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
-- [ ] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
+- [x] Parse `#tag` syntax from note content and extract a tags list on save (#72)
+- [x] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
+- [x] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
 - [ ] Render clickable tag pills in the editor status bar (#75)
 - [ ] Add a tag filter panel to the sidebar (#76)
 - [ ] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
 - [ ] Expose front-matter fields in the search index (#78)
-- [ ] Write tests for the tag parser and tag repository (#79)
+- [x] Write tests for the tag parser and tag repository (#79)
 
 ---
 

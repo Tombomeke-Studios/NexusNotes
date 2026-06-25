@@ -41,15 +41,17 @@ func main() {
 	vaultRepo := repository.NewVaultRepo(pool)
 	noteRepo := repository.NewNoteRepo(pool)
 	linkRepo := repository.NewLinkRepo(pool)
+	tagRepo := repository.NewTagRepo(pool)
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo)
+	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo)
 
 	hub := ws.NewHub()
 
 	authHandler := handler.NewAuthHandler(authService, userRepo)
 	vaultHandler := handler.NewVaultHandler(vaultRepo)
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
+	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	wsHandler := handler.NewWSHandler(hub, authService)
 
 	mux := http.NewServeMux()
@@ -74,6 +76,7 @@ func main() {
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
+	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags)
 
 	mux.Handle("/api/", authMw(protectedMux))
 	mux.HandleFunc("/ws", wsHandler.HandleConnect)

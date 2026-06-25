@@ -77,3 +77,9 @@ type BacklinkNote struct {
 	Title     string    `json:"title"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+// TagCount is a tag with its occurrence count across a vault.
+type TagCount struct {
+	Tag   string `json:"tag"`
+	Count int    `json:"count"`
+}

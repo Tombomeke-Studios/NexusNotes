@@ -65,7 +65,10 @@ go run cmd/server/main.go
 | Component | Technology |
 |---|---|
 | Sync Service | Go 1.23 |
-| Desktop App | React + TypeScript + Vite |
+| MCP Service | Go 1.23 — Model Context Protocol (spec 2025-11-25) |
+| Search | Meilisearch 1.x |
+| Desktop App | Tauri v2 + React + TypeScript |
+| Mobile App | Flutter (planned) |
 | Database | PostgreSQL 16 |
 | Cache / Sessions | Redis 7 |
 | Attachments | MinIO (S3-compatible) |
@@ -88,9 +91,16 @@ NexusNotes/
 | Shortcut | Action |
 |---|---|
 | `Ctrl+P` | Quick switcher (search notes) |
+| `Ctrl+Shift+P` | Command palette |
 | `Ctrl+N` | Create new note |
 | `Ctrl+S` | Save current note |
 | `Ctrl+E` | Toggle edit / preview / split mode |
+| `Ctrl+G` | Open graph view |
+| `Ctrl+D` | Open or create today's daily note |
+| `Ctrl+F` | Search in current note |
+| `Ctrl+Shift+F` | Global search across vault |
+| `Ctrl+Shift+L` | Link existing file into vault |
+| `Ctrl+,` | Settings |
 
 ## Testing
 
@@ -106,10 +116,18 @@ cd desktop && npm test
 
 | Document | Contents |
 |---|---|
-| [Architecture](docs/architecture.md) | System design, data flows |
+| [Architecture](docs/architecture.md) | System design, data flows, ER diagram |
 | [API](docs/api.md) | REST endpoints, WebSocket messages |
 | [Deployment](docs/deployment.md) | Docker, environment setup |
 | [Security](docs/security.md) | Auth, encryption, known gaps |
+| [Encryption](docs/encryption.md) | E2EE design, key hierarchy, threat model |
+| [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol |
+
+## Concept Design
+
+The original design documents and functional analysis live in the
+[CONCEPTS repository](https://github.com/Tombomeke-Studios/CONCEPTS/tree/main/nexus-notes-platform).
+NexusNotes is part of the Tombomeke Studios product ecosystem alongside FinVault and NexusInfra.
 
 ## Branch Strategy
 

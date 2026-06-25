@@ -259,9 +259,13 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Open linked files in the editor as read-only with a "Linked - original not modified" notice
 - [ ] Add a "Link existing file" dialog to the sidebar context menu accessible via `Ctrl+Shift+L`
 - [ ] Support linking local filesystem paths using the Tauri `fs` API; read the file on open
+- [ ] Support linking an entire local directory: scan recursively for `.md` files, display as a virtual folder in the sidebar, and update automatically when files are added or removed
+- [ ] Watch linked local paths with Tauri `fs.watch`; refresh the sidebar entry and editor content when the file changes on disk without requiring a manual refresh
+- [ ] Add a "last synced" timestamp and a manual "Sync now" button on each linked file entry in the sidebar
+- [ ] Show a visual indicator (badge or colour) when the on-disk content has changed since the last read
 - [ ] Support linking raw URLs; fetch on open, cache locally, and refresh on demand
 - [ ] Support linking GitHub file paths using the existing GitHub connection when available
-- [ ] Allow personal annotations to be added on top of a linked read-only file
+- [ ] Allow personal annotations to be added on top of a linked read-only file; store annotations separately from the linked content so syncing the source does not overwrite them
 - [ ] Write unit tests for the linked_files repository and handler
 
 ---
@@ -298,7 +302,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ### Core server (Go - new service `services/mcp-service/`)
 
 - [ ] Write `docs/mcp.md` covering architecture, the tools list, the auth model, and the E2EE interaction model
-- [ ] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and HTTP/SSE
+- [ ] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk`
 - [ ] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml`
 - [ ] Implement the MCP handshake: `initialize`, capability negotiation, `initialized`
 
@@ -332,6 +336,11 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Expose vault structure as MCP Resources using the URI scheme `nexusnotes://vault/:id/note/:path`
 - [ ] Implement `resources/list` so AI clients can browse the vault file tree
 - [ ] Implement `resources/read` so AI clients can read a note by URI
+
+### MCP prompts
+
+- [ ] Implement MCP Prompts (`prompts/list`, `prompts/get`): expose reusable prompt templates — `summarize_note`, `extract_tasks`, `daily_reflection` — that AI clients can invoke with vault context
+- [ ] Each prompt accepts typed arguments (e.g., `vault_id`, `note_id`) and returns a rendered messages array ready to send to the LLM
 
 ### Desktop integration
 
@@ -676,12 +685,72 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
+## `feature/device-management` - Device management
+
+- [ ] Add `GET /api/devices` endpoint returning all devices registered to the authenticated user with name, platform, and last-seen timestamp
+- [ ] Add `DELETE /api/devices/:id` to revoke a specific device session and invalidate its WebSocket connection
+- [ ] Show a device list in Settings with name, platform, last seen, and a "Revoke" button
+- [ ] Auto-expire devices that have been inactive for 90 days via a daily background cleanup job
+- [ ] Write unit tests for the device repository and revocation handler
+
+---
+
+## `feature/email-auth` - Email verification and password reset
+
+> Phase 1 ships without email verification. This feature closes that gap before a public
+> release so accounts are tied to verified addresses and recoverable on passphrase loss.
+
+- [ ] Add `email_verifications` table: `id`, `user_id`, `token_hash`, `expires_at`, `used_at`
+- [ ] Add `password_reset_tokens` table: `id`, `user_id`, `token_hash`, `expires_at`, `used_at`
+- [ ] Send a verification email on registration; require verification before creating a vault
+- [ ] Add `POST /api/auth/forgot-password` — generates a signed reset link and emails it
+- [ ] Add `POST /api/auth/reset-password` — validates the token and updates the password hash
+- [ ] Add refresh token rotation: issue a long-lived refresh token alongside the access token; exchange for a new access token on each use; revoke both on logout
+- [ ] Add a `refresh_tokens` table and `POST /api/auth/refresh` endpoint
+- [ ] Configure SMTP via environment variables (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`)
+- [ ] Write unit tests for token generation, validation, and expiry logic
+
+---
+
+## `feature/vault-sharing` - Collaborative vault sharing
+
+> Users can invite others to a vault with viewer or editor access. Shared vaults
+> appear in the sidebar for all members and sync in real time via WebSocket.
+
+- [ ] Add `vault_members` table: `vault_id`, `user_id`, `role` (`viewer` or `editor`), `invited_by`, `accepted_at`, `created_at`
+- [ ] Add `POST /vaults/:id/members` to invite a user by email address
+- [ ] Add `PATCH /vaults/:id/members/:userId` to change a member's role
+- [ ] Add `DELETE /vaults/:id/members/:userId` to remove a member or leave a vault
+- [ ] Extend the authorization middleware to allow vault access for all members, enforcing role-based write checks
+- [ ] Show shared vaults in the sidebar with a "shared" icon and member count tooltip
+- [ ] Add a Sharing panel in the vault context menu listing members and invite form
+- [ ] Broadcast WebSocket note updates to all connected members of the vault, not just the owner
+- [ ] Write unit tests for the membership repository and authorization middleware changes
+
+---
+
+## `feature/observability` - Structured logging, metrics, and health
+
+> Visibility into what the running application is doing is essential before production.
+> This feature makes the sync service observable without external infrastructure changes.
+
+- [ ] Replace all `fmt.Println` / `log.Println` calls with structured JSON logging using `slog` (Go standard library, no external dependency)
+- [ ] Add a request-scoped correlation ID middleware; include the ID in every log line for that request
+- [ ] Add a Prometheus metrics endpoint at `/metrics` exposing: HTTP request count and latency by route, active WebSocket connections, note create/update/delete counters, and Go runtime metrics
+- [ ] Add Prometheus and Grafana services to `docker-compose.yml` with a pre-built NexusNotes dashboard JSON provisioned at startup
+- [ ] Add `GET /api/admin/stats` (admin token only) returning: vault count, note count, user count, and uptime
+- [ ] Write tests for the metrics middleware and the correlation ID propagation
+
+---
+
 ## Backlog
 
 Lower priority items not focused on the desktop application.
 
 - [ ] Phase 4 - Mobile Flutter app (file browser, editor, search, graph, share sheet, camera-to-note, speech-to-text, home widget)
 - [ ] Phase 6 - Browser extension / web clipper (Manifest V3, full-page markdown capture, selection capture, quick-capture popup)
+- [ ] Custom domain support for published notes (CNAME record pointing to the NexusNotes server; SSL via Let's Encrypt ACME)
+- [ ] Obsidian Sync protocol compatibility layer (optional, for users migrating from Obsidian Sync to NexusNotes self-hosted)
 
 ---
 

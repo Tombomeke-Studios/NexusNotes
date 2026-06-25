@@ -114,12 +114,15 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 			ID:        note.ID,
 			VaultID:   note.VaultID,
 			Title:     note.Title,
-			Content:   note.Content,
-			Tags:      mergeTags(content),
 			Path:      note.Path,
 			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
 		}
 		go func() {
+			// Omit content and tags for encrypted vaults
+			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
+				doc.Content = note.Content
+				doc.Tags = mergeTags(content)
+			}
 			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
 				for _, bl := range bls {
 					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)
@@ -214,16 +217,19 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 
 	if s.indexer != nil {
 		noteID := note.ID
+		savedContent := update.Content
 		doc := search.NoteDoc{
 			ID:        note.ID,
 			VaultID:   note.VaultID,
 			Title:     note.Title,
-			Content:   note.Content,
-			Tags:      mergeTags(update.Content),
 			Path:      note.Path,
 			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
 		}
 		go func() {
+			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
+				doc.Content = savedContent
+				doc.Tags = mergeTags(savedContent)
+			}
 			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
 				for _, bl := range bls {
 					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)

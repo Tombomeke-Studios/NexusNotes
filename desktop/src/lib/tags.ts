@@ -1,7 +1,7 @@
 import type { Note } from "./types";
 
 // Mirrors the backend ParseTags logic — same rules, client-side.
-const TAG_RE = /(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/\-]*)/gm;
+const TAG_RE = /(?:^|\s)#([a-zA-Z][a-zA-Z0-9_/-]*)/gm;
 const CODE_RE = /```[\s\S]*?```|`[^\n`]+`/g;
 
 export function extractTags(content: string): string[] {

@@ -31,7 +31,7 @@ func ParseFrontmatter(content string) (FrontmatterMeta, string) {
 	}
 
 	block := rest[:end]
-	body := strings.TrimPrefix(rest[end+4:], "\n") // skip closing "\n---" + optional newline
+	body := strings.TrimLeft(rest[end+4:], "\n") // skip closing "\n---" + any blank separator lines
 
 	meta = parseFrontmatterBlock(block)
 	return meta, body

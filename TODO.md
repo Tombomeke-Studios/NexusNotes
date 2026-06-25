@@ -387,12 +387,14 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/wiki-links-and-backlinks` - Wiki-link parsing and backlink panel
 
-- [ ] Parse `[[Note name]]` and `[[Note name#Section]]` on save; store edges in `note_links` table
-- [ ] Add `GET /notes/:id/backlinks` endpoint
-- [ ] Build a collapsible backlink panel in the editor sidebar showing linking note titles
-- [ ] Highlight unresolved `[[links]]` where the target note does not exist
-- [ ] Add a "Create note" action when clicking an unresolved link
-- [ ] Write tests for the link parser and backlink repository
+- [x] DB migration: `note_links` table with source/target/anchor columns (#65)
+- [x] Parse `[[Note name]]` and `[[Note name#Section]]` on save; store edges in `note_links` table (#66)
+- [x] Upsert and resolve links atomically on note create and update (#67)
+- [x] Add `GET /notes/:id/backlinks` endpoint (#68)
+- [x] Write tests for the link parser and backlink repository (#66)
+- [ ] Build a collapsible backlink panel in the editor sidebar showing linking note titles (#69)
+- [ ] Highlight unresolved `[[links]]` where the target note does not exist (#70)
+- [ ] Add a "Create note" action when clicking an unresolved link (#70)
 
 ---
 

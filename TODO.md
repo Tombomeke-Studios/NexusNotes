@@ -394,29 +394,16 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/wiki-links-and-backlinks` - Wiki-link parsing and backlink panel
-
-- [x] DB migration: `note_links` table with source/target/anchor columns (#65)
-- [x] Parse `[[Note name]]` and `[[Note name#Section]]` on save; store edges in `note_links` table (#66)
-- [x] Upsert and resolve links atomically on note create and update (#67)
-- [x] Add `GET /notes/:id/backlinks` endpoint (#68)
-- [x] Write tests for the link parser and backlink repository (#66)
-- [x] Build a collapsible backlink panel in the editor sidebar showing linking note titles (#69)
-- [x] Highlight unresolved `[[links]]` where the target note does not exist (#70)
-- [x] Add a "Create note" action when clicking an unresolved link (#70)
-
----
-
 ## `feature/tags-and-metadata` - Inline tags and YAML front-matter
 
-- [ ] Parse `#tag` syntax from note content and extract a tags list on save
-- [ ] Store tags in a `note_tags` join table with columns `note_id` and `tag`
-- [ ] Add `GET /vaults/:id/tags` returning all tags with counts
-- [ ] Render clickable tag pills in the editor status bar
-- [ ] Add a tag filter panel to the sidebar
-- [ ] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated`
-- [ ] Expose front-matter fields in the search index
-- [ ] Write tests for the tag parser and tag repository
+- [ ] Parse `#tag` syntax from note content and extract a tags list on save (#72)
+- [ ] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
+- [ ] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
+- [ ] Render clickable tag pills in the editor status bar (#75)
+- [ ] Add a tag filter panel to the sidebar (#76)
+- [ ] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
+- [ ] Expose front-matter fields in the search index (#78)
+- [ ] Write tests for the tag parser and tag repository (#79)
 
 ---
 
@@ -757,6 +744,17 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/wiki-links-and-backlinks` - Wiki-link parsing and backlink panel (PR #71)
+
+- [x] DB migration: `note_links` table with source/target/anchor columns (#65)
+- [x] Parse `[[Note name]]` and `[[Note name#Section]]` on save; store edges in `note_links` table (#66)
+- [x] Upsert and resolve links atomically on note create and update (#67)
+- [x] Add `GET /notes/:id/backlinks` endpoint (#68)
+- [x] Write tests for the link parser and backlink repository (#66)
+- [x] Build a collapsible backlink panel in the editor sidebar showing linking note titles (#69)
+- [x] Highlight unresolved `[[links]]` where the target note does not exist (#70)
+- [x] Add a "Create note" action when clicking an unresolved link (#70)
 
 ### `feature/project-setup` - Project scaffolding (PR #13)
 

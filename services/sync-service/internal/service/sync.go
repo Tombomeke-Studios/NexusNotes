@@ -121,7 +121,9 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 			// Omit content and tags for encrypted vaults
 			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
 				doc.Content = note.Content
+				fm, _ := ParseFrontmatter(content)
 				doc.Tags = mergeTags(content)
+				doc.Aliases = fm.Aliases
 			}
 			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
 				for _, bl := range bls {
@@ -228,7 +230,9 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		go func() {
 			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
 				doc.Content = savedContent
+				fm, _ := ParseFrontmatter(savedContent)
 				doc.Tags = mergeTags(savedContent)
+				doc.Aliases = fm.Aliases
 			}
 			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
 				for _, bl := range bls {

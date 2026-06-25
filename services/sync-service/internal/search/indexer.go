@@ -18,6 +18,7 @@ type NoteDoc struct {
 	Title          string   `json:"title"`
 	Content        string   `json:"content"`
 	Tags           []string `json:"tags"`
+	Aliases        []string `json:"aliases,omitempty"`
 	Path           string   `json:"path"`
 	UpdatedAt      string   `json:"updated_at"`
 	BacklinkTitles []string `json:"backlink_titles,omitempty"`

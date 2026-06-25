@@ -740,7 +740,7 @@ Lower priority items not focused on the desktop application.
 - [x] Render clickable tag pills in the editor status bar (#75)
 - [x] Add a tag filter panel to the sidebar (#76)
 - [x] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
-- [ ] Expose front-matter fields in the search index (#78) ← deferred to `feature/full-text-search`
+- [x] Expose front-matter fields in the search index (#78)
 - [x] Write tests for the tag parser and tag repository (#79)
 
 ### `feature/wiki-links-and-backlinks` - Wiki-link parsing and backlink panel (PR #71)

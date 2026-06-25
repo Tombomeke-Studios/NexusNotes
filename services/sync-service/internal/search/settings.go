@@ -30,7 +30,7 @@ type minWordSizeConfig struct {
 // startup and is idempotent — re-running it is safe.
 func (idx *Indexer) ConfigureIndex(ctx context.Context) error {
 	settings := indexSettings{
-		SearchableAttributes: []string{"title", "content", "tags", "path", "backlink_titles"},
+		SearchableAttributes: []string{"title", "aliases", "content", "tags", "path", "backlink_titles"},
 		FilterableAttributes: []string{"vault_id", "tags", "updated_at"},
 		SortableAttributes:   []string{"updated_at"},
 		RankingRules:         []string{"words", "typo", "proximity", "attribute", "sort", "exactness"},

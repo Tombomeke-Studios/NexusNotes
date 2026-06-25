@@ -140,6 +140,46 @@ Connect: `ws://localhost:8080/ws?token=<jwt>&device_id=<uuid>`
 
 ---
 
+## Search
+
+All search endpoints require authentication (`Authorization: Bearer <token>`).
+
+### GET /api/search
+
+Full-text search across notes in a vault.
+
+**Query parameters:**
+
+| Param | Required | Description |
+|---|---|---|
+| `vault` | Yes | Vault ID to search in |
+| `q` | No | Search query string |
+| `tag` | No | Filter by tag (exact match) |
+| `date_from` | No | ISO 8601 date — notes updated on or after |
+| `date_to` | No | ISO 8601 date — notes updated on or before |
+| `limit` | No | Max results (default 20, max 100) |
+| `offset` | No | Pagination offset (default 0) |
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "note-uuid",
+    "vault_id": "vault-uuid",
+    "title": "My Note",
+    "path": "folder/my-note.md",
+    "tags": ["work", "project"],
+    "updated_at": "2024-06-01T12:00:00Z",
+    "snippet": "...highlighted <em>match</em> in content..."
+  }
+]
+```
+
+Returns `503 Service Unavailable` if Meilisearch is unreachable.
+
+---
+
 ## Health
 
 ### GET /health

@@ -58,6 +58,7 @@ func main() {
 	vaultHandler := handler.NewVaultHandler(vaultRepo)
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
+	searchHandler := handler.NewSearchHandler(indexer, vaultRepo)
 	wsHandler := handler.NewWSHandler(hub, authService)
 
 	mux := http.NewServeMux()
@@ -83,6 +84,7 @@ func main() {
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags)
+	protectedMux.HandleFunc("GET /api/search", searchHandler.Search)
 
 	mux.Handle("/api/", authMw(protectedMux))
 	mux.HandleFunc("/ws", wsHandler.HandleConnect)

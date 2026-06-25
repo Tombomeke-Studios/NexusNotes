@@ -1,4 +1,5 @@
-const WIKI_RE = /\[\[([^\]|#\[]+?)(?:#([^\]|]+?))?(?:\|([^\]]+?))?\]\]/g;
+// Character class `[^[\]|#[]+?` — `[` and `|` don't need escaping inside `[...]`
+const WIKI_RE = /\[\[([^[\]|#[]+?)(?:#([^[\]|]+?))?(?:\|([^\]]+?))?\]\]/g;
 
 interface WikilinkNode {
   type: "link";
@@ -11,6 +12,8 @@ interface TextNode {
   type: "text";
   value: string;
 }
+
+type MdastNode = WikilinkNode | TextNode | { type: string; children?: MdastNode[] };
 
 function expandText(value: string): Array<WikilinkNode | TextNode> {
   const result: Array<WikilinkNode | TextNode> = [];
@@ -42,13 +45,13 @@ function expandText(value: string): Array<WikilinkNode | TextNode> {
   return result;
 }
 
-function walkNode(node: any): void {
-  if (!node.children) return;
+function walkNode(node: MdastNode): void {
+  if (!("children" in node) || !node.children) return;
 
-  const newChildren: any[] = [];
+  const newChildren: MdastNode[] = [];
   for (const child of node.children) {
-    if (child.type === "text" && WIKI_RE.test(child.value)) {
-      newChildren.push(...expandText(child.value));
+    if (child.type === "text" && "value" in child && WIKI_RE.test((child as TextNode).value)) {
+      newChildren.push(...expandText((child as TextNode).value));
     } else {
       walkNode(child);
       newChildren.push(child);
@@ -57,9 +60,8 @@ function walkNode(node: any): void {
   node.children = newChildren;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function remarkWikilinks(): (tree: any) => void {
-  return (tree: any) => {
+export function remarkWikilinks() {
+  return (tree: MdastNode) => {
     walkNode(tree);
   };
 }

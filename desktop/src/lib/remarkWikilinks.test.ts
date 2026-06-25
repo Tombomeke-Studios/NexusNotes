@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-const WIKI_RE = /\[\[([^\]|#\[]+?)(?:#([^\]|]+?))?(?:\|([^\]]+?))?\]\]/g;
+const WIKI_RE = /\[\[([^[\]|#[]+?)(?:#([^[\]|]+?))?(?:\|([^\]]+?))?\]\]/g;
 
 function expandText(value: string): Array<{ type: string; value?: string; url?: string; label?: string }> {
   const result: Array<{ type: string; value?: string; url?: string; label?: string }> = [];

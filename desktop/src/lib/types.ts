@@ -49,3 +49,11 @@ export interface TreeNode {
   children?: TreeNode[];
   noteId?: string;
 }
+
+export interface BacklinkNote {
+  id: string;
+  vault_id: string;
+  path: string;
+  title: string;
+  updated_at: string;
+}

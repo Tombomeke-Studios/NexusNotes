@@ -392,9 +392,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Upsert and resolve links atomically on note create and update (#67)
 - [x] Add `GET /notes/:id/backlinks` endpoint (#68)
 - [x] Write tests for the link parser and backlink repository (#66)
-- [ ] Build a collapsible backlink panel in the editor sidebar showing linking note titles (#69)
-- [ ] Highlight unresolved `[[links]]` where the target note does not exist (#70)
-- [ ] Add a "Create note" action when clicking an unresolved link (#70)
+- [x] Build a collapsible backlink panel in the editor sidebar showing linking note titles (#69)
+- [x] Highlight unresolved `[[links]]` where the target note does not exist (#70)
+- [x] Add a "Create note" action when clicking an unresolved link (#70)
 
 ---
 

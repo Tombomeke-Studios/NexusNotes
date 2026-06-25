@@ -401,9 +401,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Skip content indexing for encrypted vaults; index title and path only (#86)
 - [x] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=` (#83)
 - [x] Return ranked results with context snippets per hit (#83)
-- [ ] Connect the `Ctrl+Shift+F` global search UI to the search endpoint (#84)
+- [x] Connect the `Ctrl+Shift+F` global search UI to the search endpoint (#84)
 - [x] Configure fuzzy matching and typo tolerance via Meilisearch settings (#85)
-- [ ] Add tag-based, folder-based, and date-range filters to the search UI (#84)
+- [x] Add tag-based, folder-based, and date-range filters to the search UI (#84)
 - [ ] Index backlinks so that searching a note title surfaces its inbound references (#88)
 - [ ] Write integration tests for the search indexer and search handler (#89)
 

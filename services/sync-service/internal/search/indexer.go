@@ -13,13 +13,14 @@ const indexName = "notes"
 
 // NoteDoc is the document shape sent to Meilisearch.
 type NoteDoc struct {
-	ID        string   `json:"id"`
-	VaultID   string   `json:"vault_id"`
-	Title     string   `json:"title"`
-	Content   string   `json:"content"`
-	Tags      []string `json:"tags"`
-	Path      string   `json:"path"`
-	UpdatedAt string   `json:"updated_at"`
+	ID             string   `json:"id"`
+	VaultID        string   `json:"vault_id"`
+	Title          string   `json:"title"`
+	Content        string   `json:"content"`
+	Tags           []string `json:"tags"`
+	Path           string   `json:"path"`
+	UpdatedAt      string   `json:"updated_at"`
+	BacklinkTitles []string `json:"backlink_titles,omitempty"`
 }
 
 // Indexer sends note documents to Meilisearch over its REST API.

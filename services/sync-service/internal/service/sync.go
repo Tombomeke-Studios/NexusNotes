@@ -109,7 +109,8 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 	}
 
 	if s.indexer != nil {
-		s.indexer.IndexNote(search.NoteDoc{
+		noteID := note.ID
+		doc := search.NoteDoc{
 			ID:        note.ID,
 			VaultID:   note.VaultID,
 			Title:     note.Title,
@@ -117,7 +118,15 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 			Tags:      mergeTags(content),
 			Path:      note.Path,
 			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
-		})
+		}
+		go func() {
+			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
+				for _, bl := range bls {
+					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)
+				}
+			}
+			s.indexer.IndexNote(doc)
+		}()
 	}
 
 	return note, nil
@@ -204,7 +213,8 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 	}
 
 	if s.indexer != nil {
-		s.indexer.IndexNote(search.NoteDoc{
+		noteID := note.ID
+		doc := search.NoteDoc{
 			ID:        note.ID,
 			VaultID:   note.VaultID,
 			Title:     note.Title,
@@ -212,7 +222,15 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 			Tags:      mergeTags(update.Content),
 			Path:      note.Path,
 			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
-		})
+		}
+		go func() {
+			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
+				for _, bl := range bls {
+					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)
+				}
+			}
+			s.indexer.IndexNote(doc)
+		}()
 	}
 
 	return note, nil, nil

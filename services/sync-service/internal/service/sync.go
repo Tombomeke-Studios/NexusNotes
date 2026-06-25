@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
 )
 
 var ErrConflict = errors.New("checksum conflict: note was modified by another device")
@@ -19,14 +20,16 @@ type SyncService struct {
 	vaultRepo *repository.VaultRepo
 	linkRepo  *repository.LinkRepo
 	tagRepo   *repository.TagRepo
+	indexer   *search.Indexer
 }
 
-func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo) *SyncService {
+func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, indexer *search.Indexer) *SyncService {
 	return &SyncService{
 		noteRepo:  noteRepo,
 		vaultRepo: vaultRepo,
 		linkRepo:  linkRepo,
 		tagRepo:   tagRepo,
+		indexer:   indexer,
 	}
 }
 
@@ -103,6 +106,18 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit transaction: %w", err)
+	}
+
+	if s.indexer != nil {
+		s.indexer.IndexNote(search.NoteDoc{
+			ID:        note.ID,
+			VaultID:   note.VaultID,
+			Title:     note.Title,
+			Content:   note.Content,
+			Tags:      mergeTags(content),
+			Path:      note.Path,
+			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
+		})
 	}
 
 	return note, nil
@@ -188,6 +203,18 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
+	if s.indexer != nil {
+		s.indexer.IndexNote(search.NoteDoc{
+			ID:        note.ID,
+			VaultID:   note.VaultID,
+			Title:     note.Title,
+			Content:   note.Content,
+			Tags:      mergeTags(update.Content),
+			Path:      note.Path,
+			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
 	return note, nil, nil
 }
 
@@ -204,7 +231,13 @@ func (s *SyncService) ListNotes(ctx context.Context, vaultID string) ([]model.No
 }
 
 func (s *SyncService) DeleteNote(ctx context.Context, noteID, vaultID string) error {
-	return s.noteRepo.Delete(ctx, noteID, vaultID)
+	if err := s.noteRepo.Delete(ctx, noteID, vaultID); err != nil {
+		return err
+	}
+	if s.indexer != nil {
+		s.indexer.DeleteNote(noteID)
+	}
+	return nil
 }
 
 func (s *SyncService) GetVersions(ctx context.Context, noteID string) ([]model.NoteVersion, error) {

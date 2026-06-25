@@ -16,6 +16,7 @@ import (
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/handler"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/ws"
 )
@@ -43,8 +44,13 @@ func main() {
 	linkRepo := repository.NewLinkRepo(pool)
 	tagRepo := repository.NewTagRepo(pool)
 
+	indexer := search.NewIndexer(cfg.MeiliURL, cfg.MeiliMasterKey)
+	if err := indexer.ConfigureIndex(ctx); err != nil {
+		log.Printf("warn: meilisearch index configuration failed (search may be degraded): %v", err)
+	}
+
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo)
+	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, indexer)
 
 	hub := ws.NewHub()
 

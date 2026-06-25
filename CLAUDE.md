@@ -48,7 +48,7 @@ Tasks live in two places that must stay in sync:
 | You add an actionable item to TODO.md | Create its GitHub issue and put the `(#N)` ref on the TODO line |
 | You promote a backlog group to `feature/<topic>` | Verify every item in it has an issue; create any missing ones first |
 | You discover a bug while working | Issue immediately (`type:bug`), then decide: fix now or backlog |
-| You open a PR | One `Closes #N` line per completed issue in the PR body |
+| You open a PR | One `Closes #N` line **per completed issue, each on its own line** in the PR body |
 | The PR merges | Verify the issues auto-closed; move the group to Done in TODO.md |
 
 **Rules:**
@@ -59,7 +59,7 @@ Tasks live in two places that must stay in sync:
 2. **Title** = the TODO line, imperative. **Body** = context, acceptance criteria, affected files.
 3. **Labels:** one `type:*` label (bug/feature/refactor/test/docs/ci).
 4. **TODO.md items carry their issue ref:** `- [ ] Fix X (#12)`.
-5. **PR bodies close their issues:** list every completed issue as `Closes #N`.
+5. **PR bodies close their issues:** each completed issue must appear as its own `Closes #N` line — never comma-separated on one line (`Closes #1, #2` only auto-links the first in GitHub's Development panel).
 6. An issue is only ever closed by a merged PR — or manually with a comment.
 7. Open issues are the **backlog**, not a failure signal.
 

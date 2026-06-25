@@ -40,9 +40,10 @@ func main() {
 	userRepo := repository.NewUserRepo(pool)
 	vaultRepo := repository.NewVaultRepo(pool)
 	noteRepo := repository.NewNoteRepo(pool)
+	linkRepo := repository.NewLinkRepo(pool)
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	syncService := service.NewSyncService(noteRepo, vaultRepo)
+	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo)
 
 	hub := ws.NewHub()
 
@@ -72,6 +73,7 @@ func main() {
 	protectedMux.HandleFunc("PUT /api/notes/{noteId}", noteHandler.Update)
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
+	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
 
 	mux.Handle("/api/", authMw(protectedMux))
 	mux.HandleFunc("/ws", wsHandler.HandleConnect)

@@ -1,4 +1,4 @@
-import type { User, Vault, Note, NoteVersion, ConflictInfo } from "./types";
+import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -157,6 +157,8 @@ export const notes = {
     }),
   versions: (noteId: string) =>
     request<NoteVersion[]>(`/api/notes/${noteId}/versions`),
+  backlinks: (noteId: string) =>
+    request<BacklinkNote[]>(`/api/notes/${noteId}/backlinks`),
 };
 
 function getDeviceId(): string {

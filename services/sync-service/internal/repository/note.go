@@ -30,6 +30,18 @@ func (r *NoteRepo) Create(ctx context.Context, note *model.Note) error {
 	return nil
 }
 
+func (r *NoteRepo) CreateTx(ctx context.Context, tx pgx.Tx, note *model.Note) error {
+	_, err := tx.Exec(ctx,
+		`INSERT INTO notes (id, vault_id, path, title, content, checksum, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		note.ID, note.VaultID, note.Path, note.Title, note.Content, note.Checksum, note.CreatedAt, note.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("insert note tx: %w", err)
+	}
+	return nil
+}
+
 func (r *NoteRepo) GetByID(ctx context.Context, id string) (*model.Note, error) {
 	var n model.Note
 	err := r.pool.QueryRow(ctx,

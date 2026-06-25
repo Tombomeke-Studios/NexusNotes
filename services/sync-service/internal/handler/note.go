@@ -198,3 +198,31 @@ func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, versions)
 }
+
+func (h *NoteHandler) Backlinks(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	noteID := r.PathValue("noteId")
+
+	note, err := h.syncService.GetNote(r.Context(), noteID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "note not found")
+		return
+	}
+	vault, err := h.vaultRepo.GetByID(r.Context(), note.VaultID)
+	if err != nil || vault.UserID != userID {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+
+	backlinks, err := h.syncService.GetBacklinks(r.Context(), noteID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to get backlinks")
+		return
+	}
+
+	if backlinks == nil {
+		backlinks = []model.BacklinkNote{}
+	}
+
+	writeJSON(w, http.StatusOK, backlinks)
+}

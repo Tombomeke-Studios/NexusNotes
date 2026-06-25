@@ -121,6 +121,15 @@ export default function App() {
     setSaveStatus("saved");
   }, [activeVaultId]);
 
+  const handleCreateNoteWithTitle = useCallback(async (title: string) => {
+    if (!activeVaultId) return;
+    const note = await notesApi.create(activeVaultId, title, "", "");
+    setNoteList((prev) => [...prev, note]);
+    setActiveNote(note);
+    setEditorContent("");
+    setSaveStatus("saved");
+  }, [activeVaultId]);
+
   const commands = useMemo(() => [
     { id: "new-note", label: "New Note", shortcut: "Ctrl+N", action: handleCreateNote },
     { id: "quick-switcher", label: "Quick Switcher", shortcut: "Ctrl+P", action: () => setShowQuickSwitcher(true) },
@@ -283,7 +292,14 @@ export default function App() {
           </div>
         </div>
         <div className="editor-area">
-          <Editor note={activeNote} onSave={handleSaveNote} onRename={handleRenameNote} />
+          <Editor
+            note={activeNote}
+            notes={noteList}
+            onSave={handleSaveNote}
+            onRename={handleRenameNote}
+            onCreateNote={handleCreateNoteWithTitle}
+            onNavigateToNote={handleSelectNote}
+          />
         </div>
         <StatusBar
           content={editorContent}

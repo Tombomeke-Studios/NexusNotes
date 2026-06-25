@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import hljs from "highlight.js/lib/core";
@@ -14,6 +14,8 @@ import yaml from "highlight.js/lib/languages/yaml";
 import xml from "highlight.js/lib/languages/xml";
 import markdown from "highlight.js/lib/languages/markdown";
 import type { Note } from "../../lib/types";
+import { remarkWikilinks } from "../../lib/remarkWikilinks";
+import { BacklinksPanel } from "./BacklinksPanel";
 import "./Editor.css";
 
 hljs.registerLanguage("javascript", javascript);
@@ -35,13 +37,23 @@ hljs.registerLanguage("md", markdown);
 
 interface EditorProps {
   note: Note | null;
+  notes: Note[];
   onSave: (content: string) => void;
   onRename: (title: string) => void;
+  onCreateNote: (title: string) => void;
+  onNavigateToNote: (noteId: string) => void;
 }
 
 type ViewMode = "edit" | "preview" | "split";
 
-export function Editor({ note, onSave, onRename }: EditorProps) {
+export function Editor({
+  note,
+  notes,
+  onSave,
+  onRename,
+  onCreateNote,
+  onNavigateToNote,
+}: EditorProps) {
   const [content, setContent] = useState("");
   const [mode, setMode] = useState<ViewMode>("split");
   const [hasChanges, setHasChanges] = useState(false);
@@ -53,6 +65,14 @@ export function Editor({ note, onSave, onRename }: EditorProps) {
 
   onSaveRef.current = onSave;
   contentRef.current = content;
+
+  const notesByTitle = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of notes) {
+      map.set(n.title.toLowerCase(), n.id);
+    }
+    return map;
+  }, [notes]);
 
   useEffect(() => {
     if (note && note.id !== prevNoteIdRef.current) {
@@ -111,6 +131,43 @@ export function Editor({ note, onSave, onRename }: EditorProps) {
       return <code {...rest} className={className}>{children}</code>;
     },
     [],
+  );
+
+  const renderAnchor = useCallback(
+    ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children?: React.ReactNode }) => {
+      if (href?.startsWith("wikilink://")) {
+        const raw = href.slice("wikilink://".length);
+        const hashIdx = raw.indexOf("#");
+        const title = decodeURIComponent(hashIdx >= 0 ? raw.slice(0, hashIdx) : raw);
+        const targetId = notesByTitle.get(title.toLowerCase());
+        if (targetId) {
+          return (
+            <button
+              className="wikilink wikilink--resolved"
+              onClick={() => onNavigateToNote(targetId)}
+              title={`Open: ${title}`}
+            >
+              {children}
+            </button>
+          );
+        }
+        return (
+          <button
+            className="wikilink wikilink--unresolved"
+            onClick={() => onCreateNote(title)}
+            title={`Create note: ${title}`}
+          >
+            {children}
+          </button>
+        );
+      }
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer">
+          {children}
+        </a>
+      );
+    },
+    [notesByTitle, onNavigateToNote, onCreateNote],
   );
 
   if (!note) {
@@ -177,14 +234,15 @@ export function Editor({ note, onSave, onRename }: EditorProps) {
         {(mode === "preview" || mode === "split") && (
           <div className="editor-preview markdown-body">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{ code: renderCode }}
+              remarkPlugins={[remarkGfm, remarkWikilinks]}
+              components={{ code: renderCode, a: renderAnchor }}
             >
               {content}
             </ReactMarkdown>
           </div>
         )}
       </div>
+      <BacklinksPanel noteId={note.id} onNavigate={onNavigateToNote} />
     </div>
   );
 }

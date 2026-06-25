@@ -72,7 +72,7 @@ introduces failure risk.
 
 | Operation | Algorithm | Rationale |
 |---|---|---|
-| Key derivation | Argon2id (t=3, m=65536, p=4) | Memory-hard; resistant to GPU and ASIC brute-force attacks |
+| Key derivation | Argon2id (t=3, m=65536 / 64 MiB, p=4) | Memory-hard; resistant to GPU and ASIC brute-force attacks. Exceeds OWASP minimum (m=19456, t=2, p=1) — deliberate for vault unlock, which happens infrequently |
 | Symmetric encryption | AES-256-GCM | Authenticated encryption; detects ciphertext tampering |
 | IV / nonce | 12-byte random value per save | IVs must never be reused with the same key |
 | Conflict detection checksum | SHA-256 of plaintext computed before encryption | Allows server-side conflict detection without content access |
@@ -191,22 +191,24 @@ cost of server-side file tree functionality.
 
 ## Implementation notes
 
-- Use the Web Crypto API (`crypto.subtle`) in the Tauri webview; it is native and
+- Use the Web Crypto API (`crypto.subtle`) in the Tauri webview — it is native and
   requires no JavaScript cryptography library.
-- The Master Key must never be transmitted to the server and must never be written
-  to disk.
-- The Vault Key is held in memory for the duration of the session and is cleared on
-  lock or logout.
+- Never transmit the Master Key to the server and never write it to disk.
+- Hold the Vault Key in memory for the session duration; clear it on lock or logout.
 - Provide a "Lock vault" button that clears the Vault Key from memory and requires
   passphrase re-entry to resume.
-- Store Argon2id parameters in the `kdf_params` JSON column so they can be increased
+- Store Argon2id parameters in the `kdf_params` JSON column so you can increase them
   in future releases without breaking existing vaults.
+- If you increase the Argon2id parameters in a future release, derive the new Master Key
+  on the user's next unlock, re-wrap the Vault Key, and persist the new `kdf_params` —
+  all existing note ciphertexts remain valid.
 
 ---
 
 ## References
 
 - [Standard Notes Encryption Architecture](https://standardnotes.com/help/21/what-encryption-does-standard-notes-use)
-- [Web Crypto API - AES-GCM (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt)
-- [Argon2id - RFC 9106](https://www.rfc-editor.org/rfc/rfc9106)
-- [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [Web Crypto API — AES-GCM (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt)
+- [Argon2id — RFC 9106](https://www.rfc-editor.org/rfc/rfc9106)
+- [OWASP Password Storage Cheat Sheet — Argon2id recommended parameters](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [OWASP Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)

@@ -2,6 +2,8 @@
 
 A markdown-first note-taking platform with cross-device sync, full-text search, graph view, and native GitHub integration. Self-hostable via Docker.
 
+> **AI transparency notice:** This project was built with significant AI assistance (Claude Code). All generated code was reviewed and tested by the developer — AI produced the output, a human directed and verified it. The architecture, feature decisions, and final quality bar are human-owned.
+
 ## Quick Start
 
 ### Prerequisites

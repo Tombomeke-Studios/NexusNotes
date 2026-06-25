@@ -10,6 +10,7 @@ import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/ap
 import { syncClient } from "./lib/sync";
 import { buildTree } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
+import { buildTagCounts, extractTags } from "./lib/tags";
 import type { User, Vault, Note } from "./lib/types";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
   const [showGraph, setShowGraph] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const activeNoteRef = useRef(activeNote);
   activeNoteRef.current = activeNote;
@@ -231,6 +233,11 @@ export default function App() {
   }, []);
 
   const graphData = useMemo(() => buildGraphData(noteList), [noteList]);
+  const tagCounts = useMemo(() => buildTagCounts(noteList), [noteList]);
+  const filteredNoteList = useMemo(() => {
+    if (!activeTagFilter) return noteList;
+    return noteList.filter((n) => extractTags(n.content).includes(activeTagFilter));
+  }, [noteList, activeTagFilter]);
 
   if (loading) {
     return (
@@ -244,7 +251,7 @@ export default function App() {
     return <Auth onAuth={handleAuth} />;
   }
 
-  const tree = buildTree(noteList);
+  const tree = buildTree(filteredNoteList);
 
   return (
     <div className="app-layout">
@@ -253,10 +260,13 @@ export default function App() {
         activeVaultId={activeVaultId}
         tree={tree}
         activeNoteId={activeNote?.id ?? null}
+        tagCounts={tagCounts}
+        activeTagFilter={activeTagFilter}
         onSelectVault={handleSelectVault}
         onSelectNote={handleSelectNote}
         onCreateNote={handleCreateNote}
         onCreateVault={handleCreateVault}
+        onTagFilter={setActiveTagFilter}
       />
       <div className="main-content">
         <div className="header">
@@ -305,6 +315,7 @@ export default function App() {
           content={editorContent}
           saveStatus={activeNote ? saveStatus : "idle"}
           noteTitle={activeNote?.title ?? null}
+          onTagClick={setActiveTagFilter}
         />
       </div>
 

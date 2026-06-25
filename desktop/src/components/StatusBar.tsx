@@ -1,12 +1,14 @@
 import { useMemo } from "react";
+import { extractTags } from "../lib/tags";
 
 interface StatusBarProps {
   content: string;
   saveStatus: "saved" | "saving" | "unsaved" | "idle";
   noteTitle: string | null;
+  onTagClick?: (tag: string) => void;
 }
 
-export function StatusBar({ content, saveStatus, noteTitle }: StatusBarProps) {
+export function StatusBar({ content, saveStatus, noteTitle, onTagClick }: StatusBarProps) {
   const stats = useMemo(() => {
     if (!noteTitle) return null;
     const lines = content.split("\n").length;
@@ -14,6 +16,8 @@ export function StatusBar({ content, saveStatus, noteTitle }: StatusBarProps) {
     const chars = content.length;
     return { lines, words, chars };
   }, [content, noteTitle]);
+
+  const tags = useMemo(() => (noteTitle ? extractTags(content) : []), [content, noteTitle]);
 
   return (
     <div className="status-bar">
@@ -26,6 +30,20 @@ export function StatusBar({ content, saveStatus, noteTitle }: StatusBarProps) {
             {saveStatus === "unsaved" && "Unsaved"}
             {saveStatus === "idle" && "Ready"}
           </span>
+        )}
+        {tags.length > 0 && (
+          <div className="status-tags">
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                className="status-tag"
+                onClick={() => onTagClick?.(tag)}
+                title={`Filter by #${tag}`}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
         )}
       </div>
       <div className="status-bar-right">

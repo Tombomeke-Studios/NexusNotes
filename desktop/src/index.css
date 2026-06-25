@@ -237,6 +237,33 @@ input:focus, textarea:focus {
   border-left: 1px solid var(--border);
 }
 
+.status-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(137, 180, 250, 0.3);
+  background: rgba(137, 180, 250, 0.08);
+  color: var(--accent);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.status-tag:hover {
+  background: rgba(137, 180, 250, 0.2);
+  border-color: var(--accent);
+}
+
 /* --- Command Palette shortcuts --- */
 .command-shortcut {
   font-size: 11px;

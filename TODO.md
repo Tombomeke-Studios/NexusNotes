@@ -394,19 +394,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/tags-and-metadata` - Inline tags and YAML front-matter
-
-- [x] Parse `#tag` syntax from note content and extract a tags list on save (#72)
-- [x] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
-- [x] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
-- [x] Render clickable tag pills in the editor status bar (#75)
-- [x] Add a tag filter panel to the sidebar (#76)
-- [x] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
-- [ ] Expose front-matter fields in the search index (#78)
-- [x] Write tests for the tag parser and tag repository (#79)
-
----
-
 ## `feature/full-text-search` - Full-text search (Meilisearch)
 
 - [ ] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml` (#81)
@@ -744,6 +731,17 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/tags-and-metadata` - Inline tags and YAML front-matter (PR #80)
+
+- [x] Parse `#tag` syntax from note content and extract a tags list on save (#72)
+- [x] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
+- [x] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
+- [x] Render clickable tag pills in the editor status bar (#75)
+- [x] Add a tag filter panel to the sidebar (#76)
+- [x] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
+- [ ] Expose front-matter fields in the search index (#78) ← deferred to `feature/full-text-search`
+- [x] Write tests for the tag parser and tag repository (#79)
 
 ### `feature/wiki-links-and-backlinks` - Wiki-link parsing and backlink panel (PR #71)
 

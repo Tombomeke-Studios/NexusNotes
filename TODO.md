@@ -396,7 +396,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/full-text-search` - Full-text search (Meilisearch)
 
-- [ ] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml` (#81)
+- [x] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml` (#81)
 - [ ] Index note title, content, tags, and path asynchronously on create, update, and delete; do not block the save response (#82)
 - [ ] Skip content indexing for encrypted vaults; index title and path only (#86)
 - [ ] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=` (#83)

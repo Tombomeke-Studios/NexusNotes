@@ -8,21 +8,26 @@ your notes — with the same authentication and security model as the desktop ap
 
 ## What is MCP?
 
-The Model Context Protocol (published by Anthropic as an open standard) is a JSON-RPC 2.0
-protocol that provides a standardised interface between AI models and external data
-sources. Rather than every AI tool building a bespoke integration, MCP defines a
-universal contract for tools, resources, and prompts.
+The Model Context Protocol (published by Anthropic as an open standard, current spec
+version **2025-11-25**) is a JSON-RPC 2.0 protocol that provides a standardised interface
+between AI models and external data sources. Rather than every AI tool building a bespoke
+integration, MCP defines a universal contract for **tools**, **resources**, and **prompts**.
 
-```
-AI host (Claude Desktop / Cursor / Codex)
-         |  JSON-RPC 2.0 (stdio or HTTP/SSE)
-         v
-  NexusNotes MCP Server  <------------------------------+
-         |                                              |
-         v                                              |
-  NexusNotes Sync Service  ->  PostgreSQL / Redis       |
-                                                        |
-         <- auth, rate limiting, audit log -------------+
+```mermaid
+graph LR
+    AI["AI Host<br/><small>Claude Desktop · Cursor · Codex</small>"]
+    MCP["MCP Service<br/><small>Go · JSON-RPC 2.0</small>"]
+    SYNC["Sync Service<br/><small>Go REST API</small>"]
+    DB[("PostgreSQL<br/>Redis")]
+
+    AI -->|"stdio or Streamable HTTP"| MCP
+    MCP -->|"Bearer token auth<br/>rate limit · audit log"| SYNC
+    SYNC --> DB
+
+    style AI fill:#7c3aed,stroke:#7c3aed,color:#fff
+    style MCP fill:#374151,stroke:#374151,color:#fff
+    style SYNC fill:#374151,stroke:#374151,color:#fff
+    style DB fill:#dc2626,stroke:#dc2626,color:#fff
 ```
 
 ---
@@ -30,10 +35,13 @@ AI host (Claude Desktop / Cursor / Codex)
 ## Architecture
 
 The MCP server runs as a separate Go service (`services/mcp-service/`) alongside the
-existing sync service. It supports two transport modes:
+existing sync service, built on the official
+[`modelcontextprotocol/go-sdk`](https://github.com/modelcontextprotocol/go-sdk).
+It supports two transport modes:
 
 - **stdio** — for local use via Claude Desktop or similar clients on the same machine
-- **HTTP/SSE** — for remote clients such as Cursor, web agents, and CI pipelines
+- **Streamable HTTP** — the spec-recommended remote transport for Cursor, web agents, and
+  CI pipelines; replaces the older SSE-only transport
 
 The service authenticates via named API tokens rather than user passwords, and logs every
 AI action to a persistent audit log. It is fully optional — the application operates
@@ -44,7 +52,11 @@ normally without it.
 | Mode | Use case | Configuration |
 |---|---|---|
 | `stdio` | Local — AI client on the same machine | JSON snippet in `claude_desktop_config.json` |
-| `HTTP/SSE` | Remote — Cursor, web agents, CI pipelines | Bearer token, same self-hosted Docker stack |
+| `Streamable HTTP` | Remote — Cursor, web agents, CI pipelines | Bearer token, same self-hosted Docker stack |
+
+> **Why Streamable HTTP over SSE?** The MCP spec 2025-11-25 designates Streamable HTTP as
+> the primary remote transport. It runs over ordinary HTTP POST/GET, scales horizontally
+> without sticky sessions, and supports both streaming and stateless request patterns.
 
 ---
 
@@ -129,6 +141,22 @@ nexusnotes://vault/{vault_id}/tags               -> tag list
 
 ---
 
+## Prompts exposed to AI clients
+
+Prompts are reusable, server-defined message templates. AI clients retrieve them via
+`prompts/list` and invoke them with typed arguments via `prompts/get` — the server
+returns a ready-to-send messages array. You use prompts for common vault workflows that
+benefit from structured context rather than ad-hoc tool calls.
+
+| Prompt | Description | Arguments |
+|---|---|---|
+| `summarize_note` | Summarise the content of a note in 2–3 sentences | `vault_id`, `note_id` |
+| `extract_tasks` | Extract all action items from a note as a markdown checklist | `vault_id`, `note_id` |
+| `daily_reflection` | Generate a daily reflection prompt from the current day's notes | `vault_id` |
+| `find_connections` | Identify thematic connections between two notes | `vault_id`, `note_id_a`, `note_id_b` |
+
+---
+
 ## Encrypted vaults and AI access
 
 Zero-knowledge (E2EE) vaults cannot be decrypted by the MCP server — by design.
@@ -208,19 +236,20 @@ Content is never recorded — only tool names, paths, and identifiers.
 
 ```
 Phase 1 — Read-only stdio (local Claude Desktop)
-  |-- Scaffold mcp-service in Go
+  |-- Scaffold mcp-service in Go using modelcontextprotocol/go-sdk
   |-- Implement: list_vaults, list_notes, read_note, search_notes
   |-- Token authentication and audit log
   `-- Desktop: token management UI and "Copy config" button
 
-Phase 2 — Full tool set and HTTP/SSE
+Phase 2 — Full tool set and Streamable HTTP
   |-- Implement: create_note, update_note, append_to_note, delete_note
-  |-- HTTP/SSE transport
+  |-- Streamable HTTP transport (MCP spec 2025-11-25)
   |-- Rate limiting via Redis
   `-- Backlinks and graph tools
 
-Phase 3 — Resources and E2EE awareness
+Phase 3 — Resources, Prompts, and E2EE awareness
   |-- MCP Resources (nexusnotes:// URIs)
+  |-- MCP Prompts: summarize_note, extract_tasks, daily_reflection, find_connections
   |-- E2EE vault detection — return metadata only for encrypted vaults
   `-- Semantic search via vector embeddings (future)
 ```
@@ -229,7 +258,8 @@ Phase 3 — Resources and E2EE awareness
 
 ## References
 
-- [Model Context Protocol specification](https://modelcontextprotocol.io/specification)
-- [MCP Go SDK](https://github.com/modelcontextprotocol/go-sdk)
+- [Model Context Protocol specification (2025-11-25)](https://modelcontextprotocol.io/specification/2025-11-25)
+- [MCP official Go SDK — modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk)
+- [MCP Transports — Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
 - [Obsidian Local REST API MCP](https://github.com/coddingtonbear/obsidian-local-rest-api)
 - [Claude Desktop MCP configuration](https://modelcontextprotocol.io/quickstart/user)

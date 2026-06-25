@@ -17,12 +17,14 @@ var ErrConflict = errors.New("checksum conflict: note was modified by another de
 type SyncService struct {
 	noteRepo  *repository.NoteRepo
 	vaultRepo *repository.VaultRepo
+	linkRepo  *repository.LinkRepo
 }
 
-func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo) *SyncService {
+func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo) *SyncService {
 	return &SyncService{
 		noteRepo:  noteRepo,
 		vaultRepo: vaultRepo,
+		linkRepo:  linkRepo,
 	}
 }
 
@@ -36,11 +38,11 @@ type NoteUpdate struct {
 }
 
 type ConflictInfo struct {
-	NoteID          string `json:"note_id"`
-	ServerContent   string `json:"server_content"`
-	ServerChecksum  string `json:"server_checksum"`
-	ClientContent   string `json:"client_content"`
-	ClientChecksum  string `json:"client_checksum"`
+	NoteID         string `json:"note_id"`
+	ServerContent  string `json:"server_content"`
+	ServerChecksum string `json:"server_checksum"`
+	ClientContent  string `json:"client_content"`
+	ClientChecksum string `json:"client_checksum"`
 }
 
 func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, content, deviceID string) (*model.Note, error) {
@@ -58,7 +60,13 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		UpdatedAt: now,
 	}
 
-	if err := s.noteRepo.Create(ctx, note); err != nil {
+	tx, err := s.noteRepo.BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := s.noteRepo.CreateTx(ctx, tx, note); err != nil {
 		return nil, fmt.Errorf("create note: %w", err)
 	}
 
@@ -70,8 +78,20 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		DeviceID:  deviceID,
 		CreatedAt: now,
 	}
-	if err := s.noteRepo.CreateVersion(ctx, version); err != nil {
+	if err := s.noteRepo.CreateVersionTx(ctx, tx, version); err != nil {
 		return nil, fmt.Errorf("create initial version: %w", err)
+	}
+
+	links := buildNoteLinks(vaultID, note.ID, content)
+	if err := s.linkRepo.UpsertLinksTx(ctx, tx, vaultID, note.ID, links); err != nil {
+		return nil, fmt.Errorf("upsert links: %w", err)
+	}
+	if err := s.linkRepo.ResolveTargetsTx(ctx, tx, vaultID, note.ID); err != nil {
+		return nil, fmt.Errorf("resolve links: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return note, nil
@@ -135,6 +155,14 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("create version: %w", err)
 	}
 
+	links := buildNoteLinks(note.VaultID, note.ID, update.Content)
+	if err := s.linkRepo.UpsertLinksTx(ctx, tx, note.VaultID, note.ID, links); err != nil {
+		return nil, nil, fmt.Errorf("upsert links: %w", err)
+	}
+	if err := s.linkRepo.ResolveTargetsTx(ctx, tx, note.VaultID, note.ID); err != nil {
+		return nil, nil, fmt.Errorf("resolve links: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, nil, fmt.Errorf("commit transaction: %w", err)
 	}
@@ -156,4 +184,24 @@ func (s *SyncService) DeleteNote(ctx context.Context, noteID, vaultID string) er
 
 func (s *SyncService) GetVersions(ctx context.Context, noteID string) ([]model.NoteVersion, error) {
 	return s.noteRepo.ListVersions(ctx, noteID)
+}
+
+func (s *SyncService) GetBacklinks(ctx context.Context, noteID string) ([]model.BacklinkNote, error) {
+	return s.linkRepo.GetBacklinks(ctx, noteID)
+}
+
+// buildNoteLinks converts parsed wikilinks into model.NoteLink values ready for persistence.
+func buildNoteLinks(vaultID, sourceNoteID, content string) []model.NoteLink {
+	parsed := ParseLinks(content)
+	links := make([]model.NoteLink, len(parsed))
+	for i, p := range parsed {
+		links[i] = model.NoteLink{
+			ID:           uuid.New().String(),
+			VaultID:      vaultID,
+			SourceNoteID: sourceNoteID,
+			TargetTitle:  p.TargetTitle,
+			Anchor:       p.Anchor,
+		}
+	}
+	return links
 }

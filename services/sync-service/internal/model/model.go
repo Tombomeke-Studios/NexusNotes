@@ -58,3 +58,22 @@ type Attachment struct {
 	StoragePath string    `json:"storage_path"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+type NoteLink struct {
+	ID           string    `json:"id"`
+	VaultID      string    `json:"vault_id"`
+	SourceNoteID string    `json:"source_note_id"`
+	TargetTitle  string    `json:"target_title"`
+	Anchor       string    `json:"anchor"`
+	TargetNoteID string    `json:"target_note_id,omitempty"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// BacklinkNote is a note summary returned by the backlinks endpoint.
+type BacklinkNote struct {
+	ID        string    `json:"id"`
+	VaultID   string    `json:"vault_id"`
+	Path      string    `json:"path"`
+	Title     string    `json:"title"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

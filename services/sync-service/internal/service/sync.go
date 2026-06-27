@@ -19,14 +19,16 @@ type SyncService struct {
 	vaultRepo *repository.VaultRepo
 	linkRepo  *repository.LinkRepo
 	tagRepo   *repository.TagRepo
+	aliasRepo *repository.AliasRepo
 }
 
-func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo) *SyncService {
+func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, aliasRepo *repository.AliasRepo) *SyncService {
 	return &SyncService{
 		noteRepo:  noteRepo,
 		vaultRepo: vaultRepo,
 		linkRepo:  linkRepo,
 		tagRepo:   tagRepo,
+		aliasRepo: aliasRepo,
 	}
 }
 
@@ -99,6 +101,10 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 
 	if err := s.tagRepo.UpsertTagsTx(ctx, tx, note.ID, mergeTags(content)); err != nil {
 		return nil, fmt.Errorf("upsert tags: %w", err)
+	}
+
+	if err := s.aliasRepo.UpsertAliasesTx(ctx, tx, note.ID, fm.Aliases); err != nil {
+		return nil, fmt.Errorf("upsert aliases: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -184,6 +190,10 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("upsert tags: %w", err)
 	}
 
+	if err := s.aliasRepo.UpsertAliasesTx(ctx, tx, note.ID, fm.Aliases); err != nil {
+		return nil, nil, fmt.Errorf("upsert aliases: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, nil, fmt.Errorf("commit transaction: %w", err)
 	}
@@ -213,6 +223,10 @@ func (s *SyncService) GetVersions(ctx context.Context, noteID string) ([]model.N
 
 func (s *SyncService) GetBacklinks(ctx context.Context, noteID string) ([]model.BacklinkNote, error) {
 	return s.linkRepo.GetBacklinks(ctx, noteID)
+}
+
+func (s *SyncService) SearchNotes(ctx context.Context, vaultID, query string) ([]model.NoteSearchResult, error) {
+	return s.noteRepo.Search(ctx, vaultID, query)
 }
 
 // buildNoteLinks converts parsed wikilinks into model.NoteLink values ready for persistence.

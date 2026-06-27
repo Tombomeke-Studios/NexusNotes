@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -172,4 +173,86 @@ func (r *NoteRepo) CreateVersionTx(ctx context.Context, tx pgx.Tx, version *mode
 
 func (r *NoteRepo) BeginTx(ctx context.Context) (pgx.Tx, error) {
 	return r.pool.Begin(ctx)
+}
+
+// Search performs a case-insensitive full-text search across title, content, tags, and aliases.
+// Returns up to 50 results ordered by recency. Each result includes matched tags.
+func (r *NoteRepo) Search(ctx context.Context, vaultID, query string) ([]model.NoteSearchResult, error) {
+	pattern := "%" + strings.ToLower(query) + "%"
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT n.id, n.vault_id, n.path, n.title, n.updated_at,
+		       left(n.content, 300) AS snippet
+		FROM notes n
+		LEFT JOIN note_tags  nt ON nt.note_id = n.id
+		LEFT JOIN note_aliases na ON na.note_id = n.id
+		WHERE n.vault_id = $1
+		  AND (
+		      lower(n.title)   LIKE $2
+		   OR lower(n.content) LIKE $2
+		   OR lower(nt.tag)    LIKE $2
+		   OR lower(na.alias)  LIKE $2
+		  )
+		ORDER BY n.updated_at DESC
+		LIMIT 50
+	`, vaultID, pattern)
+	if err != nil {
+		return nil, fmt.Errorf("search notes: %w", err)
+	}
+	defer rows.Close()
+
+	var results []model.NoteSearchResult
+	for rows.Next() {
+		var r model.NoteSearchResult
+		if err := rows.Scan(&r.ID, &r.VaultID, &r.Path, &r.Title, &r.UpdatedAt, &r.Snippet); err != nil {
+			return nil, fmt.Errorf("scan search result: %w", err)
+		}
+		results = append(results, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate search results: %w", err)
+	}
+
+	// Fetch tags for each result in a single batch query.
+	if len(results) > 0 {
+		ids := make([]string, len(results))
+		for i, res := range results {
+			ids[i] = res.ID
+		}
+		tagMap, err := r.fetchTagsForNotes(ctx, ids)
+		if err != nil {
+			return nil, err
+		}
+		for i, res := range results {
+			if tags, ok := tagMap[res.ID]; ok {
+				results[i].Tags = tags
+			} else {
+				results[i].Tags = []string{}
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// fetchTagsForNotes returns a map of noteID → []tag for a set of note IDs.
+func (r *NoteRepo) fetchTagsForNotes(ctx context.Context, noteIDs []string) (map[string][]string, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT note_id, tag FROM note_tags WHERE note_id = ANY($1)`,
+		noteIDs,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fetch tags for notes: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string][]string)
+	for rows.Next() {
+		var noteID, tag string
+		if err := rows.Scan(&noteID, &tag); err != nil {
+			return nil, fmt.Errorf("scan tag row: %w", err)
+		}
+		result[noteID] = append(result[noteID], tag)
+	}
+	return result, rows.Err()
 }

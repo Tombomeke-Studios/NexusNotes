@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { folderOf, filterNotes, sortNotes, searchNotes, ROOT_FOLDER } from "./noteFilter";
+import { folderOf, filterNotes, sortNotes, searchNotes, uniqueTitle, ROOT_FOLDER } from "./noteFilter";
 import type { Note } from "./types";
 
 function note(overrides: Partial<Note>): Note {
@@ -75,6 +75,17 @@ describe("sortNotes", () => {
     const copy = [...notes];
     sortNotes(notes, "title");
     expect(notes).toEqual(copy);
+  });
+});
+
+describe("uniqueTitle", () => {
+  it("returns the base title when unused", () => {
+    expect(uniqueTitle(new Set(["Other"]), "Note copy")).toBe("Note copy");
+  });
+
+  it("appends an incrementing suffix until unique", () => {
+    const titles = new Set(["Note copy", "Note copy 2"]);
+    expect(uniqueTitle(titles, "Note copy")).toBe("Note copy 3");
   });
 });
 

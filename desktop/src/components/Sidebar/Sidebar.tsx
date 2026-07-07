@@ -56,6 +56,8 @@ interface SidebarProps {
   onSetSort: (sort: SortBy) => void;
   onClearFilters: () => void;
   onSearchChange: (query: string) => void;
+  onSignOut: () => void;
+  pinnedIds: Set<string>;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
 }
 
@@ -81,6 +83,8 @@ export function Sidebar({
   onSetSort,
   onClearFilters,
   onSearchChange,
+  onSignOut,
+  pinnedIds,
   onNoteContextMenu,
 }: SidebarProps) {
   const [showVaults, setShowVaults] = useState(false);
@@ -209,6 +213,14 @@ export function Sidebar({
               New vault
             </button>
           )}
+          <div className="sidebar-vault-sep" />
+          <button className="sidebar-vault-item sidebar-vault-item--signout" onClick={onSignOut}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Sign out
+          </button>
         </div>
       )}
 
@@ -308,6 +320,7 @@ export function Sidebar({
             key={node.path + node.name}
             node={node}
             activeNoteId={activeNoteId}
+            pinnedIds={pinnedIds}
             onSelectNote={onSelectNote}
             onNoteContextMenu={onNoteContextMenu}
             depth={0}
@@ -344,12 +357,14 @@ function countNotes(node: TreeNode): number {
 function TreeItem({
   node,
   activeNoteId,
+  pinnedIds,
   onSelectNote,
   onNoteContextMenu,
   depth,
 }: {
   node: TreeNode;
   activeNoteId: string | null;
+  pinnedIds: Set<string>;
   onSelectNote: (id: string) => void;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
   depth: number;
@@ -375,6 +390,7 @@ function TreeItem({
               key={child.path + child.name}
               node={child}
               activeNoteId={activeNoteId}
+              pinnedIds={pinnedIds}
               onSelectNote={onSelectNote}
               onNoteContextMenu={onNoteContextMenu}
               depth={depth + 1}
@@ -399,6 +415,12 @@ function TreeItem({
     >
       <FileIcon />
       <span className="tree-item-name">{node.name}</span>
+      {node.noteId && pinnedIds.has(node.noteId) && (
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" className="tree-pin">
+          <circle cx="7" cy="5" r="2.8" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M7 7.8V12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      )}
     </button>
   );
 }

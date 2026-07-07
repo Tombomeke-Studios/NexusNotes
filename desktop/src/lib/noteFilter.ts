@@ -58,6 +58,13 @@ export function searchNotes(notes: Note[], query: string): SearchHit[] {
   return hits;
 }
 
+export function uniqueTitle(existing: Set<string>, base: string): string {
+  if (!existing.has(base)) return base;
+  let i = 2;
+  while (existing.has(`${base} ${i}`)) i++;
+  return `${base} ${i}`;
+}
+
 export function topLevelFolders(notes: Note[]): string[] {
   return [...new Set(notes.map((n) => folderOf(n.path)).filter((f): f is string => !!f))].sort();
 }

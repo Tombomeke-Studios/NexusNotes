@@ -144,6 +144,26 @@
   color: var(--text-muted);
 }
 
+.sidebar-vault-sep {
+  height: 1px;
+  background: var(--border-inner);
+  margin: 5px 6px;
+}
+
+.sidebar-vault-item--signout {
+  color: var(--text-muted);
+}
+
+.sidebar-vault-item--signout:hover {
+  color: var(--error);
+}
+
+.tree-pin {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
 .sidebar-new-vault {
   padding: 4px;
 }

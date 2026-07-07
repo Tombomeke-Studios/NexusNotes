@@ -9,6 +9,7 @@ import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
 import { TabBar } from "./components/Workspace/TabBar";
 import { DailyCalendar } from "./components/Workspace/DailyCalendar";
+import { ContextMenu } from "./components/Workspace/ContextMenu";
 import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
@@ -16,7 +17,8 @@ import { syncClient } from "./lib/sync";
 import { buildTree } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
-import { filterNotes, sortNotes, searchNotes, topLevelFolders } from "./lib/noteFilter";
+import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
+import { loadPins, togglePin, pinnedFirst } from "./lib/pins";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate, dailyNoteTemplate } from "./lib/daily";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
@@ -42,6 +44,8 @@ export default function App() {
   const [paletteQuery, setPaletteQuery] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
@@ -157,6 +161,10 @@ export default function App() {
     }
   }, [user]);
 
+  useEffect(() => {
+    setPinnedIds(activeVaultId ? loadPins(activeVaultId) : []);
+  }, [activeVaultId]);
+
   // Side panel resize drag
   useEffect(() => {
     if (!dragging) return;
@@ -229,6 +237,39 @@ export default function App() {
     setCursor({ line: 1, col: 1 });
   }, [activeVaultId]);
 
+  const handleSignOut = useCallback(() => {
+    auth.logout();
+    setUser(null);
+    syncClient.disconnect();
+  }, []);
+
+  const handleTogglePin = useCallback((noteId: string) => {
+    if (!activeVaultId) return;
+    setPinnedIds(togglePin(activeVaultId, noteId));
+  }, [activeVaultId]);
+
+  const handleDuplicateNote = useCallback(async (noteId: string) => {
+    if (!activeVaultId) return;
+    const src = noteListRef.current.find((n) => n.id === noteId);
+    if (!src) return;
+    const title = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), `${src.title} copy`);
+    const note = await notesApi.create(activeVaultId, title, src.path, src.content);
+    setNoteList((prev) => [...prev, note]);
+    setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
+    setActiveTabKey(note.id);
+    setActiveNote(note);
+    setEditorContent(note.content);
+    setSaveStatus("saved");
+    setCursor({ line: 1, col: 1 });
+  }, [activeVaultId]);
+
+  const handleDeleteNote = useCallback(async (noteId: string) => {
+    if (!activeVaultId) return;
+    await notesApi.delete(activeVaultId, noteId);
+    setNoteList((prev) => prev.filter((n) => n.id !== noteId));
+    closeTabRef.current(noteId);
+  }, [activeVaultId]);
+
   const cycleView = useCallback(() => {
     setPrefs((p) => {
       const next = VIEW_CYCLE[(VIEW_CYCLE.indexOf(p.viewMode) + 1) % VIEW_CYCLE.length];
@@ -255,8 +296,8 @@ export default function App() {
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
     { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
     { id: "focus-mode", label: "Toggle focus mode", shortcut: "Ctrl+Shift+F", action: toggleFocusMode },
-    { id: "logout", label: "Sign out", action: () => { auth.logout(); setUser(null); syncClient.disconnect(); } },
-  ], [handleCreateNote, handleOpenDaily, cycleView, toggleFocusMode, updatePrefs]);
+    { id: "logout", label: "Sign out", action: handleSignOut },
+  ], [handleCreateNote, handleOpenDaily, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -415,9 +456,10 @@ export default function App() {
   const graphData = useMemo(() => buildGraphData(noteList), [noteList]);
   const tagCounts = useMemo(() => buildTagCounts(noteList), [noteList]);
   const folders = useMemo(() => topLevelFolders(noteList), [noteList]);
+  const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
   const filteredNoteList = useMemo(
-    () => sortNotes(filterNotes(noteList, filterTags, filterFolder), sortBy),
-    [noteList, filterTags, filterFolder, sortBy],
+    () => pinnedFirst(sortNotes(filterNotes(noteList, filterTags, filterFolder), sortBy), pinnedSet),
+    [noteList, filterTags, filterFolder, sortBy, pinnedSet],
   );
   const searchHits = useMemo(() => searchNotes(noteList, searchQuery), [noteList, searchQuery]);
 
@@ -512,6 +554,15 @@ export default function App() {
               onSetSort={setSortBy}
               onClearFilters={clearFilters}
               onSearchChange={setSearchQuery}
+              onSignOut={handleSignOut}
+              pinnedIds={pinnedSet}
+              onNoteContextMenu={(e, noteId) =>
+                setCtxMenu({
+                  x: Math.min(e.clientX, window.innerWidth - 195),
+                  y: Math.min(e.clientY, window.innerHeight - 175),
+                  noteId,
+                })
+              }
             />
           </div>
         </div>
@@ -627,6 +678,32 @@ export default function App() {
           col={cursor.col}
           viewMode={prefs.viewMode}
           onCycleView={cycleView}
+        />
+      )}
+
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[
+            { key: "open", label: "Open", onClick: () => handleSelectNote(ctxMenu.noteId) },
+            { key: "duplicate", label: "Duplicate", onClick: () => handleDuplicateNote(ctxMenu.noteId) },
+            {
+              key: "pin",
+              label: pinnedSet.has(ctxMenu.noteId) ? "Unpin" : "Pin to top",
+              onClick: () => handleTogglePin(ctxMenu.noteId),
+            },
+            {
+              key: "wikilink",
+              label: "Copy wikilink",
+              onClick: () => {
+                const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                if (n) navigator.clipboard?.writeText(`[[${n.title}]]`).catch(() => {});
+              },
+            },
+            { key: "delete", label: "Delete note", danger: true, onClick: () => handleDeleteNote(ctxMenu.noteId) },
+          ]}
         />
       )}
 

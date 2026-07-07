@@ -8,6 +8,8 @@ import { StatusBar } from "./components/StatusBar";
 import { Auth } from "./components/Auth";
 import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
+import { TabBar } from "./components/Workspace/TabBar";
+import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
 import { syncClient } from "./lib/sync";
 import { buildTree } from "./lib/tree";
@@ -22,6 +24,11 @@ import { relativeTimeLabel } from "./lib/stats";
 import type { User, Vault, Note } from "./lib/types";
 
 const VIEW_CYCLE: ViewMode[] = ["edit", "split", "preview"];
+
+interface Tab {
+  key: string;
+  type: "note" | "graph";
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -41,6 +48,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const [tabs, setTabs] = useState<Tab[]>([]);
+  const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
   const [prefs, setPrefs] = useState(() => loadPrefs());
   const [dragging, setDragging] = useState<{ type: "left"; startX: number; startW: number } | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
@@ -48,6 +57,10 @@ export default function App() {
 
   const activeNoteRef = useRef(activeNote);
   activeNoteRef.current = activeNote;
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  const activeTabKeyRef = useRef(activeTabKey);
+  activeTabKeyRef.current = activeTabKey;
 
   const updatePrefs = useCallback((partial: Partial<typeof prefs>) => {
     setPrefs(savePrefs(partial));
@@ -129,6 +142,7 @@ export default function App() {
           const { note_id } = payload as { note_id: string };
           setNoteList((prev) => prev.filter((n) => n.id !== note_id));
           setActiveNote((prev) => (prev?.id === note_id ? null : prev));
+          closeTabRef.current(note_id);
           setLastSyncAt(new Date());
         }
       });
@@ -161,24 +175,22 @@ export default function App() {
     };
   }, [dragging]);
 
-  const handleCreateNote = useCallback(async () => {
-    if (!activeVaultId) return;
-    const title = "Untitled";
-    const note = await notesApi.create(activeVaultId, title, "", "");
-    setNoteList((prev) => [...prev, note]);
-    setActiveNote(note);
-    setEditorContent("");
-    setSaveStatus("saved");
-  }, [activeVaultId]);
-
   const handleCreateNoteWithTitle = useCallback(async (title: string) => {
     if (!activeVaultId) return;
     const note = await notesApi.create(activeVaultId, title, "", "");
     setNoteList((prev) => [...prev, note]);
+    setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
+    setActiveTabKey(note.id);
     setActiveNote(note);
     setEditorContent("");
     setSaveStatus("saved");
+    setCursor({ line: 1, col: 1 });
   }, [activeVaultId]);
+
+  const handleCreateNote = useCallback(
+    () => handleCreateNoteWithTitle("Untitled"),
+    [handleCreateNoteWithTitle],
+  );
 
   const cycleView = useCallback(() => {
     setPrefs((p) => {
@@ -262,6 +274,8 @@ export default function App() {
     (id: string) => {
       setActiveVaultId(id);
       setActiveNote(null);
+      setTabs([]);
+      setActiveTabKey(null);
       setSaveStatus("idle");
       setFilterTags([]);
       setFilterFolder(null);
@@ -279,12 +293,40 @@ export default function App() {
   }, []);
 
   const handleSelectNote = useCallback(async (noteId: string) => {
+    setTabs((prev) =>
+      prev.some((t) => t.key === noteId) ? prev : [...prev, { key: noteId, type: "note" }],
+    );
+    setActiveTabKey(noteId);
     const note = await notesApi.get(noteId);
     setActiveNote(note);
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
   }, []);
+
+  const closeTab = useCallback(
+    (key: string) => {
+      const current = tabsRef.current;
+      const idx = current.findIndex((t) => t.key === key);
+      if (idx < 0) return;
+      const next = current.filter((t) => t.key !== key);
+      setTabs(next);
+      if (activeTabKeyRef.current === key) {
+        const fallback = next.length ? next[Math.max(0, idx - 1)] : null;
+        if (fallback?.type === "note") {
+          handleSelectNote(fallback.key);
+        } else {
+          setActiveTabKey(fallback?.key ?? null);
+          setActiveNote(null);
+          setEditorContent("");
+          setSaveStatus("idle");
+        }
+      }
+    },
+    [handleSelectNote],
+  );
+  const closeTabRef = useRef(closeTab);
+  closeTabRef.current = closeTab;
 
   const handleRenameNote = useCallback((title: string) => {
     setActiveNote((prev) => (prev ? { ...prev, title } : prev));
@@ -360,6 +402,10 @@ export default function App() {
 
   const tree = buildTree(filteredNoteList, { keepNoteOrder: true });
   const activeVault = vaultList.find((v) => v.id === activeVaultId);
+  const tabItems = tabs.map((t) => ({
+    ...t,
+    title: t.type === "graph" ? "Graph" : noteList.find((n) => n.id === t.key)?.title ?? "Untitled",
+  }));
 
   return (
     <div className="workspace" data-rm={prefs.reduceMotion ? "1" : "0"}>
@@ -436,17 +482,49 @@ export default function App() {
           }}
         />
         <div className="center-column">
-          <Editor
-            note={activeNote}
-            notes={noteList}
-            mode={prefs.viewMode}
-            onModeChange={(m) => updatePrefs({ viewMode: m })}
-            onCursorChange={handleCursorChange}
-            onSave={handleSaveNote}
-            onRename={handleRenameNote}
-            onCreateNote={handleCreateNoteWithTitle}
-            onNavigateToNote={handleSelectNote}
-          />
+          {tabs.length > 0 && (
+            <TabBar
+              tabs={tabItems}
+              activeKey={activeTabKey}
+              onSelect={(key) => {
+                const tab = tabs.find((t) => t.key === key);
+                if (tab?.type === "note") handleSelectNote(key);
+                else setActiveTabKey(key);
+              }}
+              onClose={closeTab}
+              onNew={handleCreateNote}
+            />
+          )}
+          {tabs.length === 0 ? (
+            <div className="workspace-empty">
+              <div className="workspace-empty-logo">
+                <Logo size={60} variant="animated" />
+              </div>
+              <p className="workspace-empty-title">No note is open</p>
+              <div className="workspace-empty-actions">
+                <button className="workspace-empty-action" onClick={() => setShowQuickSwitcher(true)}>
+                  <span>Search everything</span>
+                  <span className="workspace-empty-kbd">Ctrl+P</span>
+                </button>
+                <button className="workspace-empty-action" onClick={handleCreateNote}>
+                  <span>Create a note</span>
+                  <span className="workspace-empty-kbd">Ctrl+N</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Editor
+              note={activeNote}
+              notes={noteList}
+              mode={prefs.viewMode}
+              onModeChange={(m) => updatePrefs({ viewMode: m })}
+              onCursorChange={handleCursorChange}
+              onSave={handleSaveNote}
+              onRename={handleRenameNote}
+              onCreateNote={handleCreateNoteWithTitle}
+              onNavigateToNote={handleSelectNote}
+            />
+          )}
         </div>
       </div>
       {prefs.showStatusBar && (

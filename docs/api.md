@@ -124,6 +124,48 @@ Response (204)
 
 List version history. Returns `NoteVersion[]` (newest first).
 
+### GET /api/notes/:noteId/backlinks
+
+Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`.
+
+---
+
+## Search
+
+### GET /api/vaults/:vaultId/search?q=
+
+Full-text search across all notes in a vault. Searches note title, content, inline `#tags`,
+YAML front-matter tags, and front-matter aliases. Requires `?q=<query>`.
+
+Response (200): `NoteSearchResult[]` ordered by `updated_at` descending, up to 50 results.
+
+```json
+[
+  {
+    "id": "...",
+    "vault_id": "...",
+    "path": "folder/my-note.md",
+    "title": "My Note",
+    "snippet": "First 300 characters of the note content...",
+    "tags": ["work", "project"],
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+]
+```
+
+---
+
+## Tags
+
+### GET /api/vaults/:vaultId/tags
+
+Returns all tags used in the vault with their note counts, ordered by count descending.
+
+Response (200): `TagCount[]`
+```json
+[{ "tag": "work", "count": 5 }, { "tag": "project", "count": 3 }]
+```
+
 ---
 
 ## WebSocket
@@ -137,6 +179,46 @@ Connect: `ws://localhost:8080/ws?token=<jwt>&device_id=<uuid>`
 { "type": "note:updated", "payload": { ...Note } }
 { "type": "note:deleted", "payload": { "note_id": "..." } }
 ```
+
+---
+
+## Search
+
+All search endpoints require authentication (`Authorization: Bearer <token>`).
+
+### GET /api/search
+
+Full-text search across notes in a vault.
+
+**Query parameters:**
+
+| Param | Required | Description |
+|---|---|---|
+| `vault` | Yes | Vault ID to search in |
+| `q` | No | Search query string |
+| `tag` | No | Filter by tag (exact match) |
+| `date_from` | No | ISO 8601 date — notes updated on or after |
+| `date_to` | No | ISO 8601 date — notes updated on or before |
+| `limit` | No | Max results (default 20, max 100) |
+| `offset` | No | Pagination offset (default 0) |
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "note-uuid",
+    "vault_id": "vault-uuid",
+    "title": "My Note",
+    "path": "folder/my-note.md",
+    "tags": ["work", "project"],
+    "updated_at": "2024-06-01T12:00:00Z",
+    "snippet": "...highlighted <em>match</em> in content..."
+  }
+]
+```
+
+Returns `503 Service Unavailable` if Meilisearch is unreachable.
 
 ---
 

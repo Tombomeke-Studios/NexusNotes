@@ -7,10 +7,12 @@ import (
 )
 
 type Config struct {
-	Port        int
-	DatabaseURL string
-	JWTSecret   string
-	RedisURL    string
+	Port            int
+	DatabaseURL     string
+	JWTSecret       string
+	RedisURL        string
+	MeiliURL        string
+	MeiliMasterKey  string
 }
 
 func Load() (*Config, error) {
@@ -38,10 +40,19 @@ func Load() (*Config, error) {
 		redisURL = "redis://localhost:6379"
 	}
 
+	meiliURL := os.Getenv("MEILI_URL")
+	if meiliURL == "" {
+		meiliURL = "http://localhost:7700"
+	}
+
+	meiliMasterKey := os.Getenv("MEILI_MASTER_KEY")
+
 	return &Config{
-		Port:        port,
-		DatabaseURL: dbURL,
-		JWTSecret:   jwtSecret,
-		RedisURL:    redisURL,
+		Port:           port,
+		DatabaseURL:    dbURL,
+		JWTSecret:      jwtSecret,
+		RedisURL:       redisURL,
+		MeiliURL:       meiliURL,
+		MeiliMasterKey: meiliMasterKey,
 	}, nil
 }

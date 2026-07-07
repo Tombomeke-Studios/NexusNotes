@@ -415,31 +415,18 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/tags-and-metadata` - Inline tags and YAML front-matter
-
-- [x] Parse `#tag` syntax from note content and extract a tags list on save (#72)
-- [x] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
-- [x] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
-- [x] Render clickable tag pills in the editor status bar (#75)
-- [x] Add a tag filter panel to the sidebar (#76)
-- [x] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
-- [ ] Expose front-matter fields in the search index (#78)
-- [x] Write tests for the tag parser and tag repository (#79)
-
----
-
 ## `feature/full-text-search` - Full-text search (Meilisearch)
 
-- [ ] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml` (#81)
-- [ ] Index note title, content, tags, and path asynchronously on create, update, and delete; do not block the save response (#82)
-- [ ] Skip content indexing for encrypted vaults; index title and path only (#86)
-- [ ] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=` (#83)
-- [ ] Return ranked results with context snippets per hit (#83)
-- [ ] Connect the `Ctrl+Shift+F` global search UI to the search endpoint (#84)
-- [ ] Configure fuzzy matching and typo tolerance via Meilisearch settings (#85)
-- [ ] Add tag-based, folder-based, and date-range filters to the search UI (#84)
-- [ ] Index backlinks so that searching a note title surfaces its inbound references (#88)
-- [ ] Write integration tests for the search indexer and search handler (#89)
+- [x] Add Meilisearch to `docker-compose.yml` and `docker-compose.dev.yml` (#81)
+- [x] Index note title, content, tags, and path asynchronously on create, update, and delete; do not block the save response (#82)
+- [x] Skip content indexing for encrypted vaults; index title and path only (#86)
+- [x] Implement `GET /search?q=&vault=&tag=&date_from=&date_to=` (#83)
+- [x] Return ranked results with context snippets per hit (#83)
+- [x] Connect the `Ctrl+Shift+F` global search UI to the search endpoint (#84)
+- [x] Configure fuzzy matching and typo tolerance via Meilisearch settings (#85)
+- [x] Add tag-based, folder-based, and date-range filters to the search UI (#84)
+- [x] Index backlinks so that searching a note title surfaces its inbound references (#88)
+- [x] Write integration tests for the search indexer and search handler (#89)
 
 ---
 
@@ -765,6 +752,33 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/tags-and-metadata` - Inline tags and YAML front-matter (PR #80)
+
+- [x] Parse `#tag` syntax from note content and extract a tags list on save (#72)
+- [x] Store tags in a `note_tags` join table with columns `note_id` and `tag` (#73)
+- [x] Add `GET /vaults/:id/tags` returning all tags with counts (#74)
+- [x] Render clickable tag pills in the editor status bar (#75)
+- [x] Add a tag filter panel to the sidebar (#76)
+- [x] Add YAML front-matter support for: `title`, `tags`, `aliases`, `created`, `updated` (#77)
+- [x] Expose front-matter fields in the search index (#78)
+- [x] Write tests for the tag parser and tag repository (#79)
+
+### `feature/e2e-testing` - Playwright end-to-end test suite
+
+- [x] Set up Playwright and configure the test runner (`playwright.config.ts`)
+- [x] Write E2E tests: auth flow (01-auth)
+- [x] Write E2E tests: vault management (02-vault)
+- [x] Write E2E tests: note CRUD (03-notes)
+- [x] Write E2E tests: wiki-links (04-wiki-links)
+- [x] Write E2E tests: tags (05-tags)
+- [x] Write E2E tests: search (06-search)
+- [x] Write E2E tests: keyboard shortcuts (07-keyboard-shortcuts)
+- [x] Write E2E tests: front-matter (08-frontmatter)
+- [x] Write E2E tests: sidebar (09-sidebar)
+- [x] Write E2E tests: command palette (10-command-palette)
+- [x] Write E2E tests: editor preview (11-editor-preview)
+- [x] Add E2E test run to CI pipeline (`.github/workflows/validate.yml`)
 
 ### `feature/wiki-links-and-backlinks` - Wiki-link parsing and backlink panel (PR #71)
 

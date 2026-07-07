@@ -41,3 +41,8 @@ coverage/
 # Build artifacts
 bin/
 build/
+
+# Playwright E2E
+desktop/test-results/
+desktop/e2e-report/
+desktop/playwright-report/

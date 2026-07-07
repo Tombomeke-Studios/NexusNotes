@@ -12,11 +12,12 @@ type User struct {
 }
 
 type Vault struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	Name        string    `json:"name"`
+	IsEncrypted bool      `json:"is_encrypted"` // set by encryption migration; false until then
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type Note struct {
@@ -82,4 +83,15 @@ type BacklinkNote struct {
 type TagCount struct {
 	Tag   string `json:"tag"`
 	Count int    `json:"count"`
+}
+
+// NoteSearchResult is a lightweight note summary returned by the search endpoint.
+type NoteSearchResult struct {
+	ID        string    `json:"id"`
+	VaultID   string    `json:"vault_id"`
+	Path      string    `json:"path"`
+	Title     string    `json:"title"`
+	Snippet   string    `json:"snippet"`
+	Tags      []string  `json:"tags"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

@@ -35,5 +35,21 @@ services:
       - MINIO_ROOT_USER=nexus_minio
       - MINIO_ROOT_PASSWORD=nexus_minio_dev
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_dev_data:/meili_data
+    environment:
+      - MEILI_MASTER_KEY=dev-master-key
+      - MEILI_ENV=development
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres_dev_data:
+  meili_dev_data:

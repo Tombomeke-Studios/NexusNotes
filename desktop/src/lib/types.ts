@@ -57,3 +57,13 @@ export interface BacklinkNote {
   title: string;
   updated_at: string;
 }
+
+export interface SearchHit {
+  id: string;
+  vault_id: string;
+  title: string;
+  path: string;
+  tags: string[];
+  updated_at: string;
+  snippet?: string;
+}

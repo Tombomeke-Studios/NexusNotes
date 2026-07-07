@@ -18,10 +18,14 @@ services:
       - DATABASE_URL=postgres://nexus:nexus_pass@postgres:5432/nexus_notes?sslmode=disable
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - REDIS_URL=redis://redis:6379
+      - MEILI_URL=http://meilisearch:7700
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-change-me-in-production}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      meilisearch:
         condition: service_healthy
     restart: unless-stopped
 
@@ -64,7 +68,24 @@ services:
       - MINIO_ROOT_PASSWORD=nexus_minio_pass
     restart: unless-stopped
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-change-me-in-production}
+      - MEILI_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  meili_data:

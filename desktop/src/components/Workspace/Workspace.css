@@ -469,6 +469,127 @@
   box-shadow: 0 1.5px 0 var(--border);
 }
 
+/* --- Daily notes calendar --- */
+.calendar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+}
+
+.calendar-pop {
+  position: absolute;
+  left: 56px;
+  top: 180px;
+  width: 252px;
+  background: rgba(24, 24, 37, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  padding: 12px;
+  animation: calIn 0.18s var(--easing-spring);
+}
+
+.calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.calendar-nav {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: all 0.13s ease;
+}
+
+.calendar-nav:hover {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+}
+
+.calendar-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar-grid--dow {
+  margin-bottom: 3px;
+}
+
+.calendar-dow {
+  text-align: center;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-faint);
+  padding: 3px 0;
+}
+
+.calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  transition: all 0.13s ease;
+}
+
+.calendar-day:hover {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+}
+
+.calendar-day--has-note {
+  color: var(--text-primary);
+}
+
+.calendar-day--today {
+  border-color: rgba(203, 166, 247, 0.6);
+  background: rgba(203, 166, 247, 0.1);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.calendar-dot {
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.calendar-today-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px;
+  border-radius: 8px;
+  background: var(--accent-bg-strong);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background var(--transition-fast);
+}
+
+.calendar-today-btn:hover {
+  background: rgba(203, 166, 247, 0.2);
+}
+
 /* --- Status bar additions --- */
 .status-mode-btn {
   padding: 2px 7px;

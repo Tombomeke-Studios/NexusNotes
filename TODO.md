@@ -21,7 +21,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Redesign editor: mode switcher, draggable split view, restyled preview (#98)
 - [x] Add right panel with Outline, Links, and Info tabs (#99)
 - [x] Unify command palette and quick switcher with command mode (#100)
-- [ ] Add daily notes calendar popover and Ctrl+D shortcut (#101)
+- [x] Add daily notes calendar popover and Ctrl+D shortcut (#101)
 - [ ] Add vault switcher menu and note context menu (#102)
 - [ ] Add settings modal with appearance, sync, and shortcuts tabs (#103)
 - [ ] Convert graph view to a workspace tab with redesigned styling (#104)

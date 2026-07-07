@@ -8,6 +8,7 @@ import { Auth } from "./components/Auth";
 import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
 import { TabBar } from "./components/Workspace/TabBar";
+import { DailyCalendar } from "./components/Workspace/DailyCalendar";
 import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
@@ -17,6 +18,7 @@ import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders } from "./lib/noteFilter";
 import type { SortBy } from "./lib/noteFilter";
+import { toIsoDate, dailyNoteTemplate } from "./lib/daily";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
 import type { ViewMode } from "./lib/prefs";
 import type { RailView } from "./components/Workspace/Rail";
@@ -38,6 +40,7 @@ export default function App() {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [editorContent, setEditorContent] = useState("");
   const [paletteQuery, setPaletteQuery] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
   const [filterTags, setFilterTags] = useState<string[]>([]);
@@ -56,6 +59,8 @@ export default function App() {
 
   const activeNoteRef = useRef(activeNote);
   activeNoteRef.current = activeNote;
+  const noteListRef = useRef(noteList);
+  noteListRef.current = noteList;
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
   const activeTabKeyRef = useRef(activeTabKey);
@@ -198,6 +203,32 @@ export default function App() {
     [handleCreateNoteWithTitle],
   );
 
+  const handleOpenDaily = useCallback(async (iso: string) => {
+    setShowCalendar(false);
+    const existing = noteListRef.current.find((n) => n.title === iso);
+    if (existing) {
+      setTabs((prev) =>
+        prev.some((t) => t.key === existing.id) ? prev : [...prev, { key: existing.id, type: "note" }],
+      );
+      setActiveTabKey(existing.id);
+      const note = await notesApi.get(existing.id);
+      setActiveNote(note);
+      setEditorContent(note.content);
+      setSaveStatus("saved");
+      setCursor({ line: 1, col: 1 });
+      return;
+    }
+    if (!activeVaultId) return;
+    const note = await notesApi.create(activeVaultId, iso, `Daily/${iso}.md`, dailyNoteTemplate(iso));
+    setNoteList((prev) => [...prev, note]);
+    setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
+    setActiveTabKey(note.id);
+    setActiveNote(note);
+    setEditorContent(note.content);
+    setSaveStatus("saved");
+    setCursor({ line: 1, col: 1 });
+  }, [activeVaultId]);
+
   const cycleView = useCallback(() => {
     setPrefs((p) => {
       const next = VIEW_CYCLE[(VIEW_CYCLE.indexOf(p.viewMode) + 1) % VIEW_CYCLE.length];
@@ -219,12 +250,13 @@ export default function App() {
   const commands = useMemo(() => [
     { id: "new-note", label: "New note", shortcut: "Ctrl+N", action: handleCreateNote },
     { id: "graph-view", label: "Open graph", shortcut: "Ctrl+G", action: () => setShowGraph(true) },
+    { id: "daily-note", label: "Open today's daily note", shortcut: "Ctrl+D", action: () => handleOpenDaily(toIsoDate(new Date())) },
     { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
     { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
     { id: "focus-mode", label: "Toggle focus mode", shortcut: "Ctrl+Shift+F", action: toggleFocusMode },
     { id: "logout", label: "Sign out", action: () => { auth.logout(); setUser(null); syncClient.disconnect(); } },
-  ], [handleCreateNote, cycleView, toggleFocusMode, updatePrefs]);
+  ], [handleCreateNote, handleOpenDaily, cycleView, toggleFocusMode, updatePrefs]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -251,6 +283,10 @@ export default function App() {
         e.preventDefault();
         setShowGraph((v) => !v);
       }
+      if (meta && e.key === "d") {
+        e.preventDefault();
+        handleOpenDaily(toIsoDate(new Date()));
+      }
       if (meta && e.key === "e") {
         e.preventDefault();
         cycleView();
@@ -266,7 +302,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleCreateNote, cycleView, toggleFocusMode]);
+  }, [handleCreateNote, handleOpenDaily, cycleView, toggleFocusMode]);
 
   const handleAuth = useCallback(
     (u: User) => {
@@ -446,6 +482,8 @@ export default function App() {
             }
           }}
           onGraph={() => setShowGraph((v) => !v)}
+          calendarOpen={showCalendar}
+          onDaily={() => setShowCalendar((v) => !v)}
         />
         <div
           className={`panel-left${prefs.leftOpen ? "" : " panel-left--closed"}${dragging?.type === "left" ? " panel-left--dragging" : ""}`}
@@ -516,6 +554,13 @@ export default function App() {
                   <span>Create a note</span>
                   <span className="workspace-empty-kbd">Ctrl+N</span>
                 </button>
+                <button
+                  className="workspace-empty-action"
+                  onClick={() => handleOpenDaily(toIsoDate(new Date()))}
+                >
+                  <span>Open today&rsquo;s daily note</span>
+                  <span className="workspace-empty-kbd">Ctrl+D</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -582,6 +627,15 @@ export default function App() {
           col={cursor.col}
           viewMode={prefs.viewMode}
           onCycleView={cycleView}
+        />
+      )}
+
+      {showCalendar && (
+        <DailyCalendar
+          noteTitles={new Set(noteList.map((n) => n.title))}
+          onPickDay={handleOpenDaily}
+          onOpenToday={() => handleOpenDaily(toIsoDate(new Date()))}
+          onClose={() => setShowCalendar(false)}
         />
       )}
 

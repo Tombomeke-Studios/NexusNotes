@@ -14,6 +14,8 @@ import yaml from "highlight.js/lib/languages/yaml";
 import xml from "highlight.js/lib/languages/xml";
 import markdown from "highlight.js/lib/languages/markdown";
 import type { Note } from "../../lib/types";
+import type { ViewMode } from "../../lib/prefs";
+import { cursorPosition } from "../../lib/stats";
 import { remarkWikilinks } from "../../lib/remarkWikilinks";
 import { BacklinksPanel } from "./BacklinksPanel";
 import "./Editor.css";
@@ -38,24 +40,27 @@ hljs.registerLanguage("md", markdown);
 interface EditorProps {
   note: Note | null;
   notes: Note[];
+  mode: ViewMode;
+  onModeChange: (mode: ViewMode) => void;
+  onCursorChange?: (line: number, col: number) => void;
   onSave: (content: string) => void;
   onRename: (title: string) => void;
   onCreateNote: (title: string) => void;
   onNavigateToNote: (noteId: string) => void;
 }
 
-type ViewMode = "edit" | "preview" | "split";
-
 export function Editor({
   note,
   notes,
+  mode,
+  onModeChange,
+  onCursorChange,
   onSave,
   onRename,
   onCreateNote,
   onNavigateToNote,
 }: EditorProps) {
   const [content, setContent] = useState("");
-  const [mode, setMode] = useState<ViewMode>("split");
   const [hasChanges, setHasChanges] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -82,6 +87,12 @@ export function Editor({
     }
   }, [note]);
 
+  const reportCursor = (el: HTMLTextAreaElement) => {
+    if (!onCursorChange || typeof el.selectionStart !== "number") return;
+    const { line, col } = cursorPosition(el.value, el.selectionStart);
+    onCursorChange(line, col);
+  };
+
   const handleChange = (value: string) => {
     setContent(value);
     setHasChanges(true);
@@ -102,12 +113,6 @@ export function Editor({
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         onSaveRef.current(contentRef.current);
         setHasChanges(false);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "e") {
-        e.preventDefault();
-        setMode((m) =>
-          m === "edit" ? "preview" : m === "preview" ? "split" : "edit",
-        );
       }
     };
     window.addEventListener("keydown", handler);
@@ -201,21 +206,24 @@ export function Editor({
           <div className="editor-mode-toggle">
             <button
               className={mode === "edit" ? "active" : ""}
-              onClick={() => setMode("edit")}
+              onClick={() => onModeChange("edit")}
+              title="Source only"
             >
               Edit
             </button>
             <button
               className={mode === "split" ? "active" : ""}
-              onClick={() => setMode("split")}
+              onClick={() => onModeChange("split")}
+              title="Side by side"
             >
               Split
             </button>
             <button
               className={mode === "preview" ? "active" : ""}
-              onClick={() => setMode("preview")}
+              onClick={() => onModeChange("preview")}
+              title="Reading view"
             >
-              Preview
+              Read
             </button>
           </div>
         </div>
@@ -226,7 +234,13 @@ export function Editor({
             ref={textareaRef}
             className="editor-textarea"
             value={content}
-            onChange={(e) => handleChange(e.target.value)}
+            onChange={(e) => {
+              handleChange(e.target.value);
+              reportCursor(e.target);
+            }}
+            onSelect={(e) => reportCursor(e.currentTarget)}
+            onClick={(e) => reportCursor(e.currentTarget)}
+            onKeyUp={(e) => reportCursor(e.currentTarget)}
             spellCheck={false}
             placeholder="Start writing..."
           />

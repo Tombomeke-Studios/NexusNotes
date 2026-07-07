@@ -1,57 +1,70 @@
 import { useMemo } from "react";
-import { extractTags } from "../lib/tags";
+import { wordCount } from "../lib/stats";
+import type { ViewMode } from "../lib/prefs";
 
 interface StatusBarProps {
   content: string;
   saveStatus: "saved" | "saving" | "unsaved" | "idle";
-  noteTitle: string | null;
-  onTagClick?: (tag: string) => void;
+  hasNote: boolean;
+  lastSyncLabel: string | null;
+  line: number;
+  col: number;
+  viewMode: ViewMode;
+  onCycleView: () => void;
 }
 
-export function StatusBar({ content, saveStatus, noteTitle, onTagClick }: StatusBarProps) {
-  const stats = useMemo(() => {
-    if (!noteTitle) return null;
-    const lines = content.split("\n").length;
-    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
-    const chars = content.length;
-    return { lines, words, chars };
-  }, [content, noteTitle]);
+const MODE_LABELS: Record<ViewMode, string> = {
+  edit: "Edit",
+  split: "Split",
+  preview: "Reading",
+};
 
-  const tags = useMemo(() => (noteTitle ? extractTags(content) : []), [content, noteTitle]);
+export function StatusBar({
+  content,
+  saveStatus,
+  hasNote,
+  lastSyncLabel,
+  line,
+  col,
+  viewMode,
+  onCycleView,
+}: StatusBarProps) {
+  const words = useMemo(() => (hasNote ? wordCount(content) : 0), [content, hasNote]);
 
   return (
     <div className="status-bar">
       <div className="status-bar-left">
-        {noteTitle && (
+        {hasNote && (
           <span className={`status-indicator status-indicator--${saveStatus}`}>
-            <span className="status-dot" />
+            <span className="status-dot" key={saveStatus} />
             {saveStatus === "saved" && "Saved"}
-            {saveStatus === "saving" && "Saving..."}
+            {saveStatus === "saving" && "Saving…"}
             {saveStatus === "unsaved" && "Unsaved"}
             {saveStatus === "idle" && "Ready"}
           </span>
         )}
-        {tags.length > 0 && (
-          <div className="status-tags">
-            {tags.map((tag) => (
-              <button
-                key={tag}
-                className="status-tag"
-                onClick={() => onTagClick?.(tag)}
-                title={`Filter by #${tag}`}
-              >
-                #{tag}
-              </button>
-            ))}
-          </div>
+        {lastSyncLabel && (
+          <>
+            <span className="status-sep">&middot;</span>
+            <span className="status-stat">Synced {lastSyncLabel}</span>
+          </>
         )}
       </div>
       <div className="status-bar-right">
-        {stats && (
+        {hasNote && (
           <>
-            <span className="status-stat">{stats.words} words</span>
-            <span className="status-stat">{stats.chars} chars</span>
-            <span className="status-stat">{stats.lines} lines</span>
+            <span className="status-stat">
+              Ln {line}, Col {col}
+            </span>
+            <span className="status-stat">{words} words</span>
+            <span className="status-stat">{content.length} chars</span>
+            <button
+              className="status-mode-btn"
+              onClick={onCycleView}
+              title="Cycle view (Ctrl+E)"
+            >
+              {MODE_LABELS[viewMode]}
+            </button>
           </>
         )}
       </div>

@@ -13,7 +13,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > (`NexusNotes Redesign.dc.html`): darker shell, activity rail, tabbed editing,
 > right-hand context panel, unified command palette, daily notes, and settings.
 
-- [ ] Add design tokens and global shell styles for desktop redesign (#93)
+- [x] Add design tokens and global shell styles for desktop redesign (#93)
 - [ ] Redesign authentication screen (#94)
 - [ ] Build workspace shell: top bar, activity rail, resizable side panels (#95)
 - [ ] Rebuild left panel: file tree, tag chips, filter and sort popover, vault search (#96)

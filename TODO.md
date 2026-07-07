@@ -7,6 +7,27 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## `feature/desktop-redesign` - Workspace redesign (NexusNotes Redesign.dc.html)
+
+> Full desktop UI overhaul implementing the approved Claude Design mockup
+> (`NexusNotes Redesign.dc.html`): darker shell, activity rail, tabbed editing,
+> right-hand context panel, unified command palette, daily notes, and settings.
+
+- [ ] Add design tokens and global shell styles for desktop redesign (#93)
+- [ ] Redesign authentication screen (#94)
+- [ ] Build workspace shell: top bar, activity rail, resizable side panels (#95)
+- [ ] Rebuild left panel: file tree, tag chips, filter and sort popover, vault search (#96)
+- [ ] Add note tab bar with multiple open notes and graph tab (#97)
+- [ ] Redesign editor: mode switcher, draggable split view, restyled preview (#98)
+- [ ] Add right panel with Outline, Links, and Info tabs (#99)
+- [ ] Unify command palette and quick switcher with command mode (#100)
+- [ ] Add daily notes calendar popover and Ctrl+D shortcut (#101)
+- [ ] Add vault switcher menu and note context menu (#102)
+- [ ] Add settings modal with appearance, sync, and shortcuts tabs (#103)
+- [ ] Convert graph view to a workspace tab with redesigned styling (#104)
+
+---
+
 ## `feature/graph-view` - Graph view (2D and 3D interactive knowledge map)
 
 > Notes are rendered as nodes, wiki-links as directed edges. The graph view is one of

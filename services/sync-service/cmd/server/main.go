@@ -16,6 +16,7 @@ import (
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/handler"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/ws"
 )
@@ -44,8 +45,13 @@ func main() {
 	tagRepo := repository.NewTagRepo(pool)
 	aliasRepo := repository.NewAliasRepo(pool)
 
+	indexer := search.NewIndexer(cfg.MeiliURL, cfg.MeiliMasterKey)
+	if err := indexer.ConfigureIndex(ctx); err != nil {
+		log.Printf("warn: meilisearch index configuration failed (search may be degraded): %v", err)
+	}
+
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo)
+	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, indexer)
 
 	hub := ws.NewHub()
 
@@ -53,6 +59,7 @@ func main() {
 	vaultHandler := handler.NewVaultHandler(vaultRepo)
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
+	searchHandler := handler.NewSearchHandler(indexer, vaultRepo)
 	wsHandler := handler.NewWSHandler(hub, authService)
 
 	mux := http.NewServeMux()
@@ -79,6 +86,7 @@ func main() {
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/search", noteHandler.Search)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags)
+	protectedMux.HandleFunc("GET /api/search", searchHandler.Search)
 
 	mux.Handle("/api/", authMw(protectedMux))
 	mux.HandleFunc("/ws", wsHandler.HandleConnect)

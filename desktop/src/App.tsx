@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Editor } from "./components/Editor";
-import { QuickSwitcher } from "./components/Search";
+import { QuickSwitcher, GlobalSearch } from "./components/Search";
 import { GraphView } from "./components/Graph";
 import { CommandPalette } from "./components/CommandPalette";
 import { StatusBar } from "./components/StatusBar";
@@ -21,6 +21,7 @@ export default function App() {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [editorContent, setEditorContent] = useState("");
   const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
@@ -135,6 +136,7 @@ export default function App() {
   const commands = useMemo(() => [
     { id: "new-note", label: "New Note", shortcut: "Ctrl+N", action: handleCreateNote },
     { id: "quick-switcher", label: "Quick Switcher", shortcut: "Ctrl+P", action: () => setShowQuickSwitcher(true) },
+    { id: "global-search", label: "Global Search", shortcut: "Ctrl+Shift+F", action: () => setShowGlobalSearch(true) },
     { id: "graph-view", label: "Graph View", shortcut: "Ctrl+G", action: () => setShowGraph(true) },
     { id: "toggle-edit", label: "Toggle Edit Mode", shortcut: "Ctrl+E", action: () => {} },
     { id: "logout", label: "Sign Out", action: () => { auth.logout(); setUser(null); syncClient.disconnect(); } },
@@ -157,6 +159,10 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
         e.preventDefault();
         setShowCommandPalette(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        setShowGlobalSearch(true);
       }
     };
     window.addEventListener("keydown", handler);
@@ -324,6 +330,14 @@ export default function App() {
           notes={noteList}
           onSelect={handleSelectNote}
           onClose={() => setShowQuickSwitcher(false)}
+        />
+      )}
+
+      {showGlobalSearch && activeVaultId && (
+        <GlobalSearch
+          vaultId={activeVaultId}
+          onSelect={(id) => { handleSelectNote(id); setShowGlobalSearch(false); }}
+          onClose={() => setShowGlobalSearch(false)}
         />
       )}
 

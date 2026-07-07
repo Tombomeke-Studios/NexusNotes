@@ -1,4 +1,4 @@
-import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote } from "./types";
+import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -159,6 +159,28 @@ export const notes = {
     request<NoteVersion[]>(`/api/notes/${noteId}/versions`),
   backlinks: (noteId: string) =>
     request<BacklinkNote[]>(`/api/notes/${noteId}/backlinks`),
+};
+
+export interface SearchParams {
+  q?: string;
+  tag?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export const search = {
+  query: (vaultId: string, params: SearchParams) => {
+    const qs = new URLSearchParams({ vault: vaultId });
+    if (params.q) qs.set("q", params.q);
+    if (params.tag) qs.set("tag", params.tag);
+    if (params.date_from) qs.set("date_from", params.date_from);
+    if (params.date_to) qs.set("date_to", params.date_to);
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    if (params.offset != null) qs.set("offset", String(params.offset));
+    return request<SearchHit[]>(`/api/search?${qs.toString()}`);
+  },
 };
 
 function getDeviceId(): string {

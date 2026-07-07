@@ -12,11 +12,12 @@ type User struct {
 }
 
 type Vault struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	Name        string    `json:"name"`
+	IsEncrypted bool      `json:"is_encrypted"` // set by encryption migration; false until then
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type Note struct {

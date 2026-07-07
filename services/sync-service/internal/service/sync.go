@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
 )
 
 var ErrConflict = errors.New("checksum conflict: note was modified by another device")
@@ -20,15 +21,17 @@ type SyncService struct {
 	linkRepo  *repository.LinkRepo
 	tagRepo   *repository.TagRepo
 	aliasRepo *repository.AliasRepo
+	indexer   *search.Indexer
 }
 
-func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, aliasRepo *repository.AliasRepo) *SyncService {
+func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, aliasRepo *repository.AliasRepo, indexer *search.Indexer) *SyncService {
 	return &SyncService{
 		noteRepo:  noteRepo,
 		vaultRepo: vaultRepo,
 		linkRepo:  linkRepo,
 		tagRepo:   tagRepo,
 		aliasRepo: aliasRepo,
+		indexer:   indexer,
 	}
 }
 
@@ -109,6 +112,32 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit transaction: %w", err)
+	}
+
+	if s.indexer != nil {
+		noteID := note.ID
+		doc := search.NoteDoc{
+			ID:        note.ID,
+			VaultID:   note.VaultID,
+			Title:     note.Title,
+			Path:      note.Path,
+			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
+		}
+		go func() {
+			// Omit content and tags for encrypted vaults
+			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
+				doc.Content = note.Content
+				fm, _ := ParseFrontmatter(content)
+				doc.Tags = mergeTags(content)
+				doc.Aliases = fm.Aliases
+			}
+			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
+				for _, bl := range bls {
+					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)
+				}
+			}
+			s.indexer.IndexNote(doc)
+		}()
 	}
 
 	return note, nil
@@ -198,6 +227,32 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
+	if s.indexer != nil {
+		noteID := note.ID
+		savedContent := update.Content
+		doc := search.NoteDoc{
+			ID:        note.ID,
+			VaultID:   note.VaultID,
+			Title:     note.Title,
+			Path:      note.Path,
+			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
+		}
+		go func() {
+			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
+				doc.Content = savedContent
+				fm, _ := ParseFrontmatter(savedContent)
+				doc.Tags = mergeTags(savedContent)
+				doc.Aliases = fm.Aliases
+			}
+			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
+				for _, bl := range bls {
+					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)
+				}
+			}
+			s.indexer.IndexNote(doc)
+		}()
+	}
+
 	return note, nil, nil
 }
 
@@ -214,7 +269,13 @@ func (s *SyncService) ListNotes(ctx context.Context, vaultID string) ([]model.No
 }
 
 func (s *SyncService) DeleteNote(ctx context.Context, noteID, vaultID string) error {
-	return s.noteRepo.Delete(ctx, noteID, vaultID)
+	if err := s.noteRepo.Delete(ctx, noteID, vaultID); err != nil {
+		return err
+	}
+	if s.indexer != nil {
+		s.indexer.DeleteNote(noteID)
+	}
+	return nil
 }
 
 func (s *SyncService) GetVersions(ctx context.Context, noteID string) ([]model.NoteVersion, error) {

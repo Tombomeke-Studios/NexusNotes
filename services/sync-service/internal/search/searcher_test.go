@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -24,7 +25,7 @@ func TestSearch_returnsHits(t *testing.T) {
 	defer srv.Close()
 
 	idx := newTestIndexer(srv.URL)
-	hits, err := idx.Search(t.Context(), SearchParams{Query: "alpha", VaultID: "v1"})
+	hits, err := idx.Search(context.Background(), SearchParams{Query: "alpha", VaultID: "v1"})
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestSearch_extractsSnippet(t *testing.T) {
 	defer srv.Close()
 
 	idx := newTestIndexer(srv.URL)
-	hits, err := idx.Search(t.Context(), SearchParams{Query: "highlighted", VaultID: "v1"})
+	hits, err := idx.Search(context.Background(), SearchParams{Query: "highlighted", VaultID: "v1"})
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -74,7 +75,7 @@ func TestSearch_serviceError(t *testing.T) {
 	defer srv.Close()
 
 	idx := newTestIndexer(srv.URL)
-	_, err := idx.Search(t.Context(), SearchParams{Query: "x", VaultID: "v1"})
+	_, err := idx.Search(context.Background(), SearchParams{Query: "x", VaultID: "v1"})
 	if err == nil {
 		t.Fatal("expected error for 503")
 	}

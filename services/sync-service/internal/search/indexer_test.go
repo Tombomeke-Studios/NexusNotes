@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -35,7 +36,7 @@ func TestIndexer_upsertDoc_success(t *testing.T) {
 	idx := newTestIndexer(srv.URL)
 	doc := NoteDoc{ID: "note-1", VaultID: "vault-1", Title: "Hello", Content: "world"}
 
-	if err := idx.upsertDoc(t.Context(), doc); err != nil {
+	if err := idx.upsertDoc(context.Background(), doc); err != nil {
 		t.Fatalf("upsertDoc: %v", err)
 	}
 	if len(received) != 1 || received[0].ID != "note-1" {
@@ -50,7 +51,7 @@ func TestIndexer_upsertDoc_serverError(t *testing.T) {
 	defer srv.Close()
 
 	idx := newTestIndexer(srv.URL)
-	err := idx.upsertDoc(t.Context(), NoteDoc{ID: "x"})
+	err := idx.upsertDoc(context.Background(), NoteDoc{ID: "x"})
 	if err == nil {
 		t.Fatal("expected error for 500 response")
 	}
@@ -70,7 +71,7 @@ func TestIndexer_deleteDoc_success(t *testing.T) {
 	defer srv.Close()
 
 	idx := newTestIndexer(srv.URL)
-	if err := idx.deleteDoc(t.Context(), "note-42"); err != nil {
+	if err := idx.deleteDoc(context.Background(), "note-42"); err != nil {
 		t.Fatalf("deleteDoc: %v", err)
 	}
 	if deletedID != "note-42" {
@@ -85,7 +86,7 @@ func TestIndexer_deleteDoc_serverError(t *testing.T) {
 	defer srv.Close()
 
 	idx := newTestIndexer(srv.URL)
-	err := idx.deleteDoc(t.Context(), "missing")
+	err := idx.deleteDoc(context.Background(), "missing")
 	if err == nil {
 		t.Fatal("expected error for 404 response")
 	}

@@ -70,9 +70,7 @@ test.describe("Quick Switcher (Ctrl+P)", () => {
   });
 });
 
-// The Ctrl+Shift+F global search UI ships with the Meilisearch full-text
-// search branch (PR #90). Enable these once that PR is merged into dev.
-test.describe.fixme("Global Search (Ctrl+Shift+F)", () => {
+test.describe("Global Search (Ctrl+Shift+F)", () => {
   test.beforeEach(async ({ page }) => {
     await clearAuth(page);
     await register(page);

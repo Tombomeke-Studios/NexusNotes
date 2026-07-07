@@ -41,8 +41,7 @@ test.describe("Command palette", () => {
     ).toBeVisible();
   });
 
-  // The Global Search command ships with the Meilisearch branch (PR #90).
-  test.fixme("command palette lists Global Search command", async ({ page }) => {
+  test("command palette lists Global Search command", async ({ page }) => {
     const input = await openCommandPalette(page);
     await input.fill("Global Search");
     await expect(

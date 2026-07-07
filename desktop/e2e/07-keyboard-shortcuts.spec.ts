@@ -23,8 +23,7 @@ test.describe("Keyboard shortcuts", () => {
     await expect(input).toBeVisible();
   });
 
-  // Ctrl+Shift+F global search ships with the Meilisearch branch (PR #90).
-  test.fixme("Ctrl+Shift+F opens global search", async ({ page }) => {
+  test("Ctrl+Shift+F opens global search", async ({ page }) => {
     await page.keyboard.press("Control+Shift+F");
     await expect(page.locator(".global-search")).toBeVisible();
   });
@@ -46,8 +45,7 @@ test.describe("Keyboard shortcuts", () => {
     await expect(page.locator(".quick-switcher")).not.toBeVisible();
   });
 
-  // Ctrl+Shift+F global search ships with the Meilisearch branch (PR #90).
-  test.fixme("Escape closes global search", async ({ page }) => {
+  test("Escape closes global search", async ({ page }) => {
     await page.keyboard.press("Control+Shift+F");
     await page.keyboard.press("Escape");
     await expect(page.locator(".global-search")).not.toBeVisible();

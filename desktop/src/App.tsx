@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Editor } from "./components/Editor";
-import { QuickSwitcher } from "./components/Search";
 import { GraphView } from "./components/Graph";
 import { CommandPalette } from "./components/CommandPalette";
 import { StatusBar } from "./components/StatusBar";
@@ -38,9 +37,8 @@ export default function App() {
   const [noteList, setNoteList] = useState<Note[]>([]);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [editorContent, setEditorContent] = useState("");
-  const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState<string | null>(null);
   const [showGraph, setShowGraph] = useState(false);
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
@@ -219,13 +217,13 @@ export default function App() {
   }, []);
 
   const commands = useMemo(() => [
-    { id: "new-note", label: "New Note", shortcut: "Ctrl+N", action: handleCreateNote },
-    { id: "quick-switcher", label: "Quick Switcher", shortcut: "Ctrl+P", action: () => setShowQuickSwitcher(true) },
-    { id: "graph-view", label: "Graph View", shortcut: "Ctrl+G", action: () => setShowGraph(true) },
-    { id: "toggle-sidebar", label: "Toggle Sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
-    { id: "cycle-view", label: "Cycle View Mode", shortcut: "Ctrl+E", action: cycleView },
-    { id: "focus-mode", label: "Toggle Focus Mode", shortcut: "Ctrl+Shift+F", action: toggleFocusMode },
-    { id: "logout", label: "Sign Out", action: () => { auth.logout(); setUser(null); syncClient.disconnect(); } },
+    { id: "new-note", label: "New note", shortcut: "Ctrl+N", action: handleCreateNote },
+    { id: "graph-view", label: "Open graph", shortcut: "Ctrl+G", action: () => setShowGraph(true) },
+    { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
+    { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
+    { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
+    { id: "focus-mode", label: "Toggle focus mode", shortcut: "Ctrl+Shift+F", action: toggleFocusMode },
+    { id: "logout", label: "Sign out", action: () => { auth.logout(); setUser(null); syncClient.disconnect(); } },
   ], [handleCreateNote, cycleView, toggleFocusMode, updatePrefs]);
 
   useEffect(() => {
@@ -233,7 +231,7 @@ export default function App() {
       const meta = e.ctrlKey || e.metaKey;
       if (meta && e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
-        setShowCommandPalette(true);
+        setPaletteQuery(">");
         return;
       }
       if (meta && e.shiftKey && e.key.toLowerCase() === "f") {
@@ -243,7 +241,7 @@ export default function App() {
       }
       if (meta && e.key === "p") {
         e.preventDefault();
-        setShowQuickSwitcher(true);
+        setPaletteQuery("");
       }
       if (meta && e.key === "n") {
         e.preventDefault();
@@ -423,7 +421,7 @@ export default function App() {
         syncStatus={saveStatus}
         leftOpen={prefs.leftOpen}
         rightOpen={prefs.rightOpen}
-        onOpenPalette={() => setShowQuickSwitcher(true)}
+        onOpenPalette={() => setPaletteQuery("")}
         onToggleLeft={() => updatePrefs({ leftOpen: !prefs.leftOpen })}
         onToggleRight={() => updatePrefs({ rightOpen: !prefs.rightOpen })}
       />
@@ -510,7 +508,7 @@ export default function App() {
               </div>
               <p className="workspace-empty-title">No note is open</p>
               <div className="workspace-empty-actions">
-                <button className="workspace-empty-action" onClick={() => setShowQuickSwitcher(true)}>
+                <button className="workspace-empty-action" onClick={() => setPaletteQuery("")}>
                   <span>Search everything</span>
                   <span className="workspace-empty-kbd">Ctrl+P</span>
                 </button>
@@ -587,11 +585,13 @@ export default function App() {
         />
       )}
 
-      {showQuickSwitcher && (
-        <QuickSwitcher
+      {paletteQuery !== null && (
+        <CommandPalette
           notes={noteList}
-          onSelect={handleSelectNote}
-          onClose={() => setShowQuickSwitcher(false)}
+          commands={commands}
+          initialQuery={paletteQuery}
+          onSelectNote={handleSelectNote}
+          onClose={() => setPaletteQuery(null)}
         />
       )}
 
@@ -604,12 +604,6 @@ export default function App() {
         />
       )}
 
-      {showCommandPalette && (
-        <CommandPalette
-          commands={commands}
-          onClose={() => setShowCommandPalette(false)}
-        />
-      )}
     </div>
   );
 }

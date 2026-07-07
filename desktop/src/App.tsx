@@ -9,6 +9,7 @@ import { Auth } from "./components/Auth";
 import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
 import { TabBar } from "./components/Workspace/TabBar";
+import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
 import { syncClient } from "./lib/sync";
@@ -51,7 +52,7 @@ export default function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
   const [prefs, setPrefs] = useState(() => loadPrefs());
-  const [dragging, setDragging] = useState<{ type: "left"; startX: number; startW: number } | null>(null);
+  const [dragging, setDragging] = useState<{ type: "left" | "right"; startX: number; startW: number } | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
   const [cursor, setCursor] = useState({ line: 1, col: 1 });
 
@@ -153,19 +154,26 @@ export default function App() {
     }
   }, [user]);
 
-  // Left panel resize drag
+  // Side panel resize drag
   useEffect(() => {
     if (!dragging) return;
     const onMove = (e: PointerEvent) => {
-      const [min, max] = PREF_LIMITS.leftWidth;
-      const width = clamp(dragging.startW + (e.clientX - dragging.startX), min, max);
-      setPrefs((p) => ({ ...p, leftWidth: width }));
+      const dx = e.clientX - dragging.startX;
+      if (dragging.type === "left") {
+        const [min, max] = PREF_LIMITS.leftWidth;
+        const width = clamp(dragging.startW + dx, min, max);
+        setPrefs((p) => ({ ...p, leftWidth: width }));
+      } else {
+        const [min, max] = PREF_LIMITS.rightWidth;
+        const width = clamp(dragging.startW - dx, min, max);
+        setPrefs((p) => ({ ...p, rightWidth: width }));
+      }
     };
     const onUp = () => {
       setDragging(null);
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
-      setPrefs((p) => savePrefs({ leftWidth: p.leftWidth }));
+      setPrefs((p) => savePrefs({ leftWidth: p.leftWidth, rightWidth: p.rightWidth }));
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -442,7 +450,7 @@ export default function App() {
           onGraph={() => setShowGraph((v) => !v)}
         />
         <div
-          className={`panel-left${prefs.leftOpen ? "" : " panel-left--closed"}${dragging ? " panel-left--dragging" : ""}`}
+          className={`panel-left${prefs.leftOpen ? "" : " panel-left--closed"}${dragging?.type === "left" ? " panel-left--dragging" : ""}`}
           style={{ width: prefs.leftOpen ? prefs.leftWidth : 0 }}
         >
           <div className="panel-left-inner" style={{ width: prefs.leftWidth }}>
@@ -472,7 +480,7 @@ export default function App() {
           </div>
         </div>
         <div
-          className={`panel-handle${dragging ? " panel-handle--dragging" : ""}`}
+          className={`panel-handle${dragging?.type === "left" ? " panel-handle--dragging" : ""}`}
           onPointerDown={(e) => {
             if (!prefs.leftOpen) return;
             e.preventDefault();
@@ -522,6 +530,7 @@ export default function App() {
               onSplitPctChange={(pct) => updatePrefs({ splitPct: pct })}
               onModeChange={(m) => updatePrefs({ viewMode: m })}
               onCursorChange={handleCursorChange}
+              onLiveChange={setEditorContent}
               onTagClick={(tag) => {
                 setFilterTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
                 setRailView("files");
@@ -533,6 +542,36 @@ export default function App() {
               onNavigateToNote={handleSelectNote}
             />
           )}
+        </div>
+        <div
+          className={`panel-handle${dragging?.type === "right" ? " panel-handle--dragging" : ""}`}
+          onPointerDown={(e) => {
+            if (!prefs.rightOpen) return;
+            e.preventDefault();
+            document.body.style.userSelect = "none";
+            document.body.style.cursor = "col-resize";
+            setDragging({ type: "right", startX: e.clientX, startW: prefs.rightWidth });
+          }}
+        />
+        <div
+          className={`panel-right${prefs.rightOpen ? "" : " panel-right--closed"}${dragging?.type === "right" ? " panel-right--dragging" : ""}`}
+          style={{ width: prefs.rightOpen ? prefs.rightWidth : 0 }}
+        >
+          <div className="panel-right-inner" style={{ width: prefs.rightWidth }}>
+            <RightPanel
+              note={activeNote}
+              content={editorContent}
+              notes={noteList}
+              tab={prefs.rightTab}
+              onTabChange={(t) => updatePrefs({ rightTab: t })}
+              onNavigateToNote={handleSelectNote}
+              onTagClick={(tag) => {
+                setFilterTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
+                setRailView("files");
+                updatePrefs({ leftOpen: true });
+              }}
+            />
+          </div>
         </div>
       </div>
       {prefs.showStatusBar && (

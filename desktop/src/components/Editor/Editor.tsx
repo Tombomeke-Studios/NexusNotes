@@ -19,7 +19,6 @@ import { cursorPosition } from "../../lib/stats";
 import { toggleTask } from "../../lib/tasks";
 import { remarkWikilinks } from "../../lib/remarkWikilinks";
 import { remarkTags } from "../../lib/remarkTags";
-import { BacklinksPanel } from "./BacklinksPanel";
 import "./Editor.css";
 
 hljs.registerLanguage("javascript", javascript);
@@ -48,6 +47,7 @@ interface EditorProps {
   onSplitPctChange?: (pct: number) => void;
   onModeChange: (mode: ViewMode) => void;
   onCursorChange?: (line: number, col: number) => void;
+  onLiveChange?: (content: string) => void;
   onTagClick?: (tag: string) => void;
   onSave: (content: string) => void;
   onRename: (title: string) => void;
@@ -64,6 +64,7 @@ export function Editor({
   onSplitPctChange,
   onModeChange,
   onCursorChange,
+  onLiveChange,
   onTagClick,
   onSave,
   onRename,
@@ -106,18 +107,22 @@ export function Editor({
     onCursorChange(line, col);
   };
 
-  const handleChange = (value: string) => {
-    setContent(value);
-    setHasChanges(true);
+  const handleChange = useCallback(
+    (value: string) => {
+      setContent(value);
+      setHasChanges(true);
+      onLiveChange?.(value);
 
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-    }
-    saveTimerRef.current = setTimeout(() => {
-      onSaveRef.current(value);
-      setHasChanges(false);
-    }, 1000);
-  };
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = setTimeout(() => {
+        onSaveRef.current(value);
+        setHasChanges(false);
+      }, 1000);
+    },
+    [onLiveChange],
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -164,7 +169,7 @@ export function Editor({
       const next = toggleTask(contentRef.current, idx);
       if (next !== contentRef.current) handleChange(next);
     },
-    [],
+    [handleChange],
   );
 
   const renderCheckbox = useCallback(
@@ -355,7 +360,6 @@ export function Editor({
           </div>
         )}
       </div>
-      <BacklinksPanel noteId={note.id} onNavigate={onNavigateToNote} />
     </div>
   );
 }

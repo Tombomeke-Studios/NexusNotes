@@ -124,6 +124,48 @@ Response (204)
 
 List version history. Returns `NoteVersion[]` (newest first).
 
+### GET /api/notes/:noteId/backlinks
+
+Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`.
+
+---
+
+## Search
+
+### GET /api/vaults/:vaultId/search?q=
+
+Full-text search across all notes in a vault. Searches note title, content, inline `#tags`,
+YAML front-matter tags, and front-matter aliases. Requires `?q=<query>`.
+
+Response (200): `NoteSearchResult[]` ordered by `updated_at` descending, up to 50 results.
+
+```json
+[
+  {
+    "id": "...",
+    "vault_id": "...",
+    "path": "folder/my-note.md",
+    "title": "My Note",
+    "snippet": "First 300 characters of the note content...",
+    "tags": ["work", "project"],
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+]
+```
+
+---
+
+## Tags
+
+### GET /api/vaults/:vaultId/tags
+
+Returns all tags used in the vault with their note counts, ordered by count descending.
+
+Response (200): `TagCount[]`
+```json
+[{ "tag": "work", "count": 5 }, { "tag": "project", "count": 3 }]
+```
+
 ---
 
 ## WebSocket

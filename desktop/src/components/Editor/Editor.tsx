@@ -15,6 +15,7 @@ import xml from "highlight.js/lib/languages/xml";
 import markdown from "highlight.js/lib/languages/markdown";
 import type { Note } from "../../lib/types";
 import { remarkWikilinks } from "../../lib/remarkWikilinks";
+import { wikiUrlTransform } from "../../lib/markdownUrls";
 import { BacklinksPanel } from "./BacklinksPanel";
 import "./Editor.css";
 
@@ -236,6 +237,7 @@ export function Editor({
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkWikilinks]}
               components={{ code: renderCode, a: renderAnchor }}
+              urlTransform={wikiUrlTransform}
             >
               {content}
             </ReactMarkdown>

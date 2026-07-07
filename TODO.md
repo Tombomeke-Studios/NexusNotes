@@ -743,6 +743,22 @@ Lower priority items not focused on the desktop application.
 - [x] Expose front-matter fields in the search index (#78)
 - [x] Write tests for the tag parser and tag repository (#79)
 
+### `feature/e2e-testing` - Playwright end-to-end test suite
+
+- [x] Set up Playwright and configure the test runner (`playwright.config.ts`)
+- [x] Write E2E tests: auth flow (01-auth)
+- [x] Write E2E tests: vault management (02-vault)
+- [x] Write E2E tests: note CRUD (03-notes)
+- [x] Write E2E tests: wiki-links (04-wiki-links)
+- [x] Write E2E tests: tags (05-tags)
+- [x] Write E2E tests: search (06-search)
+- [x] Write E2E tests: keyboard shortcuts (07-keyboard-shortcuts)
+- [x] Write E2E tests: front-matter (08-frontmatter)
+- [x] Write E2E tests: sidebar (09-sidebar)
+- [x] Write E2E tests: command palette (10-command-palette)
+- [x] Write E2E tests: editor preview (11-editor-preview)
+- [x] Add E2E test run to CI pipeline (`.github/workflows/validate.yml`)
+
 ### `feature/wiki-links-and-backlinks` - Wiki-link parsing and backlink panel (PR #71)
 
 - [x] DB migration: `note_links` table with source/target/anchor columns (#65)

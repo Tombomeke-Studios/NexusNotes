@@ -199,6 +199,35 @@ func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, versions)
 }
 
+func (h *NoteHandler) Search(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	vaultID := r.PathValue("vaultId")
+
+	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
+	if err != nil || vault.UserID != userID {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		writeError(w, http.StatusBadRequest, "q parameter is required")
+		return
+	}
+
+	results, err := h.syncService.SearchNotes(r.Context(), vaultID, query)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "search failed")
+		return
+	}
+
+	if results == nil {
+		results = []model.NoteSearchResult{}
+	}
+
+	writeJSON(w, http.StatusOK, results)
+}
+
 func (h *NoteHandler) Backlinks(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	noteID := r.PathValue("noteId")

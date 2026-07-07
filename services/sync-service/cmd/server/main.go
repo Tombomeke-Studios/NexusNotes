@@ -43,6 +43,7 @@ func main() {
 	noteRepo := repository.NewNoteRepo(pool)
 	linkRepo := repository.NewLinkRepo(pool)
 	tagRepo := repository.NewTagRepo(pool)
+	aliasRepo := repository.NewAliasRepo(pool)
 
 	indexer := search.NewIndexer(cfg.MeiliURL, cfg.MeiliMasterKey)
 	if err := indexer.ConfigureIndex(ctx); err != nil {
@@ -50,7 +51,7 @@ func main() {
 	}
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, indexer)
+	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, indexer)
 
 	hub := ws.NewHub()
 
@@ -83,6 +84,7 @@ func main() {
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
+	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/search", noteHandler.Search)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags)
 	protectedMux.HandleFunc("GET /api/search", searchHandler.Search)
 

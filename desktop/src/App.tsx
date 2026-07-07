@@ -12,9 +12,12 @@ import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/ap
 import { syncClient } from "./lib/sync";
 import { buildTree } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
-import { buildTagCounts, extractTags } from "./lib/tags";
+import { buildTagCounts } from "./lib/tags";
+import { filterNotes, sortNotes, searchNotes, topLevelFolders } from "./lib/noteFilter";
+import type { SortBy } from "./lib/noteFilter";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
 import type { ViewMode } from "./lib/prefs";
+import type { RailView } from "./components/Workspace/Rail";
 import { relativeTimeLabel } from "./lib/stats";
 import type { User, Vault, Note } from "./lib/types";
 
@@ -31,7 +34,11 @@ export default function App() {
   const [showGraph, setShowGraph] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
-  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterFolder, setFilterFolder] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>("updated");
+  const [railView, setRailView] = useState<RailView>("files");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   const [prefs, setPrefs] = useState(() => loadPrefs());
@@ -256,6 +263,9 @@ export default function App() {
       setActiveVaultId(id);
       setActiveNote(null);
       setSaveStatus("idle");
+      setFilterTags([]);
+      setFilterFolder(null);
+      setSearchQuery("");
       loadNotes(id);
     },
     [loadNotes],
@@ -320,10 +330,21 @@ export default function App() {
 
   const graphData = useMemo(() => buildGraphData(noteList), [noteList]);
   const tagCounts = useMemo(() => buildTagCounts(noteList), [noteList]);
-  const filteredNoteList = useMemo(() => {
-    if (!activeTagFilter) return noteList;
-    return noteList.filter((n) => extractTags(n.content).includes(activeTagFilter));
-  }, [noteList, activeTagFilter]);
+  const folders = useMemo(() => topLevelFolders(noteList), [noteList]);
+  const filteredNoteList = useMemo(
+    () => sortNotes(filterNotes(noteList, filterTags, filterFolder), sortBy),
+    [noteList, filterTags, filterFolder, sortBy],
+  );
+  const searchHits = useMemo(() => searchNotes(noteList, searchQuery), [noteList, searchQuery]);
+
+  const toggleTagFilter = useCallback((tag: string) => {
+    setFilterTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilterTags([]);
+    setFilterFolder(null);
+  }, []);
 
   if (loading) {
     return (
@@ -337,7 +358,7 @@ export default function App() {
     return <Auth onAuth={handleAuth} />;
   }
 
-  const tree = buildTree(filteredNoteList);
+  const tree = buildTree(filteredNoteList, { keepNoteOrder: true });
   const activeVault = vaultList.find((v) => v.id === activeVaultId);
 
   return (
@@ -354,9 +375,24 @@ export default function App() {
       />
       <div className="workspace-body">
         <Rail
-          activeView={prefs.leftOpen ? "files" : null}
+          activeView={prefs.leftOpen ? railView : null}
           graphActive={showGraph}
-          onFiles={() => updatePrefs({ leftOpen: !prefs.leftOpen })}
+          onFiles={() => {
+            if (prefs.leftOpen && railView === "files") {
+              updatePrefs({ leftOpen: false });
+            } else {
+              setRailView("files");
+              updatePrefs({ leftOpen: true });
+            }
+          }}
+          onSearch={() => {
+            if (prefs.leftOpen && railView === "search") {
+              updatePrefs({ leftOpen: false });
+            } else {
+              setRailView("search");
+              updatePrefs({ leftOpen: true });
+            }
+          }}
           onGraph={() => setShowGraph((v) => !v)}
         />
         <div
@@ -365,17 +401,27 @@ export default function App() {
         >
           <div className="panel-left-inner" style={{ width: prefs.leftWidth }}>
             <Sidebar
+              view={railView}
               vaults={vaultList}
               activeVaultId={activeVaultId}
               tree={tree}
               activeNoteId={activeNote?.id ?? null}
               tagCounts={tagCounts}
-              activeTagFilter={activeTagFilter}
+              folders={folders}
+              filterTags={filterTags}
+              filterFolder={filterFolder}
+              sortBy={sortBy}
+              searchQuery={searchQuery}
+              searchHits={searchHits}
               onSelectVault={handleSelectVault}
               onSelectNote={handleSelectNote}
               onCreateNote={handleCreateNote}
               onCreateVault={handleCreateVault}
-              onTagFilter={setActiveTagFilter}
+              onToggleTag={toggleTagFilter}
+              onSetFolder={setFilterFolder}
+              onSetSort={setSortBy}
+              onClearFilters={clearFilters}
+              onSearchChange={setSearchQuery}
             />
           </div>
         </div>

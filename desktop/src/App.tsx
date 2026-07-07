@@ -10,6 +10,7 @@ import { Rail } from "./components/Workspace/Rail";
 import { TabBar } from "./components/Workspace/TabBar";
 import { DailyCalendar } from "./components/Workspace/DailyCalendar";
 import { ContextMenu } from "./components/Workspace/ContextMenu";
+import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
@@ -43,6 +44,7 @@ export default function App() {
   const [editorContent, setEditorContent] = useState("");
   const [paletteQuery, setPaletteQuery] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showGraph, setShowGraph] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
@@ -296,6 +298,7 @@ export default function App() {
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
     { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
     { id: "focus-mode", label: "Toggle focus mode", shortcut: "Ctrl+Shift+F", action: toggleFocusMode },
+    { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
   ], [handleCreateNote, handleOpenDaily, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
 
@@ -339,6 +342,10 @@ export default function App() {
       if (meta && e.key === ".") {
         e.preventDefault();
         setPrefs((p) => savePrefs({ rightOpen: !p.rightOpen }));
+      }
+      if (meta && e.key === ",") {
+        e.preventDefault();
+        setShowSettings(true);
       }
     };
     window.addEventListener("keydown", handler);
@@ -526,6 +533,7 @@ export default function App() {
           onGraph={() => setShowGraph((v) => !v)}
           calendarOpen={showCalendar}
           onDaily={() => setShowCalendar((v) => !v)}
+          onSettings={() => setShowSettings(true)}
         />
         <div
           className={`panel-left${prefs.leftOpen ? "" : " panel-left--closed"}${dragging?.type === "left" ? " panel-left--dragging" : ""}`}
@@ -678,6 +686,15 @@ export default function App() {
           col={cursor.col}
           viewMode={prefs.viewMode}
           onCycleView={cycleView}
+        />
+      )}
+
+      {showSettings && (
+        <Settings
+          prefs={prefs}
+          lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
+          onUpdatePrefs={updatePrefs}
+          onClose={() => setShowSettings(false)}
         />
       )}
 

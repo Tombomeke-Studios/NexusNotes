@@ -19,6 +19,7 @@ import { cursorPosition } from "../../lib/stats";
 import { toggleTask } from "../../lib/tasks";
 import { remarkWikilinks } from "../../lib/remarkWikilinks";
 import { remarkTags } from "../../lib/remarkTags";
+import { wikiUrlTransform } from "../../lib/markdownUrls";
 import "./Editor.css";
 
 hljs.registerLanguage("javascript", javascript);
@@ -353,6 +354,7 @@ export function Editor({
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkWikilinks, remarkTags]}
                 components={{ code: renderCode, a: renderAnchor, input: renderCheckbox }}
+                urlTransform={wikiUrlTransform}
               >
                 {content}
               </ReactMarkdown>

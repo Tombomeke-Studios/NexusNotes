@@ -1,0 +1,129 @@
+.global-search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+.global-search {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 640px;
+  max-width: calc(100vw - 48px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: slideDown 0.15s ease;
+}
+
+.global-search-header {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.global-search-input {
+  flex: 1;
+  font-size: 15px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.global-search-tag-input {
+  width: 130px;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--accent);
+}
+
+.global-search-results {
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.global-search-status {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.global-search-error {
+  color: var(--error, #f38ba8);
+}
+
+.global-search-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.global-search-item:hover,
+.global-search-item.selected {
+  background: var(--bg-hover);
+}
+
+.global-search-item-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.global-search-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.global-search-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-search-snippet {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.global-search-snippet em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.global-search-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.global-search-tag {
+  font-size: 10px;
+  color: var(--accent);
+  background: rgba(137, 180, 250, 0.1);
+  border-radius: 4px;
+  padding: 1px 5px;
+}

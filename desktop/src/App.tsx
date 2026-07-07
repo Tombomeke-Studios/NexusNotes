@@ -517,8 +517,16 @@ export default function App() {
               note={activeNote}
               notes={noteList}
               mode={prefs.viewMode}
+              fontSize={prefs.fontSize}
+              splitPct={prefs.splitPct}
+              onSplitPctChange={(pct) => updatePrefs({ splitPct: pct })}
               onModeChange={(m) => updatePrefs({ viewMode: m })}
               onCursorChange={handleCursorChange}
+              onTagClick={(tag) => {
+                setFilterTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
+                setRailView("files");
+                updatePrefs({ leftOpen: true });
+              }}
               onSave={handleSaveNote}
               onRename={handleRenameNote}
               onCreateNote={handleCreateNoteWithTitle}

@@ -35,6 +35,8 @@ interface Tab {
   type: "note" | "graph";
 }
 
+const GRAPH_TAB_KEY = "__graph";
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [vaultList, setVaultList] = useState<Vault[]>([]);
@@ -45,7 +47,6 @@ export default function App() {
   const [paletteQuery, setPaletteQuery] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showGraph, setShowGraph] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
@@ -239,6 +240,21 @@ export default function App() {
     setCursor({ line: 1, col: 1 });
   }, [activeVaultId]);
 
+  const openGraphTab = useCallback(() => {
+    setTabs((prev) =>
+      prev.some((t) => t.key === GRAPH_TAB_KEY) ? prev : [...prev, { key: GRAPH_TAB_KEY, type: "graph" }],
+    );
+    setActiveTabKey(GRAPH_TAB_KEY);
+  }, []);
+
+  const toggleGraphTab = useCallback(() => {
+    if (activeTabKeyRef.current === GRAPH_TAB_KEY) {
+      closeTabRef.current(GRAPH_TAB_KEY);
+    } else {
+      openGraphTab();
+    }
+  }, [openGraphTab]);
+
   const handleSignOut = useCallback(() => {
     auth.logout();
     setUser(null);
@@ -292,7 +308,7 @@ export default function App() {
 
   const commands = useMemo(() => [
     { id: "new-note", label: "New note", shortcut: "Ctrl+N", action: handleCreateNote },
-    { id: "graph-view", label: "Open graph", shortcut: "Ctrl+G", action: () => setShowGraph(true) },
+    { id: "graph-view", label: "Open graph", shortcut: "Ctrl+G", action: openGraphTab },
     { id: "daily-note", label: "Open today's daily note", shortcut: "Ctrl+D", action: () => handleOpenDaily(toIsoDate(new Date())) },
     { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
@@ -300,7 +316,7 @@ export default function App() {
     { id: "focus-mode", label: "Toggle focus mode", shortcut: "Ctrl+Shift+F", action: toggleFocusMode },
     { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
-  ], [handleCreateNote, handleOpenDaily, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
+  ], [handleCreateNote, handleOpenDaily, openGraphTab, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -325,7 +341,7 @@ export default function App() {
       }
       if (meta && e.key === "g") {
         e.preventDefault();
-        setShowGraph((v) => !v);
+        toggleGraphTab();
       }
       if (meta && e.key === "d") {
         e.preventDefault();
@@ -350,7 +366,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleCreateNote, handleOpenDaily, cycleView, toggleFocusMode]);
+  }, [handleCreateNote, handleOpenDaily, toggleGraphTab, cycleView, toggleFocusMode]);
 
   const handleAuth = useCallback(
     (u: User) => {
@@ -497,12 +513,14 @@ export default function App() {
     ...t,
     title: t.type === "graph" ? "Graph" : noteList.find((n) => n.id === t.key)?.title ?? "Untitled",
   }));
+  const activeTab = tabs.find((t) => t.key === activeTabKey) ?? null;
+  const graphActive = activeTab?.type === "graph";
 
   return (
     <div className="workspace" data-rm={prefs.reduceMotion ? "1" : "0"}>
       <TopBar
         vaultName={activeVault?.name ?? "NexusNotes"}
-        noteTitle={activeNote?.title ?? null}
+        noteTitle={graphActive ? "Graph" : activeNote?.title ?? null}
         syncStatus={saveStatus}
         leftOpen={prefs.leftOpen}
         rightOpen={prefs.rightOpen}
@@ -513,7 +531,7 @@ export default function App() {
       <div className="workspace-body">
         <Rail
           activeView={prefs.leftOpen ? railView : null}
-          graphActive={showGraph}
+          graphActive={graphActive}
           onFiles={() => {
             if (prefs.leftOpen && railView === "files") {
               updatePrefs({ leftOpen: false });
@@ -530,7 +548,7 @@ export default function App() {
               updatePrefs({ leftOpen: true });
             }
           }}
-          onGraph={() => setShowGraph((v) => !v)}
+          onGraph={toggleGraphTab}
           calendarOpen={showCalendar}
           onDaily={() => setShowCalendar((v) => !v)}
           onSettings={() => setShowSettings(true)}
@@ -622,6 +640,12 @@ export default function App() {
                 </button>
               </div>
             </div>
+          ) : graphActive ? (
+            <GraphView
+              data={graphData}
+              activeNoteId={activeNote?.id ?? null}
+              onSelectNote={handleSelectNote}
+            />
           ) : (
             <Editor
               note={activeNote}
@@ -661,7 +685,7 @@ export default function App() {
         >
           <div className="panel-right-inner" style={{ width: prefs.rightWidth }}>
             <RightPanel
-              note={activeNote}
+              note={graphActive ? null : activeNote}
               content={editorContent}
               notes={noteList}
               tab={prefs.rightTab}
@@ -678,9 +702,9 @@ export default function App() {
       </div>
       {prefs.showStatusBar && (
         <StatusBar
-          content={editorContent}
+          content={graphActive ? "" : editorContent}
           saveStatus={activeNote ? saveStatus : "idle"}
-          hasNote={!!activeNote}
+          hasNote={!graphActive && !!activeNote}
           lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
           line={cursor.line}
           col={cursor.col}
@@ -740,15 +764,6 @@ export default function App() {
           initialQuery={paletteQuery}
           onSelectNote={handleSelectNote}
           onClose={() => setPaletteQuery(null)}
-        />
-      )}
-
-      {showGraph && (
-        <GraphView
-          data={graphData}
-          activeNoteId={activeNote?.id ?? null}
-          onSelectNote={(id) => { handleSelectNote(id); setShowGraph(false); }}
-          onClose={() => setShowGraph(false)}
         />
       )}
 

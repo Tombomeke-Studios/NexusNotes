@@ -24,7 +24,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add daily notes calendar popover and Ctrl+D shortcut (#101)
 - [x] Add vault switcher menu and note context menu (#102)
 - [x] Add settings modal with appearance, sync, and shortcuts tabs (#103)
-- [ ] Convert graph view to a workspace tab with redesigned styling (#104)
+- [x] Convert graph view to a workspace tab with redesigned styling (#104)
 
 ---
 

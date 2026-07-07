@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import * as d3 from "d3";
 import type { GraphData } from "../../lib/wikilinks";
 import "./GraphView.css";
@@ -7,7 +7,6 @@ interface GraphViewProps {
   data: GraphData;
   activeNoteId: string | null;
   onSelectNote: (id: string) => void;
-  onClose: () => void;
 }
 
 interface SimNode extends d3.SimulationNodeDatum {
@@ -21,8 +20,9 @@ interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   target: SimNode;
 }
 
-export function GraphView({ data, activeNoteId, onSelectNote, onClose }: GraphViewProps) {
+export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [renderKey, setRenderKey] = useState(0);
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current);
@@ -90,7 +90,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onClose }: GraphVi
 
     node.append("text")
       .text((d) => d.title)
-      .attr("dy", (d) => -(10 + Math.min(d.connections * 2, 12)))
+      .attr("dy", (d) => 6 + Math.min(d.connections * 2, 12) + 15)
       .attr("text-anchor", "middle");
 
     simulation.on("tick", () => {
@@ -109,24 +109,21 @@ export function GraphView({ data, activeNoteId, onSelectNote, onClose }: GraphVi
   useEffect(() => {
     const cleanup = render();
     return cleanup;
-  }, [render]);
+  }, [render, renderKey]);
 
   return (
-    <div className="graph-overlay" onClick={onClose}>
-      <div className="graph-container" onClick={(e) => e.stopPropagation()}>
-        <div className="graph-header">
-          <span className="graph-title">Graph View</span>
-          <span className="graph-stats">
-            {data.nodes.length} notes &middot; {data.links.length} connections
-          </span>
-          <button className="graph-close" onClick={onClose}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </button>
-        </div>
-        <svg ref={svgRef} className="graph-svg" />
+    <div className="graph-view">
+      <svg ref={svgRef} className="graph-svg" />
+      <div className="graph-badge">
+        {data.nodes.length} notes &middot; {data.links.length} links
       </div>
+      <button className="graph-recenter" onClick={() => setRenderKey((k) => k + 1)}>
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="2" fill="currentColor" />
+          <circle cx="7" cy="7" r="5.4" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2.4 2.2" />
+        </svg>
+        Re-center
+      </button>
     </div>
   );
 }

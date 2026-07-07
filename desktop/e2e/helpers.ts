@@ -82,8 +82,30 @@ export async function typeInEditor(page: Page, text: string) {
   await editor.fill(text);
 }
 
+/**
+ * Waits for the debounced autosave PUT to actually persist the note.
+ * Call immediately after editing content — the previous status-text check
+ * matched the stale "Saved" (and even "Unsaved") label before the 1s
+ * debounce fired, letting tests reload before anything was persisted.
+ */
+export async function waitForAutosave(page: Page) {
+  await page.waitForResponse(
+    (r) => r.url().includes("/api/notes/") && r.request().method() === "PUT" && r.ok(),
+    { timeout: 10_000 },
+  );
+  await expect(page.locator(".status-indicator--saved")).toBeVisible({ timeout: 8_000 });
+}
+
 export async function waitForSaved(page: Page) {
-  await expect(page.locator(".status-bar").filter({ hasText: /saved/i })).toBeVisible({ timeout: 8_000 });
+  await expect(page.locator(".status-indicator--saved")).toBeVisible({ timeout: 8_000 });
+}
+
+/** Opens the command palette and returns its input locator. */
+export async function openCommandPalette(page: Page) {
+  await page.keyboard.press("Control+Shift+P");
+  const input = page.getByPlaceholder("Type a command...");
+  await expect(input).toBeVisible();
+  return input;
 }
 
 export async function clearAuth(page: Page) {

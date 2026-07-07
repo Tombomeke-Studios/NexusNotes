@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { register, createVault, waitForSaved, clearAuth } from "./helpers";
+import { register, createVault, waitForAutosave, clearAuth } from "./helpers";
 
 test.describe("Editor and markdown preview", () => {
   test.beforeEach(async ({ page }) => {
@@ -30,7 +30,7 @@ test.describe("Editor and markdown preview", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("**bold text**");
-    await waitForSaved(page);
+    await waitForAutosave(page);
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
       await expect(preview.locator("strong")).toContainText("bold text");
@@ -41,7 +41,7 @@ test.describe("Editor and markdown preview", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("# My Heading");
-    await waitForSaved(page);
+    await waitForAutosave(page);
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
       await expect(preview.locator("h1")).toContainText("My Heading");
@@ -52,10 +52,10 @@ test.describe("Editor and markdown preview", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("```js\nconst x = 1;\n```");
-    await waitForSaved(page);
+    await waitForAutosave(page);
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
-      await expect(preview.locator("code, pre")).toBeVisible();
+      await expect(preview.locator("pre code")).toBeVisible();
     }
   });
 
@@ -63,7 +63,7 @@ test.describe("Editor and markdown preview", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("1. First\n2. Second\n3. Third");
-    await waitForSaved(page);
+    await waitForAutosave(page);
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
       await expect(preview.locator("ol li")).toHaveCount(3);
@@ -74,7 +74,7 @@ test.describe("Editor and markdown preview", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("Use `console.log()` for debugging");
-    await waitForSaved(page);
+    await waitForAutosave(page);
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
       await expect(preview.locator("code")).toContainText("console.log()");

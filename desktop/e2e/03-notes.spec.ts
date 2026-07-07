@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, createVault, waitForSaved, clearAuth } from "./helpers";
+import { uid, register, createVault, waitForAutosave, waitForSaved, clearAuth } from "./helpers";
 
 test.describe("Note CRUD", () => {
   test.beforeEach(async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe("Note CRUD", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill(`Auto-save test ${uid()}`);
-    await waitForSaved(page);
+    await waitForAutosave(page);
   });
 
   test("note persists after page reload", async ({ page }) => {
@@ -41,12 +41,12 @@ test.describe("Note CRUD", () => {
     await textarea.click();
     const content = `Persist test ${uid()}`;
     await textarea.fill(content);
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await page.reload();
     // Re-select the note from sidebar
     await page.locator(".sidebar-files .tree-note").first().click();
-    await expect(page.locator(".editor-textarea, textarea").first()).toContainText(content);
+    await expect(page.locator(".editor-textarea, textarea").first()).toHaveValue(content);
   });
 
   test("note title is editable in the toolbar", async ({ page }) => {
@@ -55,7 +55,6 @@ test.describe("Note CRUD", () => {
     await titleInput.click({ clickCount: 3 });
     await titleInput.fill("My Custom Title");
     await titleInput.press("Tab");
-    await waitForSaved(page);
 
     // Title should appear in sidebar
     await expect(page.locator(".sidebar-files").filter({ hasText: "My Custom Title" })).toBeVisible();
@@ -84,7 +83,7 @@ test.describe("Note CRUD", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("This is **bold** text");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     // Check preview pane renders <strong>
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
@@ -95,10 +94,8 @@ test.describe("Note CRUD", () => {
 
   test("multiple notes appear in the sidebar tree", async ({ page }) => {
     await page.keyboard.press("Control+n");
-    await waitForSaved(page);
+    await expect(page.locator(".sidebar-files .tree-note")).toHaveCount(1, { timeout: 8_000 });
     await page.keyboard.press("Control+n");
-    await waitForSaved(page);
-
     await expect(page.locator(".sidebar-files .tree-note")).toHaveCount(2, { timeout: 8_000 });
   });
 });

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, createVault, waitForSaved, clearAuth } from "./helpers";
+import { uid, register, createVault, waitForAutosave, clearAuth } from "./helpers";
 
 test.describe("Wiki-links and backlinks", () => {
   test.beforeEach(async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe("Wiki-links and backlinks", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("See also [[Nonexistent Note]]");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     // In preview, unresolved wikilinks should have the unresolved class
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
@@ -29,14 +29,18 @@ test.describe("Wiki-links and backlinks", () => {
     await titleInput.click({ clickCount: 3 });
     await titleInput.fill("Target Note");
     await titleInput.press("Tab");
-    await waitForSaved(page);
+    // Renames persist with the next content autosave — type a body
+    const targetBody = page.locator(".editor-textarea, textarea").first();
+    await targetBody.click();
+    await targetBody.fill("Target body");
+    await waitForAutosave(page);
 
     // Create source note with link
     await page.keyboard.press("Control+n");
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("See also [[Target Note]]");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
@@ -51,14 +55,18 @@ test.describe("Wiki-links and backlinks", () => {
     await titleInput.click({ clickCount: 3 });
     await titleInput.fill("Jump Target");
     await titleInput.press("Tab");
-    await waitForSaved(page);
+    // Persist the rename via a content autosave
+    const targetBody = page.locator(".editor-textarea, textarea").first();
+    await targetBody.click();
+    await targetBody.fill("Jump target body");
+    await waitForAutosave(page);
 
     // Create source note
     await page.keyboard.press("Control+n");
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("Go to [[Jump Target]]");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
@@ -75,15 +83,15 @@ test.describe("Wiki-links and backlinks", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("See [[Brand New Note]]");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     const preview = page.locator(".editor-preview, .markdown-body, .prose");
     if (await preview.isVisible().catch(() => false)) {
       await preview.locator(".wikilink--unresolved").click();
-      // Should either create the note or show a dialog
+      // Clicking an unresolved link creates the note and opens it
       await expect(
-        page.locator("text=/create|new note/i, .editor-toolbar-title").first()
-      ).toBeVisible({ timeout: 5_000 });
+        page.locator(".editor-toolbar-title, input[class*='title']").first()
+      ).toHaveValue(/Brand New Note/i, { timeout: 5_000 });
     }
   });
 
@@ -94,14 +102,18 @@ test.describe("Wiki-links and backlinks", () => {
     await titleB.click({ clickCount: 3 });
     await titleB.fill("Note B");
     await titleB.press("Tab");
-    await waitForSaved(page);
+    // Persist the rename via a content autosave
+    const bodyB = page.locator(".editor-textarea, textarea").first();
+    await bodyB.click();
+    await bodyB.fill("Note B body");
+    await waitForAutosave(page);
 
     // Create note A linking to B
     await page.keyboard.press("Control+n");
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("This links to [[Note B]]");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     // Navigate to Note B
     await page.locator(".sidebar-files .tree-note").filter({ hasText: "Note B" }).click();

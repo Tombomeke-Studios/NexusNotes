@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { register, createVault, waitForSaved, clearAuth } from "./helpers";
+import { register, createVault, clearAuth, openCommandPalette } from "./helpers";
 
 test.describe("Keyboard shortcuts", () => {
   test.beforeEach(async ({ page }) => {
@@ -19,18 +19,19 @@ test.describe("Keyboard shortcuts", () => {
   });
 
   test("Ctrl+Shift+P opens the command palette", async ({ page }) => {
-    await page.keyboard.press("Control+Shift+P");
-    await expect(page.locator(".command-palette, [class*='command-palette']")).toBeVisible();
+    const input = await openCommandPalette(page);
+    await expect(input).toBeVisible();
   });
 
-  test("Ctrl+Shift+F opens global search", async ({ page }) => {
+  // Ctrl+Shift+F global search ships with the Meilisearch branch (PR #90).
+  test.fixme("Ctrl+Shift+F opens global search", async ({ page }) => {
     await page.keyboard.press("Control+Shift+F");
     await expect(page.locator(".global-search")).toBeVisible();
   });
 
   test("Ctrl+G opens the graph view", async ({ page }) => {
     await page.keyboard.press("Control+g");
-    await expect(page.locator(".graph-view, [class*='graph']")).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(".graph-container")).toBeVisible({ timeout: 5_000 });
   });
 
   test("Escape closes quick switcher", async ({ page }) => {
@@ -40,23 +41,31 @@ test.describe("Keyboard shortcuts", () => {
   });
 
   test("Escape closes command palette", async ({ page }) => {
-    await page.keyboard.press("Control+Shift+P");
+    await openCommandPalette(page);
     await page.keyboard.press("Escape");
-    await expect(page.locator(".command-palette")).not.toBeVisible();
+    await expect(page.locator(".quick-switcher")).not.toBeVisible();
   });
 
-  test("Escape closes global search", async ({ page }) => {
+  // Ctrl+Shift+F global search ships with the Meilisearch branch (PR #90).
+  test.fixme("Escape closes global search", async ({ page }) => {
     await page.keyboard.press("Control+Shift+F");
     await page.keyboard.press("Escape");
     await expect(page.locator(".global-search")).not.toBeVisible();
   });
 
   test("quick switcher arrow keys move selection", async ({ page }) => {
-    // Create two notes first
+    // Create two notes with distinct titles so selection changes are observable
     await page.keyboard.press("Control+n");
-    await waitForSaved(page);
+    const title1 = page.locator(".editor-toolbar-title, input[class*='title']").first();
+    await title1.click({ clickCount: 3 });
+    await title1.fill("First Arrow Note");
+    await title1.press("Tab");
+
     await page.keyboard.press("Control+n");
-    await waitForSaved(page);
+    const title2 = page.locator(".editor-toolbar-title, input[class*='title']").first();
+    await title2.click({ clickCount: 3 });
+    await title2.fill("Second Arrow Note");
+    await title2.press("Tab");
 
     await page.keyboard.press("Control+p");
     const switcher = page.locator(".quick-switcher");

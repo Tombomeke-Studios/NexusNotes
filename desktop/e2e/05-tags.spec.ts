@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, createVault, waitForSaved, clearAuth } from "./helpers";
+import { uid, register, createVault, waitForAutosave, clearAuth } from "./helpers";
 
 test.describe("Tags", () => {
   test.beforeEach(async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe("Tags", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("This note has #work and #project tags");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "work" })).toBeVisible();
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "project" })).toBeVisible();
@@ -24,7 +24,7 @@ test.describe("Tags", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("Plain note with no tags");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await expect(page.locator(".status-bar .status-tag")).toHaveCount(0);
   });
@@ -34,7 +34,7 @@ test.describe("Tags", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("```\n#include <stdio.h>\n```");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await expect(page.locator(".status-bar .status-tag")).toHaveCount(0);
   });
@@ -42,22 +42,26 @@ test.describe("Tags", () => {
   test("clicking a tag pill in status bar filters the sidebar", async ({ page }) => {
     const tag = `e2etag${uid().replace(/-/g, "")}`;
 
-    // Create a tagged note
+    // Create a tagged note with a distinct, persisted title
     await page.keyboard.press("Control+n");
+    const title1 = page.locator(".editor-toolbar-title, input[class*='title']").first();
+    await title1.click({ clickCount: 3 });
+    await title1.fill("Tagged Note");
+    await title1.press("Tab");
     const textarea1 = page.locator(".editor-textarea, textarea").first();
     await textarea1.click();
     await textarea1.fill(`Tagged note #${tag}`);
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     // Create an untagged note
     await page.keyboard.press("Control+n");
     const textarea2 = page.locator(".editor-textarea, textarea").first();
     await textarea2.click();
     await textarea2.fill("Untagged note");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     // Navigate back to the tagged note and click the tag pill
-    await page.locator(".sidebar-files .tree-note").first().click();
+    await page.locator(".sidebar-files .tree-note").filter({ hasText: "Tagged Note" }).click();
     await page.locator(`.status-bar .status-tag`).filter({ hasText: tag }).click();
 
     // Sidebar should show filter badge
@@ -72,16 +76,12 @@ test.describe("Tags", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill(`Note with #${tag}`);
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
-    // Tags section should appear at the bottom of sidebar
+    // Tags section appears at the bottom of the sidebar, expanded by default
     const tagsSection = page.locator(".sidebar-tags-section");
-    if (await tagsSection.isVisible().catch(() => false)) {
-      // Expand it if collapsed
-      const toggle = tagsSection.locator(".sidebar-tags-toggle");
-      if (await toggle.isVisible()) await toggle.click();
-      await expect(tagsSection.locator(".sidebar-tag-label").filter({ hasText: tag })).toBeVisible();
-    }
+    await expect(tagsSection).toBeVisible();
+    await expect(tagsSection.locator(".sidebar-tag-label").filter({ hasText: tag })).toBeVisible();
   });
 
   test("clearing tag filter shows all notes again", async ({ page }) => {
@@ -90,7 +90,7 @@ test.describe("Tags", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill(`Note #${tag}`);
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     // Filter by tag
     await page.locator(".status-bar .status-tag").filter({ hasText: tag }).click();
@@ -106,7 +106,7 @@ test.describe("Tags", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("---\ntags: [frontend, design]\n---\n\nNote body");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "frontend" })).toBeVisible();
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "design" })).toBeVisible();

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { register, createVault, waitForSaved, clearAuth } from "./helpers";
+import { register, createVault, waitForAutosave, clearAuth } from "./helpers";
 
 test.describe("YAML front-matter", () => {
   test.beforeEach(async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe("YAML front-matter", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("---\ntitle: Front Matter Title\n---\n\nNote body here");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     // After save the note title in sidebar/toolbar should reflect front-matter title
     // (the server sets the title from front-matter on save)
@@ -29,7 +29,7 @@ test.describe("YAML front-matter", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("---\ntags: [backend, api]\n---\n\nNote content");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "backend" })).toBeVisible();
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "api" })).toBeVisible();
@@ -40,7 +40,7 @@ test.describe("YAML front-matter", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("---\ntags: [fromfm]\n---\n\nThis also has #inlinetag");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "fromfm" })).toBeVisible();
     await expect(page.locator(".status-bar .status-tag").filter({ hasText: "inlinetag" })).toBeVisible();
@@ -51,7 +51,7 @@ test.describe("YAML front-matter", () => {
     const textarea = page.locator(".editor-textarea, textarea").first();
     await textarea.click();
     await textarea.fill("Just a plain note with no front-matter");
-    await waitForSaved(page);
+    await waitForAutosave(page);
 
     await expect(page.locator(".status-bar .status-tag")).toHaveCount(0);
   });

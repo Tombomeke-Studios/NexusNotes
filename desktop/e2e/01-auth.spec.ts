@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, login, clearAuth, clearLocalStorage } from "./helpers";
+import { uid, register, login, clearAuth, openCommandPalette } from "./helpers";
 
 test.describe("Authentication", () => {
   test.beforeEach(async ({ page }) => {
@@ -70,9 +70,9 @@ test.describe("Authentication", () => {
   test("logs out and returns to auth screen", async ({ page }) => {
     await register(page);
     // Open command palette and sign out
-    await page.keyboard.press("Control+Shift+P");
-    await page.locator(".command-input, .command-palette input").fill("Sign Out");
-    await page.locator("[class*='command-item'], [class*='palette-item']").filter({ hasText: /sign out/i }).click();
+    const input = await openCommandPalette(page);
+    await input.fill("Sign Out");
+    await page.locator(".quick-switcher-item").filter({ hasText: /sign out/i }).click();
 
     await expect(page.locator(".auth-container").first()).toBeVisible({ timeout: 5_000 });
   });

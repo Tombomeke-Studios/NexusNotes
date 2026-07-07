@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, createVault, waitForSaved, clearAuth } from "./helpers";
+import { register, createVault, waitForAutosave, clearAuth } from "./helpers";
 
 test.describe("Quick Switcher (Ctrl+P)", () => {
   test.beforeEach(async ({ page }) => {
@@ -10,7 +10,7 @@ test.describe("Quick Switcher (Ctrl+P)", () => {
 
   test("Ctrl+P opens the quick switcher panel", async ({ page }) => {
     await page.keyboard.press("Control+p");
-    await expect(page.locator(".quick-switcher, [class*='quick-switcher']")).toBeVisible();
+    await expect(page.locator(".quick-switcher")).toBeVisible();
   });
 
   test("Escape closes the quick switcher", async ({ page }) => {
@@ -27,17 +27,15 @@ test.describe("Quick Switcher (Ctrl+P)", () => {
     await title1.click({ clickCount: 3 });
     await title1.fill("AlphaNote");
     await title1.press("Tab");
-    await waitForSaved(page);
 
     await page.keyboard.press("Control+n");
     const title2 = page.locator(".editor-toolbar-title, input[class*='title']").first();
     await title2.click({ clickCount: 3 });
     await title2.fill("BetaNote");
     await title2.press("Tab");
-    await waitForSaved(page);
 
     await page.keyboard.press("Control+p");
-    await page.locator(".quick-switcher input, .quick-switcher-input").fill("Alpha");
+    await page.locator(".quick-switcher-input").fill("Alpha");
 
     await expect(page.locator(".quick-switcher-item").filter({ hasText: "AlphaNote" })).toBeVisible();
     await expect(page.locator(".quick-switcher-item").filter({ hasText: "BetaNote" })).not.toBeVisible();
@@ -49,10 +47,14 @@ test.describe("Quick Switcher (Ctrl+P)", () => {
     await titleInput.click({ clickCount: 3 });
     await titleInput.fill("NavigateMe");
     await titleInput.press("Tab");
-    await waitForSaved(page);
+    // Persist the rename via a content autosave so the server knows the title
+    const body = page.locator(".editor-textarea, textarea").first();
+    await body.click();
+    await body.fill("navigate me body");
+    await waitForAutosave(page);
 
     await page.keyboard.press("Control+p");
-    await page.locator(".quick-switcher input, .quick-switcher-input").fill("NavigateMe");
+    await page.locator(".quick-switcher-input").fill("NavigateMe");
     await page.keyboard.press("Enter");
 
     await expect(
@@ -63,12 +65,14 @@ test.describe("Quick Switcher (Ctrl+P)", () => {
 
   test("shows 'No results' for a query matching nothing", async ({ page }) => {
     await page.keyboard.press("Control+p");
-    await page.locator(".quick-switcher input, .quick-switcher-input").fill("xyzxyzxyz_nomatch");
+    await page.locator(".quick-switcher-input").fill("xyzxyzxyz_nomatch");
     await expect(page.locator("text=/no results/i")).toBeVisible();
   });
 });
 
-test.describe("Global Search (Ctrl+Shift+F)", () => {
+// The Ctrl+Shift+F global search UI ships with the Meilisearch full-text
+// search branch (PR #90). Enable these once that PR is merged into dev.
+test.describe.fixme("Global Search (Ctrl+Shift+F)", () => {
   test.beforeEach(async ({ page }) => {
     await clearAuth(page);
     await register(page);
@@ -77,7 +81,7 @@ test.describe("Global Search (Ctrl+Shift+F)", () => {
 
   test("Ctrl+Shift+F opens global search panel", async ({ page }) => {
     await page.keyboard.press("Control+Shift+F");
-    await expect(page.locator(".global-search, [class*='global-search']")).toBeVisible();
+    await expect(page.locator(".global-search")).toBeVisible();
   });
 
   test("Escape closes global search", async ({ page }) => {
@@ -99,9 +103,9 @@ test.describe("Global Search (Ctrl+Shift+F)", () => {
 
   test("global search appears in command palette", async ({ page }) => {
     await page.keyboard.press("Control+Shift+P");
-    await page.locator("[placeholder*='search commands' i], .command-input").fill("Global Search");
+    await page.getByPlaceholder("Type a command...").fill("Global Search");
     await expect(
-      page.locator("[class*='command'] li, [class*='palette-item']").filter({ hasText: /global search/i })
+      page.locator(".quick-switcher-item").filter({ hasText: /global search/i })
     ).toBeVisible();
   });
 });

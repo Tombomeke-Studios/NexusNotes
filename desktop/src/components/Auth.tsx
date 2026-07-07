@@ -38,10 +38,10 @@ export function Auth({ onAuth }: AuthProps) {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="auth-logo"><Logo size={36} /></div>
+        <div className="auth-logo"><Logo size={40} variant="dark" /></div>
         <h1 className="auth-title">NexusNotes</h1>
         <p className="auth-subtitle">
-          {isLogin ? "Welcome back" : "Create your account"}
+          {isLogin ? "Welcome back to your second brain" : "Create your account"}
         </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -77,7 +77,7 @@ export function Auth({ onAuth }: AuthProps) {
           <button type="submit" className="auth-button" disabled={loading}>
             {loading ? (
               <span className="spinner spinner--sm" style={{ margin: "0 auto", borderTopColor: "var(--bg-primary)" }} />
-            ) : isLogin ? "Sign In" : "Create Account"}
+            ) : isLogin ? "Sign in" : "Create account"}
           </button>
         </form>
 
@@ -88,10 +88,13 @@ export function Auth({ onAuth }: AuthProps) {
             setError("");
           }}
         >
-          {isLogin
-            ? "Don't have an account? Sign up"
-            : "Already have an account? Sign in"}
+          {isLogin ? "No account? Sign up" : "Have an account? Sign in"}
         </button>
+
+        <div className="auth-footer">
+          <span className="auth-footer-dot" />
+          Self-hosted &middot; end-to-end encrypted sync
+        </div>
       </div>
     </div>
   );

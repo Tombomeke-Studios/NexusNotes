@@ -14,7 +14,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > right-hand context panel, unified command palette, daily notes, and settings.
 
 - [x] Add design tokens and global shell styles for desktop redesign (#93)
-- [ ] Redesign authentication screen (#94)
+- [x] Redesign authentication screen (#94)
 - [ ] Build workspace shell: top bar, activity rail, resizable side panels (#95)
 - [ ] Rebuild left panel: file tree, tag chips, filter and sort popover, vault search (#96)
 - [ ] Add note tab bar with multiple open notes and graph tab (#97)

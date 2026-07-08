@@ -331,13 +331,76 @@ input:focus, textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   background: var(--bg-crust);
-  background-image:
-    radial-gradient(circle, rgba(108, 112, 134, 0.1) 1px, transparent 1px),
-    radial-gradient(ellipse 720px 480px at 22% 42%, rgba(203, 166, 247, 0.13) 0%, transparent 60%),
-    radial-gradient(ellipse 640px 420px at 78% 62%, rgba(137, 180, 250, 0.09) 0%, transparent 60%);
-  background-size: 28px 28px, 100% 100%, 100% 100%;
+  /* Subtle dot grid; the moving colour comes from .auth-aurora below. */
+  background-image: radial-gradient(circle, rgba(108, 112, 134, 0.1) 1px, transparent 1px);
+  background-size: 28px 28px;
   animation: fadeIn 0.5s ease;
+}
+
+/* Ambient drifting "aurora" blobs and a soft glow that trails the cursor, both
+   sitting behind the auth card. Pointer-events off so they never block input;
+   only transform/opacity animate. */
+.auth-aurora,
+.auth-cursor-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.auth-aurora::before,
+.auth-aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.55;
+}
+
+.auth-aurora::before {
+  width: 46vw;
+  height: 40vw;
+  left: 2%;
+  top: 6%;
+  background: radial-gradient(circle, rgba(203, 166, 247, 0.30), transparent 68%);
+  animation: authDriftA 20s ease-in-out infinite;
+}
+
+.auth-aurora::after {
+  width: 42vw;
+  height: 38vw;
+  right: 2%;
+  bottom: 4%;
+  background: radial-gradient(circle, rgba(137, 180, 250, 0.24), transparent 68%);
+  animation: authDriftB 26s ease-in-out infinite;
+}
+
+@keyframes authDriftA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(6vw, -4vw) scale(1.08); }
+}
+
+@keyframes authDriftB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-5vw, 3vw) scale(1.06); }
+}
+
+.auth-cursor-glow::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 440px;
+  height: 440px;
+  margin: -220px 0 0 -220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(203, 166, 247, 0.16), transparent 65%);
+  transform: translate(var(--mx, 50vw), var(--my, 45vh));
+  transition: transform 0.18s ease-out;
+  will-change: transform;
 }
 
 /* Draggable strip across the top of the login screen so a frameless window can
@@ -361,6 +424,8 @@ input:focus, textarea:focus {
 }
 
 .auth-card {
+  position: relative;
+  z-index: 1;
   width: 400px;
   padding: 44px 40px 32px;
   background: rgba(24, 24, 37, 0.88);
@@ -370,6 +435,15 @@ input:focus, textarea:focus {
   text-align: center;
   box-shadow: 0 32px 90px rgba(0, 0, 0, 0.55);
   animation: riseIn 0.5s var(--easing-spring);
+}
+
+/* Keep a label next to the spinner while submitting so the button never looks
+   empty — including when the request then fails. */
+.auth-button-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .auth-logo {

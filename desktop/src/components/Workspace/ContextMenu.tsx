@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import "./Workspace.css";
 
 export interface ContextMenuItem {
@@ -15,7 +16,9 @@ interface ContextMenuProps {
 }
 
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
-  return (
+  // Portal to the body so the menu is never offset or clipped by a transformed
+  // or scrolling ancestor (e.g. when opened from inside the sidebar panel).
+  return createPortal(
     <div
       className="ctx-overlay"
       onClick={onClose}
@@ -38,6 +41,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           </button>
         ))}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

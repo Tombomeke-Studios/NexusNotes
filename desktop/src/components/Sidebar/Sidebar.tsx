@@ -140,7 +140,11 @@ export function Sidebar({
     onMoveNote,
     onFolderContextMenu: (e, path) => {
       e.preventDefault();
-      setFolderMenu({ x: Math.min(e.clientX, window.innerWidth - 180), y: e.clientY, path });
+      setFolderMenu({
+        x: Math.min(e.clientX, window.innerWidth - 190),
+        y: Math.min(e.clientY, window.innerHeight - 110),
+        path,
+      });
     },
   };
 

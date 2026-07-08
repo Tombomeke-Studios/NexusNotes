@@ -1,11 +1,117 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 )
+
+// fakeUserStore is a hand-rolled UserStore for exercising the auth service
+// without a database.
+type fakeUserStore struct {
+	createErr  error
+	byEmail    *model.User
+	byEmailErr error
+}
+
+func (f *fakeUserStore) Create(context.Context, *model.User) error { return f.createErr }
+func (f *fakeUserStore) GetByEmail(context.Context, string) (*model.User, error) {
+	return f.byEmail, f.byEmailErr
+}
+func (f *fakeUserStore) GetByID(context.Context, string) (*model.User, error) {
+	return f.byEmail, f.byEmailErr
+}
+
+func newAuthService(store UserStore) *AuthService {
+	return NewAuthService(store, "test-secret")
+}
+
+func TestRegister_DuplicateEmail(t *testing.T) {
+	s := newAuthService(&fakeUserStore{createErr: repository.ErrDuplicateEmail})
+	_, _, err := s.Register(context.Background(), "a@example.com", "password123", "A")
+	if !errors.Is(err, ErrEmailTaken) {
+		t.Fatalf("err = %v, want ErrEmailTaken", err)
+	}
+}
+
+func TestRegister_InfraErrorNotMasked(t *testing.T) {
+	// A database/connection failure must NOT be reported as "email taken".
+	s := newAuthService(&fakeUserStore{createErr: errors.New("connection refused")})
+	_, _, err := s.Register(context.Background(), "a@example.com", "password123", "A")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if errors.Is(err, ErrEmailTaken) {
+		t.Fatalf("infra error must not be masked as ErrEmailTaken, got %v", err)
+	}
+}
+
+func TestRegister_Success(t *testing.T) {
+	s := newAuthService(&fakeUserStore{})
+	user, token, err := s.Register(context.Background(), "a@example.com", "password123", "A")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if user == nil || token == "" {
+		t.Fatalf("want user and token, got user=%v token=%q", user, token)
+	}
+}
+
+func TestLogin_UserNotFound(t *testing.T) {
+	s := newAuthService(&fakeUserStore{byEmailErr: repository.ErrUserNotFound})
+	_, _, err := s.Login(context.Background(), "missing@example.com", "password123")
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("err = %v, want ErrInvalidCredentials", err)
+	}
+}
+
+func TestLogin_InfraErrorNotMasked(t *testing.T) {
+	// A database/connection failure must NOT be reported as "invalid credentials".
+	s := newAuthService(&fakeUserStore{byEmailErr: errors.New("connection refused")})
+	_, _, err := s.Login(context.Background(), "a@example.com", "password123")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("infra error must not be masked as ErrInvalidCredentials, got %v", err)
+	}
+}
+
+func TestLogin_WrongPassword(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
+	s := newAuthService(&fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: string(hash),
+	}})
+	_, _, err := s.Login(context.Background(), "a@example.com", "wrong-password")
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("err = %v, want ErrInvalidCredentials", err)
+	}
+}
+
+func TestLogin_Success(t *testing.T) {
+	hash, _ := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
+	s := newAuthService(&fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: string(hash),
+	}})
+	user, token, err := s.Login(context.Background(), "a@example.com", "correct-password")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if user == nil || token == "" {
+		t.Fatalf("want user and token, got user=%v token=%q", user, token)
+	}
+}
 
 func TestAuthService_GenerateAndValidateToken(t *testing.T) {
 	s := &AuthService{jwtSecret: []byte("test-secret")}

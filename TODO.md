@@ -28,24 +28,12 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/login-window-controls-and-maximized` - Login window controls, maximized startup, dev scripts
-
-> Fixes for frameless-window usability and dev-startup friction, plus one-command
-> dev scripts. Implemented and verified (lint + typecheck green); pending PR to `dev`.
-
-- [x] Login screen: draggable title bar with minimize/maximize/close (#110)
-- [x] Open the desktop window maximized on launch (#111)
-- [x] Add one-command dev startup scripts: `dev-web.sh` + `dev-app.sh` (#112)
-
----
-
 ## Reported issues (triage) - not yet started
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
 - [ ] Fix: animated logo not visible where users expect it (login/sidebar use static variants) (#108)
 - [ ] Folder organization: create folders and move/drag notes into them (#109)
-- [ ] Fix: backend masks DB errors as "email taken" / "invalid credentials" when the DB is down (#113)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -777,6 +765,16 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/auth-error-typing` - Stop masking DB errors as auth failures (PR #115)
+
+- [x] Distinguish unique-violation and not-found from infra errors; propagate infra failures as 500 (#113)
+
+### `feature/login-window-controls-and-maximized` - Login controls, maximized startup, dev scripts (PR #114)
+
+- [x] Login screen: draggable title bar with minimize/maximize/close (#110)
+- [x] Open the desktop window maximized on launch (#111)
+- [x] Add one-command dev startup scripts: `dev-web.sh` + `dev-app.sh` (#112)
 
 ### `feature/tags-and-metadata` - Inline tags and YAML front-matter (PR #80)
 

@@ -326,6 +326,7 @@ input:focus, textarea:focus {
 
 /* --- Auth --- */
 .auth-container {
+  position: relative;
   height: 100vh;
   display: flex;
   align-items: center;
@@ -337,6 +338,26 @@ input:focus, textarea:focus {
     radial-gradient(ellipse 640px 420px at 78% 62%, rgba(137, 180, 250, 0.09) 0%, transparent 60%);
   background-size: 28px 28px, 100% 100%, 100% 100%;
   animation: fadeIn 0.5s ease;
+}
+
+/* Draggable strip across the top of the login screen so a frameless window can
+   still be moved, minimized or closed before the user has an account. */
+.auth-titlebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px;
+  z-index: 10;
+}
+
+/* The controls themselves must stay clickable within the drag region. */
+.auth-titlebar .win-controls {
+  -webkit-app-region: no-drag;
 }
 
 .auth-card {

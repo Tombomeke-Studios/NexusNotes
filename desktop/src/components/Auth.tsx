@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Logo } from "./Logo";
+import { WindowControls } from "./Workspace/WindowControls";
+import { isTauriWindow } from "../lib/platform";
 import { auth } from "../lib/api";
 import type { User } from "../lib/types";
 
@@ -37,6 +39,9 @@ export function Auth({ onAuth }: AuthProps) {
 
   return (
     <div className="auth-container">
+      <div className="auth-titlebar" data-tauri-drag-region>
+        {isTauriWindow && <WindowControls />}
+      </div>
       <div className="auth-card">
         <div className="auth-logo"><Logo size={40} variant="dark" /></div>
         <h1 className="auth-title">NexusNotes</h1>

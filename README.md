@@ -50,6 +50,26 @@ the [Rust toolchain](https://www.rust-lang.org/tools/install) and, on Windows,
 [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) (preinstalled
 on Windows 10/11).
 
+### Easiest: one command (recommended)
+
+Two scripts wrap the whole stack — Docker infra, migrations, backend, and the
+UI — so you never have to juggle terminals. Run from the repo root (Git Bash on
+Windows):
+
+```bash
+./scripts/dev-web.sh   # backend + web UI in the browser (fast, no Rust) — quick UI testing
+./scripts/dev-app.sh   # backend + native Tauri window — full app testing
+```
+
+Each script brings Postgres + Redis up (leaving them running between sessions),
+applies migrations, starts the Go backend (reusing one already on `:8080` if
+healthy), then launches the UI in the foreground. Press `Ctrl+C` to stop the UI
+and backend; the Docker infra keeps running. Stop it with
+`docker compose -f docker-compose.dev.yml down`.
+
+The manual steps below are the same thing spelled out, for when you want to run
+a single piece on its own.
+
 ### 1. Infra + backend (always required)
 
 Run from the repo root, each in its own terminal (leave them running).

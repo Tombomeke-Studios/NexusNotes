@@ -125,6 +125,8 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 
 | What | Command (repo root) |
 |---|---|
+| Dev: full stack + web UI (browser) | `./scripts/dev-web.sh` |
+| Dev: full stack + native app (Tauri) | `./scripts/dev-app.sh` |
 | Start all services (Docker) | `docker compose up` |
 | Start all services (dev) | `docker compose -f docker-compose.dev.yml up` |
 | Run Go tests | `cd services/sync-service && go test ./...` |
@@ -158,6 +160,7 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src/` | React frontend |
 | `src/App.tsx` | Root component, workspace layout, keyboard shortcuts |
 | `src/components/Workspace/` | Shell chrome: top bar (breadcrumb, window controls), activity rail, panel styles |
+| `src/components/Workspace/WindowControls.tsx` | Native minimize/maximize/close controls (reused by top bar + login screen) |
 | `src/components/Editor/` | Markdown editor with live preview |
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
 | `src/components/RightPanel/` | Right panel: outline, backlinks, note info |
@@ -166,11 +169,13 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src/lib/sync.ts` | WebSocket sync client |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
+| `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |
 | `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 
 ### Infrastructure
 | Path | Contents |
 |---|---|
+| `scripts/dev-web.sh` / `scripts/dev-app.sh` | One-command dev startup (infra + backend + web/native UI); share `scripts/_stack.sh` |
 | `docker-compose.yml` | Production stack (all services) |
 | `docker-compose.dev.yml` | Development stack with hot reload |
 | `.github/workflows/validate.yml` | CI pipeline: lint, test, build |

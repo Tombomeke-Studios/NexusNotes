@@ -45,6 +45,24 @@ describe("buildTree", () => {
     expect(tree[1].type).toBe("note");
   });
 
+  it("keeps input note order when keepNoteOrder is set", () => {
+    const notes = [
+      makeNote({ id: "1", title: "Zebra", path: "" }),
+      makeNote({ id: "2", title: "Alpha", path: "" }),
+    ];
+    const tree = buildTree(notes, { keepNoteOrder: true });
+    expect(tree.map((n) => n.name)).toEqual(["Zebra", "Alpha"]);
+  });
+
+  it("sorts notes alphabetically by default", () => {
+    const notes = [
+      makeNote({ id: "1", title: "Zebra", path: "" }),
+      makeNote({ id: "2", title: "Alpha", path: "" }),
+    ];
+    const tree = buildTree(notes);
+    expect(tree.map((n) => n.name)).toEqual(["Alpha", "Zebra"]);
+  });
+
   it("sorts folders before notes", () => {
     const notes = [
       makeNote({ id: "1", title: "Zebra", path: "" }),

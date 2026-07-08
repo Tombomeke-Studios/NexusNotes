@@ -46,3 +46,6 @@ build/
 desktop/test-results/
 desktop/e2e-report/
 desktop/playwright-report/
+
+# Tauri v2 generated files
+desktop/src-tauri/gen/

@@ -7,6 +7,10 @@ describe("wikiUrlTransform", () => {
     expect(wikiUrlTransform("wikilink://Note#Section")).toBe("wikilink://Note#Section");
   });
 
+  it("keeps tag protocol URLs intact", () => {
+    expect(wikiUrlTransform("tag://research")).toBe("tag://research");
+  });
+
   it("keeps standard web URLs", () => {
     expect(wikiUrlTransform("https://example.com/page")).toBe("https://example.com/page");
     expect(wikiUrlTransform("mailto:a@b.c")).toBe("mailto:a@b.c");

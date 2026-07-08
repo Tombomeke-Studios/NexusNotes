@@ -1,6 +1,11 @@
 import type { Note, TreeNode } from "./types";
 
-export function buildTree(notes: Note[]): TreeNode[] {
+export interface BuildTreeOptions {
+  /** Preserve the input order of notes (folders stay alphabetical and first). */
+  keepNoteOrder?: boolean;
+}
+
+export function buildTree(notes: Note[], options: BuildTreeOptions = {}): TreeNode[] {
   const root: TreeNode[] = [];
 
   for (const note of notes) {
@@ -30,16 +35,17 @@ export function buildTree(notes: Note[]): TreeNode[] {
     });
   }
 
-  sortTree(root);
+  sortTree(root, options.keepNoteOrder ?? false);
   return root;
 }
 
-function sortTree(nodes: TreeNode[]) {
+function sortTree(nodes: TreeNode[], keepNoteOrder: boolean) {
   nodes.sort((a, b) => {
     if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+    if (a.type === "note" && keepNoteOrder) return 0;
     return a.name.localeCompare(b.name);
   });
   for (const node of nodes) {
-    if (node.children) sortTree(node.children);
+    if (node.children) sortTree(node.children, keepNoteOrder);
   }
 }

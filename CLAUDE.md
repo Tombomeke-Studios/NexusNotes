@@ -156,12 +156,17 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 |---|---|
 | `src-tauri/` | Tauri backend (Rust config, commands) |
 | `src/` | React frontend |
-| `src/App.tsx` | Root component, routing |
+| `src/App.tsx` | Root component, workspace layout, keyboard shortcuts |
+| `src/components/Workspace/` | Shell chrome: top bar (breadcrumb, window controls), activity rail, panel styles |
 | `src/components/Editor/` | Markdown editor with live preview |
-| `src/components/Sidebar/` | File tree, vault navigation |
-| `src/components/Search/` | Quick switcher, global search |
+| `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
+| `src/components/RightPanel/` | Right panel: outline, backlinks, note info |
+| `src/components/CommandPalette.tsx` | Unified palette: quick-open notes + `>` command mode |
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
+| `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
+| `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
+| `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 
 ### Infrastructure
 | Path | Contents |

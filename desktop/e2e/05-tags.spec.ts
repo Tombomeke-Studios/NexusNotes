@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, createVault, waitForAutosave, clearAuth } from "./helpers";
+import { uid, register, createVault, createNote, waitForAutosave, clearAuth } from "./helpers";
 
+// In the redesign, tag pills live in the sidebar Tags section and the preview
+// (as clickable #tag chips) — not in the status bar.
 test.describe("Tags", () => {
   test.beforeEach(async ({ page }) => {
     await clearAuth(page);
@@ -8,107 +10,94 @@ test.describe("Tags", () => {
     await createVault(page);
   });
 
-  test("tag pills appear in status bar when note contains #tags", async ({ page }) => {
+  test("tag chips appear in the sidebar when a note contains #tags", async ({ page }) => {
     await page.keyboard.press("Control+n");
-    const textarea = page.locator(".editor-textarea, textarea").first();
+    const textarea = page.locator(".editor-textarea").first();
     await textarea.click();
     await textarea.fill("This note has #work and #project tags");
     await waitForAutosave(page);
 
-    await expect(page.locator(".status-bar .status-tag").filter({ hasText: "work" })).toBeVisible();
-    await expect(page.locator(".status-bar .status-tag").filter({ hasText: "project" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "work" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "project" })).toBeVisible();
   });
 
-  test("no tag pills shown for notes without #tags", async ({ page }) => {
+  test("no tag chips shown for notes without #tags", async ({ page }) => {
     await page.keyboard.press("Control+n");
-    const textarea = page.locator(".editor-textarea, textarea").first();
+    const textarea = page.locator(".editor-textarea").first();
     await textarea.click();
     await textarea.fill("Plain note with no tags");
     await waitForAutosave(page);
 
-    await expect(page.locator(".status-bar .status-tag")).toHaveCount(0);
+    await expect(page.locator(".sidebar-tags")).toHaveCount(0);
   });
 
-  test("#tag inside code block is not shown as a pill", async ({ page }) => {
+  test("#tag inside a code block is not shown as a chip", async ({ page }) => {
     await page.keyboard.press("Control+n");
-    const textarea = page.locator(".editor-textarea, textarea").first();
+    const textarea = page.locator(".editor-textarea").first();
     await textarea.click();
     await textarea.fill("```\n#include <stdio.h>\n```");
     await waitForAutosave(page);
 
-    await expect(page.locator(".status-bar .status-tag")).toHaveCount(0);
+    await expect(page.locator(".sidebar-tags")).toHaveCount(0);
   });
 
-  test("clicking a tag pill in status bar filters the sidebar", async ({ page }) => {
+  test("clicking a tag pill in the preview filters the sidebar", async ({ page }) => {
     const tag = `e2etag${uid().replace(/-/g, "")}`;
 
-    // Create a tagged note with a distinct, persisted title
-    await page.keyboard.press("Control+n");
-    const title1 = page.locator(".editor-toolbar-title, input[class*='title']").first();
-    await title1.click({ clickCount: 3 });
-    await title1.fill("Tagged Note");
-    await title1.press("Tab");
-    const textarea1 = page.locator(".editor-textarea, textarea").first();
+    await createNote(page, "Tagged Note");
+    const textarea1 = page.locator(".editor-textarea").first();
     await textarea1.click();
     await textarea1.fill(`Tagged note #${tag}`);
     await waitForAutosave(page);
 
-    // Create an untagged note
     await page.keyboard.press("Control+n");
-    const textarea2 = page.locator(".editor-textarea, textarea").first();
+    const textarea2 = page.locator(".editor-textarea").first();
     await textarea2.click();
     await textarea2.fill("Untagged note");
     await waitForAutosave(page);
 
-    // Navigate back to the tagged note and click the tag pill
-    await page.locator(".sidebar-files .tree-note").filter({ hasText: "Tagged Note" }).click();
-    await page.locator(`.status-bar .status-tag`).filter({ hasText: tag }).click();
+    // Reopen the tagged note and click its preview tag pill
+    await page.locator(".sidebar-tree .tree-note").filter({ hasText: "Tagged Note" }).click();
+    await page.locator(".editor-preview .preview-tag").filter({ hasText: tag }).click();
 
-    // Sidebar should show filter badge
-    await expect(page.locator(".sidebar-filter-badge")).toBeVisible();
-    // Only 1 note should be visible
-    await expect(page.locator(".sidebar-files .tree-note")).toHaveCount(1);
+    await expect(page.locator(".sidebar-filter-banner")).toBeVisible();
+    await expect(page.locator(".sidebar-tree .tree-note")).toHaveCount(1);
   });
 
-  test("tags panel appears in sidebar and lists vault tags", async ({ page }) => {
+  test("sidebar Tags section lists vault tags", async ({ page }) => {
     const tag = `sidebartag${uid().replace(/-/g, "")}`;
     await page.keyboard.press("Control+n");
-    const textarea = page.locator(".editor-textarea, textarea").first();
+    const textarea = page.locator(".editor-textarea").first();
     await textarea.click();
     await textarea.fill(`Note with #${tag}`);
     await waitForAutosave(page);
 
-    // Tags section appears at the bottom of the sidebar, expanded by default
-    const tagsSection = page.locator(".sidebar-tags-section");
-    await expect(tagsSection).toBeVisible();
-    await expect(tagsSection.locator(".sidebar-tag-label").filter({ hasText: tag })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: tag })).toBeVisible();
   });
 
-  test("clearing tag filter shows all notes again", async ({ page }) => {
+  test("clearing the tag filter shows all notes again", async ({ page }) => {
     const tag = `clrtag${uid().replace(/-/g, "")}`;
     await page.keyboard.press("Control+n");
-    const textarea = page.locator(".editor-textarea, textarea").first();
+    const textarea = page.locator(".editor-textarea").first();
     await textarea.click();
     await textarea.fill(`Note #${tag}`);
     await waitForAutosave(page);
 
-    // Filter by tag
-    await page.locator(".status-bar .status-tag").filter({ hasText: tag }).click();
-    await expect(page.locator(".sidebar-filter-badge")).toBeVisible();
+    await page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: tag }).click();
+    await expect(page.locator(".sidebar-filter-banner")).toBeVisible();
 
-    // Clear the filter
-    await page.locator(".sidebar-section-header button[title*='clear' i], .sidebar-filter-badge + button, button:has-text('×')").first().click();
-    await expect(page.locator(".sidebar-filter-badge")).not.toBeVisible();
+    await page.locator(".sidebar-filter-banner button").click();
+    await expect(page.locator(".sidebar-filter-banner")).not.toBeVisible();
   });
 
-  test("YAML front-matter tags are included as tag pills", async ({ page }) => {
+  test("YAML front-matter tags appear as sidebar chips", async ({ page }) => {
     await page.keyboard.press("Control+n");
-    const textarea = page.locator(".editor-textarea, textarea").first();
+    const textarea = page.locator(".editor-textarea").first();
     await textarea.click();
     await textarea.fill("---\ntags: [frontend, design]\n---\n\nNote body");
     await waitForAutosave(page);
 
-    await expect(page.locator(".status-bar .status-tag").filter({ hasText: "frontend" })).toBeVisible();
-    await expect(page.locator(".status-bar .status-tag").filter({ hasText: "design" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "frontend" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "design" })).toBeVisible();
   });
 });

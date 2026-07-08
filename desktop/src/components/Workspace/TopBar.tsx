@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Logo } from "../Logo";
 import { WindowControls } from "./WindowControls";
 import { isTauriWindow } from "../../lib/platform";
@@ -6,6 +7,8 @@ import "./Workspace.css";
 interface TopBarProps {
   vaultName: string;
   noteTitle: string | null;
+  /** Folder path of the active note ("" = root); shown between vault and title. */
+  notePath?: string;
   syncStatus: "saved" | "saving" | "unsaved" | "idle";
   leftOpen: boolean;
   rightOpen: boolean;
@@ -13,6 +16,12 @@ interface TopBarProps {
   onToggleLeft: () => void;
   onToggleRight: () => void;
 }
+
+const CrumbSep = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="topbar-crumb-sep">
+    <path d="M3.5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 const SYNC_MAP = {
   saved: { color: "var(--success)", label: "Synced", pulse: false },
@@ -24,6 +33,7 @@ const SYNC_MAP = {
 export function TopBar({
   vaultName,
   noteTitle,
+  notePath,
   syncStatus,
   leftOpen,
   rightOpen,
@@ -32,6 +42,7 @@ export function TopBar({
   onToggleRight,
 }: TopBarProps) {
   const sync = SYNC_MAP[syncStatus];
+  const folderSegments = notePath ? notePath.split("/").filter(Boolean) : [];
 
   return (
     <div className="topbar" data-tauri-drag-region>
@@ -40,11 +51,16 @@ export function TopBar({
       </div>
       <div className="topbar-crumbs">
         <span className="topbar-crumb-vault">{vaultName}</span>
+        {noteTitle &&
+          folderSegments.map((seg, i) => (
+            <Fragment key={i}>
+              <CrumbSep />
+              <span className="topbar-crumb-folder">{seg}</span>
+            </Fragment>
+          ))}
         {noteTitle && (
           <>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="topbar-crumb-sep">
-              <path d="M3.5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <CrumbSep />
             <span className="topbar-crumb-note">{noteTitle}</span>
           </>
         )}

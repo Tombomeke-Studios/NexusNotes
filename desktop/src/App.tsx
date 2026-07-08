@@ -600,6 +600,7 @@ export default function App() {
       <TopBar
         vaultName={activeVault?.name ?? "NexusNotes"}
         noteTitle={graphActive ? "Graph" : activeNote?.title ?? null}
+        notePath={graphActive ? "" : activeNote?.path ?? ""}
         syncStatus={saveStatus}
         leftOpen={prefs.leftOpen}
         rightOpen={prefs.rightOpen}

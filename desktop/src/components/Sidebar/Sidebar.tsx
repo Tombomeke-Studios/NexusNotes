@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
 import { ROOT_FOLDER } from "../../lib/noteFilter";
@@ -501,12 +502,14 @@ export function Sidebar({
         ))}
       </div>
 
-      {marquee && (
-        <div
-          className="tree-marquee"
-          style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }}
-        />
-      )}
+      {marquee &&
+        createPortal(
+          <div
+            className="tree-marquee"
+            style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }}
+          />,
+          document.body,
+        )}
 
       {folderMenu && (
         <ContextMenu

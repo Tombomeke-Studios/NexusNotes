@@ -32,7 +32,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-- [ ] Duplicate note created on create (WS `note:created` races the un-deduped local append) (#132)
+> (no open triage items)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -764,6 +764,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/dedup-note-create` - No duplicate notes on create (PR #134)
+
+- [x] Dedupe local note appends so the WS `note:created` echo can't duplicate a created note (#132)
 
 ### `feature/daily-note-path` - Daily notes live in the Daily folder (PR #131)
 

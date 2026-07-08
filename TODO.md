@@ -32,7 +32,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-- [ ] WebSocket sync fails: handshake 500 'response does not implement http.Hijacker' (#122)
+- [ ] Daily notes nest oddly (`Daily/<date>.md` becomes a folder); daily note path should be a folder
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -764,6 +764,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/ws-hijacker` - Fix WebSocket sync handshake (PR #130)
+
+- [x] Make the logging middleware's response writer implement http.Hijacker (and Flusher) so the WebSocket upgrade works (#122)
 
 ### `feature/graph-contain-forces` - Keep graph nodes contained on drag (PR #129)
 

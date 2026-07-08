@@ -371,6 +371,9 @@
   transition: background 0.13s ease, color 0.13s ease;
   white-space: nowrap;
   overflow: hidden;
+  /* Don't let Ctrl/Shift multi-select clicks start a native text selection. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tree-item:hover {

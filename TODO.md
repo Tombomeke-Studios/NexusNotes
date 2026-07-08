@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/graph-contain-forces` - Keep graph nodes contained on drag (PR #129)
+
+- [x] Cap charge range and use forceX/forceY centering so dragging a node no longer flings the rest off-screen (#128)
+
 ### `feature/breadcrumb-folder-path` - Show folder path in the breadcrumb (PR #127)
 
 - [x] Render the active note's folder path between the vault and the title (#126)

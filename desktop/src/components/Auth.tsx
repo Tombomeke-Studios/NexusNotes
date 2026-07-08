@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Logo } from "./Logo";
+import { AuthBackground } from "./AuthBackground";
 import { WindowControls } from "./Workspace/WindowControls";
 import { isTauriWindow } from "../lib/platform";
 import { auth } from "../lib/api";
@@ -16,6 +17,21 @@ export function Auth({ onAuth }: AuthProps) {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const glowRef = useRef<HTMLDivElement>(null);
+
+  // Track the pointer for the background: the cursor-following glow (--mx/--my
+  // in px) and a subtle parallax that nudges the aurora (--px/--py, -0.5..0.5).
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (glowRef.current) {
+      glowRef.current.style.setProperty("--mx", `${x}px`);
+      glowRef.current.style.setProperty("--my", `${y}px`);
+    }
+    e.currentTarget.style.setProperty("--px", `${x / rect.width - 0.5}`);
+    e.currentTarget.style.setProperty("--py", `${y / rect.height - 0.5}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,14 +47,26 @@ export function Auth({ onAuth }: AuthProps) {
         onAuth(user);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      // A network failure (server unreachable) throws a TypeError from fetch.
+      // Call that out clearly; genuine API errors (wrong password, email taken)
+      // keep their own message; anything else falls back to a calm generic.
+      const message =
+        err instanceof TypeError
+          ? "The server is currently unavailable. Please try again in a moment."
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong. Please try again.";
+      setError(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-container">
+    <div className="auth-container" onPointerMove={handlePointerMove}>
+      <div className="auth-aurora" aria-hidden="true" />
+      <AuthBackground />
+      <div className="auth-cursor-glow" ref={glowRef} aria-hidden="true" />
       <div className="auth-titlebar" data-tauri-drag-region>
         {isTauriWindow && <WindowControls />}
       </div>
@@ -81,7 +109,10 @@ export function Auth({ onAuth }: AuthProps) {
 
           <button type="submit" className="auth-button" disabled={loading}>
             {loading ? (
-              <span className="spinner spinner--sm" style={{ margin: "0 auto", borderTopColor: "var(--bg-primary)" }} />
+              <span className="auth-button-loading">
+                <span className="spinner spinner--sm" style={{ borderTopColor: "var(--bg-primary)" }} />
+                {isLogin ? "Signing in…" : "Creating account…"}
+              </span>
             ) : isLogin ? "Sign in" : "Create account"}
           </button>
         </form>

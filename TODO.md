@@ -765,6 +765,11 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/auth-animated-background` - Auth screen polish (PR #119)
+
+- [x] Animated, mouse-reactive background on the login/signup screen (#117)
+- [x] Keep the submit button label while loading; calm error when the server is unreachable (#118)
+
 ### `feature/animated-login-logo` - Animate the login screen logo (PR #116)
 
 - [x] Animate the auth card logo in place, reusing the float/pulse/shimmer keyframes (#108)

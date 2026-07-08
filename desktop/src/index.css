@@ -87,17 +87,13 @@ body {
 
 textarea::placeholder, input::placeholder { color: var(--text-faint); }
 
-/* Reduce motion: applied via data attribute on the workspace root and via OS preference */
+/* Reduce motion: opt-in via the in-app Settings toggle (data-rm on the
+   workspace root), matching the design. We deliberately do NOT gate on the
+   OS prefers-reduced-motion here, since that silently disabled the animated
+   logo and all motion on systems with reduced motion enabled. */
 [data-rm="1"], [data-rm="1"] * {
   transition-duration: 0.01ms !important;
   animation-duration: 0.01ms !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
 }
 
 /* --- Animations --- */

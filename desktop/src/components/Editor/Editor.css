@@ -226,6 +226,24 @@
   color: var(--pink);
 }
 
+.code-block {
+  position: relative;
+  margin: 1em 0;
+}
+
+.code-lang {
+  position: absolute;
+  top: 9px;
+  right: 12px;
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .markdown-body pre {
   background: var(--bg-mantle);
   padding: 14px 16px;
@@ -233,6 +251,10 @@
   overflow-x: auto;
   margin: 1em 0;
   border: 1px solid var(--border-inner);
+}
+
+.code-block pre {
+  margin: 0;
 }
 
 .markdown-body pre code {

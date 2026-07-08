@@ -367,6 +367,11 @@ export default function App() {
         e.preventDefault();
         setShowSettings(true);
       }
+      if (e.key === "Escape") {
+        // Dismiss lightweight popovers that don't manage their own Escape
+        setShowCalendar(false);
+        setCtxMenu(null);
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

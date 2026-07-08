@@ -207,6 +207,21 @@ export function Editor({
     [],
   );
 
+  const renderPre = useCallback(
+    ({ children, ...rest }: React.HTMLAttributes<HTMLPreElement> & { children?: React.ReactNode }) => {
+      // Extract the fenced language from the child <code class="language-xxx">
+      const child = children as { props?: { className?: string } } | undefined;
+      const lang = /language-(\w+)/.exec(child?.props?.className || "")?.[1];
+      return (
+        <div className="code-block">
+          {lang && <span className="code-lang">{lang}</span>}
+          <pre {...rest}>{children}</pre>
+        </div>
+      );
+    },
+    [],
+  );
+
   const renderAnchor = useCallback(
     ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children?: React.ReactNode }) => {
       if (href?.startsWith("tag://")) {
@@ -353,7 +368,7 @@ export function Editor({
             <div className="markdown-body-inner">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkWikilinks, remarkTags]}
-                components={{ code: renderCode, a: renderAnchor, input: renderCheckbox }}
+                components={{ code: renderCode, pre: renderPre, a: renderAnchor, input: renderCheckbox }}
                 urlTransform={wikiUrlTransform}
               >
                 {content}

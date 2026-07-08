@@ -767,7 +767,7 @@ Lower priority items not focused on the desktop application.
 
 ### `feature/multi-select-notes` - Multi-select notes (PR #138)
 
-- [x] Ctrl/Shift click to multi-select notes; delete or drag the whole selection at once (#137)
+- [x] Multi-select notes: Ctrl+click toggle, Shift+drag marquee, click-away to deselect; delete or drag the whole selection at once; default alphabetical order (#137)
 
 ### `feature/unique-note-names` - Auto-number duplicate note names (PR #136)
 

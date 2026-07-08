@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildTree } from "./tree";
+import { buildTree, flattenTreeNoteIds } from "./tree";
 import type { Note } from "./types";
 
 function makeNote(overrides: Partial<Note>): Note {
@@ -88,5 +88,18 @@ describe("buildTree", () => {
     const work = tree.filter((n) => n.name === "Work");
     expect(work).toHaveLength(1); // not duplicated
     expect(work[0].children?.[0].type).toBe("note");
+  });
+});
+
+describe("flattenTreeNoteIds", () => {
+  it("returns note ids in depth-first visible order (folders' notes included)", () => {
+    const notes = [
+      makeNote({ id: "root1", title: "Zeta", path: "" }),
+      makeNote({ id: "f1", title: "Alpha", path: "Work" }),
+      makeNote({ id: "f2", title: "Beta", path: "Work" }),
+    ];
+    const tree = buildTree(notes);
+    // Folder "Work" sorts first; its notes Alpha, Beta; then root note Zeta.
+    expect(flattenTreeNoteIds(tree)).toEqual(["f1", "f2", "root1"]);
   });
 });

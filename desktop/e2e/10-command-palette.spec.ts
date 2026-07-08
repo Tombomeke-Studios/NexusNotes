@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { register, createVault, clearAuth, openCommandPalette } from "./helpers";
+import { register, createVault, clearAuth, openPalette } from "./helpers";
 
 test.describe("Command palette", () => {
   test.beforeEach(async ({ page }) => {
@@ -8,59 +8,47 @@ test.describe("Command palette", () => {
     await createVault(page);
   });
 
-  test("Ctrl+Shift+P opens the command palette", async ({ page }) => {
-    const input = await openCommandPalette(page);
+  test("Ctrl+Shift+P opens the palette in command mode", async ({ page }) => {
+    const input = await openPalette(page, "commands");
     await expect(input).toBeVisible();
-  });
-
-  test("command palette has a search input", async ({ page }) => {
-    const input = await openCommandPalette(page);
-    await expect(input).toBeVisible();
+    await expect(input).toHaveValue(">");
   });
 
   test("typing filters commands", async ({ page }) => {
-    const input = await openCommandPalette(page);
+    const input = await openPalette(page, "commands");
     await input.fill("new note");
-    await expect(
-      page.locator(".quick-switcher-item").filter({ hasText: /new note/i })
-    ).toBeVisible();
+    await expect(page.locator(".palette-item").filter({ hasText: /new note/i })).toBeVisible();
   });
 
-  test("selecting 'New Note' creates a note", async ({ page }) => {
-    const input = await openCommandPalette(page);
-    await input.fill("New Note");
+  test("selecting 'New note' creates a note", async ({ page }) => {
+    const input = await openPalette(page, "commands");
+    await input.fill("New note");
     await page.keyboard.press("Enter");
-    await expect(page.locator(".editor, .editor-container")).toBeVisible();
+    await expect(page.locator(".editor")).toBeVisible();
   });
 
-  test("command palette lists Quick Switcher command", async ({ page }) => {
-    const input = await openCommandPalette(page);
-    await input.fill("Quick Switcher");
-    await expect(
-      page.locator(".quick-switcher-item").filter({ hasText: /quick switcher/i })
-    ).toBeVisible();
+  test("palette lists the Open graph command", async ({ page }) => {
+    const input = await openPalette(page, "commands");
+    await input.fill("graph");
+    await expect(page.locator(".palette-item").filter({ hasText: /open graph/i })).toBeVisible();
   });
 
-  test("command palette lists Global Search command", async ({ page }) => {
-    const input = await openCommandPalette(page);
-    await input.fill("Global Search");
-    await expect(
-      page.locator(".quick-switcher-item").filter({ hasText: /global search/i })
-    ).toBeVisible();
+  test("palette lists the Global search command", async ({ page }) => {
+    const input = await openPalette(page, "commands");
+    await input.fill("Global search");
+    await expect(page.locator(".palette-item").filter({ hasText: /global search/i })).toBeVisible();
   });
 
-  test("command palette lists Sign Out command", async ({ page }) => {
-    const input = await openCommandPalette(page);
-    await input.fill("Sign Out");
-    await expect(
-      page.locator(".quick-switcher-item").filter({ hasText: /sign out/i })
-    ).toBeVisible();
+  test("palette lists the Sign out command", async ({ page }) => {
+    const input = await openPalette(page, "commands");
+    await input.fill("Sign out");
+    await expect(page.locator(".palette-item").filter({ hasText: /sign out/i })).toBeVisible();
   });
 
-  test("clicking Sign Out logs out", async ({ page }) => {
-    const input = await openCommandPalette(page);
-    await input.fill("Sign Out");
-    await page.locator(".quick-switcher-item").filter({ hasText: /sign out/i }).click();
+  test("clicking Sign out logs out", async ({ page }) => {
+    const input = await openPalette(page, "commands");
+    await input.fill("Sign out");
+    await page.locator(".palette-item").filter({ hasText: /sign out/i }).click();
     await expect(page.locator(".auth-container").first()).toBeVisible({ timeout: 5_000 });
   });
 });

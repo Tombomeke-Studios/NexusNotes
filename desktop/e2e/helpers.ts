@@ -16,7 +16,7 @@ export async function register(page: Page, email?: string, password = "Password1
   const toggleBtn = page.locator(".auth-toggle");
   if (await toggleBtn.isVisible().catch(() => false)) {
     const btnText = await toggleBtn.textContent();
-    if (btnText && /sign up|sign in/i.test(btnText) && !/already have/i.test(btnText)) {
+    if (btnText && /sign up|no account/i.test(btnText) && !/have an account/i.test(btnText)) {
       await toggleBtn.click();
     }
   }
@@ -35,8 +35,8 @@ export async function login(page: Page, email: string, password = "Password1!") 
   const toggleBtn = page.locator(".auth-toggle");
   if (await toggleBtn.isVisible().catch(() => false)) {
     const btnText = await toggleBtn.textContent();
-    // If toggle says "Sign up" we're already on login form; if it says "Sign in" we need to switch
-    if (btnText && /already have/i.test(btnText)) {
+    // If toggle says "Have an account? Sign in" we're on the register form
+    if (btnText && /have an account/i.test(btnText)) {
       await toggleBtn.click();
     }
   }
@@ -48,28 +48,30 @@ export async function login(page: Page, email: string, password = "Password1!") 
 
 export async function createVault(page: Page, name?: string) {
   const vaultName = name ?? `Vault-${uid()}`;
-  // Click "New vault" or the vault creation button
-  const newVaultBtn = page.getByRole("button", { name: /new vault/i });
-  if (await newVaultBtn.isVisible().catch(() => false)) {
-    await newVaultBtn.click();
+  const firstRun = page.locator(".firstrun-input");
+  if (await firstRun.isVisible().catch(() => false)) {
+    // No vaults yet: the first-run onboarding card is shown
+    await firstRun.fill(vaultName);
+    await firstRun.press("Enter");
   } else {
-    // May need to find the vault section first
-    await page.locator(".sidebar-header").getByRole("button").first().click();
+    // Otherwise the vault switcher lives behind the sidebar head button
+    await page.locator(".sidebar-vault-btn").click();
+    await page.getByRole("button", { name: /new vault/i }).click();
+    const input = page.getByPlaceholder(/vault name/i);
+    await input.fill(vaultName);
+    await input.press("Enter");
   }
-  const input = page.getByPlaceholder(/vault name/i);
-  await input.fill(vaultName);
-  await input.press("Enter");
-  await expect(page.locator(".sidebar-vault").filter({ hasText: vaultName })).toBeVisible();
+  // The new vault becomes active; its name shows in the sidebar head button
+  await expect(page.locator(".sidebar-vault-name")).toHaveText(vaultName, { timeout: 8_000 });
   return vaultName;
 }
 
+/** Creates a note via Ctrl+N and sets its title, returning the title. */
 export async function createNote(page: Page, title?: string) {
   const noteTitle = title ?? `Note-${uid()}`;
-  // Ctrl+N shortcut
   await page.keyboard.press("Control+n");
-  // Wait for new note to appear and be editable
-  await expect(page.locator(".editor-toolbar-title, .note-title-input, input[placeholder*='title' i]")).toBeVisible();
-  const titleInput = page.locator(".editor-toolbar-title, .note-title-input, input[placeholder*='title' i]").first();
+  const titleInput = page.locator(".editor-title-input").first();
+  await expect(titleInput).toBeVisible();
   await titleInput.click({ clickCount: 3 });
   await titleInput.fill(noteTitle);
   await titleInput.press("Tab");
@@ -77,16 +79,15 @@ export async function createNote(page: Page, title?: string) {
 }
 
 export async function typeInEditor(page: Page, text: string) {
-  const editor = page.locator(".editor-textarea, textarea.editor, [data-testid='editor-input']").first();
+  const editor = page.locator(".editor-textarea").first();
   await editor.click();
   await editor.fill(text);
 }
 
 /**
  * Waits for the debounced autosave PUT to actually persist the note.
- * Call immediately after editing content — the previous status-text check
- * matched the stale "Saved" (and even "Unsaved") label before the 1s
- * debounce fired, letting tests reload before anything was persisted.
+ * Call immediately after editing content — a status-text check alone races
+ * the 1s debounce and can pass before anything is persisted.
  */
 export async function waitForAutosave(page: Page) {
   await page.waitForResponse(
@@ -100,10 +101,13 @@ export async function waitForSaved(page: Page) {
   await expect(page.locator(".status-indicator--saved")).toBeVisible({ timeout: 8_000 });
 }
 
-/** Opens the command palette and returns its input locator. */
-export async function openCommandPalette(page: Page) {
-  await page.keyboard.press("Control+Shift+P");
-  const input = page.getByPlaceholder("Type a command...");
+/**
+ * Opens the unified palette. Ctrl+P = note quick-open, Ctrl+Shift+P = command
+ * mode (query prefilled with ">"). Returns the palette input locator.
+ */
+export async function openPalette(page: Page, mode: "notes" | "commands" = "commands") {
+  await page.keyboard.press(mode === "commands" ? "Control+Shift+P" : "Control+p");
+  const input = page.locator(".palette-head input");
   await expect(input).toBeVisible();
   return input;
 }
@@ -117,13 +121,4 @@ export async function clearAuth(page: Page) {
     } catch {}
   });
   await page.reload();
-}
-
-export async function clearLocalStorage(page: Page) {
-  await page.evaluate(() => {
-    try {
-      localStorage.removeItem("nexus_token");
-      localStorage.removeItem("nexus_device_id");
-    } catch {}
-  });
 }

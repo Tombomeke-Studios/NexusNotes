@@ -159,6 +159,7 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src-tauri/` | Tauri backend (Rust config, commands) |
 | `src/` | React frontend |
 | `src/App.tsx` | Root component, workspace layout, keyboard shortcuts |
+| `src/components/Auth.tsx` + `AuthBackground.tsx` | Login/signup screen; animated mouse-reactive node-graph background |
 | `src/components/Workspace/` | Shell chrome: top bar (breadcrumb, window controls), activity rail, panel styles |
 | `src/components/Workspace/WindowControls.tsx` | Native minimize/maximize/close controls (reused by top bar + login screen) |
 | `src/components/Editor/` | Markdown editor with live preview |

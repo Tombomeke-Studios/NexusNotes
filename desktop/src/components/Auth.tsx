@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Logo } from "./Logo";
+import { AuthBackground } from "./AuthBackground";
 import { WindowControls } from "./Workspace/WindowControls";
 import { isTauriWindow } from "../lib/platform";
 import { auth } from "../lib/api";
@@ -43,11 +44,11 @@ export function Auth({ onAuth }: AuthProps) {
       }
     } catch (err) {
       // A network failure (server unreachable) throws a TypeError from fetch.
-      // Show a calm, non-technical message instead of the raw "Failed to fetch";
-      // genuine API errors (wrong password, email taken) keep their own message.
+      // Call that out clearly; genuine API errors (wrong password, email taken)
+      // keep their own message; anything else falls back to a calm generic.
       const message =
         err instanceof TypeError
-          ? "Something went wrong. Please try again."
+          ? "The server is currently unavailable. Please try again in a moment."
           : err instanceof Error
             ? err.message
             : "Something went wrong. Please try again.";
@@ -60,6 +61,7 @@ export function Auth({ onAuth }: AuthProps) {
   return (
     <div className="auth-container" onPointerMove={handlePointerMove}>
       <div className="auth-aurora" aria-hidden="true" />
+      <AuthBackground />
       <div className="auth-cursor-glow" ref={glowRef} aria-hidden="true" />
       <div className="auth-titlebar" data-tauri-drag-region>
         {isTauriWindow && <WindowControls />}

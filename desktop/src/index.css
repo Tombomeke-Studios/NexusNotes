@@ -343,12 +343,20 @@ input:focus, textarea:focus {
    sitting behind the auth card. Pointer-events off so they never block input;
    only transform/opacity animate. */
 .auth-aurora,
-.auth-cursor-glow {
+.auth-cursor-glow,
+.auth-constellation {
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+}
+
+/* Canvas node-graph; full-bleed, sized in CSS pixels (the component scales the
+   backing store for devicePixelRatio). */
+.auth-constellation {
+  width: 100%;
+  height: 100%;
 }
 
 .auth-aurora::before,

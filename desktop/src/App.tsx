@@ -246,7 +246,9 @@ export default function App() {
       return;
     }
     if (!activeVaultId) return;
-    const note = await notesApi.create(activeVaultId, iso, `Daily/${iso}.md`, dailyNoteTemplate(iso));
+    // A note's path is its folder, so daily notes live in the "Daily" folder;
+    // the title carries the date.
+    const note = await notesApi.create(activeVaultId, iso, "Daily", dailyNoteTemplate(iso));
     setNoteList((prev) => [...prev, note]);
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);

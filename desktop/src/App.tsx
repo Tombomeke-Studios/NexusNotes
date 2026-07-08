@@ -17,7 +17,7 @@ import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
 import { syncClient } from "./lib/sync";
-import { buildTree } from "./lib/tree";
+import { buildTree, flattenTreeNoteIds } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
@@ -54,6 +54,11 @@ export default function App() {
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [newFolderNonce, setNewFolderNonce] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const lastClickedRef = useRef<string | null>(null);
+  const flattenedNoteIdsRef = useRef<string[]>([]);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
   const [workspaceMenu, setWorkspaceMenu] = useState<{ x: number; y: number } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
@@ -300,7 +305,7 @@ export default function App() {
 
   // Move a note into a folder ("" = root). A note's path IS its folder, so this
   // is just a path change persisted via the normal update endpoint.
-  const handleMoveNote = useCallback(async (noteId: string, folderPath: string) => {
+  const moveOne = useCallback(async (noteId: string, folderPath: string) => {
     const note = noteListRef.current.find((n) => n.id === noteId);
     if (!note || note.path === folderPath) return;
     try {
@@ -315,6 +320,15 @@ export default function App() {
     }
   }, []);
 
+  // Drag entry point: dragging any note that is part of a multi-selection moves
+  // the whole selection; otherwise just the dragged note.
+  const handleMoveNote = useCallback(async (noteId: string, folderPath: string) => {
+    const sel = selectedIdsRef.current;
+    const ids = sel.has(noteId) && sel.size > 1 ? [...sel] : [noteId];
+    for (const id of ids) await moveOne(id, folderPath);
+    if (ids.length > 1) setSelectedIds(new Set());
+  }, [moveOne]);
+
   const handleDeleteFolder = useCallback(async (folderPath: string) => {
     if (!activeVaultId) return;
     // Flatten: move notes in the folder (or its subfolders) back to the root,
@@ -323,10 +337,10 @@ export default function App() {
       (n) => n.path === folderPath || n.path.startsWith(folderPath + "/"),
     );
     for (const n of inside) {
-      await handleMoveNote(n.id, "");
+      await moveOne(n.id, "");
     }
     setEmptyFolders(removeFolder(activeVaultId, folderPath));
-  }, [activeVaultId, handleMoveNote]);
+  }, [activeVaultId, moveOne]);
 
   const handleDuplicateNote = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
@@ -343,12 +357,23 @@ export default function App() {
     setCursor({ line: 1, col: 1 });
   }, [activeVaultId]);
 
-  const handleDeleteNote = useCallback(async (noteId: string) => {
+  const deleteOne = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
     await notesApi.delete(activeVaultId, noteId);
     setNoteList((prev) => prev.filter((n) => n.id !== noteId));
     closeTabRef.current(noteId);
   }, [activeVaultId]);
+  const deleteOneRef = useRef(deleteOne);
+  deleteOneRef.current = deleteOne;
+
+  // Deletes the whole multi-selection when the target note is part of it,
+  // otherwise just the one note.
+  const handleDeleteNote = useCallback(async (noteId: string) => {
+    const sel = selectedIdsRef.current;
+    const ids = sel.has(noteId) && sel.size > 1 ? [...sel] : [noteId];
+    for (const id of ids) await deleteOne(id);
+    if (ids.length > 1) setSelectedIds(new Set());
+  }, [deleteOne]);
 
   const cycleView = useCallback(() => {
     setPrefs((p) => {
@@ -426,6 +451,15 @@ export default function App() {
         e.preventDefault();
         setShowSettings(true);
       }
+      if (e.key === "Delete" && selectedIdsRef.current.size > 0) {
+        const t = e.target as HTMLElement;
+        const editable = t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable;
+        if (!editable) {
+          e.preventDefault();
+          for (const id of [...selectedIdsRef.current]) deleteOneRef.current(id);
+          setSelectedIds(new Set());
+        }
+      }
       if (e.key === "Escape") {
         // Dismiss lightweight popovers that don't manage their own Escape
         setShowCalendar(false);
@@ -478,6 +512,34 @@ export default function App() {
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
   }, []);
+
+  // Tree click with modifier support: Ctrl/Cmd toggles, Shift selects a range,
+  // a plain click opens the note and clears the multi-selection.
+  const handleNoteClick = useCallback((e: React.MouseEvent, id: string) => {
+    if (e.metaKey || e.ctrlKey) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      lastClickedRef.current = id;
+      return;
+    }
+    if (e.shiftKey && lastClickedRef.current && lastClickedRef.current !== id) {
+      const order = flattenedNoteIdsRef.current;
+      const a = order.indexOf(lastClickedRef.current);
+      const b = order.indexOf(id);
+      if (a >= 0 && b >= 0) {
+        const [lo, hi] = a < b ? [a, b] : [b, a];
+        setSelectedIds(new Set(order.slice(lo, hi + 1)));
+        return;
+      }
+    }
+    setSelectedIds(new Set());
+    lastClickedRef.current = id;
+    handleSelectNote(id);
+  }, [handleSelectNote]);
 
   const closeTab = useCallback(
     (key: string) => {
@@ -577,6 +639,7 @@ export default function App() {
   }
 
   const tree = buildTree(filteredNoteList, { keepNoteOrder: true, emptyFolders });
+  flattenedNoteIdsRef.current = flattenTreeNoteIds(tree);
   const activeVault = vaultList.find((v) => v.id === activeVaultId);
   const tabItems = tabs.map((t) => ({
     ...t,
@@ -657,6 +720,8 @@ export default function App() {
               searchHits={searchHits}
               onSelectVault={handleSelectVault}
               onSelectNote={handleSelectNote}
+              onNoteClick={handleNoteClick}
+              selectedIds={selectedIds}
               onCreateNote={handleCreateNote}
               onCreateFolder={handleCreateFolder}
               onMoveNote={handleMoveNote}
@@ -834,7 +899,15 @@ export default function App() {
                 if (n) navigator.clipboard?.writeText(`[[${n.title}]]`).catch(() => {});
               },
             },
-            { key: "delete", label: "Delete note", danger: true, onClick: () => handleDeleteNote(ctxMenu.noteId) },
+            {
+              key: "delete",
+              label:
+                selectedIds.has(ctxMenu.noteId) && selectedIds.size > 1
+                  ? `Delete ${selectedIds.size} notes`
+                  : "Delete note",
+              danger: true,
+              onClick: () => handleDeleteNote(ctxMenu.noteId),
+            },
           ]}
         />
       )}

@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/multi-select-notes` - Multi-select notes (PR #138)
+
+- [x] Ctrl/Shift click to multi-select notes; delete or drag the whole selection at once (#137)
+
 ### `feature/unique-note-names` - Auto-number duplicate note names (PR #136)
 
 - [x] Make new note names unique on create (Untitled, Untitled 1, …); uniqueTitle numbers from 1 (#135)

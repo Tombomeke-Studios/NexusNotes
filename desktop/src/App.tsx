@@ -215,7 +215,9 @@ export default function App() {
 
   const handleCreateNoteWithTitle = useCallback(async (title: string) => {
     if (!activeVaultId) return;
-    const note = await notesApi.create(activeVaultId, title, "", "");
+    // Keep note names unique (Untitled, Untitled 1, Untitled 2, …).
+    const name = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), title);
+    const note = await notesApi.create(activeVaultId, name, "", "");
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);

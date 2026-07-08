@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/unique-note-names` - Auto-number duplicate note names (PR #136)
+
+- [x] Make new note names unique on create (Untitled, Untitled 1, …); uniqueTitle numbers from 1 (#135)
+
 ### `feature/dedup-note-create` - No duplicate notes on create (PR #134)
 
 - [x] Dedupe local note appends so the WS `note:created` echo can't duplicate a created note (#132)

@@ -59,7 +59,7 @@ func main() {
 	vaultHandler := handler.NewVaultHandler(vaultRepo)
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
-	searchHandler := handler.NewSearchHandler(indexer, vaultRepo)
+	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	wsHandler := handler.NewWSHandler(hub, authService)
 
 	mux := http.NewServeMux()

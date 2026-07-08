@@ -19,12 +19,21 @@ var (
 	ErrEmailTaken         = errors.New("email already taken")
 )
 
+// UserStore is the subset of the user repository the auth service depends on.
+// Defining it here (rather than depending on the concrete *repository.UserRepo)
+// keeps the business logic unit-testable with a fake.
+type UserStore interface {
+	Create(ctx context.Context, user *model.User) error
+	GetByEmail(ctx context.Context, email string) (*model.User, error)
+	GetByID(ctx context.Context, id string) (*model.User, error)
+}
+
 type AuthService struct {
-	userRepo  *repository.UserRepo
+	userRepo  UserStore
 	jwtSecret []byte
 }
 
-func NewAuthService(userRepo *repository.UserRepo, jwtSecret string) *AuthService {
+func NewAuthService(userRepo UserStore, jwtSecret string) *AuthService {
 	return &AuthService{
 		userRepo:  userRepo,
 		jwtSecret: []byte(jwtSecret),
@@ -53,7 +62,10 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
-		return nil, "", ErrEmailTaken
+		if errors.Is(err, repository.ErrDuplicateEmail) {
+			return nil, "", ErrEmailTaken
+		}
+		return nil, "", fmt.Errorf("create user: %w", err)
 	}
 
 	token, err := s.generateToken(user.ID)
@@ -67,7 +79,10 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 func (s *AuthService) Login(ctx context.Context, email, password string) (*model.User, string, error) {
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return nil, "", ErrInvalidCredentials
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil, "", ErrInvalidCredentials
+		}
+		return nil, "", fmt.Errorf("get user: %w", err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {

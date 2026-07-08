@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
 import { ROOT_FOLDER } from "../../lib/noteFilter";
@@ -13,6 +13,8 @@ interface TreeDnd {
   setDropFolder: (path: string | null) => void;
   onMoveNote: (noteId: string, folderPath: string) => void;
   onFolderContextMenu: (e: React.MouseEvent, path: string) => void;
+  /** While Shift is held, notes aren't draggable so Shift+drag can marquee. */
+  shiftHeld: boolean;
 }
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
@@ -60,9 +62,10 @@ interface SidebarProps {
   searchHits: SearchHit[];
   onSelectVault: (id: string) => void;
   onSelectNote: (id: string) => void;
-  /** Tree click with modifiers (Ctrl/Shift) for multi-select. */
+  /** Ctrl/Cmd click toggles a note in the multi-selection. */
   onNoteClick: (e: React.MouseEvent, id: string) => void;
   selectedIds: Set<string>;
+  onSetSelectedIds: (ids: Set<string>) => void;
   onCreateNote: () => void;
   onCreateFolder: (path: string) => void;
   onMoveNote: (noteId: string, folderPath: string) => void;
@@ -97,6 +100,7 @@ export function Sidebar({
   onSelectNote,
   onNoteClick,
   selectedIds,
+  onSetSelectedIds,
   onCreateNote,
   onCreateFolder,
   onMoveNote,
@@ -121,6 +125,57 @@ export function Sidebar({
   const [dragNoteId, setDragNoteId] = useState<string | null>(null);
   const [dropFolder, setDropFolder] = useState<string | null>(null);
   const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const marqueeStart = useRef<{ x: number; y: number; base: Set<string> } | null>(null);
+
+  // Track Shift so notes stop being draggable while a marquee (drag-to-select)
+  // is possible.
+  useEffect(() => {
+    const kd = (e: KeyboardEvent) => e.key === "Shift" && setShiftHeld(true);
+    const ku = (e: KeyboardEvent) => e.key === "Shift" && setShiftHeld(false);
+    window.addEventListener("keydown", kd);
+    window.addEventListener("keyup", ku);
+    return () => {
+      window.removeEventListener("keydown", kd);
+      window.removeEventListener("keyup", ku);
+    };
+  }, []);
+
+  // Shift + drag draws a selection box; every note it covers is added to the
+  // selection that was present when the drag began.
+  const beginMarquee = (e: React.PointerEvent) => {
+    if (!e.shiftKey && !shiftHeld) return;
+    e.preventDefault();
+    const start = { x: e.clientX, y: e.clientY, base: new Set(selectedIds) };
+    marqueeStart.current = start;
+    setMarquee({ x: start.x, y: start.y, w: 0, h: 0 });
+    const move = (ev: PointerEvent) => {
+      const x = Math.min(start.x, ev.clientX);
+      const y = Math.min(start.y, ev.clientY);
+      const w = Math.abs(ev.clientX - start.x);
+      const h = Math.abs(ev.clientY - start.y);
+      setMarquee({ x, y, w, h });
+      const hit = new Set(start.base);
+      treeRef.current?.querySelectorAll<HTMLElement>("[data-note-id]").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.left < x + w && r.right > x && r.top < y + h && r.bottom > y) {
+          const id = el.getAttribute("data-note-id");
+          if (id) hit.add(id);
+        }
+      });
+      onSetSelectedIds(hit);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      marqueeStart.current = null;
+      setMarquee(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
 
   const handleCreateFolder = () => {
     const name = newFolderName.trim();
@@ -151,6 +206,7 @@ export function Sidebar({
         path,
       });
     },
+    shiftHeld,
   };
 
   const activeVault = vaults.find((v) => v.id === activeVaultId);
@@ -384,7 +440,17 @@ export function Sidebar({
       )}
 
       <div
+        ref={treeRef}
         className={`sidebar-tree${dragNoteId && dropFolder === "" ? " sidebar-tree--drop" : ""}`}
+        onPointerDown={beginMarquee}
+        onClick={(e) => {
+          // Click on empty space deselects everything (but keep the selection
+          // when a modifier is held, e.g. right after a Shift+drag).
+          const t = e.target as HTMLElement;
+          if (!e.shiftKey && !e.ctrlKey && !e.metaKey && !t.closest("[data-note-id]")) {
+            onSetSelectedIds(new Set());
+          }
+        }}
         onDragOver={(e) => {
           if (dragNoteId) {
             e.preventDefault();
@@ -434,6 +500,13 @@ export function Sidebar({
           />
         ))}
       </div>
+
+      {marquee && (
+        <div
+          className="tree-marquee"
+          style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }}
+        />
+      )}
 
       {folderMenu && (
         <ContextMenu
@@ -567,7 +640,8 @@ function TreeItem({
       }${isDragging ? " tree-item--dragging" : ""}`}
       style={{ paddingLeft: `${8 + depth * 19}px` }}
       title={node.name}
-      draggable={!!node.noteId}
+      data-note-id={node.noteId}
+      draggable={!!node.noteId && !dnd.shiftHeld}
       onDragStart={(e) => {
         if (!node.noteId) return;
         e.dataTransfer.effectAllowed = "move";

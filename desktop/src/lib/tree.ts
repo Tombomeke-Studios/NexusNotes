@@ -47,6 +47,19 @@ export function buildTree(notes: Note[], options: BuildTreeOptions = {}): TreeNo
   return root;
 }
 
+/** Note ids in the order they appear in the rendered tree (depth-first). */
+export function flattenTreeNoteIds(nodes: TreeNode[]): string[] {
+  const ids: string[] = [];
+  const walk = (list: TreeNode[]) => {
+    for (const n of list) {
+      if (n.type === "note" && n.noteId) ids.push(n.noteId);
+      if (n.children) walk(n.children);
+    }
+  };
+  walk(nodes);
+  return ids;
+}
+
 function sortTree(nodes: TreeNode[], keepNoteOrder: boolean) {
   nodes.sort((a, b) => {
     if (a.type !== b.type) return a.type === "folder" ? -1 : 1;

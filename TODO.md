@@ -32,7 +32,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-- [ ] Fix: animated logo not visible where users expect it (login/sidebar use static variants) (#108)
 - [ ] Folder organization: create folders and move/drag notes into them (#109)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
@@ -765,6 +764,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/animated-login-logo` - Animate the login screen logo (PR #116)
+
+- [x] Animate the auth card logo in place, reusing the float/pulse/shimmer keyframes (#108)
 
 ### `feature/auth-error-typing` - Stop masking DB errors as auth failures (PR #115)
 

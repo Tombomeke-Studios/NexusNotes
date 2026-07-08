@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/breadcrumb-folder-path` - Show folder path in the breadcrumb (PR #127)
+
+- [x] Render the active note's folder path between the vault and the title (#126)
+
 ### `feature/folders` - Folder organization (PR #125)
 
 - [x] Create folders (header button, workspace right-click, folder right-click for subfolders), nested folders, drag notes into folders/root, delete folder (#109)

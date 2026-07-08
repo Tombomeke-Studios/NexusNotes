@@ -49,11 +49,15 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
       });
     svg.call(zoom as unknown as (selection: d3.Selection<SVGSVGElement | null, unknown, null, undefined>) => void);
 
+    // forceX/forceY gently pull every node toward the centre so the graph stays
+    // contained (dragging/pinning a node no longer flings the rest off-screen),
+    // and a capped charge keeps repulsion from acting across the whole canvas.
     const simulation = d3.forceSimulation(nodes)
-      .force("link", d3.forceLink(links).id((d) => (d as SimNode).id).distance(100))
-      .force("charge", d3.forceManyBody().strength(-200))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(30));
+      .force("link", d3.forceLink(links).id((d) => (d as SimNode).id).distance(90))
+      .force("charge", d3.forceManyBody().strength(-160).distanceMax(320))
+      .force("x", d3.forceX(width / 2).strength(0.06))
+      .force("y", d3.forceY(height / 2).strength(0.06))
+      .force("collision", d3.forceCollide().radius(28));
 
     const link = g.append("g")
       .selectAll("line")

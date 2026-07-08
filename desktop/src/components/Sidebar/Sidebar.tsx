@@ -60,6 +60,9 @@ interface SidebarProps {
   searchHits: SearchHit[];
   onSelectVault: (id: string) => void;
   onSelectNote: (id: string) => void;
+  /** Tree click with modifiers (Ctrl/Shift) for multi-select. */
+  onNoteClick: (e: React.MouseEvent, id: string) => void;
+  selectedIds: Set<string>;
   onCreateNote: () => void;
   onCreateFolder: (path: string) => void;
   onMoveNote: (noteId: string, folderPath: string) => void;
@@ -92,6 +95,8 @@ export function Sidebar({
   searchHits,
   onSelectVault,
   onSelectNote,
+  onNoteClick,
+  selectedIds,
   onCreateNote,
   onCreateFolder,
   onMoveNote,
@@ -420,8 +425,9 @@ export function Sidebar({
             key={node.path + node.name}
             node={node}
             activeNoteId={activeNoteId}
+            selectedIds={selectedIds}
             pinnedIds={pinnedIds}
-            onSelectNote={onSelectNote}
+            onNoteClick={onNoteClick}
             onNoteContextMenu={onNoteContextMenu}
             dnd={dnd}
             depth={0}
@@ -482,16 +488,18 @@ function countNotes(node: TreeNode): number {
 function TreeItem({
   node,
   activeNoteId,
+  selectedIds,
   pinnedIds,
-  onSelectNote,
+  onNoteClick,
   onNoteContextMenu,
   dnd,
   depth,
 }: {
   node: TreeNode;
   activeNoteId: string | null;
+  selectedIds: Set<string>;
   pinnedIds: Set<string>;
-  onSelectNote: (id: string) => void;
+  onNoteClick: (e: React.MouseEvent, id: string) => void;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
   dnd: TreeDnd;
   depth: number;
@@ -535,8 +543,9 @@ function TreeItem({
               key={child.path + child.name}
               node={child}
               activeNoteId={activeNoteId}
+              selectedIds={selectedIds}
               pinnedIds={pinnedIds}
-              onSelectNote={onSelectNote}
+              onNoteClick={onNoteClick}
               onNoteContextMenu={onNoteContextMenu}
               dnd={dnd}
               depth={depth + 1}
@@ -546,11 +555,16 @@ function TreeItem({
     );
   }
 
+  const isSelected = !!node.noteId && selectedIds.has(node.noteId);
+  const isDragging =
+    !!dnd.dragNoteId &&
+    (dnd.dragNoteId === node.noteId ||
+      (isSelected && selectedIds.has(dnd.dragNoteId)));
   return (
     <button
       className={`tree-item tree-note ${node.noteId === activeNoteId ? "active" : ""}${
-        dnd.dragNoteId === node.noteId ? " tree-item--dragging" : ""
-      }`}
+        isSelected ? " tree-item--selected" : ""
+      }${isDragging ? " tree-item--dragging" : ""}`}
       style={{ paddingLeft: `${8 + depth * 19}px` }}
       title={node.name}
       draggable={!!node.noteId}
@@ -564,7 +578,7 @@ function TreeItem({
         dnd.setDragNoteId(null);
         dnd.setDropFolder(null);
       }}
-      onClick={() => node.noteId && onSelectNote(node.noteId)}
+      onClick={(e) => node.noteId && onNoteClick(e, node.noteId)}
       onContextMenu={(e) => {
         if (node.noteId && onNoteContextMenu) {
           e.preventDefault();

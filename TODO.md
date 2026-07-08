@@ -32,7 +32,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-- [ ] Daily notes nest oddly (`Daily/<date>.md` becomes a folder); daily note path should be a folder
+- [ ] Duplicate note created on create (WS `note:created` races the un-deduped local append) (#132)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -764,6 +764,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/daily-note-path` - Daily notes live in the Daily folder (PR #131)
+
+- [x] Create daily notes with path `Daily` instead of `Daily/<date>.md` so they don't double-nest (#131)
 
 ### `feature/ws-hijacker` - Fix WebSocket sync handshake (PR #130)
 

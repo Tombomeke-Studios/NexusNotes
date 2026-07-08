@@ -64,7 +64,7 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortBy>("updated");
+  const [sortBy, setSortBy] = useState<SortBy>("title");
   const [railView, setRailView] = useState<RailView>("files");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -516,6 +516,10 @@ export default function App() {
   // Tree click with modifier support: Ctrl/Cmd toggles, Shift selects a range,
   // a plain click opens the note and clears the multi-selection.
   const handleNoteClick = useCallback((e: React.MouseEvent, id: string) => {
+    if (e.shiftKey || e.metaKey || e.ctrlKey) {
+      // Avoid a native text selection when building a multi-selection.
+      e.preventDefault();
+    }
     if (e.metaKey || e.ctrlKey) {
       setSelectedIds((prev) => {
         const next = new Set(prev);

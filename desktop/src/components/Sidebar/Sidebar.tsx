@@ -212,7 +212,7 @@ export function Sidebar({
         </button>
         <div className="sidebar-head-actions">
           <button
-            className={`sidebar-action-btn${hasFilter || sortBy !== "updated" ? " sidebar-action-btn--accent" : ""}${showFilter ? " sidebar-action-btn--open" : ""}`}
+            className={`sidebar-action-btn${hasFilter || sortBy !== "title" ? " sidebar-action-btn--accent" : ""}${showFilter ? " sidebar-action-btn--open" : ""}`}
             onClick={() => setShowFilter((v) => !v)}
             title="Filter & sort"
           >

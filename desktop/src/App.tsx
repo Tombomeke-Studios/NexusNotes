@@ -216,7 +216,7 @@ export default function App() {
   const handleCreateNoteWithTitle = useCallback(async (title: string) => {
     if (!activeVaultId) return;
     const note = await notesApi.create(activeVaultId, title, "", "");
-    setNoteList((prev) => [...prev, note]);
+    setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
     setActiveNote(note);
@@ -249,7 +249,7 @@ export default function App() {
     // A note's path is its folder, so daily notes live in the "Daily" folder;
     // the title carries the date.
     const note = await notesApi.create(activeVaultId, iso, "Daily", dailyNoteTemplate(iso));
-    setNoteList((prev) => [...prev, note]);
+    setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
     setActiveNote(note);
@@ -332,7 +332,7 @@ export default function App() {
     if (!src) return;
     const title = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), `${src.title} copy`);
     const note = await notesApi.create(activeVaultId, title, src.path, src.content);
-    setNoteList((prev) => [...prev, note]);
+    setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
     setActiveNote(note);

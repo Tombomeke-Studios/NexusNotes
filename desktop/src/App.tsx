@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Editor } from "./components/Editor";
+import { GlobalSearch } from "./components/Search";
 import { GraphView } from "./components/Graph";
 import { CommandPalette } from "./components/CommandPalette";
 import { StatusBar } from "./components/StatusBar";
@@ -10,6 +11,7 @@ import { Rail } from "./components/Workspace/Rail";
 import { TabBar } from "./components/Workspace/TabBar";
 import { DailyCalendar } from "./components/Workspace/DailyCalendar";
 import { ContextMenu } from "./components/Workspace/ContextMenu";
+import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
@@ -45,6 +47,7 @@ export default function App() {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [editorContent, setEditorContent] = useState("");
   const [paletteQuery, setPaletteQuery] = useState<string | null>(null);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
@@ -313,7 +316,8 @@ export default function App() {
     { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
     { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
-    { id: "focus-mode", label: "Toggle focus mode", shortcut: "Ctrl+Shift+F", action: toggleFocusMode },
+    { id: "global-search", label: "Global search", shortcut: "Ctrl+Shift+F", action: () => setShowGlobalSearch(true) },
+    { id: "focus-mode", label: "Toggle focus mode", action: toggleFocusMode },
     { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
   ], [handleCreateNote, handleOpenDaily, openGraphTab, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
@@ -328,7 +332,7 @@ export default function App() {
       }
       if (meta && e.shiftKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
-        toggleFocusMode();
+        setShowGlobalSearch(true);
         return;
       }
       if (meta && e.key === "p") {
@@ -603,7 +607,7 @@ export default function App() {
           }}
         />
         <div className="center-column">
-          {tabs.length > 0 && (
+          {vaultList.length > 0 && tabs.length > 0 && (
             <TabBar
               tabs={tabItems}
               activeKey={activeTabKey}
@@ -616,7 +620,9 @@ export default function App() {
               onNew={handleCreateNote}
             />
           )}
-          {tabs.length === 0 ? (
+          {vaultList.length === 0 ? (
+            <FirstRunVault onCreate={handleCreateVault} />
+          ) : tabs.length === 0 ? (
             <div className="workspace-empty">
               <div className="workspace-empty-logo">
                 <Logo size={60} variant="animated" />
@@ -754,6 +760,14 @@ export default function App() {
           onPickDay={handleOpenDaily}
           onOpenToday={() => handleOpenDaily(toIsoDate(new Date()))}
           onClose={() => setShowCalendar(false)}
+        />
+      )}
+
+      {showGlobalSearch && activeVaultId && (
+        <GlobalSearch
+          vaultId={activeVaultId}
+          onSelect={handleSelectNote}
+          onClose={() => setShowGlobalSearch(false)}
         />
       )}
 

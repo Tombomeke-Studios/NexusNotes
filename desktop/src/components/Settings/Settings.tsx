@@ -18,7 +18,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ["Open graph", "Ctrl+G"],
   ["Daily note", "Ctrl+D"],
   ["Cycle view", "Ctrl+E"],
-  ["Focus mode", "Ctrl+Shift+F"],
+  ["Global search", "Ctrl+Shift+F"],
   ["Save", "Ctrl+S"],
   ["Toggle sidebar", "Ctrl+B"],
   ["Toggle side panel", "Ctrl+."],

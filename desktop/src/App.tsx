@@ -52,6 +52,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
+  const [workspaceMenu, setWorkspaceMenu] = useState<{ x: number; y: number } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
@@ -90,6 +91,14 @@ export default function App() {
     };
     window.addEventListener("nexus:logout", handler);
     return () => window.removeEventListener("nexus:logout", handler);
+  }, []);
+
+  // Suppress the native browser/OS context menu (Reload, Inspect element, …)
+  // app-wide; our own menus are opened by React onContextMenu handlers.
+  useEffect(() => {
+    const suppress = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", suppress);
+    return () => document.removeEventListener("contextmenu", suppress);
   }, []);
 
   const loadNotes = useCallback(async (vaultId: string) => {
@@ -371,6 +380,7 @@ export default function App() {
         // Dismiss lightweight popovers that don't manage their own Escape
         setShowCalendar(false);
         setCtxMenu(null);
+        setWorkspaceMenu(null);
       }
     };
     window.addEventListener("keydown", handler);
@@ -526,7 +536,21 @@ export default function App() {
   const graphActive = activeTab?.type === "graph";
 
   return (
-    <div className="workspace" data-rm={prefs.reduceMotion ? "1" : "0"}>
+    <div
+      className="workspace"
+      data-rm={prefs.reduceMotion ? "1" : "0"}
+      onContextMenu={(e) => {
+        // A note item (or other child) that opened its own menu will have
+        // called preventDefault; only open the workspace menu otherwise.
+        if (e.defaultPrevented) return;
+        e.preventDefault();
+        setCtxMenu(null);
+        setWorkspaceMenu({
+          x: Math.min(e.clientX, window.innerWidth - 210),
+          y: Math.min(e.clientY, window.innerHeight - 190),
+        });
+      }}
+    >
       <TopBar
         vaultName={activeVault?.name ?? "NexusNotes"}
         noteTitle={graphActive ? "Graph" : activeNote?.title ?? null}
@@ -755,6 +779,31 @@ export default function App() {
               },
             },
             { key: "delete", label: "Delete note", danger: true, onClick: () => handleDeleteNote(ctxMenu.noteId) },
+          ]}
+        />
+      )}
+
+      {workspaceMenu && (
+        <ContextMenu
+          x={workspaceMenu.x}
+          y={workspaceMenu.y}
+          onClose={() => setWorkspaceMenu(null)}
+          items={[
+            { key: "new-note", label: "New note", onClick: handleCreateNote },
+            {
+              key: "daily",
+              label: "Open today's daily note",
+              onClick: () => handleOpenDaily(toIsoDate(new Date())),
+            },
+            { key: "palette", label: "Search notes and commands", onClick: () => setPaletteQuery("") },
+            {
+              key: "refresh",
+              label: "Refresh",
+              onClick: () => {
+                loadVaults();
+                if (activeVaultId) loadNotes(activeVaultId);
+              },
+            },
           ]}
         />
       )}

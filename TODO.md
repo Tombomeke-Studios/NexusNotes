@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/app-context-menu` - Custom right-click menu (PR #121)
+
+- [x] Suppress the native context menu; add a workspace menu (New note, daily note, search, refresh) (#120)
+
 ### `feature/auth-animated-background` - Auth screen polish (PR #119)
 
 - [x] Animated, mouse-reactive background on the login/signup screen (#117)

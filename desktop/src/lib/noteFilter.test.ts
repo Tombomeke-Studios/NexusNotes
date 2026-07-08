@@ -83,9 +83,15 @@ describe("uniqueTitle", () => {
     expect(uniqueTitle(new Set(["Other"]), "Note copy")).toBe("Note copy");
   });
 
-  it("appends an incrementing suffix until unique", () => {
-    const titles = new Set(["Note copy", "Note copy 2"]);
-    expect(uniqueTitle(titles, "Note copy")).toBe("Note copy 3");
+  it("numbers from 1 and increments until unique", () => {
+    expect(uniqueTitle(new Set(["Untitled"]), "Untitled")).toBe("Untitled 1");
+    expect(uniqueTitle(new Set(["Untitled", "Untitled 1"]), "Untitled")).toBe("Untitled 2");
+  });
+
+  it("fills the lowest free number", () => {
+    // "Untitled 1" is free even though "Untitled 2" exists.
+    const titles = new Set(["Untitled", "Untitled 2"]);
+    expect(uniqueTitle(titles, "Untitled")).toBe("Untitled 1");
   });
 });
 

@@ -60,7 +60,8 @@ export function searchNotes(notes: Note[], query: string): SearchHit[] {
 
 export function uniqueTitle(existing: Set<string>, base: string): string {
   if (!existing.has(base)) return base;
-  let i = 2;
+  // Fill the lowest free number: base, base 1, base 2, …
+  let i = 1;
   while (existing.has(`${base} ${i}`)) i++;
   return `${base} ${i}`;
 }

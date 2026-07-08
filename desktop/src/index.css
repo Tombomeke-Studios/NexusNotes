@@ -332,6 +332,10 @@ input:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  /* No dragging to select the static UI text on the login screen (inputs opt
+     back in below). */
+  user-select: none;
+  -webkit-user-select: none;
   background: var(--bg-crust);
   /* Subtle dot grid; the moving colour comes from .auth-aurora below. */
   background-image: radial-gradient(circle, rgba(108, 112, 134, 0.1) 1px, transparent 1px);
@@ -357,6 +361,13 @@ input:focus, textarea:focus {
 .auth-constellation {
   width: 100%;
   height: 100%;
+}
+
+/* The aurora layer drifts on its own (pseudo-elements below) and parallaxes as
+   a whole toward the cursor via --px/--py. */
+.auth-aurora {
+  transform: translate3d(calc(var(--px, 0) * 26px), calc(var(--py, 0) * 26px), 0);
+  transition: transform 0.4s ease-out;
 }
 
 .auth-aurora::before,
@@ -443,6 +454,12 @@ input:focus, textarea:focus {
   text-align: center;
   box-shadow: 0 32px 90px rgba(0, 0, 0, 0.55);
   animation: riseIn 0.5s var(--easing-spring);
+}
+
+/* Inputs stay selectable/editable despite the container's user-select: none. */
+.auth-input {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Keep a label next to the spinner while submitting so the button never looks

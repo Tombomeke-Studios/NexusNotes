@@ -19,14 +19,18 @@ export function Auth({ onAuth }: AuthProps) {
   const [loading, setLoading] = useState(false);
   const glowRef = useRef<HTMLDivElement>(null);
 
-  // Move the cursor-following glow by writing its position to CSS variables;
-  // the CSS transition gives it a gentle lag as it trails the pointer.
+  // Track the pointer for the background: the cursor-following glow (--mx/--my
+  // in px) and a subtle parallax that nudges the aurora (--px/--py, -0.5..0.5).
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const el = glowRef.current;
-    if (!el) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    el.style.setProperty("--mx", `${e.clientX - rect.left}px`);
-    el.style.setProperty("--my", `${e.clientY - rect.top}px`);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (glowRef.current) {
+      glowRef.current.style.setProperty("--mx", `${x}px`);
+      glowRef.current.style.setProperty("--my", `${y}px`);
+    }
+    e.currentTarget.style.setProperty("--px", `${x / rect.width - 0.5}`);
+    e.currentTarget.style.setProperty("--py", `${y / rect.height - 0.5}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

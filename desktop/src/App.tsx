@@ -22,6 +22,7 @@ import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
 import { loadPins, togglePin, pinnedFirst } from "./lib/pins";
+import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate, dailyNoteTemplate } from "./lib/daily";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
@@ -51,6 +52,8 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
+  const [newFolderNonce, setNewFolderNonce] = useState(0);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
   const [workspaceMenu, setWorkspaceMenu] = useState<{ x: number; y: number } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
@@ -178,6 +181,7 @@ export default function App() {
 
   useEffect(() => {
     setPinnedIds(activeVaultId ? loadPins(activeVaultId) : []);
+    setEmptyFolders(activeVaultId ? loadFolders(activeVaultId) : []);
   }, [activeVaultId]);
 
   // Side panel resize drag
@@ -277,6 +281,48 @@ export default function App() {
     if (!activeVaultId) return;
     setPinnedIds(togglePin(activeVaultId, noteId));
   }, [activeVaultId]);
+
+  const handleCreateFolder = useCallback((name: string) => {
+    if (!activeVaultId) return;
+    setEmptyFolders(addFolder(activeVaultId, name));
+  }, [activeVaultId]);
+
+  // Pop open the sidebar's new-folder input (from the workspace right-click).
+  const requestNewFolder = useCallback(() => {
+    setRailView("files");
+    updatePrefs({ leftOpen: true });
+    setNewFolderNonce((n) => n + 1);
+  }, [updatePrefs]);
+
+  // Move a note into a folder ("" = root). A note's path IS its folder, so this
+  // is just a path change persisted via the normal update endpoint.
+  const handleMoveNote = useCallback(async (noteId: string, folderPath: string) => {
+    const note = noteListRef.current.find((n) => n.id === noteId);
+    if (!note || note.path === folderPath) return;
+    try {
+      const updated = await notesApi.update(note.id, note.title, folderPath, note.content, note.checksum);
+      if ("checksum" in updated) {
+        const u = updated as Note;
+        setNoteList((prev) => prev.map((n) => (n.id === u.id ? u : n)));
+        setActiveNote((prev) => (prev?.id === u.id ? u : prev));
+      }
+    } catch {
+      /* leave the note where it was on failure */
+    }
+  }, []);
+
+  const handleDeleteFolder = useCallback(async (folderPath: string) => {
+    if (!activeVaultId) return;
+    // Flatten: move notes in the folder (or its subfolders) back to the root,
+    // then drop the folder marker.
+    const inside = noteListRef.current.filter(
+      (n) => n.path === folderPath || n.path.startsWith(folderPath + "/"),
+    );
+    for (const n of inside) {
+      await handleMoveNote(n.id, "");
+    }
+    setEmptyFolders(removeFolder(activeVaultId, folderPath));
+  }, [activeVaultId, handleMoveNote]);
 
   const handleDuplicateNote = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
@@ -526,7 +572,7 @@ export default function App() {
     return <Auth onAuth={handleAuth} />;
   }
 
-  const tree = buildTree(filteredNoteList, { keepNoteOrder: true });
+  const tree = buildTree(filteredNoteList, { keepNoteOrder: true, emptyFolders });
   const activeVault = vaultList.find((v) => v.id === activeVaultId);
   const tabItems = tabs.map((t) => ({
     ...t,
@@ -607,6 +653,10 @@ export default function App() {
               onSelectVault={handleSelectVault}
               onSelectNote={handleSelectNote}
               onCreateNote={handleCreateNote}
+              onCreateFolder={handleCreateFolder}
+              onMoveNote={handleMoveNote}
+              onDeleteFolder={handleDeleteFolder}
+              newFolderNonce={newFolderNonce}
               onCreateVault={handleCreateVault}
               onToggleTag={toggleTagFilter}
               onSetFolder={setFilterFolder}
@@ -791,6 +841,7 @@ export default function App() {
           onClose={() => setWorkspaceMenu(null)}
           items={[
             { key: "new-note", label: "New note", onClick: handleCreateNote },
+            { key: "new-folder", label: "New folder", onClick: requestNewFolder },
             {
               key: "daily",
               label: "Open today's daily note",

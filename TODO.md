@@ -32,7 +32,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-- [ ] Folder organization: create folders and move/drag notes into them (#109)
+- [ ] WebSocket sync fails: handshake 500 'response does not implement http.Hijacker' (#122)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -764,6 +764,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/folders` - Folder organization (PR #125)
+
+- [x] Create folders (header button, workspace right-click, folder right-click for subfolders), nested folders, drag notes into folders/root, delete folder (#109)
 
 ### `feature/logout-in-settings` - Discoverable sign out (PR #124)
 

@@ -313,6 +313,36 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px 8px 8px;
+  border-radius: 8px;
+  transition: box-shadow 0.13s ease, background 0.13s ease;
+}
+
+/* Root drop target highlight while dragging a note over empty tree space. */
+.sidebar-tree--drop {
+  background: var(--accent-bg);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.sidebar-new-folder {
+  padding: 4px;
+}
+
+.sidebar-new-folder input {
+  width: 100%;
+  padding: 6px 9px;
+  font-size: 12.5px;
+  background: var(--bg-mantle);
+}
+
+/* Folder highlighted as a drop target. */
+.tree-item--drop {
+  background: var(--accent-bg-strong) !important;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--accent);
+}
+
+.tree-item--dragging {
+  opacity: 0.45;
 }
 
 .sidebar-empty {

@@ -1,8 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
 import { ROOT_FOLDER } from "../../lib/noteFilter";
+import { ContextMenu } from "../Workspace/ContextMenu";
 import "./Sidebar.css";
+
+/** Drag-and-drop context threaded through the tree so notes can be moved. */
+interface TreeDnd {
+  dragNoteId: string | null;
+  setDragNoteId: (id: string | null) => void;
+  dropFolder: string | null;
+  setDropFolder: (path: string | null) => void;
+  onMoveNote: (noteId: string, folderPath: string) => void;
+  onFolderContextMenu: (e: React.MouseEvent, path: string) => void;
+}
 
 const ChevronIcon = ({ expanded }: { expanded: boolean }) => (
   <svg
@@ -50,6 +61,11 @@ interface SidebarProps {
   onSelectVault: (id: string) => void;
   onSelectNote: (id: string) => void;
   onCreateNote: () => void;
+  onCreateFolder: (path: string) => void;
+  onMoveNote: (noteId: string, folderPath: string) => void;
+  onDeleteFolder: (path: string) => void;
+  /** Bump to pop open the "new folder" input from outside (e.g. right-click). */
+  newFolderNonce?: number;
   onCreateVault: (name: string) => void;
   onToggleTag: (tag: string) => void;
   onSetFolder: (folder: string | null) => void;
@@ -77,6 +93,10 @@ export function Sidebar({
   onSelectVault,
   onSelectNote,
   onCreateNote,
+  onCreateFolder,
+  onMoveNote,
+  onDeleteFolder,
+  newFolderNonce,
   onCreateVault,
   onToggleTag,
   onSetFolder,
@@ -91,6 +111,42 @@ export function Sidebar({
   const [showFilter, setShowFilter] = useState(false);
   const [newVaultName, setNewVaultName] = useState("");
   const [showNewVault, setShowNewVault] = useState(false);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [dragNoteId, setDragNoteId] = useState<string | null>(null);
+  const [dropFolder, setDropFolder] = useState<string | null>(null);
+  const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim();
+    if (name) onCreateFolder(name);
+    setNewFolderName("");
+    setShowNewFolder(false);
+  };
+
+  // Open the new-folder input when asked from outside (workspace right-click).
+  useEffect(() => {
+    if (newFolderNonce) {
+      setNewFolderName("");
+      setShowNewFolder(true);
+    }
+  }, [newFolderNonce]);
+
+  const dnd: TreeDnd = {
+    dragNoteId,
+    setDragNoteId,
+    dropFolder,
+    setDropFolder,
+    onMoveNote,
+    onFolderContextMenu: (e, path) => {
+      e.preventDefault();
+      setFolderMenu({
+        x: Math.min(e.clientX, window.innerWidth - 190),
+        y: Math.min(e.clientY, window.innerHeight - 110),
+        path,
+      });
+    },
+  };
 
   const activeVault = vaults.find((v) => v.id === activeVaultId);
   const filterCount = filterTags.length + (filterFolder ? 1 : 0);
@@ -159,6 +215,19 @@ export function Sidebar({
               <path d="M2.5 3.5h11l-4.2 5v3.8l-2.6-1.5V8.5l-4.2-5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
             </svg>
             {filterCount > 0 && <span className="sidebar-filter-count">{filterCount}</span>}
+          </button>
+          <button
+            className="sidebar-action-btn"
+            onClick={() => {
+              setShowNewFolder(true);
+              setNewFolderName("");
+            }}
+            title="New folder"
+          >
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4.5A1.5 1.5 0 013.5 3h2.6a1.5 1.5 0 011.2.6l.6.8a1.5 1.5 0 001.2.6h3.4A1.5 1.5 0 0114 6.5V12a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 12V4.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+              <path d="M8 8v3M6.5 9.5h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
           </button>
           <button className="sidebar-action-btn" onClick={onCreateNote} title="New note (Ctrl+N)">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
@@ -309,8 +378,39 @@ export function Sidebar({
         </div>
       )}
 
-      <div className="sidebar-tree">
-        {tree.length === 0 && (
+      <div
+        className={`sidebar-tree${dragNoteId && dropFolder === "" ? " sidebar-tree--drop" : ""}`}
+        onDragOver={(e) => {
+          if (dragNoteId) {
+            e.preventDefault();
+            setDropFolder("");
+          }
+        }}
+        onDrop={(e) => {
+          if (dragNoteId) {
+            e.preventDefault();
+            onMoveNote(dragNoteId, "");
+          }
+          setDropFolder(null);
+          setDragNoteId(null);
+        }}
+      >
+        {showNewFolder && (
+          <div className="sidebar-new-folder">
+            <input
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreateFolder();
+                if (e.key === "Escape") setShowNewFolder(false);
+              }}
+              onBlur={handleCreateFolder}
+              placeholder="Folder name..."
+              autoFocus
+            />
+          </div>
+        )}
+        {tree.length === 0 && !showNewFolder && (
           <div className="sidebar-empty">
             {hasFilter ? "No notes match the current filter" : "No notes yet. Create your first note."}
           </div>
@@ -323,10 +423,35 @@ export function Sidebar({
             pinnedIds={pinnedIds}
             onSelectNote={onSelectNote}
             onNoteContextMenu={onNoteContextMenu}
+            dnd={dnd}
             depth={0}
           />
         ))}
       </div>
+
+      {folderMenu && (
+        <ContextMenu
+          x={folderMenu.x}
+          y={folderMenu.y}
+          onClose={() => setFolderMenu(null)}
+          items={[
+            {
+              key: "subfolder",
+              label: "New subfolder",
+              onClick: () => {
+                setNewFolderName(folderMenu.path + "/");
+                setShowNewFolder(true);
+              },
+            },
+            {
+              key: "delete",
+              label: "Delete folder",
+              danger: true,
+              onClick: () => onDeleteFolder(folderMenu.path),
+            },
+          ]}
+        />
+      )}
 
       {tagCounts.length > 0 && (
         <div className="sidebar-tags">
@@ -360,6 +485,7 @@ function TreeItem({
   pinnedIds,
   onSelectNote,
   onNoteContextMenu,
+  dnd,
   depth,
 }: {
   node: TreeNode;
@@ -367,17 +493,36 @@ function TreeItem({
   pinnedIds: Set<string>;
   onSelectNote: (id: string) => void;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
+  dnd: TreeDnd;
   depth: number;
 }) {
   const [expanded, setExpanded] = useState(true);
 
   if (node.type === "folder") {
+    const isDropTarget = dnd.dragNoteId !== null && dnd.dropFolder === node.path;
     return (
       <div className="tree-folder">
         <button
-          className="tree-item tree-folder-label"
+          className={`tree-item tree-folder-label${isDropTarget ? " tree-item--drop" : ""}`}
           style={{ paddingLeft: `${8 + depth * 19}px` }}
           onClick={() => setExpanded(!expanded)}
+          onContextMenu={(e) => dnd.onFolderContextMenu(e, node.path)}
+          onDragOver={(e) => {
+            if (dnd.dragNoteId) {
+              e.preventDefault();
+              e.stopPropagation();
+              dnd.setDropFolder(node.path);
+            }
+          }}
+          onDrop={(e) => {
+            if (dnd.dragNoteId) {
+              e.preventDefault();
+              e.stopPropagation();
+              dnd.onMoveNote(dnd.dragNoteId, node.path);
+            }
+            dnd.setDropFolder(null);
+            dnd.setDragNoteId(null);
+          }}
         >
           <ChevronIcon expanded={expanded} />
           <FolderIcon active={expanded} />
@@ -393,6 +538,7 @@ function TreeItem({
               pinnedIds={pinnedIds}
               onSelectNote={onSelectNote}
               onNoteContextMenu={onNoteContextMenu}
+              dnd={dnd}
               depth={depth + 1}
             />
           ))}
@@ -402,9 +548,22 @@ function TreeItem({
 
   return (
     <button
-      className={`tree-item tree-note ${node.noteId === activeNoteId ? "active" : ""}`}
+      className={`tree-item tree-note ${node.noteId === activeNoteId ? "active" : ""}${
+        dnd.dragNoteId === node.noteId ? " tree-item--dragging" : ""
+      }`}
       style={{ paddingLeft: `${8 + depth * 19}px` }}
       title={node.name}
+      draggable={!!node.noteId}
+      onDragStart={(e) => {
+        if (!node.noteId) return;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", node.noteId);
+        dnd.setDragNoteId(node.noteId);
+      }}
+      onDragEnd={() => {
+        dnd.setDragNoteId(null);
+        dnd.setDropFolder(null);
+      }}
       onClick={() => node.noteId && onSelectNote(node.noteId)}
       onContextMenu={(e) => {
         if (node.noteId && onNoteContextMenu) {

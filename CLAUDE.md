@@ -171,6 +171,7 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |
+| `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
 | `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 
 ### Infrastructure

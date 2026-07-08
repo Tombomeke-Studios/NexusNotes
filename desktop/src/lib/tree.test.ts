@@ -72,4 +72,21 @@ describe("buildTree", () => {
     expect(tree[0].type).toBe("folder");
     expect(tree[1].type).toBe("note");
   });
+
+  it("includes empty folders that have no notes", () => {
+    const tree = buildTree([], { emptyFolders: ["Projects", "Areas/Health"] });
+    const names = tree.map((n) => n.name);
+    expect(names).toContain("Projects");
+    const areas = tree.find((n) => n.name === "Areas");
+    expect(areas?.type).toBe("folder");
+    expect(areas?.children?.[0].name).toBe("Health");
+  });
+
+  it("merges an empty folder with one derived from a note path", () => {
+    const notes = [makeNote({ id: "1", title: "N", path: "Work" })];
+    const tree = buildTree(notes, { emptyFolders: ["Work"] });
+    const work = tree.filter((n) => n.name === "Work");
+    expect(work).toHaveLength(1); // not duplicated
+    expect(work[0].children?.[0].type).toBe("note");
+  });
 });

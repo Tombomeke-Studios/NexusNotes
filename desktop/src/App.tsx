@@ -753,6 +753,7 @@ export default function App() {
           prefs={prefs}
           lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
           onUpdatePrefs={updatePrefs}
+          onSignOut={handleSignOut}
           onClose={() => setShowSettings(false)}
         />
       )}

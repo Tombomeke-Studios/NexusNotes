@@ -8,6 +8,7 @@ interface SettingsProps {
   prefs: WorkspacePrefs;
   lastSyncLabel: string | null;
   onUpdatePrefs: (partial: Partial<WorkspacePrefs>) => void;
+  onSignOut: () => void;
   onClose: () => void;
 }
 
@@ -33,7 +34,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
-export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onClose }: SettingsProps) {
+export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClose }: SettingsProps) {
   const [tab, setTab] = useState<SettingsTab>("appearance");
 
   useEffect(() => {
@@ -59,6 +60,13 @@ export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onClose }: Setti
             </button>
           ))}
           <div className="settings-nav-spacer" />
+          <button className="settings-signout" onClick={onSignOut}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Sign out
+          </button>
           <div className="settings-version">NexusNotes 0.1.0</div>
         </div>
         <div className="settings-content">

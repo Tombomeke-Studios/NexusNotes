@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/logout-in-settings` - Discoverable sign out (PR #124)
+
+- [x] Add a Sign out button to Settings (was only in the vault dropdown) (#123)
+
 ### `feature/app-context-menu` - Custom right-click menu (PR #121)
 
 - [x] Suppress the native context menu; add a workspace menu (New note, daily note, search, refresh) (#120)

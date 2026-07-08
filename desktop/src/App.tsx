@@ -17,7 +17,7 @@ import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
 import { syncClient } from "./lib/sync";
-import { buildTree, flattenTreeNoteIds } from "./lib/tree";
+import { buildTree } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
@@ -57,8 +57,6 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedIdsRef = useRef(selectedIds);
   selectedIdsRef.current = selectedIds;
-  const lastClickedRef = useRef<string | null>(null);
-  const flattenedNoteIdsRef = useRef<string[]>([]);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
   const [workspaceMenu, setWorkspaceMenu] = useState<{ x: number; y: number } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
@@ -513,35 +511,25 @@ export default function App() {
     setCursor({ line: 1, col: 1 });
   }, []);
 
-  // Tree click with modifier support: Ctrl/Cmd toggles, Shift selects a range,
-  // a plain click opens the note and clears the multi-selection.
+  // Tree click: Ctrl/Cmd toggles a note in the multi-selection; a plain click
+  // opens the note and clears the selection. Shift is reserved for marquee
+  // (drag-to-select) handled in the sidebar.
   const handleNoteClick = useCallback((e: React.MouseEvent, id: string) => {
-    if (e.shiftKey || e.metaKey || e.ctrlKey) {
-      // Avoid a native text selection when building a multi-selection.
+    if (e.shiftKey) {
       e.preventDefault();
+      return;
     }
     if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
       setSelectedIds((prev) => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
         return next;
       });
-      lastClickedRef.current = id;
       return;
     }
-    if (e.shiftKey && lastClickedRef.current && lastClickedRef.current !== id) {
-      const order = flattenedNoteIdsRef.current;
-      const a = order.indexOf(lastClickedRef.current);
-      const b = order.indexOf(id);
-      if (a >= 0 && b >= 0) {
-        const [lo, hi] = a < b ? [a, b] : [b, a];
-        setSelectedIds(new Set(order.slice(lo, hi + 1)));
-        return;
-      }
-    }
     setSelectedIds(new Set());
-    lastClickedRef.current = id;
     handleSelectNote(id);
   }, [handleSelectNote]);
 
@@ -643,7 +631,6 @@ export default function App() {
   }
 
   const tree = buildTree(filteredNoteList, { keepNoteOrder: true, emptyFolders });
-  flattenedNoteIdsRef.current = flattenTreeNoteIds(tree);
   const activeVault = vaultList.find((v) => v.id === activeVaultId);
   const tabItems = tabs.map((t) => ({
     ...t,
@@ -726,6 +713,7 @@ export default function App() {
               onSelectNote={handleSelectNote}
               onNoteClick={handleNoteClick}
               selectedIds={selectedIds}
+              onSetSelectedIds={setSelectedIds}
               onCreateNote={handleCreateNote}
               onCreateFolder={handleCreateFolder}
               onMoveNote={handleMoveNote}

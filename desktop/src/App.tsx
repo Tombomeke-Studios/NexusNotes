@@ -23,6 +23,7 @@ import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
 import { loadPins, togglePin, pinnedFirst } from "./lib/pins";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
+import { welcomeNotes } from "./lib/welcome";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate, dailyNoteTemplate } from "./lib/daily";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
@@ -78,6 +79,8 @@ export default function App() {
   activeNoteRef.current = activeNote;
   const noteListRef = useRef(noteList);
   noteListRef.current = noteList;
+  const vaultListRef = useRef(vaultList);
+  vaultListRef.current = vaultList;
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
   const activeTabKeyRef = useRef(activeTabKey);
@@ -493,10 +496,36 @@ export default function App() {
   );
 
   const handleCreateVault = useCallback(async (name: string) => {
+    const isFirstVault = vaultListRef.current.length === 0;
     const vault = await vaultsApi.create(name);
     setVaultList((prev) => [...prev, vault]);
     setActiveVaultId(vault.id);
-    setNoteList([]);
+
+    if (!isFirstVault) {
+      setNoteList([]);
+      return;
+    }
+
+    // Seed a fresh account's first vault with example notes so it isn't empty.
+    const created: Note[] = [];
+    for (const n of welcomeNotes) {
+      try {
+        created.push(await notesApi.create(vault.id, n.title, n.path, n.content));
+      } catch {
+        /* skip a note that failed to create */
+      }
+    }
+    setNoteList(created);
+
+    // Open the Welcome note so the user lands on something useful.
+    const welcome = created.find((n) => n.title === "Welcome");
+    if (welcome) {
+      setTabs([{ key: welcome.id, type: "note" }]);
+      setActiveTabKey(welcome.id);
+      setActiveNote(welcome);
+      setEditorContent(welcome.content);
+      setSaveStatus("saved");
+    }
   }, []);
 
   const handleSelectNote = useCallback(async (noteId: string) => {

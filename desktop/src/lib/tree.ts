@@ -64,7 +64,7 @@ function sortTree(nodes: TreeNode[], keepNoteOrder: boolean) {
   nodes.sort((a, b) => {
     if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
     if (a.type === "note" && keepNoteOrder) return 0;
-    return a.name.localeCompare(b.name);
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
   });
   for (const node of nodes) {
     if (node.children) sortTree(node.children, keepNoteOrder);

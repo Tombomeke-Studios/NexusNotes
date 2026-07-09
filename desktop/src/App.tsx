@@ -640,6 +640,19 @@ export default function App() {
     setSaveStatus("unsaved");
   }, []);
 
+  // On commit (blur/Enter), make the title unique against the other notes so two
+  // notes can't share a name — like on create (Untitled, Untitled 1, …).
+  const handleRenameCommit = useCallback((title: string) => {
+    const current = activeNoteRef.current;
+    if (!current) return;
+    const others = new Set(noteListRef.current.filter((n) => n.id !== current.id).map((n) => n.title));
+    const unique = uniqueTitle(others, title.trim() || "Untitled");
+    if (unique === current.title) return;
+    setActiveNote((prev) => (prev ? { ...prev, title: unique } : prev));
+    setNoteList((prev) => prev.map((n) => (n.id === current.id ? { ...n, title: unique } : n)));
+    setSaveStatus("unsaved");
+  }, []);
+
   const handleSaveNote = useCallback(async (content: string) => {
     const current = activeNoteRef.current;
     if (!current) return;
@@ -890,6 +903,7 @@ export default function App() {
               }}
               onSave={handleSaveNote}
               onRename={handleRenameNote}
+              onRenameCommit={handleRenameCommit}
               onCreateNote={handleCreateNoteWithTitle}
               onNavigateToNote={handleSelectNote}
             />

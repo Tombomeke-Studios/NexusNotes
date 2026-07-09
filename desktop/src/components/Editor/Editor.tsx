@@ -55,6 +55,8 @@ interface EditorProps {
   onRenameCommit: (title: string) => void;
   onCreateNote: (title: string) => void;
   onNavigateToNote: (noteId: string) => void;
+  /** Suspend autosave (e.g. while a close-confirmation dialog is open). */
+  paused?: boolean;
 }
 
 export function Editor({
@@ -73,6 +75,7 @@ export function Editor({
   onRenameCommit,
   onCreateNote,
   onNavigateToNote,
+  paused = false,
 }: EditorProps) {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -87,6 +90,8 @@ export function Editor({
 
   onSaveRef.current = onSave;
   contentRef.current = content;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   const notesByTitle = useMemo(() => {
     const map = new Map<string, string>();
@@ -125,6 +130,7 @@ export function Editor({
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
+      if (pausedRef.current) return; // don't autosave while a close dialog is open
       saveTimerRef.current = setTimeout(() => {
         onSaveRef.current(value);
         setHasChanges(false);
@@ -132,6 +138,15 @@ export function Editor({
     },
     [onLiveChange],
   );
+
+  // Cancel any pending autosave the moment we pause (close dialog opened), so a
+  // "Close without saving" isn't undone by a save firing underneath it.
+  useEffect(() => {
+    if (paused && saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = undefined;
+    }
+  }, [paused]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

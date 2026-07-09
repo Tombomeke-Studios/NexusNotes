@@ -46,10 +46,52 @@ export async function login(page: Page, email: string, password = "Password1!") 
   await expect(page.locator(".sidebar")).toBeVisible({ timeout: 10_000 });
 }
 
-export async function createVault(page: Page, name?: string) {
+// E2E backend URL (matches VITE_API_URL used by the test webServer).
+const API = "http://localhost:8080";
+
+/**
+ * Deletes every note in a vault so tests start from an empty vault. A fresh
+ * account's first vault is seeded with welcome notes (onboarding), which most
+ * tests don't expect; the dedicated onboarding spec opts out with keepSeed.
+ */
+async function clearVaultNotes(page: Page, vaultName: string) {
+  const token = await page.evaluate(() => localStorage.getItem("nexus_token"));
+  if (!token) return;
+  const headers = { Authorization: `Bearer ${token}` };
+  const vaults = await (await page.request.get(`${API}/api/vaults`, { headers })).json();
+  const vault = (vaults as Array<{ id: string; name: string }>).find((v) => v.name === vaultName);
+  if (!vault) return;
+
+  const listNotes = async () =>
+    ((await (await page.request.get(`${API}/api/vaults/${vault.id}/notes`, { headers })).json()) as
+      | Array<{ id: string }>
+      | null) ?? [];
+
+  // Seeding creates the welcome notes asynchronously, so delete in passes until
+  // the vault stays empty (catches notes still in flight when we started).
+  let emptyStreak = 0;
+  for (let pass = 0; pass < 12 && emptyStreak < 2; pass++) {
+    const notes = await listNotes();
+    if (notes.length === 0) {
+      emptyStreak++;
+      await page.waitForTimeout(250);
+      continue;
+    }
+    emptyStreak = 0;
+    for (const n of notes) {
+      await page.request.delete(`${API}/api/vaults/${vault.id}/notes/${n.id}`, { headers });
+    }
+  }
+
+  await page.reload();
+  await expect(page.locator(".sidebar-vault-name")).toHaveText(vaultName, { timeout: 8_000 });
+}
+
+export async function createVault(page: Page, name?: string, opts: { keepSeed?: boolean } = {}) {
   const vaultName = name ?? `Vault-${uid()}`;
   const firstRun = page.locator(".firstrun-input");
-  if (await firstRun.isVisible().catch(() => false)) {
+  const isFirstVault = await firstRun.isVisible().catch(() => false);
+  if (isFirstVault) {
     // No vaults yet: the first-run onboarding card is shown
     await firstRun.fill(vaultName);
     await firstRun.press("Enter");
@@ -63,6 +105,10 @@ export async function createVault(page: Page, name?: string) {
   }
   // The new vault becomes active; its name shows in the sidebar head button
   await expect(page.locator(".sidebar-vault-name")).toHaveText(vaultName, { timeout: 8_000 });
+  // Only the first vault of a fresh account is seeded; clear it unless asked not to.
+  if (isFirstVault && !opts.keepSeed) {
+    await clearVaultNotes(page, vaultName);
+  }
   return vaultName;
 }
 

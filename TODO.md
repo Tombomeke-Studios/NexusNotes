@@ -765,6 +765,12 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/graph-interactions` - Graph hover, colour-by-folder, click-to-open (PR #158)
+
+- [x] Hover-highlight a node's neighbours and dim the rest (#141)
+- [x] Colour nodes by folder, size by connection count (#142)
+- [x] Click a node to open the note (#143)
+
 ### `feature/welcome-vault` - Welcome/example vault on first run (PR #157)
 
 - [x] Seed a new account's first vault with linked, tagged example notes and open Welcome (#156)

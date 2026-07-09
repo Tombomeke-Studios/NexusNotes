@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/unique-rename` - Unique name on rename (PR #161)
+
+- [x] Make the note title unique on rename commit (blur/Enter), like on create (#150)
+
 ### `feature/tree-keyboard-nav` - Keyboard navigation in the file tree (PR #160)
 
 - [x] Arrow Up/Down move the selection through visible notes, Enter opens (#149)

@@ -699,6 +699,8 @@ export default function App() {
       setSaveStatus("unsaved");
     }
   }, []);
+  const handleSaveNoteRef = useRef(handleSaveNote);
+  handleSaveNoteRef.current = handleSaveNote;
 
   // Live editor edits mark the note dirty immediately (so the tab dot / status
   // show unsaved before the debounced autosave runs).
@@ -727,11 +729,17 @@ export default function App() {
     if (isTauriWindow) {
       (async () => {
         const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        unlisten = await getCurrentWindow().onCloseRequested((event) => {
-          if (forceCloseRef.current) return; // user already confirmed via the dialog
+        const win = getCurrentWindow();
+        unlisten = await win.onCloseRequested(async (event) => {
+          if (forceCloseRef.current) return; // confirmed via the dialog / requestClose
           if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+            // OS-level close (Alt+F4 / taskbar). A React dialog can't be shown
+            // reliably from this native callback, so save-and-close here; the
+            // visible close button routes through requestClose() for the dialog.
             event.preventDefault();
-            setShowClosePrompt(true);
+            await handleSaveNoteRef.current(editorContentRef.current);
+            forceCloseRef.current = true;
+            win.close();
           }
         });
       })().catch(() => {});
@@ -765,6 +773,16 @@ export default function App() {
   const handleDiscardAndClose = useCallback(async () => {
     setShowClosePrompt(false);
     await closeWindowNow();
+  }, [closeWindowNow]);
+
+  // The visible close button routes through here (a real React click), so the
+  // unsaved-changes dialog renders reliably; a clean note closes immediately.
+  const requestClose = useCallback(() => {
+    if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+      setShowClosePrompt(true);
+    } else {
+      closeWindowNow();
+    }
   }, [closeWindowNow]);
 
   const handleCursorChange = useCallback((line: number, col: number) => {
@@ -844,6 +862,7 @@ export default function App() {
         onOpenPalette={() => setPaletteQuery("")}
         onToggleLeft={() => updatePrefs({ leftOpen: !prefs.leftOpen })}
         onToggleRight={() => updatePrefs({ rightOpen: !prefs.rightOpen })}
+        onRequestClose={requestClose}
       />
       <div className="workspace-body">
         <Rail

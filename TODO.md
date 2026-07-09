@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/tree-keyboard-nav` - Keyboard navigation in the file tree (PR #160)
+
+- [x] Arrow Up/Down move the selection through visible notes, Enter opens (#149)
+
 ### `feature/graph-display-options` - Orphan toggle + labels-on-zoom (PR #159)
 
 - [x] Toggle to show/hide orphan nodes (#145)

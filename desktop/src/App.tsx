@@ -96,7 +96,6 @@ export default function App() {
   saveStatusRef.current = saveStatus;
   const editorContentRef = useRef(editorContent);
   editorContentRef.current = editorContent;
-  const forceCloseRef = useRef(false);
 
   const updatePrefs = useCallback((partial: Partial<typeof prefs>) => {
     setPrefs(savePrefs(partial));
@@ -731,15 +730,14 @@ export default function App() {
         const { getCurrentWindow } = await import("@tauri-apps/api/window");
         const win = getCurrentWindow();
         unlisten = await win.onCloseRequested(async (event) => {
-          if (forceCloseRef.current) return; // confirmed via the dialog / requestClose
+          // Fires for OS-level close (Alt+F4 / taskbar); the visible close button
+          // routes through requestClose() + destroy() and does not come here. A
+          // React dialog can't be shown reliably from this native callback, so
+          // save-and-close to avoid losing work or trapping the window.
           if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
-            // OS-level close (Alt+F4 / taskbar). A React dialog can't be shown
-            // reliably from this native callback, so save-and-close here; the
-            // visible close button routes through requestClose() for the dialog.
             event.preventDefault();
             await handleSaveNoteRef.current(editorContentRef.current);
-            forceCloseRef.current = true;
-            win.close();
+            await win.destroy();
           }
         });
       })().catch(() => {});
@@ -751,11 +749,12 @@ export default function App() {
     };
   }, []);
 
+  // destroy() closes the window unconditionally (bypassing onCloseRequested), so
+  // the app always actually closes once the user has confirmed.
   const closeWindowNow = useCallback(async () => {
-    forceCloseRef.current = true;
     if (isTauriWindow) {
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().close();
+      await getCurrentWindow().destroy();
     } else {
       window.close();
     }
@@ -1042,6 +1041,7 @@ export default function App() {
               onRenameCommit={handleRenameCommit}
               onCreateNote={handleCreateNoteWithTitle}
               onNavigateToNote={handleSelectNote}
+              paused={closePrompt !== null}
             />
           )}
         </div>

@@ -60,6 +60,36 @@
   border-color: var(--bg-hover);
 }
 
+.graph-controls {
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.graph-toggle {
+  padding: 5px 11px;
+  background: rgba(17, 17, 27, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-inner);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.graph-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--bg-hover);
+}
+
+.graph-toggle--on {
+  color: var(--accent);
+  border-color: var(--accent-bg-strong);
+}
+
 .graph-link {
   stroke: var(--bg-surface);
   stroke-width: 1.3;

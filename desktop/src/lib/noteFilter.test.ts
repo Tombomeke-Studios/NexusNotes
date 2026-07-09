@@ -76,6 +76,21 @@ describe("sortNotes", () => {
     sortNotes(notes, "title");
     expect(notes).toEqual(copy);
   });
+
+  it("sorts titles naturally (Untitled 2 before Untitled 10)", () => {
+    const numbered = [
+      note({ id: "10", title: "Untitled 10" }),
+      note({ id: "2", title: "Untitled 2" }),
+      note({ id: "1", title: "Untitled 1" }),
+      note({ id: "0", title: "Untitled" }),
+    ];
+    expect(sortNotes(numbered, "title").map((n) => n.title)).toEqual([
+      "Untitled",
+      "Untitled 1",
+      "Untitled 2",
+      "Untitled 10",
+    ]);
+  });
 });
 
 describe("uniqueTitle", () => {

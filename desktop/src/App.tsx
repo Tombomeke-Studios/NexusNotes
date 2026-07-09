@@ -24,12 +24,14 @@ import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } fro
 import { loadPins, togglePin, pinnedFirst } from "./lib/pins";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
+import { saveDraft, loadDraft, clearDraft } from "./lib/drafts";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate, dailyNoteTemplate } from "./lib/daily";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
 import type { ViewMode } from "./lib/prefs";
 import type { RailView } from "./components/Workspace/Rail";
 import { relativeTimeLabel } from "./lib/stats";
+import { isTauriWindow } from "./lib/platform";
 import type { User, Vault, Note } from "./lib/types";
 
 const VIEW_CYCLE: ViewMode[] = ["edit", "split", "preview"];
@@ -52,6 +54,7 @@ export default function App() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showClosePrompt, setShowClosePrompt] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [newFolderNonce, setNewFolderNonce] = useState(0);
@@ -89,6 +92,11 @@ export default function App() {
   tabsRef.current = tabs;
   const activeTabKeyRef = useRef(activeTabKey);
   activeTabKeyRef.current = activeTabKey;
+  const saveStatusRef = useRef(saveStatus);
+  saveStatusRef.current = saveStatus;
+  const editorContentRef = useRef(editorContent);
+  editorContentRef.current = editorContent;
+  const forceCloseRef = useRef(false);
 
   const updatePrefs = useCallback((partial: Partial<typeof prefs>) => {
     setPrefs(savePrefs(partial));
@@ -539,9 +547,18 @@ export default function App() {
     );
     setActiveTabKey(noteId);
     const note = await notesApi.get(noteId);
-    setActiveNote(note);
-    setEditorContent(note.content);
-    setSaveStatus("saved");
+    // Restore any unsaved local draft (e.g. after an abrupt close) so work isn't
+    // lost; it will re-save on the next autosave.
+    const draft = loadDraft(noteId);
+    if (draft !== null && draft !== note.content) {
+      setActiveNote({ ...note, content: draft });
+      setEditorContent(draft);
+      setSaveStatus("unsaved");
+    } else {
+      setActiveNote(note);
+      setEditorContent(note.content);
+      setSaveStatus("saved");
+    }
     setCursor({ line: 1, col: 1 });
   }, []);
 
@@ -668,17 +685,87 @@ export default function App() {
       );
       if ("checksum" in updated) {
         const note = updated as Note;
-        setActiveNote(note);
-        setNoteList((prev) =>
-          prev.map((n) => (n.id === note.id ? note : n)),
-        );
-        setSaveStatus("saved");
+        clearDraft(note.id);
+        setNoteList((prev) => prev.map((n) => (n.id === note.id ? note : n)));
+        // Only refresh the open note / status if we haven't since navigated away
+        // (e.g. a save flushed on blur while clicking a preview link).
+        setActiveNote((prev) => (prev && prev.id === note.id ? note : prev));
+        if (activeNoteRef.current?.id === note.id) {
+          setSaveStatus("saved");
+        }
         setLastSyncAt(new Date());
       }
     } catch {
       setSaveStatus("unsaved");
     }
   }, []);
+
+  // Live editor edits mark the note dirty immediately (so the tab dot / status
+  // show unsaved before the debounced autosave runs).
+  const handleLiveChange = useCallback((content: string) => {
+    setEditorContent(content);
+    setSaveStatus((s) => (s === "unsaved" ? s : "unsaved"));
+    // Mirror to a local draft so nothing is lost if the app closes before the
+    // debounced server save runs.
+    const id = activeNoteRef.current?.id;
+    if (id) saveDraft(id, content);
+  }, []);
+
+  // Warn before losing unsaved work on close. In the browser, the native
+  // beforeunload prompt; in the native app, intercept the close and show our own
+  // Save / Don't save / Cancel dialog (like Word).
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    let unlisten: (() => void) | undefined;
+    if (isTauriWindow) {
+      (async () => {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        unlisten = await getCurrentWindow().onCloseRequested((event) => {
+          if (forceCloseRef.current) return; // user already confirmed via the dialog
+          if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+            event.preventDefault();
+            setShowClosePrompt(true);
+          }
+        });
+      })().catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      unlisten?.();
+    };
+  }, []);
+
+  const closeWindowNow = useCallback(async () => {
+    forceCloseRef.current = true;
+    if (isTauriWindow) {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().close();
+    } else {
+      window.close();
+    }
+  }, []);
+
+  const handleSaveAndClose = useCallback(async () => {
+    await handleSaveNote(editorContentRef.current);
+    // Only close if the save actually succeeded (e.g. server reachable).
+    if (saveStatusRef.current === "saved" || saveStatusRef.current === "idle") {
+      setShowClosePrompt(false);
+      await closeWindowNow();
+    }
+  }, [handleSaveNote, closeWindowNow]);
+
+  const handleDiscardAndClose = useCallback(async () => {
+    setShowClosePrompt(false);
+    await closeWindowNow();
+  }, [closeWindowNow]);
 
   const handleCursorChange = useCallback((line: number, col: number) => {
     setCursor((prev) => (prev.line === line && prev.col === col ? prev : { line, col }));
@@ -819,6 +906,9 @@ export default function App() {
               onSearchChange={setSearchQuery}
               onSignOut={handleSignOut}
               pinnedIds={pinnedSet}
+              unsavedNoteId={
+                (saveStatus === "unsaved" || saveStatus === "saving") ? activeNote?.id ?? null : null
+              }
               onNoteContextMenu={(e, noteId) =>
                 setCtxMenu({
                   x: Math.min(e.clientX, window.innerWidth - 195),
@@ -844,6 +934,7 @@ export default function App() {
             <TabBar
               tabs={tabItems}
               activeKey={activeTabKey}
+              unsavedKey={saveStatus === "unsaved" || saveStatus === "saving" ? activeTabKey : null}
               onSelect={(key) => {
                 const tab = tabs.find((t) => t.key === key);
                 if (tab?.type === "note") handleSelectNote(key);
@@ -895,7 +986,7 @@ export default function App() {
               onSplitPctChange={(pct) => updatePrefs({ splitPct: pct })}
               onModeChange={(m) => updatePrefs({ viewMode: m })}
               onCursorChange={handleCursorChange}
-              onLiveChange={setEditorContent}
+              onLiveChange={handleLiveChange}
               onTagClick={(tag) => {
                 setFilterTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
                 setRailView("files");
@@ -961,6 +1052,29 @@ export default function App() {
           onSignOut={handleSignOut}
           onClose={() => setShowSettings(false)}
         />
+      )}
+
+      {showClosePrompt && (
+        <div className="confirm-overlay" onClick={() => setShowClosePrompt(false)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-title">Unsaved changes</div>
+            <div className="confirm-body">
+              {activeNote ? `"${activeNote.title || "Untitled"}"` : "This note"} has changes that
+              haven&rsquo;t been saved. What would you like to do?
+            </div>
+            <div className="confirm-actions">
+              <button className="confirm-btn" onClick={() => setShowClosePrompt(false)}>
+                Cancel
+              </button>
+              <button className="confirm-btn confirm-btn--danger" onClick={handleDiscardAndClose}>
+                Close without saving
+              </button>
+              <button className="confirm-btn confirm-btn--primary" onClick={handleSaveAndClose}>
+                Save &amp; close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {ctxMenu && (

@@ -52,6 +52,7 @@ interface EditorProps {
   onTagClick?: (tag: string) => void;
   onSave: (content: string) => void;
   onRename: (title: string) => void;
+  onRenameCommit: (title: string) => void;
   onCreateNote: (title: string) => void;
   onNavigateToNote: (noteId: string) => void;
 }
@@ -69,6 +70,7 @@ export function Editor({
   onTagClick,
   onSave,
   onRename,
+  onRenameCommit,
   onCreateNote,
   onNavigateToNote,
 }: EditorProps) {
@@ -295,6 +297,10 @@ export function Editor({
           className="editor-title-input"
           value={note.title}
           onChange={(e) => onRename(e.target.value)}
+          onBlur={(e) => onRenameCommit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
           placeholder="Untitled"
         />
         <div className="editor-toolbar-right">

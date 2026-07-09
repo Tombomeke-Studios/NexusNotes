@@ -17,7 +17,7 @@ import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
 import { syncClient } from "./lib/sync";
-import { buildTree } from "./lib/tree";
+import { buildTree, flattenTreeNoteIds } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
@@ -58,6 +58,10 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectedIdsRef = useRef(selectedIds);
   selectedIdsRef.current = selectedIds;
+  const flattenedNoteIdsRef = useRef<string[]>([]);
+  const keyboardCursorRef = useRef<string | null>(null);
+  const modalOpenRef = useRef(false);
+  const graphActiveRef = useRef(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
   const [workspaceMenu, setWorkspaceMenu] = useState<{ x: number; y: number } | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
@@ -529,6 +533,7 @@ export default function App() {
   }, []);
 
   const handleSelectNote = useCallback(async (noteId: string) => {
+    keyboardCursorRef.current = noteId;
     setTabs((prev) =>
       prev.some((t) => t.key === noteId) ? prev : [...prev, { key: noteId, type: "note" }],
     );
@@ -539,6 +544,44 @@ export default function App() {
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
   }, []);
+
+  // Keyboard navigation of the file tree: Up/Down move a single-note highlight
+  // through the visible order, Enter opens it. Ignored while typing, in the
+  // graph, or when a modal/menu is open.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Enter") return;
+      const t = e.target as HTMLElement;
+      if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable) return;
+      if (modalOpenRef.current || graphActiveRef.current) return;
+      const order = flattenedNoteIdsRef.current;
+      if (order.length === 0) return;
+
+      if (e.key === "Enter") {
+        const cur = keyboardCursorRef.current;
+        if (cur && order.includes(cur)) {
+          e.preventDefault();
+          handleSelectNote(cur);
+        }
+        return;
+      }
+
+      e.preventDefault();
+      const cur = keyboardCursorRef.current ?? activeNoteRef.current?.id ?? null;
+      const at = cur ? order.indexOf(cur) : -1;
+      const next = e.key === "ArrowDown"
+        ? Math.min(order.length - 1, at + 1)
+        : Math.max(0, at < 0 ? 0 : at - 1);
+      const id = order[next];
+      keyboardCursorRef.current = id;
+      setSelectedIds(new Set([id]));
+      requestAnimationFrame(() =>
+        document.querySelector(`[data-note-id="${id}"]`)?.scrollIntoView({ block: "nearest" }),
+      );
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleSelectNote]);
 
   // Tree click: Ctrl/Cmd toggles a note in the multi-selection; a plain click
   // opens the note and clears the selection. Shift is reserved for marquee
@@ -667,6 +710,13 @@ export default function App() {
   }));
   const activeTab = tabs.find((t) => t.key === activeTabKey) ?? null;
   const graphActive = activeTab?.type === "graph";
+
+  // Refs kept fresh for the keyboard-navigation handler (which runs off a stable
+  // window listener).
+  flattenedNoteIdsRef.current = flattenTreeNoteIds(tree);
+  graphActiveRef.current = graphActive;
+  modalOpenRef.current =
+    paletteQuery !== null || showGlobalSearch || showSettings || showCalendar || ctxMenu !== null || workspaceMenu !== null;
 
   return (
     <div

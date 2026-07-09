@@ -54,7 +54,7 @@ export default function App() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showClosePrompt, setShowClosePrompt] = useState(false);
+  const [closePrompt, setClosePrompt] = useState<{ kind: "window" } | { kind: "tab"; key: string } | null>(null);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [newFolderNonce, setNewFolderNonce] = useState(0);
@@ -761,29 +761,55 @@ export default function App() {
     }
   }, []);
 
-  const handleSaveAndClose = useCallback(async () => {
-    await handleSaveNote(editorContentRef.current);
-    // Only close if the save actually succeeded (e.g. server reachable).
-    if (saveStatusRef.current === "saved" || saveStatusRef.current === "idle") {
-      setShowClosePrompt(false);
+  // Finish a confirmed close: the whole window, or just the note tab.
+  const finishClose = useCallback(async (prompt: { kind: "window" } | { kind: "tab"; key: string }) => {
+    setClosePrompt(null);
+    if (prompt.kind === "tab") {
+      closeTabRef.current(prompt.key);
+    } else {
       await closeWindowNow();
     }
-  }, [handleSaveNote, closeWindowNow]);
-
-  const handleDiscardAndClose = useCallback(async () => {
-    setShowClosePrompt(false);
-    await closeWindowNow();
   }, [closeWindowNow]);
 
-  // The visible close button routes through here (a real React click), so the
-  // unsaved-changes dialog renders reliably; a clean note closes immediately.
+  const handleSaveAndClose = useCallback(async () => {
+    if (!closePrompt) return;
+    await handleSaveNote(editorContentRef.current);
+    await finishClose(closePrompt);
+  }, [closePrompt, handleSaveNote, finishClose]);
+
+  const handleDiscardAndClose = useCallback(async () => {
+    if (!closePrompt) return;
+    // Truly discard: drop the local draft so the note reverts to its saved
+    // version, and mark clean so a following window-close doesn't re-prompt.
+    const id = activeNoteRef.current?.id;
+    if (id) clearDraft(id);
+    setSaveStatus("saved");
+    await finishClose(closePrompt);
+  }, [closePrompt, finishClose]);
+
+  // The visible window close button routes through here (a real React click) so
+  // the unsaved-changes dialog renders reliably; a clean note closes at once.
   const requestClose = useCallback(() => {
     if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
-      setShowClosePrompt(true);
+      setClosePrompt({ kind: "window" });
     } else {
       closeWindowNow();
     }
   }, [closeWindowNow]);
+
+  // Closing a note tab warns (like Visual Studio) when that note is unsaved.
+  const requestCloseTab = useCallback((key: string) => {
+    const tab = tabsRef.current.find((t) => t.key === key);
+    const dirty =
+      key === activeTabKeyRef.current &&
+      tab?.type === "note" &&
+      (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving");
+    if (dirty) {
+      setClosePrompt({ kind: "tab", key });
+    } else {
+      closeTabRef.current(key);
+    }
+  }, []);
 
   const handleCursorChange = useCallback((line: number, col: number) => {
     setCursor((prev) => (prev.line === line && prev.col === col ? prev : { line, col }));
@@ -959,7 +985,7 @@ export default function App() {
                 if (tab?.type === "note") handleSelectNote(key);
                 else setActiveTabKey(key);
               }}
-              onClose={closeTab}
+              onClose={requestCloseTab}
               onNew={handleCreateNote}
             />
           )}
@@ -1073,16 +1099,17 @@ export default function App() {
         />
       )}
 
-      {showClosePrompt && (
-        <div className="confirm-overlay" onClick={() => setShowClosePrompt(false)}>
+      {closePrompt && (
+        <div className="confirm-overlay" onClick={() => setClosePrompt(null)}>
           <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="confirm-title">Unsaved changes</div>
             <div className="confirm-body">
               {activeNote ? `"${activeNote.title || "Untitled"}"` : "This note"} has changes that
-              haven&rsquo;t been saved. What would you like to do?
+              haven&rsquo;t been saved. What would you like to do
+              {closePrompt.kind === "window" ? " before closing" : ""}?
             </div>
             <div className="confirm-actions">
-              <button className="confirm-btn" onClick={() => setShowClosePrompt(false)}>
+              <button className="confirm-btn" onClick={() => setClosePrompt(null)}>
                 Cancel
               </button>
               <button className="confirm-btn confirm-btn--danger" onClick={handleDiscardAndClose}>

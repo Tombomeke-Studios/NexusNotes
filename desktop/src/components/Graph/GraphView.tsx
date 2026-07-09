@@ -13,11 +13,26 @@ interface SimNode extends d3.SimulationNodeDatum {
   id: string;
   title: string;
   connections: number;
+  folder: string;
 }
 
 interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   source: SimNode;
   target: SimNode;
+}
+
+// Distinct, on-brand colours assigned to folders; root notes stay neutral.
+const FOLDER_PALETTE = [
+  "#cba6f7", "#89b4fa", "#94e2d5", "#f9e2af", "#fab387",
+  "#f38ba8", "#a6e3a1", "#f5c2e7", "#74c7ec", "#b4befe",
+];
+const ROOT_COLOR = "#7f849c";
+
+function folderColor(folder: string): string {
+  if (!folder) return ROOT_COLOR;
+  let hash = 0;
+  for (let i = 0; i < folder.length; i++) hash = (hash * 31 + folder.charCodeAt(i)) | 0;
+  return FOLDER_PALETTE[Math.abs(hash) % FOLDER_PALETTE.length];
 }
 
 export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) {
@@ -81,12 +96,30 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
         d.fy = null;
       });
 
+    // Adjacency for hover-highlighting.
+    const neighbors = new Map<string, Set<string>>();
+    for (const l of links) {
+      (neighbors.get(l.source.id) ?? neighbors.set(l.source.id, new Set()).get(l.source.id)!).add(l.target.id);
+      (neighbors.get(l.target.id) ?? neighbors.set(l.target.id, new Set()).get(l.target.id)!).add(l.source.id);
+    }
+
     const node = g.append("g")
       .selectAll<SVGGElement, SimNode>("g")
       .data(nodes)
       .join("g")
       .attr("class", (d) => `graph-node ${d.id === activeNoteId ? "graph-node--active" : ""} ${d.connections === 0 ? "graph-node--orphan" : ""}`)
+      .style("--node-color", (d) => folderColor(d.folder))
       .on("click", (_, d) => onSelectNote(d.id))
+      .on("mouseover", (_, d) => {
+        const nb = neighbors.get(d.id) ?? new Set<string>();
+        node.classed("graph-node--dim", (n) => n.id !== d.id && !nb.has(n.id));
+        link.classed("graph-link--hi", (l) => l.source.id === d.id || l.target.id === d.id);
+        link.classed("graph-link--dim", (l) => l.source.id !== d.id && l.target.id !== d.id);
+      })
+      .on("mouseout", () => {
+        node.classed("graph-node--dim", false);
+        link.classed("graph-link--hi", false).classed("graph-link--dim", false);
+      })
       .call(dragBehavior);
 
     node.append("circle")

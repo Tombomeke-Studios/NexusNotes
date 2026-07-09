@@ -15,6 +15,7 @@ interface TopBarProps {
   onOpenPalette: () => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
+  onRequestClose?: () => void;
 }
 
 const CrumbSep = () => (
@@ -40,6 +41,7 @@ export function TopBar({
   onOpenPalette,
   onToggleLeft,
   onToggleRight,
+  onRequestClose,
 }: TopBarProps) {
   const sync = SYNC_MAP[syncStatus];
   const folderSegments = notePath ? notePath.split("/").filter(Boolean) : [];
@@ -109,7 +111,7 @@ export function TopBar({
         {isTauriWindow && (
           <>
             <span className="topbar-divider" />
-            <WindowControls />
+            <WindowControls onRequestClose={onRequestClose} />
           </>
         )}
       </div>

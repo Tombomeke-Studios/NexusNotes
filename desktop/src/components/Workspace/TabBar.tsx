@@ -9,18 +9,20 @@ export interface WorkspaceTab {
 interface TabBarProps {
   tabs: WorkspaceTab[];
   activeKey: string | null;
+  /** Tab key with unsaved changes (shows a dirty dot). */
+  unsavedKey?: string | null;
   onSelect: (key: string) => void;
   onClose: (key: string) => void;
   onNew: () => void;
 }
 
-export function TabBar({ tabs, activeKey, onSelect, onClose, onNew }: TabBarProps) {
+export function TabBar({ tabs, activeKey, unsavedKey, onSelect, onClose, onNew }: TabBarProps) {
   return (
     <div className="tabbar">
       {tabs.map((tab) => (
         <div
           key={tab.key}
-          className={`tab${tab.key === activeKey ? " tab--active" : ""}`}
+          className={`tab${tab.key === activeKey ? " tab--active" : ""}${tab.key === unsavedKey ? " tab--unsaved" : ""}`}
           onClick={() => onSelect(tab.key)}
           onAuxClick={(e) => {
             if (e.button === 1) {
@@ -43,6 +45,7 @@ export function TabBar({ tabs, activeKey, onSelect, onClose, onNew }: TabBarProp
             </svg>
           )}
           <span className="tab-title">{tab.title || "Untitled"}</span>
+          <span className="tab-dot" title="Unsaved changes" />
           <button
             className="tab-close"
             onClick={(e) => {

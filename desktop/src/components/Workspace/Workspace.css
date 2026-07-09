@@ -436,6 +436,34 @@
   color: var(--text-primary);
 }
 
+/* Dirty indicator: an unsaved tab shows a dot in place of the close button
+   until hovered. */
+.tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  flex-shrink: 0;
+  display: none;
+}
+
+.tab--unsaved .tab-dot {
+  display: block;
+}
+
+.tab--unsaved:hover .tab-dot {
+  display: none;
+}
+
+.tab--unsaved .tab-close {
+  display: none;
+  opacity: 1;
+}
+
+.tab--unsaved:hover .tab-close {
+  display: flex;
+}
+
 .tab-new {
   width: 26px;
   height: 26px;

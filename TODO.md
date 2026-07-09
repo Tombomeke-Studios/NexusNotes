@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/welcome-vault` - Welcome/example vault on first run (PR #157)
+
+- [x] Seed a new account's first vault with linked, tagged example notes and open Welcome (#156)
+
 ### `feature/natural-sort` - Natural (numeric) sort order (PR #140)
 
 - [x] Sort note titles and folder names naturally so Untitled 2 comes before Untitled 10 (#139)

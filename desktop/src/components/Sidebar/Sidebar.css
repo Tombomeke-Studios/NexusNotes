@@ -164,6 +164,21 @@
   color: var(--accent);
 }
 
+/* Unsaved-changes indicator on a note in the tree. */
+.tree-unsaved-dot {
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+  flex-shrink: 0;
+}
+
+/* When both are present, the pin shouldn't also push to the far right. */
+.tree-unsaved-dot + .tree-pin {
+  margin-left: 6px;
+}
+
 .sidebar-new-vault {
   padding: 4px;
 }

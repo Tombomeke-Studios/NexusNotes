@@ -81,6 +81,8 @@ interface SidebarProps {
   onSearchChange: (query: string) => void;
   onSignOut: () => void;
   pinnedIds: Set<string>;
+  /** Note with unsaved changes (shows a dot in the tree). */
+  unsavedNoteId?: string | null;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
 }
 
@@ -115,6 +117,7 @@ export function Sidebar({
   onSearchChange,
   onSignOut,
   pinnedIds,
+  unsavedNoteId,
   onNoteContextMenu,
 }: SidebarProps) {
   const [showVaults, setShowVaults] = useState(false);
@@ -494,6 +497,7 @@ export function Sidebar({
             activeNoteId={activeNoteId}
             selectedIds={selectedIds}
             pinnedIds={pinnedIds}
+            unsavedNoteId={unsavedNoteId}
             onNoteClick={onNoteClick}
             onNoteContextMenu={onNoteContextMenu}
             dnd={dnd}
@@ -566,6 +570,7 @@ function TreeItem({
   activeNoteId,
   selectedIds,
   pinnedIds,
+  unsavedNoteId,
   onNoteClick,
   onNoteContextMenu,
   dnd,
@@ -575,6 +580,7 @@ function TreeItem({
   activeNoteId: string | null;
   selectedIds: Set<string>;
   pinnedIds: Set<string>;
+  unsavedNoteId?: string | null;
   onNoteClick: (e: React.MouseEvent, id: string) => void;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
   dnd: TreeDnd;
@@ -621,6 +627,7 @@ function TreeItem({
               activeNoteId={activeNoteId}
               selectedIds={selectedIds}
               pinnedIds={pinnedIds}
+              unsavedNoteId={unsavedNoteId}
               onNoteClick={onNoteClick}
               onNoteContextMenu={onNoteContextMenu}
               dnd={dnd}
@@ -665,6 +672,9 @@ function TreeItem({
     >
       <FileIcon />
       <span className="tree-item-name">{node.name}</span>
+      {node.noteId && node.noteId === unsavedNoteId && (
+        <span className="tree-unsaved-dot" title="Unsaved changes" />
+      )}
       {node.noteId && pinnedIds.has(node.noteId) && (
         <svg width="11" height="11" viewBox="0 0 14 14" fill="none" className="tree-pin">
           <circle cx="7" cy="5" r="2.8" stroke="currentColor" strokeWidth="1.4" />

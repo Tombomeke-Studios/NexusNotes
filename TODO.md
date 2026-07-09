@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/save-status` - Unsaved indicators, drafts, and close confirmation (PR #163)
+
+- [x] Tab + tree dirty indicators, localStorage draft persistence/restore, and a Word-style close confirmation (#162)
+
 ### `feature/unique-rename` - Unique name on rename (PR #161)
 
 - [x] Make the note title unique on rename commit (blur/Enter), like on create (#150)

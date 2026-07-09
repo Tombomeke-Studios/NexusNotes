@@ -765,6 +765,11 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/graph-display-options` - Orphan toggle + labels-on-zoom (PR #159)
+
+- [x] Toggle to show/hide orphan nodes (#145)
+- [x] Hide node labels when zoomed out past a threshold (#148)
+
 ### `feature/graph-interactions` - Graph hover, colour-by-folder, click-to-open (PR #158)
 
 - [x] Hover-highlight a node's neighbours and dim the rest (#141)

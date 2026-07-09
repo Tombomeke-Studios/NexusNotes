@@ -7,7 +7,16 @@ import { useEffect, useState } from "react";
  * class. Rendered on both the workspace top bar and the login screen so users
  * are never trapped in a frameless window.
  */
-export function WindowControls() {
+interface WindowControlsProps {
+  /**
+   * Intercept the close button (e.g. to confirm unsaved changes). Runs as a
+   * normal React click so any dialog it opens renders reliably; if omitted the
+   * button closes the window directly.
+   */
+  onRequestClose?: () => void;
+}
+
+export function WindowControls({ onRequestClose }: WindowControlsProps = {}) {
   const [maximized, setMaximized] = useState(false);
   const [hover, setHover] = useState(false);
 
@@ -56,7 +65,11 @@ export function WindowControls() {
         </svg>
       </button>
       <span className="win-sep" />
-      <button className="win-btn win-btn--close" onClick={call("close")} title="Close">
+      <button
+        className="win-btn win-btn--close"
+        onClick={onRequestClose ?? call("close")}
+        title="Close"
+      >
         {dot}
         <svg className="win-glyph" width="11" height="11" viewBox="0 0 11 11" fill="none">
           <path d="M2.4 2.4l6.2 6.2M8.6 2.4L2.4 8.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />

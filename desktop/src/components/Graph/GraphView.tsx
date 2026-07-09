@@ -38,6 +38,7 @@ function folderColor(folder: string): string {
 export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [renderKey, setRenderKey] = useState(0);
+  const [showOrphans, setShowOrphans] = useState(true);
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current);
@@ -49,18 +50,30 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
     const width = rect.width;
     const height = rect.height;
 
-    const nodes: SimNode[] = data.nodes.map((n) => ({ ...n }));
-    const links: SimLink[] = data.links.map((l) => ({
-      source: nodes.find((n) => n.id === l.source)!,
-      target: nodes.find((n) => n.id === l.target)!,
-    }));
+    const nodes: SimNode[] = data.nodes
+      .filter((n) => showOrphans || n.connections > 0)
+      .map((n) => ({ ...n }));
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    const links: SimLink[] = data.links
+      .filter((l) => nodeIds.has(l.source) && nodeIds.has(l.target))
+      .map((l) => ({
+        source: nodes.find((n) => n.id === l.source)!,
+        target: nodes.find((n) => n.id === l.target)!,
+      }));
 
     const g = svg.append("g");
+
+    // Labels are hidden when zoomed out past this scale to reduce clutter.
+    const LABEL_ZOOM = 0.85;
+    const applyLabelVisibility = (k: number) => {
+      g.selectAll<SVGTextElement, SimNode>(".graph-node text").style("opacity", k < LABEL_ZOOM ? 0 : 1);
+    };
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 4])
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
+        applyLabelVisibility(event.transform.k);
       });
     svg.call(zoom as unknown as (selection: d3.Selection<SVGSVGElement | null, unknown, null, undefined>) => void);
 
@@ -141,12 +154,14 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
     });
 
     return () => { simulation.stop(); };
-  }, [data, activeNoteId, onSelectNote]);
+  }, [data, activeNoteId, onSelectNote, showOrphans]);
 
   useEffect(() => {
     const cleanup = render();
     return cleanup;
   }, [render, renderKey]);
+
+  const orphanCount = data.nodes.filter((n) => n.connections === 0).length;
 
   return (
     <div className="graph-view">
@@ -154,6 +169,17 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
       <div className="graph-badge">
         {data.nodes.length} notes &middot; {data.links.length} links
       </div>
+      {orphanCount > 0 && (
+        <div className="graph-controls">
+          <button
+            className={`graph-toggle${showOrphans ? " graph-toggle--on" : ""}`}
+            onClick={() => setShowOrphans((v) => !v)}
+            title={showOrphans ? "Hide notes with no links" : "Show notes with no links"}
+          >
+            {showOrphans ? "Hide" : "Show"} {orphanCount} orphan{orphanCount === 1 ? "" : "s"}
+          </button>
+        </div>
+      )}
       <button className="graph-recenter" onClick={() => setRenderKey((k) => k + 1)}>
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
           <circle cx="7" cy="7" r="2" fill="currentColor" />

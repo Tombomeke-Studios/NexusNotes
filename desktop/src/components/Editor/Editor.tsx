@@ -98,6 +98,12 @@ export function Editor({
 
   useEffect(() => {
     if (note && note.id !== prevNoteIdRef.current) {
+      // Drop any pending autosave for the previous note so it can't fire against
+      // the newly opened one (its content is safe in its own draft).
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = undefined;
+      }
       setContent(note.content);
       setHasChanges(false);
       prevNoteIdRef.current = note.id;

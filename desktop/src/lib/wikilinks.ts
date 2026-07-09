@@ -4,6 +4,8 @@ export interface GraphNode {
   id: string;
   title: string;
   connections: number;
+  /** Top-level folder the note lives in ("" = root); used to colour nodes. */
+  folder: string;
 }
 
 export interface GraphLink {
@@ -60,6 +62,7 @@ export function buildGraphData(notes: Note[]): GraphData {
     id: n.id,
     title: n.title,
     connections: connectionCount.get(n.id) || 0,
+    folder: n.path ? n.path.split("/")[0] : "",
   }));
 
   return { nodes, links };

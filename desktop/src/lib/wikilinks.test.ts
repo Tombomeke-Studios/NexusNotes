@@ -61,4 +61,14 @@ describe("buildGraphData", () => {
     expect(graph.nodes).toEqual([]);
     expect(graph.links).toEqual([]);
   });
+
+  it("tags each node with its top-level folder", () => {
+    const notes = [
+      makeNote({ id: "1", title: "A", path: "" }),
+      makeNote({ id: "2", title: "B", path: "Work/Sub" }),
+    ];
+    const graph = buildGraphData(notes);
+    expect(graph.nodes.find((n) => n.id === "1")?.folder).toBe("");
+    expect(graph.nodes.find((n) => n.id === "2")?.folder).toBe("Work");
+  });
 });

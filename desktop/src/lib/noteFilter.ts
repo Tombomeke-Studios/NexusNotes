@@ -31,7 +31,7 @@ export function filterNotes(
 export function sortNotes(notes: Note[], by: SortBy): Note[] {
   const sorted = [...notes];
   if (by === "title") {
-    sorted.sort((a, b) => a.title.localeCompare(b.title));
+    sorted.sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" }));
   } else {
     sorted.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   }

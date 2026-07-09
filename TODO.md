@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/natural-sort` - Natural (numeric) sort order (PR #140)
+
+- [x] Sort note titles and folder names naturally so Untitled 2 comes before Untitled 10 (#139)
+
 ### `feature/multi-select-notes` - Multi-select notes (PR #138)
 
 - [x] Multi-select notes: Ctrl+click toggle, Shift+drag marquee, click-away to deselect; delete or drag the whole selection at once; default alphabetical order (#137)

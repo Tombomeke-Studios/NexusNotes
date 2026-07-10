@@ -41,7 +41,10 @@ type NoteUpdate struct {
 	Title        string `json:"title"`
 	Path         string `json:"path"`
 	PrevChecksum string `json:"prev_checksum"`
-	DeviceID     string `json:"device_id"`
+	// Checksum is the client-computed plaintext hash; only honoured for e2ee
+	// vaults where the server cannot hash the plaintext itself.
+	Checksum string `json:"checksum"`
+	DeviceID string `json:"device_id"`
 }
 
 type ConflictInfo struct {
@@ -52,9 +55,13 @@ type ConflictInfo struct {
 	ClientChecksum string `json:"client_checksum"`
 }
 
-func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, content, deviceID string) (*model.Note, error) {
+func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, content, deviceID, clientChecksum string) (*model.Note, error) {
 	now := time.Now().UTC()
-	checksum := ComputeChecksum(content)
+	vault, err := s.vaultRepo.GetByID(ctx, vaultID)
+	if err != nil {
+		return nil, fmt.Errorf("get vault: %w", err)
+	}
+	checksum := resolveChecksum(vault.Encryption, content, clientChecksum)
 
 	fm, _ := ParseFrontmatter(content)
 	if fm.Title != "" {
@@ -125,7 +132,7 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		}
 		go func() {
 			// Omit content and tags for encrypted vaults
-			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
+			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && vault.Encryption != model.VaultEncryptionE2EE {
 				doc.Content = note.Content
 				fm, _ := ParseFrontmatter(content)
 				doc.Tags = mergeTags(content)
@@ -160,12 +167,20 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 			ServerContent:  existing.Content,
 			ServerChecksum: existing.Checksum,
 			ClientContent:  update.Content,
-			ClientChecksum: ComputeChecksum(update.Content),
+			ClientChecksum: firstNonEmpty(update.Checksum, ComputeChecksum(update.Content)),
 		}
 		return nil, conflict, ErrConflict
 	}
 
-	newChecksum := ComputeChecksum(update.Content)
+	current, err := s.noteRepo.GetByID(ctx, update.NoteID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get note: %w", err)
+	}
+	vault, err := s.vaultRepo.GetByID(ctx, current.VaultID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get vault: %w", err)
+	}
+	newChecksum := resolveChecksum(vault.Encryption, update.Content, update.Checksum)
 	now := time.Now().UTC()
 
 	tx, err := s.noteRepo.BeginTx(ctx)
@@ -238,7 +253,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
 		}
 		go func() {
-			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && !vault.IsEncrypted {
+			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && vault.Encryption != model.VaultEncryptionE2EE {
 				doc.Content = savedContent
 				fm, _ := ParseFrontmatter(savedContent)
 				doc.Tags = mergeTags(savedContent)
@@ -304,4 +319,11 @@ func buildNoteLinks(vaultID, sourceNoteID, content string) []model.NoteLink {
 		}
 	}
 	return links
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }

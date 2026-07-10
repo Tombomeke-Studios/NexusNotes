@@ -310,11 +310,11 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > full technical design.
 
 - [x] Write `docs/encryption.md` covering key derivation, the encryption algorithm, the sync protocol, and trade-offs (#195)
-- [ ] Add a `vault_encryption` column to the vaults table (`none` or `e2ee`) with a migration (#197)
+- [x] Add a `vault_encryption` column to the vaults table (`none` or `e2ee`) with a migration (#197)
 - [x] Implement client-side key derivation: `Argon2id(password + salt)` produces a 256-bit Master Key (#196)
 - [x] Implement key wrapping: generate a random Vault Key and encrypt it with the Master Key; this allows passphrase changes without re-encrypting all notes (#196)
 - [x] Encrypt note content with `AES-256-GCM` before upload using a unique IV per save (#196)
-- [ ] Store `encrypted_content`, `content_iv`, and `content_tag` in the database instead of plaintext for encrypted vaults (#197)
+- [x] Store `encrypted_content`, `content_iv`, and `content_tag` in the database instead of plaintext for encrypted vaults (#197)
 - [x] Compute a plaintext `SHA-256` checksum client-side before encryption; the server uses this for conflict detection without reading content (#196)
 - [ ] Add an encryption toggle when creating a vault with a passphrase prompt (#198)
 - [ ] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it (#198)

@@ -263,3 +263,78 @@
   padding: 3px 8px;
   box-shadow: 0 1.5px 0 var(--border);
 }
+
+/* --- Danger zone (account deletion) --- */
+.settings-danger-zone {
+  margin-top: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(243, 139, 168, 0.35);
+  border-radius: var(--radius-md);
+  background: rgba(243, 139, 168, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.settings-danger-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid var(--error);
+  color: var(--error);
+  transition: all var(--transition-fast);
+}
+
+.settings-danger-btn:hover:not(:disabled) {
+  background: var(--error);
+  color: var(--bg-crust);
+}
+
+.settings-danger-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.settings-danger-confirm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-danger-input {
+  width: 100%;
+  font-size: 13px;
+}
+
+.settings-danger-input:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px rgba(243, 139, 168, 0.16);
+}
+
+.settings-danger-error {
+  font-size: 12.5px;
+  color: var(--error);
+}
+
+.settings-danger-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.settings-danger-cancel {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.settings-danger-cancel:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--bg-hover);
+}

@@ -330,7 +330,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > Notes can hold sensitive personal data. Nobody — including the instance operator with
 > database access — should retain a user's data against their will.
 
-- [ ] Account deletion (right to erasure): cascade across Postgres, MinIO, Meilisearch, WS (#177)
+- [x] Account deletion (right to erasure): cascade across Postgres, Meilisearch, WS + Settings danger zone (#177)
 - [ ] Full personal data export (portability): zip of all vaults + account metadata (#178)
 - [ ] Document GDPR posture and data inventory in docs/security.md (#179)
 

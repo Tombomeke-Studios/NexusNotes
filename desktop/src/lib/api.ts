@@ -23,6 +23,7 @@ export function getToken(): string | null {
 async function request<T>(
   path: string,
   options: RequestInit = {},
+  { autoLogoutOn401 = true }: { autoLogoutOn401?: boolean } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -40,7 +41,7 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    if (res.status === 401) {
+    if (res.status === 401 && autoLogoutOn401) {
       setToken(null);
       window.dispatchEvent(new CustomEvent("nexus:logout"));
     }
@@ -102,6 +103,20 @@ export const auth = {
   },
 
   logout() {
+    setToken(null);
+  },
+
+  /**
+   * GDPR right to erasure. A wrong password comes back as a 401 that must NOT
+   * trigger the global auto-logout — the user is still validly signed in and
+   * just mistyped their confirmation.
+   */
+  async deleteAccount(password: string): Promise<void> {
+    await request<void>(
+      "/api/auth/account",
+      { method: "DELETE", body: JSON.stringify({ password }) },
+      { autoLogoutOn401: false },
+    );
     setToken(null);
   },
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import type { WorkspacePrefs } from "../../lib/prefs";
+import { auth, ApiError } from "../../lib/api";
 import "./Settings.css";
 
-type SettingsTab = "appearance" | "sync" | "shortcuts";
+type SettingsTab = "appearance" | "sync" | "shortcuts" | "account";
 
 interface SettingsProps {
   prefs: WorkspacePrefs;
@@ -36,6 +37,26 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClose }: SettingsProps) {
   const [tab, setTab] = useState<SettingsTab>("appearance");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await auth.deleteAccount(deletePassword);
+      onSignOut();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setDeleteError("Wrong password — your account was not deleted.");
+      } else {
+        setDeleteError("Deleting the account failed. Please try again.");
+      }
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -50,13 +71,13 @@ export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClo
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="settings-nav">
           <div className="settings-nav-title">Settings</div>
-          {(["appearance", "sync", "shortcuts"] as SettingsTab[]).map((t) => (
+          {(["appearance", "sync", "shortcuts", "account"] as SettingsTab[]).map((t) => (
             <button
               key={t}
               className={`settings-nav-item${tab === t ? " settings-nav-item--active" : ""}`}
               onClick={() => setTab(t)}
             >
-              {t === "appearance" ? "Appearance" : t === "sync" ? "Sync" : "Shortcuts"}
+              {t === "appearance" ? "Appearance" : t === "sync" ? "Sync" : t === "shortcuts" ? "Shortcuts" : "Account"}
             </button>
           ))}
           <div className="settings-nav-spacer" />
@@ -157,6 +178,66 @@ export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClo
                     <span className="settings-key">{keys}</span>
                   </div>
                 ))}
+              </>
+            )}
+
+            {tab === "account" && (
+              <>
+                <div className="settings-section-title">Account</div>
+                <div className="settings-danger-zone">
+                  <div className="settings-row-label">Delete account</div>
+                  <div className="settings-row-sub">
+                    Permanently erases your account and every vault, note and version
+                    on the server. This cannot be undone.
+                  </div>
+                  {!confirmingDelete ? (
+                    <button
+                      className="settings-danger-btn"
+                      onClick={() => setConfirmingDelete(true)}
+                    >
+                      Delete account…
+                    </button>
+                  ) : (
+                    <div className="settings-danger-confirm">
+                      <label className="settings-row-sub" htmlFor="delete-account-password">
+                        Confirm with your password to delete everything:
+                      </label>
+                      <input
+                        id="delete-account-password"
+                        type="password"
+                        className="settings-danger-input"
+                        placeholder="Current password"
+                        value={deletePassword}
+                        autoFocus
+                        onChange={(e) => {
+                          setDeletePassword(e.target.value);
+                          setDeleteError(null);
+                        }}
+                      />
+                      {deleteError && <div className="settings-danger-error">{deleteError}</div>}
+                      <div className="settings-danger-actions">
+                        <button
+                          className="settings-danger-cancel"
+                          disabled={deleting}
+                          onClick={() => {
+                            setConfirmingDelete(false);
+                            setDeletePassword("");
+                            setDeleteError(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="settings-danger-btn"
+                          disabled={deletePassword.length === 0 || deleting}
+                          onClick={handleDeleteAccount}
+                        >
+                          {deleting ? "Deleting…" : "Permanently delete"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

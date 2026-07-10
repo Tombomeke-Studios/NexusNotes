@@ -12,6 +12,16 @@
 - Token passed via `Authorization: Bearer <token>` header
 - WebSocket auth via query parameter `?token=<jwt>`
 
+### Brute-force protection
+
+- After 5 consecutive failed logins for an email, the account is locked with a
+  progressive delay: 1 minute, doubling per further failure, capped at 15 minutes
+- Locked logins return `429` regardless of whether the account exists, and the
+  submitted email is throttled either way — no user-enumeration signal
+- A successful login resets the failure counter
+- State is in-memory (`internal/service/throttle.go`), matching the
+  single-instance self-hosted deployment model
+
 ### Rate limiting
 
 - `POST /api/auth/login` and `POST /api/auth/register` are rate limited per
@@ -43,7 +53,6 @@
 | WebSocket token in URL query string | Low | Acceptable for self-hosted; add ticket-based auth later |
 | No HTTPS in dev Docker stack | Low | Add Nginx with TLS for production compose |
 | Passwords: no complexity beyond length | Low | Consider zxcvbn integration |
-| No account lockout after failed attempts | Medium | Add brute-force protection |
 
 ## Secrets Management
 

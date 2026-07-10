@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -17,6 +18,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrEmailTaken         = errors.New("email already taken")
+	ErrTooManyAttempts    = errors.New("too many failed login attempts")
 )
 
 // UserStore is the subset of the user repository the auth service depends on.
@@ -32,12 +34,14 @@ type UserStore interface {
 type AuthService struct {
 	userRepo  UserStore
 	jwtSecret []byte
+	throttle  *loginThrottle
 }
 
 func NewAuthService(userRepo UserStore, jwtSecret string) *AuthService {
 	return &AuthService{
 		userRepo:  userRepo,
 		jwtSecret: []byte(jwtSecret),
+		throttle:  newLoginThrottle(),
 	}
 }
 
@@ -78,12 +82,20 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (*model.User, string, error) {
+	// Throttle by submitted email whether or not the account exists, so the
+	// lockout response carries no user-enumeration signal.
+	throttleKey := strings.ToLower(email)
+	if s.throttle.check(throttleKey) > 0 {
+		return nil, "", ErrTooManyAttempts
+	}
+
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
 			// Burn the same KDF work as the known-user path so response
 			// timing does not reveal whether the email is registered.
 			dummyPasswordVerify(password)
+			s.throttle.recordFailure(throttleKey)
 			return nil, "", ErrInvalidCredentials
 		}
 		return nil, "", fmt.Errorf("get user: %w", err)
@@ -94,8 +106,10 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, "", fmt.Errorf("verify password: %w", err)
 	}
 	if !ok {
+		s.throttle.recordFailure(throttleKey)
 		return nil, "", ErrInvalidCredentials
 	}
+	s.throttle.reset(throttleKey)
 
 	// Transparently upgrade legacy/outdated hashes now that we hold the
 	// plaintext. Best effort: a failed upgrade must not block the login.

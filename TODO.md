@@ -309,7 +309,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > must be resistant to brute force, credential stuffing, and user enumeration.
 
 - [x] Rate limit auth endpoints (login/register) per IP with 429 + Retry-After (#172)
-- [ ] Account lockout with progressive delay after repeated failed logins (#173)
+- [x] Account lockout with progressive delay after repeated failed logins (#173)
 - [x] Migrate password hashing from bcrypt to Argon2id with transparent rehash on login (#174)
 - [x] Prevent user-enumeration timing leak in login (dummy hash compare) (#175)
 

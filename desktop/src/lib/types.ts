@@ -10,6 +10,9 @@ export interface Vault {
   id: string;
   user_id: string;
   name: string;
+  encryption: "none" | "e2ee";
+  /** Opaque client-written key material for e2ee vaults (see lib/vaultKeys). */
+  encryption_meta?: unknown;
   created_at: string;
   updated_at: string;
 }

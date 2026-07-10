@@ -138,15 +138,21 @@ export const auth = {
 export const vaults = {
   list: () => request<Vault[]>("/api/vaults"),
   get: (id: string) => request<Vault>(`/api/vaults/${id}`),
-  create: (name: string) =>
+  create: (name: string, encryption?: { encryption: "e2ee"; encryption_meta: unknown }) =>
     request<Vault>("/api/vaults", {
       method: "POST",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, ...encryption }),
     }),
   update: (id: string, name: string) =>
     request<Vault>(`/api/vaults/${id}`, {
       method: "PUT",
       body: JSON.stringify({ name }),
+    }),
+  /** Replaces the opaque key material (passphrase change / recovery rewrap). */
+  updateEncryption: (id: string, encryptionMeta: unknown) =>
+    request<void>(`/api/vaults/${id}/encryption`, {
+      method: "PUT",
+      body: JSON.stringify({ encryption_meta: encryptionMeta }),
     }),
   delete: (id: string) =>
     request<void>(`/api/vaults/${id}`, { method: "DELETE" }),

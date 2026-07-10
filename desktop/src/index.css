@@ -1,3 +1,5 @@
+@import "@fontsource-variable/inter";
+
 :root {
   /* Base layers — darkest (window chrome) to lightest (editor surface) */
   --bg-crust: #11111b;
@@ -43,8 +45,16 @@
   --radius-md: 9px;
   --radius-lg: 13px;
 
+  /* Elevation scale — every raised surface picks one of these instead of an
+     ad-hoc shadow, so depth reads consistently across the app. The highlight
+     is a 1px light top edge that makes dark surfaces feel physically lit. */
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-popover: 0 16px 48px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 32px 90px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
+  --surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;
@@ -84,6 +94,14 @@ body {
 }
 
 ::selection { background: rgba(203, 166, 247, 0.28); }
+
+/* Keyboard navigation: visible focus ring on everything interactive. Inputs
+   keep their own border+glow focus treatment instead. */
+:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+}
+input:focus-visible, textarea:focus-visible { outline: none; }
 
 textarea::placeholder, input::placeholder { color: var(--text-faint); }
 
@@ -253,6 +271,8 @@ input:focus, textarea:focus {
   border-top: 1px solid var(--border-subtle);
   font-size: 11px;
   color: var(--text-faint);
+  /* Counts tick without the surrounding text shifting */
+  font-variant-numeric: tabular-nums;
   animation: riseIn 0.35s var(--easing-spring) 0.26s both;
 }
 
@@ -452,7 +472,7 @@ input:focus, textarea:focus {
   border: 1px solid var(--border);
   border-radius: 18px;
   text-align: center;
-  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-modal), var(--surface-highlight);
   animation: riseIn 0.5s var(--easing-spring);
 }
 
@@ -589,7 +609,7 @@ input:focus, textarea:focus {
   background: rgba(24, 24, 37, 0.98);
   border: 1px solid var(--border);
   border-radius: 14px;
-  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-modal), var(--surface-highlight);
   animation: riseIn 0.2s var(--easing-spring);
 }
 

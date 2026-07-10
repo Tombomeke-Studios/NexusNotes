@@ -507,7 +507,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   text-align: center;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-modal), var(--surface-highlight);
   animation: riseIn 0.5s var(--easing-spring);
 }
 
@@ -647,7 +647,7 @@
   background: rgba(24, 24, 37, 0.98);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-popover), var(--surface-highlight);
   padding: 4px;
   animation: calIn 0.13s var(--easing-spring);
 }
@@ -692,7 +692,7 @@
   background: rgba(24, 24, 37, 0.98);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-popover), var(--surface-highlight);
   padding: 12px;
   animation: calIn 0.18s var(--easing-spring);
 }

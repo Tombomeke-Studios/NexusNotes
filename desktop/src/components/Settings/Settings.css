@@ -16,7 +16,7 @@
   background: rgba(24, 24, 37, 0.98);
   border: 1px solid var(--border);
   border-radius: 14px;
-  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-modal), var(--surface-highlight);
   display: flex;
   overflow: hidden;
   animation: palIn 0.22s var(--easing-spring);

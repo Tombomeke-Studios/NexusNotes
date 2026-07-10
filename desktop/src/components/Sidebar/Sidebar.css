@@ -205,7 +205,7 @@
   background: rgba(24, 24, 37, 0.98);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-popover), var(--surface-highlight);
   padding: 13px;
   z-index: 96;
   animation: calIn 0.16s var(--easing-spring);

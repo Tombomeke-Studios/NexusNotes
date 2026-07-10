@@ -40,6 +40,15 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## `feature/premium-polish` - Premium visual polish
+
+> Apply the ui-ux-pro-max design rules to the existing dark theme: consistent
+> elevation, keyboard focus visibility, a distinctive bundled UI font.
+
+- [x] Elevation tokens + surface highlights, global :focus-visible rings, Inter Variable UI font, tabular status-bar numerals (#182)
+
+---
+
 ## `feature/graph-view` - Graph view (2D and 3D interactive knowledge map)
 
 > Notes are rendered as nodes, wiki-links as directed edges. The graph view is one of

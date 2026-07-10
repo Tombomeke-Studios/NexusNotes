@@ -309,21 +309,21 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > happens on the client before data is transmitted. See `docs/encryption.md` for the
 > full technical design.
 
-- [ ] Write `docs/encryption.md` covering key derivation, the encryption algorithm, the sync protocol, and trade-offs
-- [ ] Add a `vault_encryption` column to the vaults table (`none` or `e2ee`) with a migration
-- [ ] Implement client-side key derivation: `Argon2id(password + salt)` produces a 256-bit Master Key
-- [ ] Implement key wrapping: generate a random Vault Key and encrypt it with the Master Key; this allows passphrase changes without re-encrypting all notes
-- [ ] Encrypt note content with `AES-256-GCM` before upload using a unique IV per save
-- [ ] Store `encrypted_content`, `content_iv`, and `content_tag` in the database instead of plaintext for encrypted vaults
-- [ ] Compute a plaintext `SHA-256` checksum client-side before encryption; the server uses this for conflict detection without reading content
-- [ ] Add an encryption toggle when creating a vault with a passphrase prompt
-- [ ] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it
-- [ ] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes
+- [x] Write `docs/encryption.md` covering key derivation, the encryption algorithm, the sync protocol, and trade-offs (#195)
+- [ ] Add a `vault_encryption` column to the vaults table (`none` or `e2ee`) with a migration (#197)
+- [ ] Implement client-side key derivation: `Argon2id(password + salt)` produces a 256-bit Master Key (#196)
+- [ ] Implement key wrapping: generate a random Vault Key and encrypt it with the Master Key; this allows passphrase changes without re-encrypting all notes (#196)
+- [ ] Encrypt note content with `AES-256-GCM` before upload using a unique IV per save (#196)
+- [ ] Store `encrypted_content`, `content_iv`, and `content_tag` in the database instead of plaintext for encrypted vaults (#197)
+- [ ] Compute a plaintext `SHA-256` checksum client-side before encryption; the server uses this for conflict detection without reading content (#196)
+- [ ] Add an encryption toggle when creating a vault with a passphrase prompt (#198)
+- [ ] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it (#198)
+- [ ] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes (#199)
 - [ ] Generate a one-time recovery key (backup code) that also wraps the Vault Key; recovery flow sets a new passphrase (#176)
-- [ ] Display a lock icon on encrypted vaults in the sidebar
-- [ ] Implement a client-side search index (MiniSearch or FlexSearch) for encrypted vaults; server-side search is not possible in zero-knowledge mode
-- [ ] Write unit tests for key derivation, encryption, and decryption
-- [ ] Write an integration test verifying that an encrypted note survives a full round-trip: encrypt, upload, download, decrypt
+- [ ] Display a lock icon on encrypted vaults in the sidebar (#198)
+- [ ] Implement a client-side search index (MiniSearch or FlexSearch) for encrypted vaults; server-side search is not possible in zero-knowledge mode (#200)
+- [ ] Write unit tests for key derivation, encryption, and decryption (#196)
+- [ ] Write an integration test verifying that an encrypted note survives a full round-trip: encrypt, upload, download, decrypt (#197)
 
 ---
 

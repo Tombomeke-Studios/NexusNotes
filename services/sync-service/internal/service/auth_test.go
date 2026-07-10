@@ -119,6 +119,30 @@ func TestLogin_Success(t *testing.T) {
 	}
 }
 
+func TestLogin_UserNotFoundRunsDummyVerify(t *testing.T) {
+	called := false
+	orig := dummyPasswordVerify
+	dummyPasswordVerify = func(string) { called = true }
+	t.Cleanup(func() { dummyPasswordVerify = orig })
+
+	s := newAuthService(&fakeUserStore{byEmailErr: repository.ErrUserNotFound})
+	_, _, err := s.Login(context.Background(), "missing@example.com", "password123")
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("err = %v, want ErrInvalidCredentials", err)
+	}
+	if !called {
+		t.Fatal("unknown-email path must run the dummy password verification")
+	}
+}
+
+func TestDummyPasswordVerify_UsesValidArgon2idHash(t *testing.T) {
+	if !strings.HasPrefix(dummyHash(), "$argon2id$") {
+		t.Fatalf("dummy hash = %q, want $argon2id$ prefix", dummyHash())
+	}
+	// Must not panic or error for arbitrary input; it only burns KDF time.
+	dummyPasswordVerify("any-password")
+}
+
 func TestLogin_RehashesLegacyBcryptHash(t *testing.T) {
 	legacy, _ := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
 	store := &fakeUserStore{byEmail: &model.User{

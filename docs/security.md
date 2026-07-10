@@ -6,6 +6,8 @@
   stored as PHC strings so parameters can be raised without breaking old records
 - Legacy **bcrypt** hashes still verify and are transparently rehashed to
   Argon2id on the next successful login
+- Login performs a dummy Argon2id verification when the email is unknown, so
+  response timing does not reveal whether an account exists
 - JWT tokens with HS256 signing, 24-hour expiry
 - Token passed via `Authorization: Bearer <token>` header
 - WebSocket auth via query parameter `?token=<jwt>`

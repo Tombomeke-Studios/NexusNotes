@@ -35,6 +35,12 @@ Response (201):
 
 Response (200): same shape as register.
 
+### GET /api/auth/export
+
+Requires `Authorization: Bearer <token>`. Streams a zip containing all data
+belonging to the user (GDPR data portability): each vault as a folder of
+`.md` files (Obsidian-compatible) plus `account.json` with account metadata.
+
 ### DELETE /api/auth/account
 
 Requires `Authorization: Bearer <token>`. Permanently erases the account and

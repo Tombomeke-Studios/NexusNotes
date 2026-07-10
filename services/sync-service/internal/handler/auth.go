@@ -2,7 +2,9 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
@@ -17,6 +19,24 @@ type AuthHandler struct {
 
 func NewAuthHandler(authService *service.AuthService, accountService *service.AccountService, userRepo *repository.UserRepo) *AuthHandler {
 	return &AuthHandler{authService: authService, accountService: accountService, userRepo: userRepo}
+}
+
+// ExportAccount streams a zip with all of the user's data (GDPR portability):
+// every vault as a folder of markdown files plus account metadata.
+func (h *AuthHandler) ExportAccount(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+
+	data, err := h.accountService.Export(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to export account data")
+		return
+	}
+
+	filename := fmt.Sprintf("nexusnotes-export-%s.zip", time.Now().UTC().Format("2006-01-02"))
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
 }
 
 // DeleteAccount permanently erases the authenticated user's account and all

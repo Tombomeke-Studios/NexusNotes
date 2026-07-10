@@ -42,6 +42,27 @@ export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClo
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const blob = await auth.exportAccount();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nexusnotes-export-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     setDeleting(true);
     setDeleteError(null);
@@ -184,6 +205,22 @@ export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClo
             {tab === "account" && (
               <>
                 <div className="settings-section-title">Account</div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Export your data</div>
+                    <div className="settings-row-sub">
+                      Download every vault as markdown files plus account metadata (zip)
+                    </div>
+                  </div>
+                  <button
+                    className="settings-export-btn"
+                    disabled={exporting}
+                    onClick={handleExport}
+                  >
+                    {exporting ? "Preparing…" : "Export"}
+                  </button>
+                </div>
+                {exportError && <div className="settings-danger-error">{exportError}</div>}
                 <div className="settings-danger-zone">
                   <div className="settings-row-label">Delete account</div>
                   <div className="settings-row-sub">

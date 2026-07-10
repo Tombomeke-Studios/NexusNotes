@@ -10,12 +10,42 @@ import (
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
-	userRepo    *repository.UserRepo
+	authService    *service.AuthService
+	accountService *service.AccountService
+	userRepo       *repository.UserRepo
 }
 
-func NewAuthHandler(authService *service.AuthService, userRepo *repository.UserRepo) *AuthHandler {
-	return &AuthHandler{authService: authService, userRepo: userRepo}
+func NewAuthHandler(authService *service.AuthService, accountService *service.AccountService, userRepo *repository.UserRepo) *AuthHandler {
+	return &AuthHandler{authService: authService, accountService: accountService, userRepo: userRepo}
+}
+
+// DeleteAccount permanently erases the authenticated user's account and all
+// their data (GDPR right to erasure). The password must be re-supplied.
+func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if req.Password == "" {
+		writeError(w, http.StatusBadRequest, "password is required to delete the account")
+		return
+	}
+
+	if err := h.accountService.DeleteAccount(r.Context(), userID, req.Password); err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to delete account")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {

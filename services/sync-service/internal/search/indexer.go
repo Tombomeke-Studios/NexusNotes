@@ -62,6 +62,50 @@ func (idx *Indexer) DeleteNote(noteID string) {
 	}()
 }
 
+// DeleteVaultNotes enqueues deletion of every indexed note belonging to the
+// given vaults (used when an account or vault is erased).
+func (idx *Indexer) DeleteVaultNotes(vaultIDs []string) {
+	go func() {
+		if err := idx.deleteByVaults(context.Background(), vaultIDs); err != nil {
+			fmt.Printf("search: delete vault notes %v: %v\n", vaultIDs, err)
+		}
+	}()
+}
+
+func (idx *Indexer) deleteByVaults(ctx context.Context, vaultIDs []string) error {
+	ids, err := json.Marshal(vaultIDs)
+	if err != nil {
+		return fmt.Errorf("marshal vault ids: %w", err)
+	}
+	body, err := json.Marshal(map[string]string{
+		"filter": fmt.Sprintf("vault_id IN %s", ids),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal filter: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/indexes/%s/documents/delete", idx.baseURL, indexName)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if idx.masterKey != "" {
+		req.Header.Set("Authorization", "Bearer "+idx.masterKey)
+	}
+
+	resp, err := idx.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("http: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (idx *Indexer) upsertDoc(ctx context.Context, doc NoteDoc) error {
 	body, err := json.Marshal([]NoteDoc{doc})
 	if err != nil {

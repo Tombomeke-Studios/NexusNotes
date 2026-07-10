@@ -46,6 +46,23 @@ func (h *Hub) Unregister(client *Client) {
 	log.Printf("ws: client unregistered for user %s", client.UserID)
 }
 
+// DisconnectUser force-closes every live connection of the user, e.g. after
+// account deletion. Closing the connection makes the client's ReadPump exit,
+// which handles the rest of its teardown.
+func (h *Hub) DisconnectUser(userID string) {
+	h.mu.Lock()
+	clients := h.clients[userID]
+	delete(h.clients, userID)
+	h.mu.Unlock()
+
+	for client := range clients {
+		_ = client.Conn.Close()
+	}
+	if len(clients) > 0 {
+		log.Printf("ws: disconnected %d client(s) for user %s", len(clients), userID)
+	}
+}
+
 func (h *Hub) BroadcastToUser(userID string, msg Message, exclude *Client) {
 	data, err := json.Marshal(msg)
 	if err != nil {

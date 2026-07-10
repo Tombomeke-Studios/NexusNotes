@@ -81,6 +81,8 @@ interface SidebarProps {
   onSearchChange: (query: string) => void;
   onSignOut: () => void;
   pinnedIds: Set<string>;
+  /** Recently opened notes for the active vault, most recent first. */
+  recentNotes: Array<{ id: string; title: string }>;
   /** Note with unsaved changes (shows a dot in the tree). */
   unsavedNoteId?: string | null;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
@@ -117,10 +119,12 @@ export function Sidebar({
   onSearchChange,
   onSignOut,
   pinnedIds,
+  recentNotes,
   unsavedNoteId,
   onNoteContextMenu,
 }: SidebarProps) {
   const [showVaults, setShowVaults] = useState(false);
+  const [recentOpen, setRecentOpen] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
   const [newVaultName, setNewVaultName] = useState("");
   const [showNewVault, setShowNewVault] = useState(false);
@@ -440,6 +444,38 @@ export function Sidebar({
               <path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
           </button>
+        </div>
+      )}
+
+      {recentNotes.length > 0 && (
+        <div className="sidebar-recent">
+          <button className="sidebar-recent-head" onClick={() => setRecentOpen((o) => !o)}>
+            <svg
+              width="8"
+              height="8"
+              viewBox="0 0 8 8"
+              fill="none"
+              className={`sidebar-recent-chevron${recentOpen ? " sidebar-recent-chevron--open" : ""}`}
+            >
+              <path d="M2 1l4 3-4 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Recent
+          </button>
+          {recentOpen &&
+            recentNotes.map((n) => (
+              <button
+                key={n.id}
+                className={`sidebar-recent-item${n.id === activeNoteId ? " sidebar-recent-item--active" : ""}`}
+                onClick={(e) => onNoteClick(e, n.id)}
+                title={n.title}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                  <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                <span className="sidebar-recent-title">{n.title}</span>
+              </button>
+            ))}
         </div>
       )}
 

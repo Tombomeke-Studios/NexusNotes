@@ -22,6 +22,7 @@ import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
 import { loadPins, togglePin, pinnedFirst } from "./lib/pins";
+import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
 import { saveDraft, loadDraft, clearDraft } from "./lib/drafts";
@@ -56,6 +57,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [closePrompt, setClosePrompt] = useState<{ kind: "window" } | { kind: "tab"; key: string } | null>(null);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [newFolderNonce, setNewFolderNonce] = useState(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -198,8 +200,11 @@ export default function App() {
 
   useEffect(() => {
     setPinnedIds(activeVaultId ? loadPins(activeVaultId) : []);
+    setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
     setEmptyFolders(activeVaultId ? loadFolders(activeVaultId) : []);
   }, [activeVaultId]);
+  const activeVaultIdRef = useRef(activeVaultId);
+  activeVaultIdRef.current = activeVaultId;
 
   // Side panel resize drag
   useEffect(() => {
@@ -541,6 +546,9 @@ export default function App() {
 
   const handleSelectNote = useCallback(async (noteId: string) => {
     keyboardCursorRef.current = noteId;
+    if (activeVaultIdRef.current) {
+      setRecentIds(pushRecent(activeVaultIdRef.current, noteId));
+    }
     setTabs((prev) =>
       prev.some((t) => t.key === noteId) ? prev : [...prev, { key: noteId, type: "note" }],
     );
@@ -818,6 +826,14 @@ export default function App() {
   const tagCounts = useMemo(() => buildTagCounts(noteList), [noteList]);
   const folders = useMemo(() => topLevelFolders(noteList), [noteList]);
   const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
+  const recentNotes = useMemo(
+    () =>
+      recentIds
+        .map((id) => noteList.find((n) => n.id === id))
+        .filter((n): n is Note => n !== undefined)
+        .map((n) => ({ id: n.id, title: n.title })),
+    [recentIds, noteList],
+  );
   const filteredNoteList = useMemo(
     () => pinnedFirst(sortNotes(filterNotes(noteList, filterTags, filterFolder), sortBy), pinnedSet),
     [noteList, filterTags, filterFolder, sortBy, pinnedSet],
@@ -950,6 +966,7 @@ export default function App() {
               onSearchChange={setSearchQuery}
               onSignOut={handleSignOut}
               pinnedIds={pinnedSet}
+              recentNotes={recentNotes}
               unsavedNoteId={
                 (saveStatus === "unsaved" || saveStatus === "saving") ? activeNote?.id ?? null : null
               }

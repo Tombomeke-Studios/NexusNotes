@@ -79,6 +79,7 @@ func main() {
 	protectedMux.HandleFunc("POST /api/vaults", vaultHandler.Create)
 	protectedMux.HandleFunc("GET /api/vaults/{id}", vaultHandler.Get)
 	protectedMux.HandleFunc("PUT /api/vaults/{id}", vaultHandler.Update)
+	protectedMux.HandleFunc("PUT /api/vaults/{id}/encryption", vaultHandler.UpdateEncryption)
 	protectedMux.HandleFunc("DELETE /api/vaults/{id}", vaultHandler.Delete)
 
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/notes", noteHandler.List)

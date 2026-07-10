@@ -73,7 +73,23 @@ List all vaults for the authenticated user. Returns `Vault[]`.
 { "name": "My Vault" }
 ```
 
-Response (201): `Vault`
+For an end-to-end encrypted vault (see docs/encryption.md), the client also
+sends the mode plus its opaque key-material blob:
+
+```json
+{ "name": "Private", "encryption": "e2ee", "encryption_meta": { "version": 1, "kdf": {}, "wrapped_key": {}, "recovery_wrapped_key": {} } }
+```
+
+Response (201): `Vault`. `encryption` defaults to `"none"`;
+`encryption_meta` is required when `encryption` is `"e2ee"` and is never
+interpreted by the server.
+
+### PUT /api/vaults/:id/encryption
+
+E2ee vaults only: replaces the opaque `encryption_meta` blob (passphrase
+change / recovery-key rotation re-wraps the Vault Key client-side). Body:
+`{ "encryption_meta": { ... } }`. Returns `204`; `404` when the vault does
+not exist, is not owned by the caller, or is not encrypted.
 
 ### GET /api/vaults/:id
 
@@ -107,6 +123,12 @@ List all notes in a vault. Returns `Note[]`.
   "device_id": "uuid"
 }
 ```
+
+For notes in an e2ee vault, `content` is the client-encrypted payload
+(`base64(iv):base64(ciphertext)`) and the request additionally carries
+`"checksum"` — the client-computed SHA-256 of the plaintext, stored verbatim
+for conflict detection. The same `checksum` field applies to
+`PUT /api/notes/:noteId`. For standard vaults client checksums are ignored.
 
 Response (201): `Note`
 

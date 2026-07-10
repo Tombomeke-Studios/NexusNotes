@@ -99,21 +99,31 @@ setup UI states this in plain words.
 ## Database schema additions
 
 ```sql
--- Additions to the vaults table
-ALTER TABLE vaults ADD COLUMN encryption        TEXT  NOT NULL DEFAULT 'none'; -- 'none' or 'e2ee'
-ALTER TABLE vaults ADD COLUMN kdf_salt          BYTEA;           -- Argon2id salt (16 bytes)
-ALTER TABLE vaults ADD COLUMN kdf_params        JSONB;           -- { t, m, p } stored for future parameter migration
-ALTER TABLE vaults ADD COLUMN wrapped_vault_key BYTEA;           -- AES-256-GCM(vault_key, master_key)
-ALTER TABLE vaults ADD COLUMN vault_key_iv      BYTEA;           -- IV used to wrap the vault key
-ALTER TABLE vaults ADD COLUMN recovery_wrapped_key BYTEA;        -- AES-256-GCM(vault_key, recovery_key)
-ALTER TABLE vaults ADD COLUMN recovery_key_iv      BYTEA;        -- IV used for the recovery wrap
-
--- Additions to the notes table (populated only for e2ee vaults)
-ALTER TABLE notes ADD COLUMN encrypted_content  BYTEA;           -- AES-256-GCM ciphertext
-ALTER TABLE notes ADD COLUMN content_iv         BYTEA;           -- 12-byte IV per save
-ALTER TABLE notes ADD COLUMN content_tag        BYTEA;           -- 16-byte GCM authentication tag
--- notes.content remains NULL for e2ee vaults and is never populated
+-- Migration 005 (as implemented): one mode column plus ONE opaque JSON blob.
+-- The server never interprets encryption_meta; it is written by the client.
+ALTER TABLE vaults ADD COLUMN encryption      TEXT  NOT NULL DEFAULT 'none'; -- 'none' or 'e2ee'
+ALTER TABLE vaults ADD COLUMN encryption_meta JSONB;
 ```
+
+`encryption_meta` carries everything the client needs to unlock, versioned so
+parameters and algorithms can be migrated later:
+
+```json
+{
+  "version": 1,
+  "kdf": { "algo": "argon2id", "m": 19456, "t": 2, "p": 1, "salt": "<b64>" },
+  "wrapped_key": { "iv": "<b64>", "data": "<b64>" },
+  "recovery_wrapped_key": { "iv": "<b64>", "data": "<b64>" }
+}
+```
+
+Notes need **no schema change**: for e2ee vaults the existing `notes.content`
+column stores the payload `base64(iv):base64(ciphertext+tag)` produced by the
+client (`src/lib/crypto.ts` `encryptNote`). The `checksum` column stores the
+client-computed SHA-256 of the *plaintext* verbatim — the server cannot (and
+must not) recompute it, and conflict detection keeps working because the same
+plaintext yields the same checksum. For standard vaults client checksums are
+still never trusted.
 
 ---
 

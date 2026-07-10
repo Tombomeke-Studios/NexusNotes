@@ -41,6 +41,8 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Path     string `json:"path"`
 		Content  string `json:"content"`
 		DeviceID string `json:"device_id"`
+		// Client plaintext checksum; only honoured for e2ee vaults.
+		Checksum string `json:"checksum"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -52,7 +54,7 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note, err := h.syncService.CreateNote(r.Context(), vaultID, req.Title, req.Path, req.Content, req.DeviceID)
+	note, err := h.syncService.CreateNote(r.Context(), vaultID, req.Title, req.Path, req.Content, req.DeviceID, req.Checksum)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create note")
 		return
@@ -129,7 +131,9 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Path         string `json:"path"`
 		Content      string `json:"content"`
 		PrevChecksum string `json:"prev_checksum"`
-		DeviceID     string `json:"device_id"`
+		// Client plaintext checksum; only honoured for e2ee vaults.
+		Checksum string `json:"checksum"`
+		DeviceID string `json:"device_id"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -142,6 +146,7 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Title:        req.Title,
 		Path:         req.Path,
 		PrevChecksum: req.PrevChecksum,
+		Checksum:     req.Checksum,
 		DeviceID:     req.DeviceID,
 	}
 

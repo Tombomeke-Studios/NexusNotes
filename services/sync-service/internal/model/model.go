@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type User struct {
 	ID           string    `json:"id"`
@@ -11,13 +14,23 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// Vault encryption modes. For e2ee vaults the server stores only ciphertext
+// and opaque key material (see docs/encryption.md).
+const (
+	VaultEncryptionNone = "none"
+	VaultEncryptionE2EE = "e2ee"
+)
+
 type Vault struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	Name        string    `json:"name"`
-	IsEncrypted bool      `json:"is_encrypted"` // set by encryption migration; false until then
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID         string `json:"id"`
+	UserID     string `json:"user_id"`
+	Name       string `json:"name"`
+	Encryption string `json:"encryption"`
+	// EncryptionMeta is written by the client (KDF salt/params, wrapped vault
+	// keys) and never interpreted by the server.
+	EncryptionMeta json.RawMessage `json:"encryption_meta,omitempty"`
+	CreatedAt      time.Time       `json:"created_at"`
+	UpdatedAt      time.Time       `json:"updated_at"`
 }
 
 type Note struct {

@@ -89,7 +89,7 @@ body {
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--bg-hover);
+  background: rgba(203, 166, 247, 0.35);
   background-clip: padding-box;
 }
 
@@ -242,6 +242,12 @@ button {
   background: none;
   color: var(--text-primary);
   font-family: inherit;
+}
+
+/* Tactile press feedback on every button; components with their own :active
+   transform (e.g. the auth button) override this via higher specificity. */
+button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 input, textarea {

@@ -46,6 +46,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > elevation, keyboard focus visibility, a distinctive bundled UI font.
 
 - [x] Elevation tokens + surface highlights, global :focus-visible rings, Inter Variable UI font, tabular status-bar numerals (#182)
+- [x] Visible shell refinements: rail indicator + glow, active-tab accent underline, topbar gradient, tactile button press, accent scrollbar/search-pill hover (#185)
 
 ---
 

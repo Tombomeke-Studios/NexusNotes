@@ -36,6 +36,14 @@ func (f *fakeAccountVaultStore) ListByUser(context.Context, string) ([]model.Vau
 	return f.vaults, f.listErr
 }
 
+type fakeAccountNoteStore struct {
+	notesByVault map[string][]model.Note
+}
+
+func (f *fakeAccountNoteStore) ListByVault(_ context.Context, vaultID string) ([]model.Note, error) {
+	return f.notesByVault[vaultID], nil
+}
+
 type fakeSearchCleaner struct{ vaultIDs []string }
 
 func (f *fakeSearchCleaner) DeleteVaultNotes(vaultIDs []string) { f.vaultIDs = vaultIDs }
@@ -54,9 +62,10 @@ func accountFixture(t *testing.T) (*AccountService, *fakeAccountUserStore, *fake
 	}
 	users := &fakeAccountUserStore{user: &model.User{ID: "u1", Email: "a@example.com", PasswordHash: hash}}
 	vaults := &fakeAccountVaultStore{vaults: []model.Vault{{ID: "v1"}, {ID: "v2"}}}
+	notes := &fakeAccountNoteStore{notesByVault: map[string][]model.Note{}}
 	search := &fakeSearchCleaner{}
 	hub := &fakeSessionCloser{}
-	return NewAccountService(users, vaults, search, hub), users, vaults, search, hub
+	return NewAccountService(users, vaults, notes, search, hub), users, vaults, search, hub
 }
 
 func TestDeleteAccount_Success(t *testing.T) {

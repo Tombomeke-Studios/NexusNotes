@@ -106,6 +106,18 @@ export const auth = {
     setToken(null);
   },
 
+  /** GDPR data portability: download all vaults + metadata as a zip blob. */
+  async exportAccount(): Promise<Blob> {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/auth/export`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, "Export failed");
+    }
+    return res.blob();
+  },
+
   /**
    * GDPR right to erasure. A wrong password comes back as a 401 that must NOT
    * trigger the global auto-logout — the user is still validly signed in and

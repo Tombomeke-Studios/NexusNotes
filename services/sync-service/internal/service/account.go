@@ -18,6 +18,10 @@ type accountVaultStore interface {
 	ListByUser(ctx context.Context, userID string) ([]model.Vault, error)
 }
 
+type accountNoteStore interface {
+	ListByVault(ctx context.Context, vaultID string) ([]model.Note, error)
+}
+
 type searchCleaner interface {
 	DeleteVaultNotes(vaultIDs []string)
 }
@@ -26,16 +30,18 @@ type sessionCloser interface {
 	DisconnectUser(userID string)
 }
 
-// AccountService handles account-level lifecycle operations (GDPR erasure).
+// AccountService handles account-level lifecycle operations: GDPR erasure and
+// data-portability export.
 type AccountService struct {
 	users  accountUserStore
 	vaults accountVaultStore
+	notes  accountNoteStore
 	search searchCleaner
 	hub    sessionCloser
 }
 
-func NewAccountService(users accountUserStore, vaults accountVaultStore, search searchCleaner, hub sessionCloser) *AccountService {
-	return &AccountService{users: users, vaults: vaults, search: search, hub: hub}
+func NewAccountService(users accountUserStore, vaults accountVaultStore, notes accountNoteStore, search searchCleaner, hub sessionCloser) *AccountService {
+	return &AccountService{users: users, vaults: vaults, notes: notes, search: search, hub: hub}
 }
 
 // DeleteAccount permanently erases the user and everything they own. The

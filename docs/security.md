@@ -2,7 +2,10 @@
 
 ## Authentication
 
-- Passwords hashed with **bcrypt** (default cost)
+- Passwords hashed with **Argon2id** (OWASP parameters: 19 MiB memory, t=2, p=1),
+  stored as PHC strings so parameters can be raised without breaking old records
+- Legacy **bcrypt** hashes still verify and are transparently rehashed to
+  Argon2id on the next successful login
 - JWT tokens with HS256 signing, 24-hour expiry
 - Token passed via `Authorization: Bearer <token>` header
 - WebSocket auth via query parameter `?token=<jwt>`

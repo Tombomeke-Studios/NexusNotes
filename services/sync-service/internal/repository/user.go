@@ -63,6 +63,20 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, e
 	return &u, nil
 }
 
+func (r *UserRepo) UpdatePasswordHash(ctx context.Context, id, passwordHash string) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1`,
+		id, passwordHash,
+	)
+	if err != nil {
+		return fmt.Errorf("update password hash: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) {
 	var u model.User
 	err := r.pool.QueryRow(ctx,

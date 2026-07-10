@@ -81,6 +81,9 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
+			// Burn the same KDF work as the known-user path so response
+			// timing does not reveal whether the email is registered.
+			dummyPasswordVerify(password)
 			return nil, "", ErrInvalidCredentials
 		}
 		return nil, "", fmt.Errorf("get user: %w", err)

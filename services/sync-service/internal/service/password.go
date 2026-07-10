@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
@@ -36,6 +37,26 @@ func hashPassword(password string) (string, error) {
 		base64.RawStdEncoding.EncodeToString(salt),
 		base64.RawStdEncoding.EncodeToString(key),
 	), nil
+}
+
+// dummyHash is a valid Argon2id hash of an unguessable random value, used to
+// equalise login timing when the email does not exist (user enumeration).
+var dummyHash = sync.OnceValue(func() string {
+	random := make([]byte, 32)
+	if _, err := rand.Read(random); err != nil {
+		panic(fmt.Sprintf("generate dummy password: %v", err))
+	}
+	hash, err := hashPassword(base64.RawStdEncoding.EncodeToString(random))
+	if err != nil {
+		panic(fmt.Sprintf("hash dummy password: %v", err))
+	}
+	return hash
+})
+
+// dummyPasswordVerify burns the same KDF work as a real verification and
+// always fails. Declared as a variable so tests can observe the call.
+var dummyPasswordVerify = func(password string) {
+	_, _, _ = verifyPassword(dummyHash(), password)
 }
 
 // verifyPassword checks a password against a stored Argon2id or legacy bcrypt

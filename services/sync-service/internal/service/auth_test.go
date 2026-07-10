@@ -180,6 +180,58 @@ func TestLogin_NoRehashForCurrentHash(t *testing.T) {
 	}
 }
 
+func TestLogin_LocksAfterRepeatedFailures(t *testing.T) {
+	hash, _ := hashPassword("correct-password")
+	s := newAuthService(&fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: hash,
+	}})
+
+	for i := 0; i < lockThreshold; i++ {
+		if _, _, err := s.Login(context.Background(), "a@example.com", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+			t.Fatalf("attempt %d: err = %v, want ErrInvalidCredentials", i+1, err)
+		}
+	}
+
+	// Even the correct password is rejected while the account is locked.
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); !errors.Is(err, ErrTooManyAttempts) {
+		t.Fatalf("err = %v, want ErrTooManyAttempts", err)
+	}
+}
+
+func TestLogin_SuccessResetsFailureCount(t *testing.T) {
+	hash, _ := hashPassword("correct-password")
+	s := newAuthService(&fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: hash,
+	}})
+
+	for i := 0; i < lockThreshold-1; i++ {
+		_, _, _ = s.Login(context.Background(), "a@example.com", "wrong")
+	}
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// The counter restarted: new failures start from zero again.
+	if _, _, err := s.Login(context.Background(), "a@example.com", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("err = %v, want ErrInvalidCredentials after reset", err)
+	}
+}
+
+func TestLogin_UnknownEmailAlsoThrottled(t *testing.T) {
+	s := newAuthService(&fakeUserStore{byEmailErr: repository.ErrUserNotFound})
+
+	for i := 0; i < lockThreshold; i++ {
+		_, _, _ = s.Login(context.Background(), "ghost@example.com", "wrong")
+	}
+	if _, _, err := s.Login(context.Background(), "ghost@example.com", "wrong"); !errors.Is(err, ErrTooManyAttempts) {
+		t.Fatalf("err = %v, want ErrTooManyAttempts for a nonexistent account", err)
+	}
+}
+
 func TestAuthService_GenerateAndValidateToken(t *testing.T) {
 	s := &AuthService{jwtSecret: []byte("test-secret")}
 

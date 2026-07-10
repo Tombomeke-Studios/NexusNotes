@@ -76,6 +76,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
+		if errors.Is(err, service.ErrTooManyAttempts) {
+			writeError(w, http.StatusTooManyRequests, "too many failed attempts, try again later")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "failed to login")
 		return
 	}

@@ -332,7 +332,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Account deletion (right to erasure): cascade across Postgres, Meilisearch, WS + Settings danger zone (#177)
 - [x] Full personal data export (portability): zip of all vaults + account metadata (#178)
-- [ ] Document GDPR posture and data inventory in docs/security.md (#179)
+- [x] Document GDPR posture and data inventory in docs/security.md (#179)
 
 ---
 

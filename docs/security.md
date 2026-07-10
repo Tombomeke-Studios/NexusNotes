@@ -54,6 +54,35 @@
 | No HTTPS in dev Docker stack | Low | Add Nginx with TLS for production compose |
 | Passwords: no complexity beyond length | Low | Consider zxcvbn integration |
 
+## GDPR
+
+### Data inventory
+
+| Personal data | Where | Why |
+|---|---|---|
+| Email, display name | PostgreSQL `users` | Account identity |
+| Password (Argon2id hash) | PostgreSQL `users` | Authentication |
+| Note content, titles, paths, tags | PostgreSQL `notes` + related tables | The product |
+| Note content (search copy) | Meilisearch `notes` index | Full-text search |
+| Device names, last-seen | PostgreSQL `devices` | Sync/session management |
+| Client IPs | Server logs + in-memory rate limiter | Abuse prevention, transient |
+
+Redis holds only transient session/cache state; MinIO holds attachments once
+that feature ships.
+
+### Rights fulfilment
+
+- **Erasure (Art. 17):** `DELETE /api/auth/account` (password re-confirmed)
+  removes the user row; database cascades erase vaults, notes, versions,
+  links, tags and devices. Search-index entries are deleted by vault filter
+  and live WebSocket sessions are closed. Available self-service in the
+  desktop Settings → Account tab.
+- **Portability (Art. 20):** `GET /api/auth/export` streams all vaults as
+  markdown in a zip plus `account.json`, also self-service in Settings.
+- **Notes for self-hosters:** the instance operator is the data controller;
+  publish a privacy notice covering the inventory above and log retention.
+  The planned E2EE vaults (see TODO) remove even operator access to content.
+
 ## Secrets Management
 
 - `JWT_SECRET` must be set via environment variable

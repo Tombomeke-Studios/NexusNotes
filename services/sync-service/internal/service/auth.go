@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
@@ -26,6 +26,7 @@ type UserStore interface {
 	Create(ctx context.Context, user *model.User) error
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByID(ctx context.Context, id string) (*model.User, error)
+	UpdatePasswordHash(ctx context.Context, id, passwordHash string) error
 }
 
 type AuthService struct {
@@ -46,7 +47,7 @@ type Claims struct {
 }
 
 func (s *AuthService) Register(ctx context.Context, email, password, displayName string) (*model.User, string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := hashPassword(password)
 	if err != nil {
 		return nil, "", fmt.Errorf("hash password: %w", err)
 	}
@@ -55,7 +56,7 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 	user := &model.User{
 		ID:           uuid.New().String(),
 		Email:        email,
-		PasswordHash: string(hash),
+		PasswordHash: hash,
 		DisplayName:  displayName,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -85,8 +86,22 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, "", fmt.Errorf("get user: %w", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+	ok, needsRehash, err := verifyPassword(user.PasswordHash, password)
+	if err != nil {
+		return nil, "", fmt.Errorf("verify password: %w", err)
+	}
+	if !ok {
 		return nil, "", ErrInvalidCredentials
+	}
+
+	// Transparently upgrade legacy/outdated hashes now that we hold the
+	// plaintext. Best effort: a failed upgrade must not block the login.
+	if needsRehash {
+		if newHash, err := hashPassword(password); err == nil {
+			if err := s.userRepo.UpdatePasswordHash(ctx, user.ID, newHash); err != nil {
+				log.Printf("warn: password rehash for user %s failed: %v", user.ID, err)
+			}
+		}
 	}
 
 	token, err := s.generateToken(user.ID)

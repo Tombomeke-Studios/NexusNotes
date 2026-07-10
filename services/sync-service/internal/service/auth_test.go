@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,9 +17,10 @@ import (
 // fakeUserStore is a hand-rolled UserStore for exercising the auth service
 // without a database.
 type fakeUserStore struct {
-	createErr  error
-	byEmail    *model.User
-	byEmailErr error
+	createErr   error
+	byEmail     *model.User
+	byEmailErr  error
+	updatedHash string
 }
 
 func (f *fakeUserStore) Create(context.Context, *model.User) error { return f.createErr }
@@ -27,6 +29,10 @@ func (f *fakeUserStore) GetByEmail(context.Context, string) (*model.User, error)
 }
 func (f *fakeUserStore) GetByID(context.Context, string) (*model.User, error) {
 	return f.byEmail, f.byEmailErr
+}
+func (f *fakeUserStore) UpdatePasswordHash(_ context.Context, _ string, hash string) error {
+	f.updatedHash = hash
+	return nil
 }
 
 func newAuthService(store UserStore) *AuthService {
@@ -110,6 +116,43 @@ func TestLogin_Success(t *testing.T) {
 	}
 	if user == nil || token == "" {
 		t.Fatalf("want user and token, got user=%v token=%q", user, token)
+	}
+}
+
+func TestLogin_RehashesLegacyBcryptHash(t *testing.T) {
+	legacy, _ := bcrypt.GenerateFromPassword([]byte("correct-password"), bcrypt.DefaultCost)
+	store := &fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: string(legacy),
+	}}
+	s := newAuthService(store)
+
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.HasPrefix(store.updatedHash, "$argon2id$") {
+		t.Fatalf("stored hash was not upgraded to argon2id, got %q", store.updatedHash)
+	}
+	if ok, _, _ := verifyPassword(store.updatedHash, "correct-password"); !ok {
+		t.Fatal("upgraded hash does not verify the original password")
+	}
+}
+
+func TestLogin_NoRehashForCurrentHash(t *testing.T) {
+	hash, _ := hashPassword("correct-password")
+	store := &fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: hash,
+	}}
+	s := newAuthService(store)
+
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if store.updatedHash != "" {
+		t.Fatalf("current argon2id hash must not be rehashed, got update %q", store.updatedHash)
 	}
 }
 

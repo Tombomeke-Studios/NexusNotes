@@ -766,6 +766,14 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `fix/close-reliable-and-pause-autosave` - Reliable window close (PR #169)
+
+- [x] Close via destroy(); pause autosave while the close dialog is open (#168)
+
+### `chore/npm-audit-vitest4` - Vitest v4 upgrade (PR #171)
+
+- [x] Fix npm audit: vitest 2.x pulled in vulnerable vite 5 / esbuild (#170)
+
 ### `fix/dev-stack-stale-backend` - Dev stack replaces outdated backends (PR #192)
 
 - [x] Dev scripts reuse a stale backend after pulling new backend code (#189)

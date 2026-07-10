@@ -26,7 +26,7 @@ plaintext before encryption. It is not used to protect note content.
 | Server operator access to stored data | Yes - server never holds the decryption key |
 | Network interception | Yes - TLS in transit plus content encrypted at rest |
 | Attacker with physical device access while vault is locked | Yes - key is held in memory only while vault is unlocked |
-| User loses vault passphrase | No recovery possible - zero-knowledge means no backdoor |
+| User loses vault passphrase | Recoverable **only** with the one-time recovery key issued at setup; without both, data is unrecoverable — zero-knowledge means no backdoor |
 | Weak passphrase and offline brute force | Mitigated by Argon2id (intentionally slow key derivation) |
 
 ---
@@ -47,13 +47,15 @@ vaults.encryption = 'e2ee'  -> all note content encrypted before upload
 ## Key hierarchy
 
 ```
-User passphrase
-       |
-       v  Argon2id(passphrase, salt, params)
-  Master Key  (256-bit; never stored; held in memory only)
-       |
-       v  AES-256-GCM encrypt
-  Vault Key   (random 256-bit; stored encrypted in the database)
+User passphrase                       Recovery key (random 256-bit,
+       |                              shown once as a base32 code)
+       v  Argon2id(passphrase, salt)         |
+  Master Key  (256-bit; never stored;        |
+  held in memory only)                       |
+       |                                     |
+       v  AES-256-GCM wrap                   v  AES-256-GCM wrap
+  Vault Key   (random 256-bit; stored on the server ONLY in wrapped form,
+  once under the Master Key and once under the recovery key)
        |
        v  AES-256-GCM encrypt (unique IV per note per save)
   Note ciphertext  (stored in the database)
@@ -65,6 +67,20 @@ When the user changes their passphrase, only the Vault Key needs to be
 re-wrapped using the new Master Key. Without this indirection, a passphrase
 change would require re-encrypting every note, which is both expensive and
 introduces failure risk.
+
+### Recovery key (backup code)
+
+When encryption is enabled, the client generates a random 256-bit recovery
+key and shows it exactly once as a human-readable grouped base32 code with a
+"save or print this" prompt. The Vault Key is wrapped a second time under
+this recovery key, and only that wrapped blob is uploaded — the recovery key
+itself never reaches the server.
+
+Recovery flow: enter the recovery key → unwrap the Vault Key → set a new
+passphrase (re-wrap under the new Master Key) → a **fresh** recovery key is
+generated and shown, and the old recovery wrap is replaced. Losing both the
+passphrase and the recovery key makes the vault permanently unreadable; the
+setup UI states this in plain words.
 
 ---
 
@@ -89,6 +105,8 @@ ALTER TABLE vaults ADD COLUMN kdf_salt          BYTEA;           -- Argon2id sal
 ALTER TABLE vaults ADD COLUMN kdf_params        JSONB;           -- { t, m, p } stored for future parameter migration
 ALTER TABLE vaults ADD COLUMN wrapped_vault_key BYTEA;           -- AES-256-GCM(vault_key, master_key)
 ALTER TABLE vaults ADD COLUMN vault_key_iv      BYTEA;           -- IV used to wrap the vault key
+ALTER TABLE vaults ADD COLUMN recovery_wrapped_key BYTEA;        -- AES-256-GCM(vault_key, recovery_key)
+ALTER TABLE vaults ADD COLUMN recovery_key_iv      BYTEA;        -- IV used for the recovery wrap
 
 -- Additions to the notes table (populated only for e2ee vaults)
 ALTER TABLE notes ADD COLUMN encrypted_content  BYTEA;           -- AES-256-GCM ciphertext
@@ -191,8 +209,9 @@ cost of server-side file tree functionality.
 
 ## Implementation notes
 
-- Use the Web Crypto API (`crypto.subtle`) in the Tauri webview — it is native and
-  requires no JavaScript cryptography library.
+- Use the Web Crypto API (`crypto.subtle`) for AES-256-GCM, SHA-256 and
+  randomness — native and fast. **Argon2id is not part of Web Crypto**; use the
+  audited, dependency-free `@noble/hashes` implementation for key derivation.
 - Never transmit the Master Key to the server and never write it to disk.
 - Hold the Vault Key in memory for the session duration; clear it on lock or logout.
 - Provide a "Lock vault" button that clears the Vault Key from memory and requires

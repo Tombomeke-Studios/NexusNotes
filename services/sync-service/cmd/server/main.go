@@ -64,8 +64,9 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /api/auth/register", authHandler.Register)
-	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	authLimiter := middleware.NewRateLimiter(cfg.AuthRateLimitPerMin, cfg.AuthRateLimitBurst)
+	mux.Handle("POST /api/auth/register", authLimiter.Middleware(http.HandlerFunc(authHandler.Register)))
+	mux.Handle("POST /api/auth/login", authLimiter.Middleware(http.HandlerFunc(authHandler.Login)))
 
 	authMw := middleware.Auth(authService)
 

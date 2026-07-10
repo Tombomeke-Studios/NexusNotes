@@ -7,6 +7,17 @@
 - Token passed via `Authorization: Bearer <token>` header
 - WebSocket auth via query parameter `?token=<jwt>`
 
+### Rate limiting
+
+- `POST /api/auth/login` and `POST /api/auth/register` are rate limited per
+  client IP with an in-memory token bucket (`internal/middleware/ratelimit.go`)
+- Defaults: 10 requests/minute with a burst of 10; configurable via
+  `AUTH_RATE_LIMIT_PER_MIN` and `AUTH_RATE_LIMIT_BURST`
+- Exceeding the limit returns `429` with a `Retry-After` header (seconds)
+- The limiter keys on `RemoteAddr`; when deploying behind a reverse proxy,
+  ensure the proxy passes the real client IP as the connection source (or
+  terminate rate limiting at the proxy instead)
+
 ## Authorization
 
 - Users can only access their own vaults and notes
@@ -24,7 +35,6 @@
 | Gap | Severity | Plan |
 |---|---|---|
 | No refresh token rotation | Medium | Add in Phase 2 |
-| No rate limiting on auth endpoints | Medium | Add before production |
 | WebSocket token in URL query string | Low | Acceptable for self-hosted; add ticket-based auth later |
 | No HTTPS in dev Docker stack | Low | Add Nginx with TLS for production compose |
 | Passwords: no complexity beyond length | Low | Consider zxcvbn integration |

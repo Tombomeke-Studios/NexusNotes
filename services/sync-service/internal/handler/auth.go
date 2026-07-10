@@ -120,7 +120,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, token, err := h.authService.Login(r.Context(), req.Email, req.Password)
+	user, token, err := h.authService.Login(r.Context(), req.Email, req.Password, middleware.ClientIP(r))
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
 			writeError(w, http.StatusUnauthorized, "invalid credentials")

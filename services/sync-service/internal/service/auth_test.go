@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -72,7 +73,7 @@ func TestRegister_Success(t *testing.T) {
 
 func TestLogin_UserNotFound(t *testing.T) {
 	s := newAuthService(&fakeUserStore{byEmailErr: repository.ErrUserNotFound})
-	_, _, err := s.Login(context.Background(), "missing@example.com", "password123")
+	_, _, err := s.Login(context.Background(), "missing@example.com", "password123", "10.0.0.1")
 	if !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("err = %v, want ErrInvalidCredentials", err)
 	}
@@ -81,7 +82,7 @@ func TestLogin_UserNotFound(t *testing.T) {
 func TestLogin_InfraErrorNotMasked(t *testing.T) {
 	// A database/connection failure must NOT be reported as "invalid credentials".
 	s := newAuthService(&fakeUserStore{byEmailErr: errors.New("connection refused")})
-	_, _, err := s.Login(context.Background(), "a@example.com", "password123")
+	_, _, err := s.Login(context.Background(), "a@example.com", "password123", "10.0.0.1")
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -97,7 +98,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 		Email:        "a@example.com",
 		PasswordHash: string(hash),
 	}})
-	_, _, err := s.Login(context.Background(), "a@example.com", "wrong-password")
+	_, _, err := s.Login(context.Background(), "a@example.com", "wrong-password", "10.0.0.1")
 	if !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("err = %v, want ErrInvalidCredentials", err)
 	}
@@ -110,7 +111,7 @@ func TestLogin_Success(t *testing.T) {
 		Email:        "a@example.com",
 		PasswordHash: string(hash),
 	}})
-	user, token, err := s.Login(context.Background(), "a@example.com", "correct-password")
+	user, token, err := s.Login(context.Background(), "a@example.com", "correct-password", "10.0.0.1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -126,7 +127,7 @@ func TestLogin_UserNotFoundRunsDummyVerify(t *testing.T) {
 	t.Cleanup(func() { dummyPasswordVerify = orig })
 
 	s := newAuthService(&fakeUserStore{byEmailErr: repository.ErrUserNotFound})
-	_, _, err := s.Login(context.Background(), "missing@example.com", "password123")
+	_, _, err := s.Login(context.Background(), "missing@example.com", "password123", "10.0.0.1")
 	if !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("err = %v, want ErrInvalidCredentials", err)
 	}
@@ -152,7 +153,7 @@ func TestLogin_RehashesLegacyBcryptHash(t *testing.T) {
 	}}
 	s := newAuthService(store)
 
-	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); err != nil {
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "10.0.0.1"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.HasPrefix(store.updatedHash, "$argon2id$") {
@@ -172,7 +173,7 @@ func TestLogin_NoRehashForCurrentHash(t *testing.T) {
 	}}
 	s := newAuthService(store)
 
-	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); err != nil {
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "10.0.0.1"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if store.updatedHash != "" {
@@ -189,13 +190,13 @@ func TestLogin_LocksAfterRepeatedFailures(t *testing.T) {
 	}})
 
 	for i := 0; i < lockThreshold; i++ {
-		if _, _, err := s.Login(context.Background(), "a@example.com", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+		if _, _, err := s.Login(context.Background(), "a@example.com", "wrong", "10.0.0.1"); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatalf("attempt %d: err = %v, want ErrInvalidCredentials", i+1, err)
 		}
 	}
 
 	// Even the correct password is rejected while the account is locked.
-	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); !errors.Is(err, ErrTooManyAttempts) {
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "10.0.0.1"); !errors.Is(err, ErrTooManyAttempts) {
 		t.Fatalf("err = %v, want ErrTooManyAttempts", err)
 	}
 }
@@ -209,14 +210,14 @@ func TestLogin_SuccessResetsFailureCount(t *testing.T) {
 	}})
 
 	for i := 0; i < lockThreshold-1; i++ {
-		_, _, _ = s.Login(context.Background(), "a@example.com", "wrong")
+		_, _, _ = s.Login(context.Background(), "a@example.com", "wrong", "10.0.0.1")
 	}
-	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password"); err != nil {
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "10.0.0.1"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	// The counter restarted: new failures start from zero again.
-	if _, _, err := s.Login(context.Background(), "a@example.com", "wrong"); !errors.Is(err, ErrInvalidCredentials) {
+	if _, _, err := s.Login(context.Background(), "a@example.com", "wrong", "10.0.0.1"); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("err = %v, want ErrInvalidCredentials after reset", err)
 	}
 }
@@ -225,10 +226,63 @@ func TestLogin_UnknownEmailAlsoThrottled(t *testing.T) {
 	s := newAuthService(&fakeUserStore{byEmailErr: repository.ErrUserNotFound})
 
 	for i := 0; i < lockThreshold; i++ {
-		_, _, _ = s.Login(context.Background(), "ghost@example.com", "wrong")
+		_, _, _ = s.Login(context.Background(), "ghost@example.com", "wrong", "10.0.0.1")
 	}
-	if _, _, err := s.Login(context.Background(), "ghost@example.com", "wrong"); !errors.Is(err, ErrTooManyAttempts) {
+	if _, _, err := s.Login(context.Background(), "ghost@example.com", "wrong", "10.0.0.1"); !errors.Is(err, ErrTooManyAttempts) {
 		t.Fatalf("err = %v, want ErrTooManyAttempts for a nonexistent account", err)
+	}
+}
+
+// #181: an attacker locking the email from their IP must not lock the real
+// owner out on the owner's own IP.
+func TestLogin_LockDoesNotAffectOtherIPs(t *testing.T) {
+	hash, _ := hashPassword("correct-password")
+	s := newAuthService(&fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: hash,
+	}})
+
+	for i := 0; i < lockThreshold; i++ {
+		_, _, _ = s.Login(context.Background(), "a@example.com", "wrong", "6.6.6.6")
+	}
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "6.6.6.6"); !errors.Is(err, ErrTooManyAttempts) {
+		t.Fatalf("attacker IP: err = %v, want ErrTooManyAttempts", err)
+	}
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "10.0.0.1"); err != nil {
+		t.Fatalf("owner IP must still be able to sign in, got %v", err)
+	}
+}
+
+func TestLogin_CrossIPGuessingHitsTarpit(t *testing.T) {
+	hash, _ := hashPassword("correct-password")
+	s := newAuthService(&fakeUserStore{byEmail: &model.User{
+		ID:           "u1",
+		Email:        "a@example.com",
+		PasswordHash: hash,
+	}})
+	var slept time.Duration
+	s.sleep = func(d time.Duration) { slept += d }
+
+	for i := 0; i < tarpitThreshold; i++ {
+		_, _, _ = s.Login(context.Background(), "a@example.com", "wrong", fmt.Sprintf("10.0.%d.1", i))
+	}
+
+	// The owner can still log in from a fresh IP, but pays the tarpit delay.
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "192.168.1.5"); err != nil {
+		t.Fatalf("owner must still be able to sign in through the tarpit, got %v", err)
+	}
+	if slept != tarpitDelay {
+		t.Fatalf("tarpit slept %v, want %v", slept, tarpitDelay)
+	}
+
+	// The successful login cleared the tarpit again.
+	slept = 0
+	if _, _, err := s.Login(context.Background(), "a@example.com", "correct-password", "192.168.1.5"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if slept != 0 {
+		t.Fatalf("tarpit still active after a successful login (slept %v)", slept)
 	}
 }
 

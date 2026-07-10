@@ -14,11 +14,16 @@
 
 ### Brute-force protection
 
-- After 5 consecutive failed logins for an email, the account is locked with a
-  progressive delay: 1 minute, doubling per further failure, capped at 15 minutes
+- After 5 consecutive failed logins for an email **from the same IP**, that
+  email+IP pair is locked with a progressive delay: 1 minute, doubling per
+  further failure, capped at 15 minutes. Scoping the lock to the pair means an
+  attacker cannot lock the real owner out of their account (griefing)
+- Distributed guessing (15+ failures for one email across many IPs) escalates
+  to a constant 1-second tarpit delay on every attempt for that email instead
+  of a hard lock, so the owner can still sign in
 - Locked logins return `429` regardless of whether the account exists, and the
   submitted email is throttled either way — no user-enumeration signal
-- A successful login resets the failure counter
+- A successful login clears both the email+IP lock and the cross-IP counter
 - State is in-memory (`internal/service/throttle.go`), matching the
   single-instance self-hosted deployment model
 

@@ -33,7 +33,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
 - [ ] Mitigate targeted account-lockout griefing with a compound throttle key (#181)
-- [ ] Dev scripts reuse a stale backend after pulling new backend code (#189)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -766,6 +765,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `fix/dev-stack-stale-backend` - Dev stack replaces outdated backends (PR #192)
+
+- [x] Dev scripts reuse a stale backend after pulling new backend code (#189)
 
 ### `fix/scrollbar-cursor` + `fix/wider-scrollbars` - Scrollbar usability (PRs #188, #191)
 

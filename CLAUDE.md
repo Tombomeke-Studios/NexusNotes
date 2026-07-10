@@ -172,6 +172,7 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
+| `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |
 | `src/lib/welcome.ts` | Sample notes seeded into a new account's first vault (onboarding) |
 | `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 

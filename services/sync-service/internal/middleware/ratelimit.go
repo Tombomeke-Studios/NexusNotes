@@ -40,7 +40,7 @@ func NewRateLimiter(perMinute, burst int) *RateLimiter {
 
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		allowed, retryAfter := rl.allow(clientIP(r))
+		allowed, retryAfter := rl.allow(ClientIP(r))
 		if !allowed {
 			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
 			http.Error(w, "too many requests", http.StatusTooManyRequests)
@@ -83,9 +83,10 @@ func (rl *RateLimiter) purge(now time.Time) {
 	}
 }
 
-// clientIP extracts the remote host, ignoring the ephemeral port so that all
-// connections from one address share a bucket.
-func clientIP(r *http.Request) string {
+// ClientIP extracts the remote host, ignoring the ephemeral port so that all
+// connections from one address share a bucket. Also used by the login
+// throttle's compound email+IP key.
+func ClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr

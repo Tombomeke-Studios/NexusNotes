@@ -32,7 +32,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-- [ ] Mitigate targeted account-lockout griefing with a compound throttle key (#181)
+> (no open triage items)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -765,6 +765,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `fix/lockout-compound-key` - Griefing-proof login lockout
+
+- [x] Mitigate targeted account-lockout griefing with a compound email+IP throttle key and cross-IP tarpit (#181)
 
 ### `fix/close-reliable-and-pause-autosave` - Reliable window close (PR #169)
 

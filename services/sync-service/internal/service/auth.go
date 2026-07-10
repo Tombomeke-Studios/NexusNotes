@@ -35,6 +35,7 @@ type AuthService struct {
 	userRepo  UserStore
 	jwtSecret []byte
 	throttle  *loginThrottle
+	sleep     func(time.Duration) // swappable so tests don't actually wait
 }
 
 func NewAuthService(userRepo UserStore, jwtSecret string) *AuthService {
@@ -42,6 +43,7 @@ func NewAuthService(userRepo UserStore, jwtSecret string) *AuthService {
 		userRepo:  userRepo,
 		jwtSecret: []byte(jwtSecret),
 		throttle:  newLoginThrottle(),
+		sleep:     time.Sleep,
 	}
 }
 
@@ -81,12 +83,18 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 	return user, token, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string) (*model.User, string, error) {
+func (s *AuthService) Login(ctx context.Context, email, password, clientIP string) (*model.User, string, error) {
 	// Throttle by submitted email whether or not the account exists, so the
-	// lockout response carries no user-enumeration signal.
-	throttleKey := strings.ToLower(email)
-	if s.throttle.check(throttleKey) > 0 {
+	// lockout response carries no user-enumeration signal. Hard locks are
+	// scoped to email+IP; distributed cross-IP guessing gets a constant
+	// tarpit delay instead so an attacker cannot lock the real owner out.
+	emailKey := strings.ToLower(email)
+	locked, tarpit := s.throttle.check(emailKey, clientIP)
+	if locked > 0 {
 		return nil, "", ErrTooManyAttempts
+	}
+	if tarpit {
+		s.sleep(tarpitDelay)
 	}
 
 	user, err := s.userRepo.GetByEmail(ctx, email)
@@ -95,7 +103,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 			// Burn the same KDF work as the known-user path so response
 			// timing does not reveal whether the email is registered.
 			dummyPasswordVerify(password)
-			s.throttle.recordFailure(throttleKey)
+			s.throttle.recordFailure(emailKey, clientIP)
 			return nil, "", ErrInvalidCredentials
 		}
 		return nil, "", fmt.Errorf("get user: %w", err)
@@ -106,10 +114,10 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 		return nil, "", fmt.Errorf("verify password: %w", err)
 	}
 	if !ok {
-		s.throttle.recordFailure(throttleKey)
+		s.throttle.recordFailure(emailKey, clientIP)
 		return nil, "", ErrInvalidCredentials
 	}
-	s.throttle.reset(throttleKey)
+	s.throttle.reset(emailKey, clientIP)
 
 	// Transparently upgrade legacy/outdated hashes now that we hold the
 	// plaintext. Best effort: a failed upgrade must not block the login.

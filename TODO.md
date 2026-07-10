@@ -303,6 +303,29 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## `feature/security-hardening` - Auth hardening (phase 1, before E2EE)
+
+> Close the known gaps from `docs/security.md` before building E2EE on top. The server
+> must be resistant to brute force, credential stuffing, and user enumeration.
+
+- [ ] Rate limit auth endpoints (login/register) per IP with 429 + Retry-After (#172)
+- [ ] Account lockout with progressive delay after repeated failed logins (#173)
+- [ ] Migrate password hashing from bcrypt to Argon2id with transparent rehash on login (#174)
+- [ ] Prevent user-enumeration timing leak in login (dummy hash compare) (#175)
+
+---
+
+## `feature/gdpr-compliance` - GDPR: erasure, portability, documentation
+
+> Notes can hold sensitive personal data. Nobody — including the instance operator with
+> database access — should retain a user's data against their will.
+
+- [ ] Account deletion (right to erasure): cascade across Postgres, MinIO, Meilisearch, WS (#177)
+- [ ] Full personal data export (portability): zip of all vaults + account metadata (#178)
+- [ ] Document GDPR posture and data inventory in docs/security.md (#179)
+
+---
+
 ## `feature/e2ee-encryption` - End-to-end encryption (zero-knowledge vaults)
 
 > The server must never be able to read note content. All encryption and decryption
@@ -319,6 +342,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add an encryption toggle when creating a vault with a passphrase prompt
 - [ ] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it
 - [ ] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes
+- [ ] Generate a one-time recovery key (backup code) that also wraps the Vault Key; recovery flow sets a new passphrase (#176)
 - [ ] Display a lock icon on encrypted vaults in the sidebar
 - [ ] Implement a client-side search index (MiniSearch or FlexSearch) for encrypted vaults; server-side search is not possible in zero-knowledge mode
 - [ ] Write unit tests for key derivation, encryption, and decryption

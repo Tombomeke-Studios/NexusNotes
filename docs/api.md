@@ -35,6 +35,22 @@ Response (201):
 
 Response (200): same shape as register.
 
+### DELETE /api/auth/account
+
+Requires `Authorization: Bearer <token>`. Permanently erases the account and
+all owned data (GDPR right to erasure): vaults, notes, versions, links, tags
+and devices via database cascade, plus search-index entries; all live
+WebSocket sessions are closed. The password must be re-supplied.
+
+```json
+{
+  "password": "current password"
+}
+```
+
+Responses: `204` on success, `401` for a wrong password, `400` when the
+password is missing.
+
 ---
 
 ## Vaults

@@ -63,6 +63,19 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, e
 	return &u, nil
 }
 
+// Delete removes the user row; vaults, notes, versions, links, tags and
+// devices are removed by the ON DELETE CASCADE constraints in the schema.
+func (r *UserRepo) Delete(ctx context.Context, id string) error {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func (r *UserRepo) UpdatePasswordHash(ctx context.Context, id, passwordHash string) error {
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1`,

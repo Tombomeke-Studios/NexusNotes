@@ -54,8 +54,9 @@ func main() {
 	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, indexer)
 
 	hub := ws.NewHub()
+	accountService := service.NewAccountService(userRepo, vaultRepo, indexer, hub)
 
-	authHandler := handler.NewAuthHandler(authService, userRepo)
+	authHandler := handler.NewAuthHandler(authService, accountService, userRepo)
 	vaultHandler := handler.NewVaultHandler(vaultRepo)
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
@@ -72,6 +73,7 @@ func main() {
 
 	protectedMux := http.NewServeMux()
 	protectedMux.HandleFunc("GET /api/auth/me", authHandler.Me)
+	protectedMux.HandleFunc("DELETE /api/auth/account", authHandler.DeleteAccount)
 	protectedMux.HandleFunc("GET /api/vaults", vaultHandler.List)
 	protectedMux.HandleFunc("POST /api/vaults", vaultHandler.Create)
 	protectedMux.HandleFunc("GET /api/vaults/{id}", vaultHandler.Get)

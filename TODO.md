@@ -303,23 +303,38 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/e2ee-encryption` - End-to-end encryption (zero-knowledge vaults)
+## `feature/e2ee-encryption` - End-to-end encryption (zero-knowledge vaults) — IN PROGRESS
 
 > The server must never be able to read note content. All encryption and decryption
 > happens on the client before data is transmitted. See `docs/encryption.md` for the
 > full technical design.
+>
+> **Branch state (2026-07-10):** foundations done and pushed — design doc, desktop
+> crypto core (`src/lib/crypto.ts`), server storage (migration 005: `vaults.encryption`
+> + opaque `encryption_meta`; ciphertext reuses `notes.content` as `iv:cipher`; client
+> plaintext checksums honoured for e2ee vaults only), key management
+> (`src/lib/vaultKeys.ts`) and API plumbing (`PUT /api/vaults/:id/encryption`,
+> `vaults.create` encryption fields, note `checksum` field). Server flow verified live.
+> **Next up: the UI slice (#198)** — wire `vaultKeySession` into `App.tsx`:
+> encryption toggle + passphrase + one-time recovery-code screen in the new-vault
+> flow, an unlock dialog when opening a locked e2ee vault, lock icon in the vault
+> switcher/sidebar, and encrypt-on-save / decrypt-on-open in the editor path
+> (`handleSelectNote` / `handleSaveNote`, using `encryptNote`/`decryptNote` +
+> `plaintextChecksum`). Then #176/#199 in Settings, #200 client search, E2E test.
 
 - [x] Write `docs/encryption.md` covering key derivation, the encryption algorithm, the sync protocol, and trade-offs (#195)
 - [x] Add a `vault_encryption` column to the vaults table (`none` or `e2ee`) with a migration (#197)
 - [x] Implement client-side key derivation: `Argon2id(password + salt)` produces a 256-bit Master Key (#196)
 - [x] Implement key wrapping: generate a random Vault Key and encrypt it with the Master Key; this allows passphrase changes without re-encrypting all notes (#196)
 - [x] Encrypt note content with `AES-256-GCM` before upload using a unique IV per save (#196)
-- [x] Store `encrypted_content`, `content_iv`, and `content_tag` in the database instead of plaintext for encrypted vaults (#197)
+- [x] Store the encrypted payload (`iv:ciphertext` in `notes.content`) and opaque key material (`vaults.encryption_meta`) server-side (#197)
 - [x] Compute a plaintext `SHA-256` checksum client-side before encryption; the server uses this for conflict detection without reading content (#196)
-- [ ] Add an encryption toggle when creating a vault with a passphrase prompt (#198)
+- [x] Vault key management: setup/unlock/recover/rewrap + in-memory key session (`src/lib/vaultKeys.ts`) (#198)
+- [ ] Add an encryption toggle when creating a vault, with passphrase prompt and one-time recovery-code display (#198)
 - [ ] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it (#198)
+- [ ] Encrypt on save / decrypt on open in the editor path using the unlocked Vault Key (#198)
 - [ ] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes (#199)
-- [ ] Generate a one-time recovery key (backup code) that also wraps the Vault Key; recovery flow sets a new passphrase (#176)
+- [ ] Recovery flow UI: unlock with the backup code, set a new passphrase, show a fresh recovery code (#176)
 - [ ] Display a lock icon on encrypted vaults in the sidebar (#198)
 - [ ] Implement a client-side search index (MiniSearch or FlexSearch) for encrypted vaults; server-side search is not possible in zero-knowledge mode (#200)
 - [x] Write unit tests for key derivation, encryption, and decryption (#196)

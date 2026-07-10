@@ -312,6 +312,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Account lockout with progressive delay after repeated failed logins (#173)
 - [x] Migrate password hashing from bcrypt to Argon2id with transparent rehash on login (#174)
 - [x] Prevent user-enumeration timing leak in login (dummy hash compare) (#175)
+- [ ] Mitigate targeted account-lockout griefing with a compound throttle key (#181)
 
 ---
 

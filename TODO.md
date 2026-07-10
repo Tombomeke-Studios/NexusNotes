@@ -32,21 +32,12 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-> (no open triage items)
+- [ ] Mitigate targeted account-lockout griefing with a compound throttle key (#181)
+- [ ] Dev scripts reuse a stale backend after pulling new backend code (#189)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
 > live in `feature/attachments` and `feature/editor-enhancements`.
-
----
-
-## `feature/premium-polish` - Premium visual polish
-
-> Apply the ui-ux-pro-max design rules to the existing dark theme: consistent
-> elevation, keyboard focus visibility, a distinctive bundled UI font.
-
-- [x] Elevation tokens + surface highlights, global :focus-visible rings, Inter Variable UI font, tabular status-bar numerals (#182)
-- [x] Visible shell refinements: rail indicator + glow, active-tab accent underline, topbar gradient, tactile button press, accent scrollbar/search-pill hover (#185)
 
 ---
 
@@ -310,30 +301,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Support linking GitHub file paths using the existing GitHub connection when available
 - [ ] Allow personal annotations to be added on top of a linked read-only file; store annotations separately from the linked content so syncing the source does not overwrite them (#64)
 - [ ] Write unit tests for the linked_files repository and handler
-
----
-
-## `feature/security-hardening` - Auth hardening (phase 1, before E2EE)
-
-> Close the known gaps from `docs/security.md` before building E2EE on top. The server
-> must be resistant to brute force, credential stuffing, and user enumeration.
-
-- [x] Rate limit auth endpoints (login/register) per IP with 429 + Retry-After (#172)
-- [x] Account lockout with progressive delay after repeated failed logins (#173)
-- [x] Migrate password hashing from bcrypt to Argon2id with transparent rehash on login (#174)
-- [x] Prevent user-enumeration timing leak in login (dummy hash compare) (#175)
-- [ ] Mitigate targeted account-lockout griefing with a compound throttle key (#181)
-
----
-
-## `feature/gdpr-compliance` - GDPR: erasure, portability, documentation
-
-> Notes can hold sensitive personal data. Nobody — including the instance operator with
-> database access — should retain a user's data against their will.
-
-- [x] Account deletion (right to erasure): cascade across Postgres, Meilisearch, WS + Settings danger zone (#177)
-- [x] Full personal data export (portability): zip of all vaults + account metadata (#178)
-- [x] Document GDPR posture and data inventory in docs/security.md (#179)
 
 ---
 
@@ -799,6 +766,29 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `fix/scrollbar-cursor` + `fix/wider-scrollbars` - Scrollbar usability (PRs #188, #191)
+
+- [x] Widen scrollbars from 8px to 12px (#187)
+- [x] Default cursor over scrollbars instead of the editor I-beam (#190)
+
+### `feature/gdpr-compliance` - GDPR: erasure, portability, documentation (PR #184)
+
+- [x] Account deletion (right to erasure): cascade across Postgres, Meilisearch, WS + Settings danger zone (#177)
+- [x] Full personal data export (portability): zip of all vaults + account metadata (#178)
+- [x] Document GDPR posture and data inventory in docs/security.md (#179)
+
+### `feature/premium-polish` (+ pass 2) - Premium visual polish (PRs #183, #186)
+
+- [x] Elevation tokens + surface highlights, global :focus-visible rings, Inter Variable UI font, tabular status-bar numerals (#182)
+- [x] Visible shell refinements: rail indicator + glow, active-tab accent underline, topbar gradient, tactile button press, accent scrollbar/search-pill hover (#185)
+
+### `feature/security-hardening` - Auth hardening phase 1 (PR #180)
+
+- [x] Rate limit auth endpoints (login/register) per IP with 429 + Retry-After (#172)
+- [x] Account lockout with progressive delay after repeated failed logins (#173)
+- [x] Migrate password hashing from bcrypt to Argon2id with transparent rehash on login (#174)
+- [x] Prevent user-enumeration timing leak in login (dummy hash compare) (#175)
 
 ### `feature/save-status` - Unsaved indicators, drafts, and close confirmation (PR #163)
 

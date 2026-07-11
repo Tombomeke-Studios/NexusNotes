@@ -1,21 +1,29 @@
 import { useState } from "react";
 import { Logo } from "../Logo";
+import { EncryptionSetup } from "../Encryption/EncryptionSetup";
+import { passphraseError } from "../../lib/passphrase";
 import "./Workspace.css";
 
 interface FirstRunVaultProps {
-  onCreate: (name: string) => void;
+  onCreate: (name: string, passphrase?: string) => void;
 }
 
 /**
  * Shown in the center column when the account has no vaults yet, so a new
  * user has a clear path to their first vault (notes can't exist without one).
+ * Offers the same E2EE opt-in as the new-vault dialog.
  */
 export function FirstRunVault({ onCreate }: FirstRunVaultProps) {
   const [name, setName] = useState("");
+  const [encrypt, setEncrypt] = useState(false);
+  const [passphrase, setPassphrase] = useState("");
+  const [confirm, setConfirm] = useState("");
+
+  const valid = !!name.trim() && (!encrypt || passphraseError(passphrase, confirm) === null);
 
   const submit = () => {
-    const trimmed = name.trim();
-    if (trimmed) onCreate(trimmed);
+    if (!valid) return;
+    onCreate(name.trim(), encrypt ? passphrase : undefined);
   };
 
   return (
@@ -40,7 +48,16 @@ export function FirstRunVault({ onCreate }: FirstRunVaultProps) {
             placeholder="Vault name (e.g. Personal)"
             autoFocus
           />
-          <button className="firstrun-button" onClick={submit} disabled={!name.trim()}>
+          <EncryptionSetup
+            enabled={encrypt}
+            passphrase={passphrase}
+            confirm={confirm}
+            onToggle={setEncrypt}
+            onPassphraseChange={setPassphrase}
+            onConfirmChange={setConfirm}
+            onSubmit={submit}
+          />
+          <button className="firstrun-button" onClick={submit} disabled={!valid}>
             Create vault
           </button>
         </div>

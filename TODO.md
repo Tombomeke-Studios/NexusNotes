@@ -330,7 +330,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Store the encrypted payload (`iv:ciphertext` in `notes.content`) and opaque key material (`vaults.encryption_meta`) server-side (#197)
 - [x] Compute a plaintext `SHA-256` checksum client-side before encryption; the server uses this for conflict detection without reading content (#196)
 - [x] Vault key management: setup/unlock/recover/rewrap + in-memory key session (`src/lib/vaultKeys.ts`) (#198)
-- [ ] Add an encryption toggle when creating a vault, with passphrase prompt and one-time recovery-code display (#198)
+- [x] Add an encryption toggle when creating a vault, with passphrase prompt and one-time recovery-code display (#198)
 - [ ] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it (#198)
 - [ ] Encrypt on save / decrypt on open in the editor path using the unlocked Vault Key (#198)
 - [ ] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes (#199)

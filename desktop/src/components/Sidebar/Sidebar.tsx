@@ -73,7 +73,8 @@ interface SidebarProps {
   onDeleteFolder: (path: string) => void;
   /** Bump to pop open the "new folder" input from outside (e.g. right-click). */
   newFolderNonce?: number;
-  onCreateVault: (name: string) => void;
+  /** Opens the app-level "new vault" dialog (name + encryption opt-in). */
+  onRequestNewVault: () => void;
   onToggleTag: (tag: string) => void;
   onSetFolder: (folder: string | null) => void;
   onSetSort: (sort: SortBy) => void;
@@ -111,7 +112,7 @@ export function Sidebar({
   onMoveNote,
   onDeleteFolder,
   newFolderNonce,
-  onCreateVault,
+  onRequestNewVault,
   onToggleTag,
   onSetFolder,
   onSetSort,
@@ -126,8 +127,6 @@ export function Sidebar({
   const [showVaults, setShowVaults] = useState(false);
   const [recentOpen, setRecentOpen] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
-  const [newVaultName, setNewVaultName] = useState("");
-  const [showNewVault, setShowNewVault] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [dragNoteId, setDragNoteId] = useState<string | null>(null);
@@ -220,15 +219,6 @@ export function Sidebar({
   const activeVault = vaults.find((v) => v.id === activeVaultId);
   const filterCount = filterTags.length + (filterFolder ? 1 : 0);
   const hasFilter = filterCount > 0;
-
-  const handleCreateVault = () => {
-    if (newVaultName.trim()) {
-      onCreateVault(newVaultName.trim());
-      setNewVaultName("");
-      setShowNewVault(false);
-      setShowVaults(false);
-    }
-  };
 
   if (view === "search") {
     return (
@@ -330,27 +320,18 @@ export function Sidebar({
               )}
             </button>
           ))}
-          {showNewVault ? (
-            <div className="sidebar-new-vault">
-              <input
-                value={newVaultName}
-                onChange={(e) => setNewVaultName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateVault();
-                  if (e.key === "Escape") setShowNewVault(false);
-                }}
-                placeholder="Vault name..."
-                autoFocus
-              />
-            </div>
-          ) : (
-            <button className="sidebar-vault-item sidebar-vault-item--new" onClick={() => setShowNewVault(true)}>
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-              New vault
-            </button>
-          )}
+          <button
+            className="sidebar-vault-item sidebar-vault-item--new"
+            onClick={() => {
+              setShowVaults(false);
+              onRequestNewVault();
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            New vault
+          </button>
           <div className="sidebar-vault-sep" />
           <button className="sidebar-vault-item sidebar-vault-item--signout" onClick={onSignOut}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

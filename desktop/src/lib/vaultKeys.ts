@@ -7,6 +7,9 @@ import {
   parseRecoveryCode,
   wrapKey,
   unwrapKey,
+  encryptNote,
+  decryptNote,
+  plaintextChecksum,
   type KdfParams,
   type WrappedKey,
 } from "./crypto";
@@ -116,3 +119,53 @@ class VaultKeySession {
 }
 
 export const vaultKeySession = new VaultKeySession();
+
+// --- Note-level helpers: encrypt/decrypt against a vault's session key ---
+
+/** The subset of the Vault model these helpers need. */
+type VaultLike = { id: string; encryption?: "none" | "e2ee" };
+
+/** Thrown when an e2ee operation is attempted while the vault key is not in memory. */
+export class VaultLockedError extends Error {
+  constructor(public vaultId: string) {
+    super("vault is locked — unlock it with the passphrase first");
+    this.name = "VaultLockedError";
+  }
+}
+
+export function isE2eeVault(vault: VaultLike | null | undefined): boolean {
+  return vault?.encryption === "e2ee";
+}
+
+export function isVaultLocked(vault: VaultLike | null | undefined): boolean {
+  return isE2eeVault(vault) && vaultKeySession.get(vault!.id) === null;
+}
+
+function requireKey(vault: VaultLike): Uint8Array {
+  const key = vaultKeySession.get(vault.id);
+  if (!key) throw new VaultLockedError(vault.id);
+  return key;
+}
+
+/**
+ * Prepares note content for upload. Standard vaults pass through unchanged;
+ * e2ee vaults get ciphertext plus the plaintext SHA-256 the server stores
+ * verbatim for conflict detection (it can never recompute it).
+ */
+export async function encryptNoteForVault(
+  vault: VaultLike,
+  plaintext: string,
+): Promise<{ content: string; checksum?: string }> {
+  if (!isE2eeVault(vault)) return { content: plaintext };
+  const key = requireKey(vault);
+  return {
+    content: await encryptNote(plaintext, key),
+    checksum: await plaintextChecksum(plaintext),
+  };
+}
+
+/** Turns stored note content back into plaintext for an e2ee vault. */
+export async function decryptNoteForVault(vault: VaultLike, content: string): Promise<string> {
+  if (!isE2eeVault(vault)) return content;
+  return decryptNote(content, requireKey(vault));
+}

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, getToken, setToken, ApiError } from "./api";
+import { auth, notes, getToken, setToken, ApiError } from "./api";
 
 function mockFetch(status: number, body?: unknown) {
   const fn = vi.fn().mockResolvedValue({
@@ -42,5 +42,41 @@ describe("auth.deleteAccount", () => {
     expect(getToken()).toBe("session-token");
     expect(logoutListener).not.toHaveBeenCalled();
     window.removeEventListener("nexus:logout", logoutListener);
+  });
+});
+
+describe("notes client checksum plumbing (e2ee vaults)", () => {
+  beforeEach(() => setToken("session-token"));
+  afterEach(() => {
+    setToken(null);
+    vi.unstubAllGlobals();
+  });
+
+  it("create sends the plaintext checksum when given", async () => {
+    const fetchMock = mockFetch(200, { id: "n1" });
+
+    await notes.create("v1", "Title", "", "iv:cipher", "abc123");
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.checksum).toBe("abc123");
+  });
+
+  it("create omits the checksum field for standard vaults", async () => {
+    const fetchMock = mockFetch(200, { id: "n1" });
+
+    await notes.create("v1", "Title", "", "plain content");
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect("checksum" in body).toBe(false);
+  });
+
+  it("update sends both prev_checksum and the new plaintext checksum", async () => {
+    const fetchMock = mockFetch(200, { id: "n1" });
+
+    await notes.update("n1", "Title", "", "iv:cipher", "prev-sum", "next-sum");
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.prev_checksum).toBe("prev-sum");
+    expect(body.checksum).toBe("next-sum");
   });
 });

@@ -5,6 +5,11 @@ import {
   rewrapVaultKey,
   recoverVaultKey,
   vaultKeySession,
+  isE2eeVault,
+  isVaultLocked,
+  encryptNoteForVault,
+  decryptNoteForVault,
+  VaultLockedError,
   type EncryptionMeta,
 } from "./vaultKeys";
 
@@ -76,6 +81,49 @@ describe("in-memory key session", () => {
 
     vaultKeySession.clear();
     expect(vaultKeySession.get("v2")).toBeNull();
+  });
+});
+
+describe("note-level helpers against a vault", () => {
+  const plainVault = { id: "vp", encryption: "none" as const };
+  const e2eeVault = { id: "ve", encryption: "e2ee" as const };
+
+  beforeEach(() => vaultKeySession.clear());
+
+  it("standard vaults pass content through untouched, with no client checksum", async () => {
+    expect(isE2eeVault(plainVault)).toBe(false);
+    expect(isVaultLocked(plainVault)).toBe(false);
+    const out = await encryptNoteForVault(plainVault, "# hello");
+    expect(out).toEqual({ content: "# hello" });
+    expect(await decryptNoteForVault(plainVault, "# hello")).toBe("# hello");
+  });
+
+  it("an unlocked e2ee vault round-trips content and yields a plaintext checksum", async () => {
+    const { vaultKey } = await setupVaultEncryption("a-good-passphrase", fastKdf);
+    vaultKeySession.set(e2eeVault.id, vaultKey);
+    expect(isVaultLocked(e2eeVault)).toBe(false);
+
+    const { content, checksum } = await encryptNoteForVault(e2eeVault, "# secret");
+    expect(content).not.toContain("secret");
+    expect(content).toMatch(/^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/);
+    expect(checksum).toMatch(/^[0-9a-f]{64}$/);
+    expect(await decryptNoteForVault(e2eeVault, content)).toBe("# secret");
+  });
+
+  it("a locked e2ee vault throws VaultLockedError both ways", async () => {
+    expect(isVaultLocked(e2eeVault)).toBe(true);
+    await expect(encryptNoteForVault(e2eeVault, "x")).rejects.toBeInstanceOf(VaultLockedError);
+    await expect(decryptNoteForVault(e2eeVault, "iv:data")).rejects.toBeInstanceOf(VaultLockedError);
+  });
+
+  it("the same plaintext always yields the same checksum (conflict detection)", async () => {
+    const { vaultKey } = await setupVaultEncryption("a-good-passphrase", fastKdf);
+    vaultKeySession.set(e2eeVault.id, vaultKey);
+    const a = await encryptNoteForVault(e2eeVault, "same text");
+    const b = await encryptNoteForVault(e2eeVault, "same text");
+    expect(a.checksum).toBe(b.checksum);
+    // ...while the ciphertext differs thanks to the unique IV per save.
+    expect(a.content).not.toBe(b.content);
   });
 });
 

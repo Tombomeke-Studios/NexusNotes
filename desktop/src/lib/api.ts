@@ -162,10 +162,18 @@ export const notes = {
   list: (vaultId: string) =>
     request<Note[]>(`/api/vaults/${vaultId}/notes`),
   get: (noteId: string) => request<Note>(`/api/notes/${noteId}`),
-  create: (vaultId: string, title: string, path: string, content: string) =>
+  // `checksum` is the client-computed plaintext SHA-256; only sent for e2ee
+  // vaults (the server ignores it for standard vaults and hashes server-side).
+  create: (vaultId: string, title: string, path: string, content: string, checksum?: string) =>
     request<Note>(`/api/vaults/${vaultId}/notes`, {
       method: "POST",
-      body: JSON.stringify({ title, path, content, device_id: getDeviceId() }),
+      body: JSON.stringify({
+        title,
+        path,
+        content,
+        device_id: getDeviceId(),
+        ...(checksum ? { checksum } : {}),
+      }),
     }),
   update: (
     noteId: string,
@@ -173,6 +181,7 @@ export const notes = {
     path: string,
     content: string,
     prevChecksum: string,
+    checksum?: string,
   ) =>
     request<Note | ConflictInfo>(`/api/notes/${noteId}`, {
       method: "PUT",
@@ -182,6 +191,7 @@ export const notes = {
         content,
         prev_checksum: prevChecksum,
         device_id: getDeviceId(),
+        ...(checksum ? { checksum } : {}),
       }),
     }),
   delete: (vaultId: string, noteId: string) =>

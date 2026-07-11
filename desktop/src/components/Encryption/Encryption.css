@@ -62,6 +62,24 @@
   margin: 2px 0 0;
 }
 
+/* Unlock dialog */
+
+.enc-title-lock {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.enc-unlock-error {
+  margin-top: 8px;
+}
+
+.confirm-dialog > .enc-input + .confirm-actions,
+.confirm-dialog > .enc-unlock-error + .confirm-actions {
+  margin-top: 16px;
+}
+
 /* Recovery code dialog */
 
 .enc-code {

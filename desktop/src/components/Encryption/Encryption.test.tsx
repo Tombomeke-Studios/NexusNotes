@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { EncryptionSetup } from "./EncryptionSetup";
 import { RecoveryCodeDialog } from "./RecoveryCodeDialog";
 import { CreateVaultDialog } from "./CreateVaultDialog";
+import { UnlockVaultDialog } from "./UnlockVaultDialog";
 
 /** Stateful wrapper so the controlled EncryptionSetup behaves like in the app. */
 function SetupHarness({ initialEnabled = false }: { initialEnabled?: boolean }) {
@@ -93,5 +94,36 @@ describe("CreateVaultDialog", () => {
     fireEvent.click(create);
 
     expect(onCreate).toHaveBeenCalledWith("Secret", "a strong passphrase");
+  });
+});
+
+describe("UnlockVaultDialog", () => {
+  it("passes the passphrase to onUnlock on Enter", async () => {
+    const onUnlock = vi.fn().mockResolvedValue(undefined);
+    render(<UnlockVaultDialog vaultName="Secret" onUnlock={onUnlock} onCancel={() => {}} />);
+
+    const input = screen.getByPlaceholderText("Vault passphrase");
+    fireEvent.change(input, { target: { value: "open sesame please" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() => expect(onUnlock).toHaveBeenCalledWith("open sesame please"));
+  });
+
+  it("shows an error and re-enables the form when the unlock rejects", async () => {
+    const onUnlock = vi.fn().mockRejectedValue(new Error("bad key"));
+    render(<UnlockVaultDialog vaultName="Secret" onUnlock={onUnlock} onCancel={() => {}} />);
+
+    fireEvent.change(screen.getByPlaceholderText("Vault passphrase"), {
+      target: { value: "wrong one entirely" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+
+    await waitFor(() => expect(screen.getByText(/wrong passphrase/i)).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Unlock" })).toHaveProperty("disabled", false);
+  });
+
+  it("disables Unlock while empty", () => {
+    render(<UnlockVaultDialog vaultName="Secret" onUnlock={vi.fn()} onCancel={() => {}} />);
+    expect(screen.getByRole("button", { name: "Unlock" })).toHaveProperty("disabled", true);
   });
 });

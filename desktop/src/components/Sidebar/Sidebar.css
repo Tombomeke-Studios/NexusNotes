@@ -44,6 +44,14 @@
   text-overflow: ellipsis;
 }
 
+/* E2EE marker shown next to encrypted vault names. */
+.sidebar-vault-lock,
+.sidebar-vault-btn svg.sidebar-vault-lock,
+.sidebar-vault-item svg.sidebar-vault-lock {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
 .sidebar-head-actions {
   display: flex;
   gap: 2px;

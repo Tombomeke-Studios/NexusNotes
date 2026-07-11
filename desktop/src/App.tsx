@@ -23,8 +23,10 @@ import {
   setupVaultEncryption,
   unlockVaultKey,
   vaultKeySession,
+  isE2eeVault,
   isVaultLocked,
   encryptNoteForVault,
+  decryptNoteForVault,
   type EncryptionMeta,
 } from "./lib/vaultKeys";
 import { syncClient } from "./lib/sync";
@@ -140,14 +142,41 @@ export default function App() {
     return () => document.removeEventListener("contextmenu", suppress);
   }, []);
 
+  /**
+   * E2EE boundary: everything in React state is plaintext; ciphertext exists
+   * only on the wire and the server. These two helpers translate at the edge.
+   */
+  const vaultOf = useCallback(
+    (vaultId: string) => vaultListRef.current.find((v) => v.id === vaultId),
+    [],
+  );
+
+  const decryptIncoming = useCallback(async (note: Note): Promise<Note> => {
+    const vault = vaultOf(note.vault_id);
+    if (!isE2eeVault(vault)) return note;
+    try {
+      return { ...note, content: await decryptNoteForVault(vault!, note.content) };
+    } catch {
+      // Locked vault or undecryptable payload: keep the ciphertext (unreadable
+      // but harmless); a proper unlock reloads the vault.
+      return note;
+    }
+  }, [vaultOf]);
+
+  const encryptOutgoing = useCallback(
+    (vaultId: string, plaintext: string) =>
+      encryptNoteForVault(vaultOf(vaultId) ?? { id: vaultId }, plaintext),
+    [vaultOf],
+  );
+
   const loadNotes = useCallback(async (vaultId: string) => {
     try {
       const list = await notesApi.list(vaultId);
-      setNoteList(list || []);
+      setNoteList(await Promise.all((list || []).map(decryptIncoming)));
     } catch {
       setNoteList([]);
     }
-  }, []);
+  }, [decryptIncoming]);
 
   const loadVaults = useCallback(async () => {
     try {
@@ -194,18 +223,20 @@ export default function App() {
       syncClient.connect();
       const unsub = syncClient.onMessage((type, payload) => {
         if (type === "note:created" || type === "note:updated") {
-          const note = payload as Note;
-          setNoteList((prev) => {
-            const idx = prev.findIndex((n) => n.id === note.id);
-            if (idx >= 0) {
-              const updated = [...prev];
-              updated[idx] = note;
-              return updated;
-            }
-            return [...prev, note];
+          // E2ee payloads arrive as ciphertext; state only holds plaintext.
+          decryptIncoming(payload as Note).then((note) => {
+            setNoteList((prev) => {
+              const idx = prev.findIndex((n) => n.id === note.id);
+              if (idx >= 0) {
+                const updated = [...prev];
+                updated[idx] = note;
+                return updated;
+              }
+              return [...prev, note];
+            });
+            setActiveNote((prev) => (prev?.id === note.id ? note : prev));
+            setLastSyncAt(new Date());
           });
-          setActiveNote((prev) => (prev?.id === note.id ? note : prev));
-          setLastSyncAt(new Date());
         } else if (type === "note:deleted") {
           const { note_id } = payload as { note_id: string };
           setNoteList((prev) => prev.filter((n) => n.id !== note_id));
@@ -219,7 +250,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user]);
+  }, [user, decryptIncoming]);
 
   useEffect(() => {
     setPinnedIds(activeVaultId ? loadPins(activeVaultId) : []);
@@ -262,7 +293,9 @@ export default function App() {
     if (!activeVaultId) return;
     // Keep note names unique (Untitled, Untitled 1, Untitled 2, …).
     const name = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), title);
-    const note = await notesApi.create(activeVaultId, name, "", "");
+    const { content: payload, checksum } = await encryptOutgoing(activeVaultId, "");
+    const created = await notesApi.create(activeVaultId, name, "", payload, checksum);
+    const note = { ...created, content: "" };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
@@ -270,7 +303,7 @@ export default function App() {
     setEditorContent("");
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId]);
+  }, [activeVaultId, encryptOutgoing]);
 
   const handleCreateNote = useCallback(
     () => handleCreateNoteWithTitle("Untitled"),
@@ -285,7 +318,7 @@ export default function App() {
         prev.some((t) => t.key === existing.id) ? prev : [...prev, { key: existing.id, type: "note" }],
       );
       setActiveTabKey(existing.id);
-      const note = await notesApi.get(existing.id);
+      const note = await decryptIncoming(await notesApi.get(existing.id));
       setActiveNote(note);
       setEditorContent(note.content);
       setSaveStatus("saved");
@@ -295,7 +328,10 @@ export default function App() {
     if (!activeVaultId) return;
     // A note's path is its folder, so daily notes live in the "Daily" folder;
     // the title carries the date.
-    const note = await notesApi.create(activeVaultId, iso, "Daily", dailyNoteTemplate(iso));
+    const template = dailyNoteTemplate(iso);
+    const { content: payload, checksum } = await encryptOutgoing(activeVaultId, template);
+    const created = await notesApi.create(activeVaultId, iso, "Daily", payload, checksum);
+    const note = { ...created, content: template };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
@@ -303,7 +339,7 @@ export default function App() {
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId]);
+  }, [activeVaultId, decryptIncoming, encryptOutgoing]);
 
   const openGraphTab = useCallback(() => {
     setTabs((prev) =>
@@ -350,16 +386,18 @@ export default function App() {
     const note = noteListRef.current.find((n) => n.id === noteId);
     if (!note || note.path === folderPath) return;
     try {
-      const updated = await notesApi.update(note.id, note.title, folderPath, note.content, note.checksum);
+      // State content is plaintext, so re-encrypt for e2ee vaults on the way out.
+      const { content: payload, checksum } = await encryptOutgoing(note.vault_id, note.content);
+      const updated = await notesApi.update(note.id, note.title, folderPath, payload, note.checksum, checksum);
       if ("checksum" in updated) {
-        const u = updated as Note;
+        const u = { ...(updated as Note), content: note.content };
         setNoteList((prev) => prev.map((n) => (n.id === u.id ? u : n)));
         setActiveNote((prev) => (prev?.id === u.id ? u : prev));
       }
     } catch {
       /* leave the note where it was on failure */
     }
-  }, []);
+  }, [encryptOutgoing]);
 
   // Drag entry point: dragging any note that is part of a multi-selection moves
   // the whole selection; otherwise just the dragged note.
@@ -388,7 +426,9 @@ export default function App() {
     const src = noteListRef.current.find((n) => n.id === noteId);
     if (!src) return;
     const title = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), `${src.title} copy`);
-    const note = await notesApi.create(activeVaultId, title, src.path, src.content);
+    const { content: payload, checksum } = await encryptOutgoing(activeVaultId, src.content);
+    const created = await notesApi.create(activeVaultId, title, src.path, payload, checksum);
+    const note = { ...created, content: src.content };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
@@ -396,7 +436,7 @@ export default function App() {
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId]);
+  }, [activeVaultId, encryptOutgoing]);
 
   const deleteOne = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
@@ -607,10 +647,11 @@ export default function App() {
       prev.some((t) => t.key === noteId) ? prev : [...prev, { key: noteId, type: "note" }],
     );
     setActiveTabKey(noteId);
-    const note = await notesApi.get(noteId);
+    const note = await decryptIncoming(await notesApi.get(noteId));
     // Restore any unsaved local draft (e.g. after an abrupt close) so work isn't
-    // lost; it will re-save on the next autosave.
-    const draft = loadDraft(noteId);
+    // lost; it will re-save on the next autosave. E2ee vaults never write
+    // plaintext drafts to disk, so there is nothing to restore for them.
+    const draft = isE2eeVault(vaultOf(note.vault_id)) ? null : loadDraft(noteId);
     if (draft !== null && draft !== note.content) {
       setActiveNote({ ...note, content: draft });
       setEditorContent(draft);
@@ -621,7 +662,7 @@ export default function App() {
       setSaveStatus("saved");
     }
     setCursor({ line: 1, col: 1 });
-  }, []);
+  }, [decryptIncoming, vaultOf]);
 
   // Keyboard navigation of the file tree: Up/Down move a single-note highlight
   // through the visible order, Enter opens it. Ignored while typing, in the
@@ -737,15 +778,19 @@ export default function App() {
     setEditorContent(content);
     setSaveStatus("saving");
     try {
+      // For e2ee vaults only ciphertext + the plaintext checksum go out; the
+      // server echoes the ciphertext back, so state keeps the local plaintext.
+      const { content: payload, checksum } = await encryptOutgoing(current.vault_id, content);
       const updated = await notesApi.update(
         current.id,
         current.title,
         current.path,
-        content,
+        payload,
         current.checksum,
+        checksum,
       );
       if ("checksum" in updated) {
-        const note = updated as Note;
+        const note = { ...(updated as Note), content };
         clearDraft(note.id);
         setNoteList((prev) => prev.map((n) => (n.id === note.id ? note : n)));
         // Only refresh the open note / status if we haven't since navigated away
@@ -759,7 +804,7 @@ export default function App() {
     } catch {
       setSaveStatus("unsaved");
     }
-  }, []);
+  }, [encryptOutgoing]);
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
 
@@ -769,10 +814,13 @@ export default function App() {
     setEditorContent(content);
     setSaveStatus((s) => (s === "unsaved" ? s : "unsaved"));
     // Mirror to a local draft so nothing is lost if the app closes before the
-    // debounced server save runs.
-    const id = activeNoteRef.current?.id;
-    if (id) saveDraft(id, content);
-  }, []);
+    // debounced server save runs — except for e2ee vaults, where plaintext
+    // must never touch disk (localStorage included).
+    const current = activeNoteRef.current;
+    if (current && !isE2eeVault(vaultOf(current.vault_id))) {
+      saveDraft(current.id, content);
+    }
+  }, [vaultOf]);
 
   // Warn before losing unsaved work on close. In the browser, the native
   // beforeunload prompt; in the native app, intercept the close and show our own

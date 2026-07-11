@@ -1,0 +1,97 @@
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { useState } from "react";
+import { EncryptionSetup } from "./EncryptionSetup";
+import { RecoveryCodeDialog } from "./RecoveryCodeDialog";
+import { CreateVaultDialog } from "./CreateVaultDialog";
+
+/** Stateful wrapper so the controlled EncryptionSetup behaves like in the app. */
+function SetupHarness({ initialEnabled = false }: { initialEnabled?: boolean }) {
+  const [enabled, setEnabled] = useState(initialEnabled);
+  const [passphrase, setPassphrase] = useState("");
+  const [confirm, setConfirm] = useState("");
+  return (
+    <EncryptionSetup
+      enabled={enabled}
+      passphrase={passphrase}
+      confirm={confirm}
+      onToggle={setEnabled}
+      onPassphraseChange={setPassphrase}
+      onConfirmChange={setConfirm}
+    />
+  );
+}
+
+describe("EncryptionSetup", () => {
+  it("hides the passphrase fields until the toggle is enabled", () => {
+    render(<SetupHarness />);
+    expect(screen.queryByPlaceholderText("Vault passphrase")).toBeNull();
+
+    fireEvent.click(screen.getByLabelText(/end-to-end encrypt/i));
+    expect(screen.getByPlaceholderText("Vault passphrase")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Confirm passphrase")).toBeTruthy();
+  });
+
+  it("shows a mismatch error while the confirm differs", () => {
+    render(<SetupHarness initialEnabled />);
+    fireEvent.change(screen.getByPlaceholderText("Vault passphrase"), {
+      target: { value: "a strong passphrase" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm passphrase"), {
+      target: { value: "something else" },
+    });
+    expect(screen.getByText("Passphrases do not match")).toBeTruthy();
+  });
+});
+
+describe("RecoveryCodeDialog", () => {
+  it("shows the code and gates Continue behind the saved confirmation", () => {
+    const onDone = vi.fn();
+    render(<RecoveryCodeDialog code="ABCD-EFGH-1234" onDone={onDone} />);
+
+    expect(screen.getByTestId("recovery-code").textContent).toBe("ABCD-EFGH-1234");
+
+    const cont = screen.getByRole("button", { name: "Continue" });
+    expect(cont).toHaveProperty("disabled", true);
+    fireEvent.click(cont);
+    expect(onDone).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText(/saved this recovery code/i));
+    fireEvent.click(cont);
+    expect(onDone).toHaveBeenCalledOnce();
+  });
+});
+
+describe("CreateVaultDialog", () => {
+  it("creates a standard vault with just a name (Enter submits)", () => {
+    const onCreate = vi.fn();
+    render(<CreateVaultDialog onCreate={onCreate} onClose={() => {}} />);
+
+    const name = screen.getByPlaceholderText("Vault name...");
+    fireEvent.change(name, { target: { value: "Work" } });
+    fireEvent.keyDown(name, { key: "Enter" });
+
+    expect(onCreate).toHaveBeenCalledWith("Work", undefined);
+  });
+
+  it("requires a valid passphrase pair when encryption is enabled", () => {
+    const onCreate = vi.fn();
+    render(<CreateVaultDialog onCreate={onCreate} onClose={() => {}} />);
+
+    fireEvent.change(screen.getByPlaceholderText("Vault name..."), { target: { value: "Secret" } });
+    fireEvent.click(screen.getByLabelText(/end-to-end encrypt/i));
+
+    const create = screen.getByRole("button", { name: "Create vault" });
+    expect(create).toHaveProperty("disabled", true);
+
+    fireEvent.change(screen.getByPlaceholderText("Vault passphrase"), {
+      target: { value: "a strong passphrase" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm passphrase"), {
+      target: { value: "a strong passphrase" },
+    });
+    fireEvent.click(create);
+
+    expect(onCreate).toHaveBeenCalledWith("Secret", "a strong passphrase");
+  });
+});

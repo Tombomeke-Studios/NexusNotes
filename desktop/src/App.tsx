@@ -15,7 +15,10 @@ import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
+import { CreateVaultDialog } from "./components/Encryption/CreateVaultDialog";
+import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
+import { setupVaultEncryption, vaultKeySession, encryptNoteForVault } from "./lib/vaultKeys";
 import { syncClient } from "./lib/sync";
 import { buildTree, flattenTreeNoteIds } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
@@ -55,6 +58,9 @@ export default function App() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNewVault, setShowNewVault] = useState(false);
+  // One-time recovery code of a freshly encrypted vault; shown until confirmed.
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
   const [closePrompt, setClosePrompt] = useState<{ kind: "window" } | { kind: "tab"; key: string } | null>(null);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -109,6 +115,7 @@ export default function App() {
       setVaultList([]);
       setNoteList([]);
       setActiveNote(null);
+      vaultKeySession.clear();
       syncClient.disconnect();
     };
     window.addEventListener("nexus:logout", handler);
@@ -300,6 +307,7 @@ export default function App() {
   const handleSignOut = useCallback(() => {
     auth.logout();
     setUser(null);
+    vaultKeySession.clear();
     syncClient.disconnect();
   }, []);
 
@@ -511,9 +519,20 @@ export default function App() {
     [loadNotes],
   );
 
-  const handleCreateVault = useCallback(async (name: string) => {
+  const handleCreateVault = useCallback(async (name: string, passphrase?: string) => {
     const isFirstVault = vaultListRef.current.length === 0;
-    const vault = await vaultsApi.create(name);
+    let vault: Vault;
+    if (passphrase) {
+      // E2EE vault: all key material is produced client-side; the server only
+      // ever receives the opaque meta blob (docs/encryption.md).
+      const { meta, vaultKey, recoveryCode: code } = await setupVaultEncryption(passphrase);
+      vault = await vaultsApi.create(name, { encryption: "e2ee", encryption_meta: meta });
+      vaultKeySession.set(vault.id, vaultKey);
+      setRecoveryCode(code);
+    } else {
+      vault = await vaultsApi.create(name);
+    }
+    setShowNewVault(false);
     setVaultList((prev) => [...prev, vault]);
     setActiveVaultId(vault.id);
 
@@ -523,10 +542,14 @@ export default function App() {
     }
 
     // Seed a fresh account's first vault with example notes so it isn't empty.
+    // For an e2ee vault the seeds are encrypted like any other note; state
+    // keeps the plaintext so the editor and graph work on readable content.
     const created: Note[] = [];
     for (const n of welcomeNotes) {
       try {
-        created.push(await notesApi.create(vault.id, n.title, n.path, n.content));
+        const { content, checksum } = await encryptNoteForVault(vault, n.content);
+        const note = await notesApi.create(vault.id, n.title, n.path, content, checksum);
+        created.push({ ...note, content: n.content });
       } catch {
         /* skip a note that failed to create */
       }
@@ -875,7 +898,8 @@ export default function App() {
   flattenedNoteIdsRef.current = flattenTreeNoteIds(tree);
   graphActiveRef.current = graphActive;
   modalOpenRef.current =
-    paletteQuery !== null || showGlobalSearch || showSettings || showCalendar || ctxMenu !== null || workspaceMenu !== null;
+    paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
+    showNewVault || recoveryCode !== null || ctxMenu !== null || workspaceMenu !== null;
 
   return (
     <div
@@ -958,7 +982,7 @@ export default function App() {
               onMoveNote={handleMoveNote}
               onDeleteFolder={handleDeleteFolder}
               newFolderNonce={newFolderNonce}
-              onCreateVault={handleCreateVault}
+              onRequestNewVault={() => setShowNewVault(true)}
               onToggleTag={toggleTagFilter}
               onSetFolder={setFilterFolder}
               onSetSort={setSortBy}
@@ -1198,6 +1222,17 @@ export default function App() {
             },
           ]}
         />
+      )}
+
+      {showNewVault && (
+        <CreateVaultDialog
+          onCreate={handleCreateVault}
+          onClose={() => setShowNewVault(false)}
+        />
+      )}
+
+      {recoveryCode && (
+        <RecoveryCodeDialog code={recoveryCode} onDone={() => setRecoveryCode(null)} />
       )}
 
       {showCalendar && (

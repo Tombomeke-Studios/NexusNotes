@@ -166,6 +166,7 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
 | `src/components/RightPanel/` | Right panel: outline, backlinks, note info |
 | `src/components/CommandPalette.tsx` | Unified palette: quick-open notes + `>` command mode |
+| `src/components/Encryption/` | E2EE vault UI: encryption opt-in (EncryptionSetup), new-vault dialog, one-time recovery-code dialog |
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
@@ -174,7 +175,8 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
 | `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |
 | `src/lib/crypto.ts` | E2EE crypto core: Argon2id derivation, AES-GCM note encryption, key wrapping, recovery codes (see docs/encryption.md) |
-| `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap + in-memory unlocked-key session |
+| `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
+| `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |
 | `src/lib/welcome.ts` | Sample notes seeded into a new account's first vault (onboarding) |
 | `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 

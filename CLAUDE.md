@@ -166,7 +166,7 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
 | `src/components/RightPanel/` | Right panel: outline, backlinks, note info |
 | `src/components/CommandPalette.tsx` | Unified palette: quick-open notes + `>` command mode |
-| `src/components/Encryption/` | E2EE vault UI: encryption opt-in (EncryptionSetup), new-vault dialog, one-time recovery-code dialog |
+| `src/components/Encryption/` | E2EE vault UI: encryption opt-in (EncryptionSetup), new-vault dialog, one-time recovery-code dialog, unlock dialog |
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |

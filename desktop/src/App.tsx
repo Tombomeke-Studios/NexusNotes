@@ -17,8 +17,16 @@ import { RightPanel } from "./components/RightPanel/RightPanel";
 import { Logo } from "./components/Logo";
 import { CreateVaultDialog } from "./components/Encryption/CreateVaultDialog";
 import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
+import { UnlockVaultDialog } from "./components/Encryption/UnlockVaultDialog";
 import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
-import { setupVaultEncryption, vaultKeySession, encryptNoteForVault } from "./lib/vaultKeys";
+import {
+  setupVaultEncryption,
+  unlockVaultKey,
+  vaultKeySession,
+  isVaultLocked,
+  encryptNoteForVault,
+  type EncryptionMeta,
+} from "./lib/vaultKeys";
 import { syncClient } from "./lib/sync";
 import { buildTree, flattenTreeNoteIds } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
@@ -61,6 +69,8 @@ export default function App() {
   const [showNewVault, setShowNewVault] = useState(false);
   // One-time recovery code of a freshly encrypted vault; shown until confirmed.
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
+  // E2ee vault currently prompting for its passphrase.
+  const [unlockVaultId, setUnlockVaultId] = useState<string | null>(null);
   const [closePrompt, setClosePrompt] = useState<{ kind: "window" } | { kind: "tab"; key: string } | null>(null);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -146,7 +156,13 @@ export default function App() {
       if (list.length > 0) {
         setActiveVaultId((prev) => {
           const id = prev ?? list[0].id;
-          loadNotes(id);
+          // A locked e2ee vault prompts for its passphrase instead of loading
+          // notes we couldn't decrypt anyway.
+          if (isVaultLocked(list.find((v) => v.id === id))) {
+            setUnlockVaultId(id);
+          } else {
+            loadNotes(id);
+          }
           return id;
         });
       }
@@ -514,10 +530,25 @@ export default function App() {
       setFilterTags([]);
       setFilterFolder(null);
       setSearchQuery("");
-      loadNotes(id);
+      if (isVaultLocked(vaultListRef.current.find((v) => v.id === id))) {
+        setNoteList([]);
+        setUnlockVaultId(id);
+      } else {
+        loadNotes(id);
+      }
     },
     [loadNotes],
   );
+
+  /** Derives the key from the passphrase; rejects (dialog shows the error) when wrong. */
+  const handleUnlockVault = useCallback(async (passphrase: string) => {
+    const vault = vaultListRef.current.find((v) => v.id === unlockVaultId);
+    if (!vault) return;
+    const key = await unlockVaultKey(vault.encryption_meta as EncryptionMeta, passphrase);
+    vaultKeySession.set(vault.id, key);
+    setUnlockVaultId(null);
+    loadNotes(vault.id);
+  }, [unlockVaultId, loadNotes]);
 
   const handleCreateVault = useCallback(async (name: string, passphrase?: string) => {
     const isFirstVault = vaultListRef.current.length === 0;
@@ -897,9 +928,12 @@ export default function App() {
   // window listener).
   flattenedNoteIdsRef.current = flattenTreeNoteIds(tree);
   graphActiveRef.current = graphActive;
+  const activeVaultLocked = isVaultLocked(activeVault);
+
   modalOpenRef.current =
     paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
-    showNewVault || recoveryCode !== null || ctxMenu !== null || workspaceMenu !== null;
+    showNewVault || recoveryCode !== null || unlockVaultId !== null ||
+    ctxMenu !== null || workspaceMenu !== null;
 
   return (
     <div
@@ -1031,6 +1065,24 @@ export default function App() {
           )}
           {vaultList.length === 0 ? (
             <FirstRunVault onCreate={handleCreateVault} />
+          ) : activeVaultLocked ? (
+            <div className="workspace-empty">
+              <div className="workspace-empty-logo">
+                <svg width="52" height="52" viewBox="0 0 16 16" fill="none" style={{ color: "var(--accent)" }}>
+                  <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.1" />
+                  <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.1" />
+                </svg>
+              </div>
+              <p className="workspace-empty-title">This vault is locked</p>
+              <div className="workspace-empty-actions">
+                <button
+                  className="workspace-empty-action"
+                  onClick={() => activeVaultId && setUnlockVaultId(activeVaultId)}
+                >
+                  <span>Unlock with passphrase</span>
+                </button>
+              </div>
+            </div>
           ) : tabs.length === 0 ? (
             <div className="workspace-empty">
               <div className="workspace-empty-logo">
@@ -1233,6 +1285,14 @@ export default function App() {
 
       {recoveryCode && (
         <RecoveryCodeDialog code={recoveryCode} onDone={() => setRecoveryCode(null)} />
+      )}
+
+      {unlockVaultId && (
+        <UnlockVaultDialog
+          vaultName={vaultList.find((v) => v.id === unlockVaultId)?.name ?? "Vault"}
+          onUnlock={handleUnlockVault}
+          onCancel={() => setUnlockVaultId(null)}
+        />
       )}
 
       {showCalendar && (

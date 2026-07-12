@@ -96,17 +96,15 @@ setup UI states this in plain words.
 
 ---
 
-## Database schema additions
+## Server-side storage
 
-```sql
--- Migration 005 (as implemented): one mode column plus ONE opaque JSON blob.
--- The server never interprets encryption_meta; it is written by the client.
-ALTER TABLE vaults ADD COLUMN encryption      TEXT  NOT NULL DEFAULT 'none'; -- 'none' or 'e2ee'
-ALTER TABLE vaults ADD COLUMN encryption_meta JSONB;
-```
+The vault record carries the encryption mode (standard or e2ee) plus a single
+opaque, client-written key-material blob. The server never interprets that
+blob -- it stores and returns it verbatim. (Schema details live in the
+migrations, not in the docs.)
 
-`encryption_meta` carries everything the client needs to unlock, versioned so
-parameters and algorithms can be migrated later:
+The key-material blob carries everything the client needs to unlock, versioned
+so parameters and algorithms can be migrated later:
 
 ```json
 {
@@ -117,9 +115,9 @@ parameters and algorithms can be migrated later:
 }
 ```
 
-Notes need **no schema change**: for e2ee vaults the existing `notes.content`
-column stores the payload `base64(iv):base64(ciphertext+tag)` produced by the
-client (`src/lib/crypto.ts` `encryptNote`). The `checksum` column stores the
+Note storage is unchanged: for e2ee vaults the regular content field stores
+the payload `base64(iv):base64(ciphertext+tag)` produced by the
+client (`src/lib/crypto.ts` `encryptNote`). The stored checksum is the
 client-computed SHA-256 of the *plaintext* verbatim — the server cannot (and
 must not) recompute it, and conflict detection keeps working because the same
 plaintext yields the same checksum. For standard vaults client checksums are

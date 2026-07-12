@@ -72,25 +72,11 @@ AI clients authenticate with named MCP tokens — not your login password.
 - Revoke tokens at any time from the settings page
 - Every MCP call is recorded: `token_id`, `tool_name`, `timestamp`, `args_summary`
 
-```sql
-CREATE TABLE mcp_tokens (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID NOT NULL REFERENCES users(id),
-    name         TEXT NOT NULL,
-    token_hash   TEXT NOT NULL,       -- bcrypt(token)
-    scopes       TEXT[] NOT NULL,     -- ['read'] or ['read', 'write']
-    last_used_at TIMESTAMPTZ,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE mcp_audit_log (
-    id           BIGSERIAL PRIMARY KEY,
-    token_id     UUID NOT NULL REFERENCES mcp_tokens(id),
-    tool         TEXT NOT NULL,
-    args_summary JSONB,               -- sanitised; paths and IDs only, no content
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
+Persisted server-side (described here in prose only; schema lives in the
+migrations): each token records its owner, a display name, a hash of the token
+value, its scopes and when it was last used. The audit log records, per call,
+which token invoked which tool at what time plus a sanitised argument summary
+(paths and IDs only, never note content).
 
 ---
 

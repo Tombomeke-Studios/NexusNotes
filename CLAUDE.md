@@ -111,6 +111,13 @@ A "unit" = one function, feature, fix, or refactor — the smallest shippable sl
 
 ## 5. Documentation rules — which doc owns what
 
+**No database code in documentation.** Docs must never contain SQL DDL,
+migration snippets, index definitions or column-level schema listings — a
+readable schema dump makes it easier for an attacker to map the data model
+and hunt for gaps. Describe *what* is stored and *why* in prose (entity-level
+relationship diagrams without columns are fine); the schema's source of truth
+is the migrations directory.
+
 | You changed... | Update |
 |---|---|
 | Services, endpoints, sync protocol, infra topology | [docs/architecture.md](docs/architecture.md) |

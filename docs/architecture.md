@@ -122,65 +122,26 @@ sequenceDiagram
 > Configure Meilisearch searchable attributes and filterable attributes **before** adding
 > documents — changing them after indexing triggers a full reindex.
 
-## Database Schema
+## Data Model
 
-See `services/sync-service/migrations/001_initial_schema.sql` for the full schema.
+The relational schema lives in `services/sync-service/migrations/` (source of
+truth); docs describe entities and relationships only, deliberately without
+column-level detail.
 
 ```mermaid
 erDiagram
-    users {
-        uuid id PK
-        text email
-        text password_hash
-        text display_name
-        timestamptz created_at
-    }
-    vaults {
-        uuid id PK
-        uuid user_id FK
-        text name
-        text encryption
-        timestamptz created_at
-    }
-    notes {
-        uuid id PK
-        uuid vault_id FK
-        text path
-        text title
-        text content
-        text checksum
-        timestamptz created_at
-        timestamptz updated_at
-    }
-    note_versions {
-        uuid id PK
-        uuid note_id FK
-        text content
-        text checksum
-        uuid device_id FK
-        timestamptz created_at
-    }
-    devices {
-        uuid id PK
-        uuid user_id FK
-        text name
-        text platform
-        timestamptz last_seen
-    }
-    attachments {
-        uuid id PK
-        uuid vault_id FK
-        uuid note_id FK
-        text filename
-        text mime_type
-        int size_bytes
-        text storage_path
-        timestamptz created_at
-    }
-
     users ||--o{ vaults : owns
     vaults ||--o{ notes : contains
     notes ||--o{ note_versions : tracks
     notes ||--o{ attachments : has
     users ||--o{ devices : registers
 ```
+
+- **users** — account identity and credentials (Argon2id-hashed).
+- **vaults** — a user's note collections; each records its encryption mode and,
+  for e2ee vaults, an opaque client-written key blob (see encryption.md).
+- **notes** — markdown content (ciphertext for e2ee vaults) with a checksum
+  used for conflict detection.
+- **note_versions** — per-save history for the version-history feature.
+- **devices** — registered sync clients and their last-seen time.
+- **attachments** — file metadata; bytes live in MinIO.

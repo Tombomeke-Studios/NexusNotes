@@ -245,7 +245,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add GIN index on `notes(content)` using `to_tsvector` as a full-text fallback before Meilisearch is available
 - [ ] Add index `note_versions(note_id, created_at DESC)` for version history listing
 - [ ] Use `CREATE INDEX CONCURRENTLY` for all production index creation to avoid table locks
-- [ ] Write `docs/indexes.md` documenting every index and its rationale
+- [ ] Document the indexing strategy and rationale in prose in `docs/architecture.md` (no SQL/DDL in docs — CLAUDE.md §5)
 
 ### Query patterns
 

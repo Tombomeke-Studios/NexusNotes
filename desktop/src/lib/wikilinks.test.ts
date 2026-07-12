@@ -62,6 +62,41 @@ describe("buildGraphData", () => {
     expect(graph.links).toEqual([]);
   });
 
+  it("emits a dashed ghost node for an unresolved link (#147)", () => {
+    const notes = [makeNote({ id: "1", title: "A", content: "See [[Missing Note]]" })];
+    const graph = buildGraphData(notes);
+
+    const ghost = graph.nodes.find((n) => n.ghost);
+    expect(ghost).toBeDefined();
+    expect(ghost!.title).toBe("Missing Note"); // original casing kept for create-on-click
+    expect(graph.links).toEqual([{ source: "1", target: ghost!.id, ghost: true }]);
+    // The unresolved link still counts as a connection on both ends.
+    expect(graph.nodes.find((n) => n.id === "1")?.connections).toBe(1);
+    expect(ghost!.connections).toBe(1);
+  });
+
+  it("notes referencing the same missing title share one ghost", () => {
+    const notes = [
+      makeNote({ id: "1", title: "A", content: "[[missing note]]" }),
+      makeNote({ id: "2", title: "B", content: "[[Missing Note]]" }),
+    ];
+    const graph = buildGraphData(notes);
+    const ghosts = graph.nodes.filter((n) => n.ghost);
+    expect(ghosts).toHaveLength(1);
+    expect(ghosts[0].connections).toBe(2);
+    expect(graph.links.filter((l) => l.ghost)).toHaveLength(2);
+  });
+
+  it("resolved links never create ghosts", () => {
+    const notes = [
+      makeNote({ id: "1", title: "A", content: "[[B]]" }),
+      makeNote({ id: "2", title: "B", content: "" }),
+    ];
+    const graph = buildGraphData(notes);
+    expect(graph.nodes.some((n) => n.ghost)).toBe(false);
+    expect(graph.links).toEqual([{ source: "1", target: "2" }]);
+  });
+
   it("tags each node with its top-level folder", () => {
     const notes = [
       makeNote({ id: "1", title: "A", path: "" }),

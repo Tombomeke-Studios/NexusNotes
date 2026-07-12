@@ -7,6 +7,8 @@ interface GraphViewProps {
   data: GraphData;
   activeNoteId: string | null;
   onSelectNote: (id: string) => void;
+  /** Creates a note from an unresolved (ghost) node's title (#147). */
+  onCreateNote?: (title: string) => void;
 }
 
 interface SimNode extends d3.SimulationNodeDatum {
@@ -14,11 +16,13 @@ interface SimNode extends d3.SimulationNodeDatum {
   title: string;
   connections: number;
   folder: string;
+  ghost?: boolean;
 }
 
 interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   source: SimNode;
   target: SimNode;
+  ghost?: boolean;
 }
 
 // Distinct, on-brand colours assigned to folders; root notes stay neutral.
@@ -35,7 +39,7 @@ function folderColor(folder: string): string {
   return FOLDER_PALETTE[Math.abs(hash) % FOLDER_PALETTE.length];
 }
 
-export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) {
+export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: GraphViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [showOrphans, setShowOrphans] = useState(true);
@@ -59,6 +63,7 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
       .map((l) => ({
         source: nodes.find((n) => n.id === l.source)!,
         target: nodes.find((n) => n.id === l.target)!,
+        ghost: l.ghost,
       }));
 
     const g = svg.append("g");
@@ -91,7 +96,7 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("class", "graph-link");
+      .attr("class", (d) => `graph-link${d.ghost ? " graph-link--ghost" : ""}`);
 
     const dragBehavior = d3.drag<SVGGElement, SimNode>()
       .on("start", (event, d) => {
@@ -120,9 +125,14 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
       .selectAll<SVGGElement, SimNode>("g")
       .data(nodes)
       .join("g")
-      .attr("class", (d) => `graph-node ${d.id === activeNoteId ? "graph-node--active" : ""} ${d.connections === 0 ? "graph-node--orphan" : ""}`)
+      .attr("class", (d) =>
+        `graph-node ${d.id === activeNoteId ? "graph-node--active" : ""} ${d.connections === 0 ? "graph-node--orphan" : ""} ${d.ghost ? "graph-node--ghost" : ""}`)
       .style("--node-color", (d) => folderColor(d.folder))
-      .on("click", (_, d) => onSelectNote(d.id))
+      .on("click", (_, d) => {
+        // A ghost is an unresolved [[link]]; clicking it creates that note.
+        if (d.ghost) onCreateNote?.(d.title);
+        else onSelectNote(d.id);
+      })
       .on("mouseover", (_, d) => {
         const nb = neighbors.get(d.id) ?? new Set<string>();
         node.classed("graph-node--dim", (n) => n.id !== d.id && !nb.has(n.id));
@@ -137,6 +147,10 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
 
     node.append("circle")
       .attr("r", (d) => 6 + Math.min(d.connections * 2, 12));
+
+    node.filter((d) => !!d.ghost)
+      .append("title")
+      .text((d) => `"${d.title}" does not exist yet — click to create it`);
 
     node.append("text")
       .text((d) => d.title)
@@ -154,7 +168,7 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
     });
 
     return () => { simulation.stop(); };
-  }, [data, activeNoteId, onSelectNote, showOrphans]);
+  }, [data, activeNoteId, onSelectNote, onCreateNote, showOrphans]);
 
   useEffect(() => {
     const cleanup = render();
@@ -162,12 +176,13 @@ export function GraphView({ data, activeNoteId, onSelectNote }: GraphViewProps) 
   }, [render, renderKey]);
 
   const orphanCount = data.nodes.filter((n) => n.connections === 0).length;
+  const noteCount = data.nodes.filter((n) => !n.ghost).length;
 
   return (
     <div className="graph-view">
       <svg ref={svgRef} className="graph-svg" />
       <div className="graph-badge">
-        {data.nodes.length} notes &middot; {data.links.length} links
+        {noteCount} notes &middot; {data.links.length} links
       </div>
       {orphanCount > 0 && (
         <div className="graph-controls">

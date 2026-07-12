@@ -148,3 +148,31 @@
 .graph-node:hover text {
   fill: var(--text-primary);
 }
+
+/* Unresolved [[link]] targets (#147): hollow dashed nodes, dashed edges.
+   Clicking one creates the note. */
+.graph-link--ghost {
+  stroke-dasharray: 4 4;
+  opacity: 0.55;
+}
+
+.graph-node--ghost circle {
+  fill: transparent;
+  stroke: var(--text-faint);
+  stroke-width: 1.6;
+  stroke-dasharray: 4 3;
+}
+
+.graph-node--ghost text {
+  fill: var(--text-faint);
+  font-style: italic;
+}
+
+.graph-node--ghost:hover circle {
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.graph-node--ghost:hover text {
+  fill: var(--accent);
+}

@@ -66,7 +66,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] On node hover, highlight connected nodes and edges; dim all others
 - [ ] Render orphan nodes (no inbound or outbound links) in a visually distinct colour
 - [x] Show unresolved wiki-links as dashed ghost nodes and dashed edges; clicking a ghost creates the note (#147)
-- [ ] Add a search field inside the graph panel; on match, highlight the node and fly the camera to it
+- [x] Add a search field inside the graph panel; on match, highlight the node and fly the camera to it (#146)
 
 ### 3D orbit view
 

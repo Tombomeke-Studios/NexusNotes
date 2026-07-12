@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { extractLinks, buildGraphData } from "./wikilinks";
+import { extractLinks, buildGraphData, findGraphNode } from "./wikilinks";
+import type { GraphNode } from "./wikilinks";
 import type { Note } from "./types";
 
 function makeNote(overrides: Partial<Note>): Note {
@@ -105,5 +106,37 @@ describe("buildGraphData", () => {
     const graph = buildGraphData(notes);
     expect(graph.nodes.find((n) => n.id === "1")?.folder).toBe("");
     expect(graph.nodes.find((n) => n.id === "2")?.folder).toBe("Work");
+  });
+});
+
+describe("findGraphNode (#146)", () => {
+  const node = (id: string, title: string, connections = 0, ghost = false): GraphNode => ({
+    id,
+    title,
+    connections,
+    folder: "",
+    ...(ghost ? { ghost } : {}),
+  });
+
+  it("prefers a prefix match over a substring match", () => {
+    const nodes = [node("1", "My Projects"), node("2", "Project Ideas")];
+    expect(findGraphNode(nodes, "proj")?.id).toBe("2");
+  });
+
+  it("falls back to substring matches, breaking ties by connections", () => {
+    const nodes = [node("1", "Side quests", 1), node("2", "Conquest log", 5)];
+    expect(findGraphNode(nodes, "quest")?.id).toBe("2");
+  });
+
+  it("prefers a real note over a ghost with the same title shape", () => {
+    const nodes = [node("ghost:x", "Roadmap", 3, true), node("1", "Roadmap 2026", 0)];
+    expect(findGraphNode(nodes, "roadmap")?.id).toBe("1");
+  });
+
+  it("is case-insensitive and returns null for no match or empty query", () => {
+    const nodes = [node("1", "Reading List")];
+    expect(findGraphNode(nodes, "READING")?.id).toBe("1");
+    expect(findGraphNode(nodes, "zzz")).toBeNull();
+    expect(findGraphNode(nodes, "  ")).toBeNull();
   });
 });

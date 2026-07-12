@@ -303,37 +303,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/e2ee-encryption` - End-to-end encryption (zero-knowledge vaults) — COMPLETE, PR pending
-
-> The server must never be able to read note content. All encryption and decryption
-> happens on the client before data is transmitted. See `docs/encryption.md` for the
-> full technical design.
->
-> **Branch state (2026-07-12):** all items done and verified live end-to-end
-> (setup + recovery code, unlock + recovery flows, encrypt-on-save/decrypt-on-open,
-> change passphrase, client search, Playwright round-trip spec 12-encryption).
-> The dev-stack backend-cwd bug found along the way is fixed on this branch (#201).
-
-- [x] Write `docs/encryption.md` covering key derivation, the encryption algorithm, the sync protocol, and trade-offs (#195)
-- [x] Add a `vault_encryption` column to the vaults table (`none` or `e2ee`) with a migration (#197)
-- [x] Implement client-side key derivation: `Argon2id(password + salt)` produces a 256-bit Master Key (#196)
-- [x] Implement key wrapping: generate a random Vault Key and encrypt it with the Master Key; this allows passphrase changes without re-encrypting all notes (#196)
-- [x] Encrypt note content with `AES-256-GCM` before upload using a unique IV per save (#196)
-- [x] Store the encrypted payload (`iv:ciphertext` in `notes.content`) and opaque key material (`vaults.encryption_meta`) server-side (#197)
-- [x] Compute a plaintext `SHA-256` checksum client-side before encryption; the server uses this for conflict detection without reading content (#196)
-- [x] Vault key management: setup/unlock/recover/rewrap + in-memory key session (`src/lib/vaultKeys.ts`) (#198)
-- [x] Add an encryption toggle when creating a vault, with passphrase prompt and one-time recovery-code display (#198)
-- [x] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it (#198)
-- [x] Encrypt on save / decrypt on open in the editor path using the unlocked Vault Key (#198)
-- [x] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes (#199)
-- [x] Recovery flow UI: unlock with the backup code, set a new passphrase, show a fresh recovery code (#176)
-- [x] Display a lock icon on encrypted vaults in the sidebar (#198)
-- [x] Implement client-side search for encrypted vaults (linear scan over decrypted in-memory notes; no index library needed at personal-vault scale — see docs/encryption.md) (#200)
-- [x] Write unit tests for key derivation, encryption, and decryption (#196)
-- [x] Write an integration test verifying that an encrypted note survives a full round-trip: encrypt, upload, download, decrypt (#197)
-
----
-
 ## `feature/mcp-server` - NexusNotes MCP server
 
 > A first-class Model Context Protocol server that lets Claude, Codex, Cursor, and any
@@ -772,6 +741,13 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/e2ee-encryption` - Zero-knowledge encrypted vaults (PR #202)
+
+- [x] E2EE design doc, client crypto core (Argon2id, AES-256-GCM, key wrapping, recovery codes) and opaque server storage (#195, #196, #197)
+- [x] Vault key management + full UX: create-with-passphrase + one-time recovery code, unlock and recovery dialogs, lock icons, change-passphrase, encrypt-on-save/decrypt-on-open (#198, #199, #176)
+- [x] Client-side search for encrypted vaults and the encrypt→upload→lock→unlock→decrypt E2E round-trip spec (#200, #197)
+- [x] Dev stack: start the backend from the service dir so startup migrations resolve (#201)
 
 ### `fix/lockout-compound-key` - Griefing-proof login lockout
 

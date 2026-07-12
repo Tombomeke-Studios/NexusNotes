@@ -743,6 +743,12 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/graph-local-and-search` - Graph ghosts, search, local graph (PR #203)
+
+- [x] Unresolved wiki-links as dashed ghost nodes; click to create the note (#147)
+- [x] In-graph search that highlights and flies the camera to the match (#146)
+- [x] Local Graph tab in the right panel: 1-4 hop depth slider, live updates while typing, click to navigate (#144)
+
 ### `feature/e2ee-encryption` - Zero-knowledge encrypted vaults (PR #202)
 
 - [x] E2EE design doc, client crypto core (Argon2id, AES-256-GCM, key wrapping, recovery codes) and opaque server storage (#195, #196, #197)

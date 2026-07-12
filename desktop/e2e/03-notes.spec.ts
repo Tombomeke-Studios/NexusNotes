@@ -75,3 +75,30 @@ test.describe("Note CRUD", () => {
     await expect(page.locator(".sidebar-tree .tree-note")).toHaveCount(2, { timeout: 8_000 });
   });
 });
+
+test.describe("Rename persistence (#204)", () => {
+  test.beforeEach(async ({ page }) => {
+    await clearAuth(page);
+    await register(page);
+    await createVault(page);
+  });
+
+  test("a rename committed with Enter survives the WS echo and autosave", async ({ page }) => {
+    await page.keyboard.press("Control+n");
+    const titleInput = page.locator(".editor-title-input").first();
+    await expect(titleInput).toBeVisible();
+    // Rename immediately after create, racing the note:created WS echo.
+    await titleInput.fill("Race Rename");
+    await titleInput.press("Enter");
+
+    const textarea = page.locator(".editor-textarea").first();
+    await textarea.click();
+    await textarea.fill("body text");
+    await waitForAutosave(page);
+
+    await page.reload();
+    await expect(
+      page.locator(".sidebar-tree .tree-note").filter({ hasText: "Race Rename" }),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+});

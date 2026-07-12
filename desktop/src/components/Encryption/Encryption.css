@@ -80,6 +80,19 @@
   margin-top: 16px;
 }
 
+/* Change passphrase form (Settings) */
+
+.enc-change-form {
+  max-width: 340px;
+}
+
+.enc-change-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 /* Recovery code dialog */
 
 .enc-code {

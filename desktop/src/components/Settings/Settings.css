@@ -137,6 +137,10 @@
   margin-bottom: 16px;
 }
 
+.settings-section-title--spaced {
+  margin-top: 28px;
+}
+
 .settings-row {
   display: flex;
   align-items: center;

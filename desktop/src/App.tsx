@@ -19,7 +19,7 @@ import { Logo } from "./components/Logo";
 import { CreateVaultDialog } from "./components/Encryption/CreateVaultDialog";
 import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
 import { UnlockVaultDialog } from "./components/Encryption/UnlockVaultDialog";
-import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/api";
+import { vaults as vaultsApi, notes as notesApi, stars as starsApi, getToken, auth } from "./lib/api";
 import {
   setupVaultEncryption,
   unlockVaultKey,
@@ -37,7 +37,7 @@ import { buildTree, flattenTreeNoteIds } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts } from "./lib/tags";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
-import { loadPins, togglePin, pinnedFirst } from "./lib/pins";
+import { drainLegacyPins } from "./lib/stars";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
@@ -81,7 +81,9 @@ export default function App() {
   // Bumped nonce asks the editor to insert text at the cursor (#155).
   const [insertRequest, setInsertRequest] = useState<{ text: string; nonce: number } | null>(null);
   const [closePrompt, setClosePrompt] = useState<{ kind: "window" } | { kind: "tab"; key: string } | null>(null);
-  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [starredIds, setStarredIds] = useState<string[]>([]);
+  const starredIdsRef = useRef(starredIds);
+  starredIdsRef.current = starredIds;
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [newFolderNonce, setNewFolderNonce] = useState(0);
@@ -134,6 +136,7 @@ export default function App() {
       setVaultList([]);
       setNoteList([]);
       setActiveNote(null);
+      setStarredIds([]);
       vaultKeySession.clear();
       syncClient.disconnect();
     };
@@ -270,10 +273,30 @@ export default function App() {
   }, [user, decryptIncoming]);
 
   useEffect(() => {
-    setPinnedIds(activeVaultId ? loadPins(activeVaultId) : []);
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
     setEmptyFolders(activeVaultId ? loadFolders(activeVaultId) : []);
+    // One-time migration: push this vault's legacy localStorage pins to the
+    // server-backed stars (#151), then forget them locally.
+    if (activeVaultId) {
+      const legacy = drainLegacyPins(activeVaultId);
+      if (legacy.length > 0) {
+        for (const id of legacy) starsApi.star(id).catch(() => {});
+        setStarredIds((prev) => [...prev, ...legacy.filter((id) => !prev.includes(id))]);
+      }
+    }
   }, [activeVaultId]);
+
+  // Stars live server-side per user; load them once per session. Merge with
+  // whatever is already in state so a legacy-pin migration that raced this
+  // fetch isn't wiped by a list snapshot taken before its POSTs landed.
+  useEffect(() => {
+    if (user) {
+      starsApi
+        .list()
+        .then((ids) => setStarredIds((prev) => [...ids, ...prev.filter((x) => !ids.includes(x))]))
+        .catch(() => {});
+    }
+  }, [user]);
   const activeVaultIdRef = useRef(activeVaultId);
   activeVaultIdRef.current = activeVaultId;
 
@@ -399,10 +422,17 @@ export default function App() {
     syncClient.disconnect();
   }, []);
 
-  const handleTogglePin = useCallback((noteId: string) => {
-    if (!activeVaultId) return;
-    setPinnedIds(togglePin(activeVaultId, noteId));
-  }, [activeVaultId]);
+  // Optimistic star toggle; reverts when the server call fails (#151).
+  const handleToggleStar = useCallback(async (noteId: string) => {
+    const was = starredIdsRef.current.includes(noteId);
+    setStarredIds((prev) => (was ? prev.filter((x) => x !== noteId) : [...prev, noteId]));
+    try {
+      if (was) await starsApi.unstar(noteId);
+      else await starsApi.star(noteId);
+    } catch {
+      setStarredIds((prev) => (was ? [...prev, noteId] : prev.filter((x) => x !== noteId)));
+    }
+  }, []);
 
   const handleCreateFolder = useCallback((name: string) => {
     if (!activeVaultId) return;
@@ -1027,7 +1057,16 @@ export default function App() {
   const graphData = useMemo(() => buildGraphData(noteList), [noteList]);
   const tagCounts = useMemo(() => buildTagCounts(noteList), [noteList]);
   const folders = useMemo(() => topLevelFolders(noteList), [noteList]);
-  const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
+  const starredSet = useMemo(() => new Set(starredIds), [starredIds]);
+  // Starred notes of the ACTIVE vault, in star order (stars span vaults).
+  const starredNotes = useMemo(
+    () =>
+      starredIds
+        .map((id) => noteList.find((n) => n.id === id))
+        .filter((n): n is Note => n !== undefined)
+        .map((n) => ({ id: n.id, title: n.title })),
+    [starredIds, noteList],
+  );
   const recentNotes = useMemo(
     () =>
       recentIds
@@ -1037,8 +1076,8 @@ export default function App() {
     [recentIds, noteList],
   );
   const filteredNoteList = useMemo(
-    () => pinnedFirst(sortNotes(filterNotes(noteList, filterTags, filterFolder), sortBy), pinnedSet),
-    [noteList, filterTags, filterFolder, sortBy, pinnedSet],
+    () => sortNotes(filterNotes(noteList, filterTags, filterFolder), sortBy),
+    [noteList, filterTags, filterFolder, sortBy],
   );
   const searchHits = useMemo(() => searchNotes(noteList, searchQuery), [noteList, searchQuery]);
 
@@ -1171,7 +1210,8 @@ export default function App() {
               onClearFilters={clearFilters}
               onSearchChange={setSearchQuery}
               onSignOut={handleSignOut}
-              pinnedIds={pinnedSet}
+              starredIds={starredSet}
+              starredNotes={starredNotes}
               recentNotes={recentNotes}
               unsavedNoteId={
                 (saveStatus === "unsaved" || saveStatus === "saving") ? activeNote?.id ?? null : null
@@ -1378,9 +1418,9 @@ export default function App() {
             { key: "open", label: "Open", onClick: () => handleSelectNote(ctxMenu.noteId) },
             { key: "duplicate", label: "Duplicate", onClick: () => handleDuplicateNote(ctxMenu.noteId) },
             {
-              key: "pin",
-              label: pinnedSet.has(ctxMenu.noteId) ? "Unpin" : "Pin to top",
-              onClick: () => handleTogglePin(ctxMenu.noteId),
+              key: "star",
+              label: starredSet.has(ctxMenu.noteId) ? "Remove star" : "Star",
+              onClick: () => handleToggleStar(ctxMenu.noteId),
             },
             {
               key: "wikilink",

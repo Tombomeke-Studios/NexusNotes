@@ -506,12 +506,12 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/starred-and-recent` - Starred notes and recent files
 
-- [ ] Add `starred_notes` table with columns `user_id`, `note_id`, `starred_at`
-- [ ] Add `GET /notes/starred` and `POST`/`DELETE /notes/:id/star` endpoints
-- [ ] Show a starred notes section at the top of the sidebar
+- [x] Add a starred_notes table (per-user favourite marks) (#151)
+- [x] Add `GET /notes/starred` and `POST`/`DELETE /notes/:id/star` endpoints (#151)
+- [x] Show a starred notes section at the top of the sidebar; stars replace the old localStorage pins (one-time migration) (#151)
 - [x] Track recently opened notes in localStorage (last 10, no backend required) (#151)
 - [x] Add a collapsible "Recent files" section in the sidebar (#151)
-- [ ] Write tests for the star repository
+- [x] Write an E2E test for starring, persistence across reload, and unstarring (#151)
 
 ---
 

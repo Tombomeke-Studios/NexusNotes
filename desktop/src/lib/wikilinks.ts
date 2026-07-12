@@ -36,6 +36,30 @@ export function extractLinks(content: string): string[] {
   return links;
 }
 
+/**
+ * Finds the graph node a search query means (#146): prefix matches beat
+ * substring matches, real notes beat ghosts, better-connected nodes win ties.
+ */
+export function findGraphNode(nodes: GraphNode[], query: string): GraphNode | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  const score = (n: GraphNode) => {
+    const t = n.title.toLowerCase();
+    if (!t.includes(q)) return -1;
+    return (t.startsWith(q) ? 4 : 2) + (n.ghost ? 0 : 1);
+  };
+  let best: GraphNode | null = null;
+  let bestScore = 0;
+  for (const n of nodes) {
+    const s = score(n);
+    if (s > bestScore || (s === bestScore && s > 0 && n.connections > (best?.connections ?? -1))) {
+      best = n;
+      bestScore = s;
+    }
+  }
+  return best;
+}
+
 export function buildGraphData(notes: Note[]): GraphData {
   const titleToId = new Map<string, string>();
   for (const note of notes) {

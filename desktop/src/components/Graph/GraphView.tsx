@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import * as d3 from "d3";
+import { findGraphNode } from "../../lib/wikilinks";
 import type { GraphData } from "../../lib/wikilinks";
 import "./GraphView.css";
 
@@ -43,6 +44,9 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: Gr
   const svgRef = useRef<SVGSVGElement>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [showOrphans, setShowOrphans] = useState(true);
+  const [search, setSearch] = useState("");
+  // Set by render(): highlights a node and flies the camera to it (#146).
+  const flyToRef = useRef<(id: string | null) => void>(() => {});
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current);
@@ -157,6 +161,27 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: Gr
       .attr("dy", (d) => 6 + Math.min(d.connections * 2, 12) + 15)
       .attr("text-anchor", "middle");
 
+    // Search fly-to (#146): emphasise the match, dim everything else, and
+    // glide the camera onto it. A null id clears the emphasis.
+    flyToRef.current = (id) => {
+      node.classed("graph-node--found", (n) => n.id === id);
+      node.classed("graph-node--dim", (n) => id !== null && n.id !== id);
+      link.classed("graph-link--dim", () => id !== null);
+      const target = id ? nodes.find((n) => n.id === id) : undefined;
+      if (!target || target.x == null || target.y == null) return;
+      const k = 1.4; // past LABEL_ZOOM so the found node's label is readable
+      svg
+        .transition()
+        .duration(650)
+        .call(
+          zoom.transform as unknown as (
+            t: d3.Transition<SVGSVGElement | null, unknown, null, undefined>,
+            transform: d3.ZoomTransform,
+          ) => void,
+          d3.zoomIdentity.translate(width / 2 - k * target.x, height / 2 - k * target.y).scale(k),
+        );
+    };
+
     simulation.on("tick", () => {
       link
         .attr("x1", (d) => d.source.x!)
@@ -175,12 +200,44 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: Gr
     return cleanup;
   }, [render, renderKey]);
 
+  // Debounced search → highlight + fly. Only nodes currently shown can match.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const visible = data.nodes.filter((n) => showOrphans || n.connections > 0);
+      flyToRef.current(search.trim() ? findGraphNode(visible, search)?.id ?? null : null);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, data, showOrphans]);
+
   const orphanCount = data.nodes.filter((n) => n.connections === 0).length;
   const noteCount = data.nodes.filter((n) => !n.ghost).length;
 
   return (
     <div className="graph-view">
       <svg ref={svgRef} className="graph-svg" />
+      <div className="graph-search">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setSearch("");
+            e.stopPropagation();
+          }}
+          placeholder="Find note in graph..."
+          spellCheck={false}
+        />
+        {search && (
+          <button className="graph-search-clear" onClick={() => setSearch("")} title="Clear">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
+      </div>
       <div className="graph-badge">
         {noteCount} notes &middot; {data.links.length} links
       </div>

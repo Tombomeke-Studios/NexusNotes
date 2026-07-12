@@ -1,5 +1,5 @@
 export type ViewMode = "edit" | "split" | "preview";
-export type RightTab = "outline" | "links" | "info";
+export type RightTab = "outline" | "links" | "graph" | "info";
 
 export interface WorkspacePrefs {
   fontSize: number;
@@ -37,7 +37,7 @@ export const PREF_LIMITS = {
 } as const;
 
 const VIEW_MODES: ViewMode[] = ["edit", "split", "preview"];
-const RIGHT_TABS: RightTab[] = ["outline", "links", "info"];
+const RIGHT_TABS: RightTab[] = ["outline", "links", "graph", "info"];
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));

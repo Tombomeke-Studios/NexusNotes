@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Note } from "../../lib/types";
 import type { RightTab } from "../../lib/prefs";
 import { parseOutline } from "../../lib/outline";
@@ -6,6 +6,8 @@ import { buildBacklinkCards } from "../../lib/backlinks";
 import { extractTags } from "../../lib/tags";
 import { wordCount, readingTimeMinutes } from "../../lib/stats";
 import { folderOf } from "../../lib/noteFilter";
+import { buildGraphData, localGraph } from "../../lib/wikilinks";
+import { GraphView } from "../Graph";
 import "./RightPanel.css";
 
 interface RightPanelProps {
@@ -15,13 +17,16 @@ interface RightPanelProps {
   tab: RightTab;
   onTabChange: (tab: RightTab) => void;
   onNavigateToNote: (noteId: string) => void;
+  /** Creates a note from a ghost node in the local graph (#147). */
+  onCreateNote?: (title: string) => void;
   onTagClick: (tag: string) => void;
 }
 
-const TABS: RightTab[] = ["outline", "links", "info"];
+const TABS: RightTab[] = ["outline", "links", "graph", "info"];
 const TAB_LABELS: Record<RightTab, string> = {
   outline: "Outline",
   links: "Links",
+  graph: "Graph",
   info: "Info",
 };
 
@@ -56,9 +61,18 @@ export function RightPanel({
   tab,
   onTabChange,
   onNavigateToNote,
+  onCreateNote,
   onTagClick,
 }: RightPanelProps) {
+  const [depth, setDepth] = useState(1);
   const outline = useMemo(() => (note ? parseOutline(content) : []), [note, content]);
+  // Local graph (#144): the active note's neighbourhood, computed from the
+  // LIVE editor content so it follows wiki-link edits before they are saved.
+  const localData = useMemo(() => {
+    if (!note || tab !== "graph") return null;
+    const live = notes.map((n) => (n.id === note.id ? { ...n, content } : n));
+    return localGraph(buildGraphData(live), note.id, depth);
+  }, [note, notes, content, depth, tab]);
   const backlinks = useMemo(
     () => (note ? buildBacklinkCards(notes, note) : []),
     [notes, note],
@@ -80,7 +94,7 @@ export function RightPanel({
         ))}
         <span
           className="right-panel-indicator"
-          style={{ left: `${TABS.indexOf(tab) * 33.33}%` }}
+          style={{ left: `${TABS.indexOf(tab) * (100 / TABS.length)}%` }}
         />
       </div>
 
@@ -131,6 +145,42 @@ export function RightPanel({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {tab === "graph" && (
+        <div className="right-panel-body right-panel-body--graph">
+          {!note || !localData ? (
+            <div className="right-panel-empty">Open a note to see its local graph</div>
+          ) : (
+            <>
+              <div className="local-graph-head">
+                <span className="right-panel-label">
+                  {localData.nodes.length - 1} neighbour{localData.nodes.length === 2 ? "" : "s"}
+                </span>
+                <label className="local-graph-depth">
+                  <span>{depth} hop{depth === 1 ? "" : "s"}</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={4}
+                    step={1}
+                    value={depth}
+                    onChange={(e) => setDepth(Number(e.target.value))}
+                  />
+                </label>
+              </div>
+              <div className="local-graph-canvas">
+                <GraphView
+                  compact
+                  data={localData}
+                  activeNoteId={note.id}
+                  onSelectNote={onNavigateToNote}
+                  onCreateNote={onCreateNote}
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 

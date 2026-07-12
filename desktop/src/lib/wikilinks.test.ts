@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractLinks, buildGraphData, findGraphNode } from "./wikilinks";
+import { extractLinks, buildGraphData, findGraphNode, localGraph } from "./wikilinks";
 import type { GraphNode } from "./wikilinks";
 import type { Note } from "./types";
 
@@ -138,5 +138,36 @@ describe("findGraphNode (#146)", () => {
     expect(findGraphNode(nodes, "READING")?.id).toBe("1");
     expect(findGraphNode(nodes, "zzz")).toBeNull();
     expect(findGraphNode(nodes, "  ")).toBeNull();
+  });
+});
+
+describe("localGraph (#144)", () => {
+  // A - B - C - D chain plus E orphan and a ghost off B.
+  const data = buildGraphData([
+    { id: "a", vault_id: "v", path: "", title: "A", content: "[[B]]", checksum: "", created_at: "", updated_at: "" },
+    { id: "b", vault_id: "v", path: "", title: "B", content: "[[C]] [[Ghosty]]", checksum: "", created_at: "", updated_at: "" },
+    { id: "c", vault_id: "v", path: "", title: "C", content: "[[D]]", checksum: "", created_at: "", updated_at: "" },
+    { id: "d", vault_id: "v", path: "", title: "D", content: "", checksum: "", created_at: "", updated_at: "" },
+    { id: "e", vault_id: "v", path: "", title: "E", content: "", checksum: "", created_at: "", updated_at: "" },
+  ]);
+
+  it("depth 1 keeps the note and its direct neighbours (ghosts included)", () => {
+    const local = localGraph(data, "b", 1);
+    expect(local.nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "ghost:ghosty"]);
+    expect(local.links).toHaveLength(3);
+  });
+
+  it("depth expands hop by hop and links stay within the subset", () => {
+    const d1 = localGraph(data, "a", 1);
+    expect(d1.nodes.map((n) => n.id).sort()).toEqual(["a", "b"]);
+    const d2 = localGraph(data, "a", 2);
+    expect(d2.nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "ghost:ghosty"]);
+    // The C-D link is outside depth 2 from A.
+    expect(d2.links.every((l) => l.target !== "d" && l.source !== "d")).toBe(true);
+  });
+
+  it("an unlinked note yields just itself; an unknown id yields nothing", () => {
+    expect(localGraph(data, "e", 3).nodes.map((n) => n.id)).toEqual(["e"]);
+    expect(localGraph(data, "nope", 3).nodes).toEqual([]);
   });
 });

@@ -80,11 +80,11 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Local graph view (per-note)
 
-- [ ] Add a collapsible Local Graph panel in the editor sidebar
-- [ ] Show the current note and all notes it links to or is linked from (1 hop by default)
-- [ ] Add a depth slider (1 to 4 hops) to expand the local graph outward
-- [ ] Update the local graph in real time as wiki-links are edited in the note
-- [ ] Navigate to a note by clicking its node in the local graph
+- [x] Add a Local Graph tab in the right panel (#144)
+- [x] Show the current note and all notes it links to or is linked from (1 hop by default) (#144)
+- [x] Add a depth slider (1 to 4 hops) to expand the local graph outward (#144)
+- [x] Update the local graph in real time as wiki-links are edited in the note (#144)
+- [x] Navigate to a note by clicking its node in the local graph (#144)
 
 ### Global graph - filters and controls
 

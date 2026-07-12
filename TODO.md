@@ -743,6 +743,11 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/starred-notes` - Server-backed stars (PR #206)
+
+- [x] Starred notes stored per user on the server: table, endpoints, sidebar Starred section, context-menu toggle, legacy-pin migration (#151)
+- [x] Fix: a rename with no content edit never persisted and reverted on reload (#204 family)
+
 ### `feature/note-templates` - Note templates + lost-rename fix (PR #205)
 
 - [x] Ctrl+T template picker over a vault's Templates folder with {{date}}/{{time}}/{{title}} variables; daily-note template editable in Settings (#155)

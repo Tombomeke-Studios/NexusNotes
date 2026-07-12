@@ -1399,6 +1399,7 @@ export default function App() {
       {showGlobalSearch && activeVaultId && (
         <GlobalSearch
           vaultId={activeVaultId}
+          clientNotes={isE2eeVault(activeVault) ? noteList : null}
           onSelect={handleSelectNote}
           onClose={() => setShowGlobalSearch(false)}
         />

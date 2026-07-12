@@ -170,14 +170,18 @@ sequenceDiagram
 Meilisearch cannot index encrypted content. For encrypted vaults, search runs
 entirely within the desktop application.
 
-- On vault unlock, fetch all note metadata (title, path, tags). These fields are
-  stored in plaintext as they are considered non-sensitive.
-- Decrypt note content lazily on open, or eagerly build a local in-memory index
-  using MiniSearch or FlexSearch.
+- On vault unlock, the client decrypts the full note list into memory (React
+  state only ever holds plaintext; ciphertext exists on the wire and server).
+- Search (`src/lib/clientSearch.ts`) runs a linear scan over those decrypted
+  notes with title-first ranking, tag filtering and HTML-escaped snippets --
+  mirroring the server search result shape so the UI renders both identically.
+  No external index library (MiniSearch/FlexSearch) is used: at personal-vault
+  scale a scan over in-memory strings is instant, and it avoids keeping a
+  second plaintext copy in an index structure. Swap in MiniSearch later if
+  fuzzy matching becomes a requirement.
 - Search queries execute in the client process with no network calls and no server
   involvement.
-- The search index is held in memory only and is never persisted to disk in
-  unencrypted form.
+- Nothing search-related is ever persisted to disk in unencrypted form.
 
 Client-side search is slightly slower for very large vaults (10,000 or more notes)
 compared to server-side Meilisearch. For typical personal vaults this difference

@@ -1,15 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { search as searchApi } from "../../lib/api";
-import type { SearchHit } from "../../lib/types";
+import { searchDecryptedNotes } from "../../lib/clientSearch";
+import type { Note, SearchHit } from "../../lib/types";
 import "./GlobalSearch.css";
 
 interface GlobalSearchProps {
   vaultId: string;
+  /**
+   * Decrypted in-memory notes for an e2ee vault. When set, search runs
+   * entirely client-side (#200) — the server only holds ciphertext, so
+   * Meilisearch can never see this vault's content.
+   */
+  clientNotes?: Note[] | null;
   onSelect: (noteId: string) => void;
   onClose: () => void;
 }
 
-export function GlobalSearch({ vaultId, onSelect, onClose }: GlobalSearchProps) {
+export function GlobalSearch({ vaultId, clientNotes, onSelect, onClose }: GlobalSearchProps) {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
   const [results, setResults] = useState<SearchHit[]>([]);
@@ -29,6 +36,12 @@ export function GlobalSearch({ vaultId, onSelect, onClose }: GlobalSearchProps) 
         setResults([]);
         return;
       }
+      if (clientNotes) {
+        setError(null);
+        setResults(searchDecryptedNotes(clientNotes, q, t));
+        setSelectedIndex(0);
+        return;
+      }
       setLoading(true);
       setError(null);
       searchApi
@@ -40,7 +53,7 @@ export function GlobalSearch({ vaultId, onSelect, onClose }: GlobalSearchProps) 
         .catch(() => setError("Search unavailable"))
         .finally(() => setLoading(false));
     },
-    [vaultId],
+    [vaultId, clientNotes],
   );
 
   useEffect(() => {

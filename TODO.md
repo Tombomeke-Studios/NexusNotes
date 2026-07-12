@@ -303,24 +303,16 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/e2ee-encryption` - End-to-end encryption (zero-knowledge vaults) — IN PROGRESS
+## `feature/e2ee-encryption` - End-to-end encryption (zero-knowledge vaults) — COMPLETE, PR pending
 
 > The server must never be able to read note content. All encryption and decryption
 > happens on the client before data is transmitted. See `docs/encryption.md` for the
 > full technical design.
 >
-> **Branch state (2026-07-10):** foundations done and pushed — design doc, desktop
-> crypto core (`src/lib/crypto.ts`), server storage (migration 005: `vaults.encryption`
-> + opaque `encryption_meta`; ciphertext reuses `notes.content` as `iv:cipher`; client
-> plaintext checksums honoured for e2ee vaults only), key management
-> (`src/lib/vaultKeys.ts`) and API plumbing (`PUT /api/vaults/:id/encryption`,
-> `vaults.create` encryption fields, note `checksum` field). Server flow verified live.
-> **Next up: the UI slice (#198)** — wire `vaultKeySession` into `App.tsx`:
-> encryption toggle + passphrase + one-time recovery-code screen in the new-vault
-> flow, an unlock dialog when opening a locked e2ee vault, lock icon in the vault
-> switcher/sidebar, and encrypt-on-save / decrypt-on-open in the editor path
-> (`handleSelectNote` / `handleSaveNote`, using `encryptNote`/`decryptNote` +
-> `plaintextChecksum`). Then #176/#199 in Settings, #200 client search, E2E test.
+> **Branch state (2026-07-12):** all items done and verified live end-to-end
+> (setup + recovery code, unlock + recovery flows, encrypt-on-save/decrypt-on-open,
+> change passphrase, client search, Playwright round-trip spec 12-encryption).
+> The dev-stack backend-cwd bug found along the way is fixed on this branch (#201).
 
 - [x] Write `docs/encryption.md` covering key derivation, the encryption algorithm, the sync protocol, and trade-offs (#195)
 - [x] Add a `vault_encryption` column to the vaults table (`none` or `e2ee`) with a migration (#197)

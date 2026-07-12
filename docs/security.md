@@ -86,7 +86,27 @@ that feature ships.
   markdown in a zip plus `account.json`, also self-service in Settings.
 - **Notes for self-hosters:** the instance operator is the data controller;
   publish a privacy notice covering the inventory above and log retention.
-  The planned E2EE vaults (see TODO) remove even operator access to content.
+  E2EE vaults remove even operator access to content (see below).
+
+## End-to-End Encrypted Vaults
+
+Vaults can opt in to zero-knowledge E2EE at creation time (full design in
+[encryption.md](encryption.md)):
+
+- Note content is encrypted client-side with AES-256-GCM before upload; the
+  server stores only `iv:ciphertext` plus opaque wrapped-key material and can
+  never decrypt it.
+- The Master Key is derived from the vault passphrase with Argon2id and never
+  leaves the client; the unlocked Vault Key lives in memory only and is
+  dropped on lock, sign-out and 401 auto-logout.
+- Conflict detection uses a client-computed SHA-256 of the plaintext, stored
+  verbatim; the server never sees content.
+- A one-time recovery code (single-use, rotated on every rewrap) is the only
+  passphrase-loss escape hatch — losing both makes the vault unreadable by
+  design.
+- Plaintext never touches disk on the client: e2ee vaults skip the
+  localStorage draft mirror, and search runs client-side over in-memory
+  decrypted notes (the server index only carries title/path).
 
 ## Secrets Management
 

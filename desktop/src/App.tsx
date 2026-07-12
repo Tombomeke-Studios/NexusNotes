@@ -22,6 +22,7 @@ import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/ap
 import {
   setupVaultEncryption,
   unlockVaultKey,
+  recoverVaultKey,
   rewrapVaultKey,
   vaultKeySession,
   isE2eeVault,
@@ -607,6 +608,26 @@ export default function App() {
     const key = await unlockVaultKey(vault.encryption_meta as EncryptionMeta, passphrase);
     vaultKeySession.set(vault.id, key);
     setUnlockVaultId(null);
+    loadNotes(vault.id);
+  }, [unlockVaultId, loadNotes]);
+
+  /**
+   * Recovery (#176): the backup code unwraps the Vault Key, the vault is
+   * re-wrapped under the new passphrase, and a fresh recovery code replaces
+   * the used one — a recovery code is single-use by design.
+   */
+  const handleRecoverVault = useCallback(async (code: string, newPassphrase: string) => {
+    const vault = vaultListRef.current.find((v) => v.id === unlockVaultId);
+    if (!vault) return;
+    const vaultKey = await recoverVaultKey(vault.encryption_meta as EncryptionMeta, code);
+    const { meta: newMeta, recoveryCode: freshCode } = await rewrapVaultKey(vaultKey, newPassphrase);
+    await vaultsApi.updateEncryption(vault.id, newMeta);
+    vaultKeySession.set(vault.id, vaultKey);
+    setVaultList((prev) =>
+      prev.map((v) => (v.id === vault.id ? { ...v, encryption_meta: newMeta } : v)),
+    );
+    setUnlockVaultId(null);
+    setRecoveryCode(freshCode);
     loadNotes(vault.id);
   }, [unlockVaultId, loadNotes]);
 
@@ -1361,6 +1382,7 @@ export default function App() {
         <UnlockVaultDialog
           vaultName={vaultList.find((v) => v.id === unlockVaultId)?.name ?? "Vault"}
           onUnlock={handleUnlockVault}
+          onRecover={handleRecoverVault}
           onCancel={() => setUnlockVaultId(null)}
         />
       )}

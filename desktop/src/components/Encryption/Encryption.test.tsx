@@ -101,7 +101,7 @@ describe("CreateVaultDialog", () => {
 describe("UnlockVaultDialog", () => {
   it("passes the passphrase to onUnlock on Enter", async () => {
     const onUnlock = vi.fn().mockResolvedValue(undefined);
-    render(<UnlockVaultDialog vaultName="Secret" onUnlock={onUnlock} onCancel={() => {}} />);
+    render(<UnlockVaultDialog vaultName="Secret" onUnlock={onUnlock} onRecover={vi.fn()} onCancel={() => {}} />);
 
     const input = screen.getByPlaceholderText("Vault passphrase");
     fireEvent.change(input, { target: { value: "open sesame please" } });
@@ -112,7 +112,7 @@ describe("UnlockVaultDialog", () => {
 
   it("shows an error and re-enables the form when the unlock rejects", async () => {
     const onUnlock = vi.fn().mockRejectedValue(new Error("bad key"));
-    render(<UnlockVaultDialog vaultName="Secret" onUnlock={onUnlock} onCancel={() => {}} />);
+    render(<UnlockVaultDialog vaultName="Secret" onUnlock={onUnlock} onRecover={vi.fn()} onCancel={() => {}} />);
 
     fireEvent.change(screen.getByPlaceholderText("Vault passphrase"), {
       target: { value: "wrong one entirely" },
@@ -123,8 +123,38 @@ describe("UnlockVaultDialog", () => {
     expect(screen.getByRole("button", { name: "Unlock" })).toHaveProperty("disabled", false);
   });
 
+  it("recovery mode submits code + new passphrase and rejects a bad code", async () => {
+    const onRecover = vi.fn().mockRejectedValueOnce(new Error("bad code")).mockResolvedValue(undefined);
+    render(
+      <UnlockVaultDialog vaultName="Secret" onUnlock={vi.fn()} onRecover={onRecover} onCancel={() => {}} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /use your recovery code/i }));
+    fireEvent.change(screen.getByPlaceholderText(/recovery code/i), {
+      target: { value: "AAAA-BBBB-CCCC" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("New passphrase"), {
+      target: { value: "a fresh passphrase" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm new passphrase"), {
+      target: { value: "a fresh passphrase" },
+    });
+
+    const recover = screen.getByRole("button", { name: "Recover vault" });
+    fireEvent.click(recover);
+    await waitFor(() =>
+      expect(onRecover).toHaveBeenCalledWith("AAAA-BBBB-CCCC", "a fresh passphrase"),
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/does not unlock this vault/i)).toBeTruthy(),
+    );
+
+    fireEvent.click(recover);
+    await waitFor(() => expect(onRecover).toHaveBeenCalledTimes(2));
+  });
+
   it("disables Unlock while empty", () => {
-    render(<UnlockVaultDialog vaultName="Secret" onUnlock={vi.fn()} onCancel={() => {}} />);
+    render(<UnlockVaultDialog vaultName="Secret" onUnlock={vi.fn()} onRecover={vi.fn()} onCancel={() => {}} />);
     expect(screen.getByRole("button", { name: "Unlock" })).toHaveProperty("disabled", true);
   });
 });

@@ -80,6 +80,20 @@
   margin-top: 16px;
 }
 
+.enc-mode-link {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--accent);
+  text-align: left;
+  transition: color var(--transition-fast);
+}
+
+.enc-mode-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 /* Change passphrase form (Settings) */
 
 .enc-change-form {

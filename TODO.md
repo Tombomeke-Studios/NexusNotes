@@ -395,13 +395,13 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/daily-notes-and-templates` - Daily notes and note templates
 
-- [ ] Add a daily note feature: `Ctrl+D` creates or opens a date-stamped note in `YYYY-MM-DD.md` format
-- [ ] Add a configurable daily note template in settings
-- [ ] Add a template picker; templates are defined as files in a `/templates` folder in the vault
-- [ ] Add a `Ctrl+T` "Insert template" command in the command palette
-- [ ] Support template variables: `{{date}}`, `{{time}}`, `{{title}}`
+- [x] Add a daily note feature: `Ctrl+D` creates or opens a date-stamped note (shipped earlier with the calendar popover)
+- [x] Add a configurable daily note template in settings (#155)
+- [x] Add a template picker; templates are notes in a `Templates` folder in the vault (#155)
+- [x] Add a `Ctrl+T` "Insert template" command in the command palette (#155)
+- [x] Support template variables: `{{date}}`, `{{time}}`, `{{title}}` (#155)
 - [ ] Add periodic notes: weekly (`YYYY-Www`) and monthly (`YYYY-MM`) with separate templates
-- [ ] Write tests for template variable substitution
+- [x] Write tests for template variable substitution (#155)
 
 ---
 

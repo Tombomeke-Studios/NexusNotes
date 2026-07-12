@@ -57,6 +57,8 @@ interface EditorProps {
   onNavigateToNote: (noteId: string) => void;
   /** Suspend autosave (e.g. while a close-confirmation dialog is open). */
   paused?: boolean;
+  /** Bump the nonce to insert text at the cursor (template insertion, #155). */
+  insertRequest?: { text: string; nonce: number } | null;
 }
 
 export function Editor({
@@ -76,6 +78,7 @@ export function Editor({
   onCreateNote,
   onNavigateToNote,
   paused = false,
+  insertRequest = null,
 }: EditorProps) {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -138,6 +141,29 @@ export function Editor({
     },
     [onLiveChange],
   );
+
+  // Template insertion (#155): splice the text in at the cursor (replacing a
+  // selection if any) and route it through handleChange so the dirty flag,
+  // live-change mirror and debounced autosave all behave like typing.
+  const prevInsertNonceRef = useRef(0);
+  useEffect(() => {
+    if (!insertRequest || insertRequest.nonce === prevInsertNonceRef.current) return;
+    prevInsertNonceRef.current = insertRequest.nonce;
+    const el = textareaRef.current;
+    const current = contentRef.current;
+    const start = el && typeof el.selectionStart === "number" ? el.selectionStart : current.length;
+    const end = el && typeof el.selectionEnd === "number" ? el.selectionEnd : start;
+    handleChange(current.slice(0, start) + insertRequest.text + current.slice(end));
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const caret = start + insertRequest.text.length;
+      el.setSelectionRange(caret, caret);
+      reportCursor(el);
+    });
+    // reportCursor is stable per render; handleChange covers the callbacks used.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insertRequest, handleChange]);
 
   // Cancel any pending autosave the moment we pause (close dialog opened), so a
   // "Close without saving" isn't undone by a save firing underneath it.

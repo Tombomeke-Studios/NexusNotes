@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toIsoDate, buildCalendarCells, dailyNoteTemplate } from "./daily";
+import { toIsoDate, buildCalendarCells } from "./daily";
 
 describe("toIsoDate", () => {
   it("formats a date as YYYY-MM-DD", () => {
@@ -36,10 +36,3 @@ describe("buildCalendarCells", () => {
   });
 });
 
-describe("dailyNoteTemplate", () => {
-  it("includes the date heading and the daily tag", () => {
-    const t = dailyNoteTemplate("2026-07-07");
-    expect(t.startsWith("# 2026-07-07")).toBe(true);
-    expect(t).toContain("#daily");
-  });
-});

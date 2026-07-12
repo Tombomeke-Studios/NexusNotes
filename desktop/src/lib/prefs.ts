@@ -1,3 +1,5 @@
+import { DEFAULT_DAILY_TEMPLATE } from "./templates";
+
 export type ViewMode = "edit" | "split" | "preview";
 export type RightTab = "outline" | "links" | "graph" | "info";
 
@@ -12,6 +14,8 @@ export interface WorkspacePrefs {
   rightWidth: number;
   splitPct: number;
   rightTab: RightTab;
+  /** Markdown used for new daily notes; supports {{date}}, {{time}}, {{title}}. */
+  dailyTemplate: string;
 }
 
 export const PREFS_STORAGE_KEY = "nexus_workspace_prefs";
@@ -27,6 +31,7 @@ export const DEFAULT_PREFS: WorkspacePrefs = {
   rightWidth: 288,
   splitPct: 52,
   rightTab: "outline",
+  dailyTemplate: DEFAULT_DAILY_TEMPLATE,
 };
 
 export const PREF_LIMITS = {
@@ -58,6 +63,9 @@ function sanitize(raw: Partial<WorkspacePrefs>): WorkspacePrefs {
   }
   if (VIEW_MODES.includes(raw.viewMode as ViewMode)) prefs.viewMode = raw.viewMode as ViewMode;
   if (RIGHT_TABS.includes(raw.rightTab as RightTab)) prefs.rightTab = raw.rightTab as RightTab;
+  if (typeof raw.dailyTemplate === "string" && raw.dailyTemplate.trim()) {
+    prefs.dailyTemplate = raw.dailyTemplate;
+  }
   return prefs;
 }
 

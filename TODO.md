@@ -743,6 +743,11 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/note-templates` - Note templates + lost-rename fix (PR #205)
+
+- [x] Ctrl+T template picker over a vault's Templates folder with {{date}}/{{time}}/{{title}} variables; daily-note template editable in Settings (#155)
+- [x] Fix: async note switches silently dropped an unsaved rename typed into the outgoing note (#204)
+
 ### `feature/graph-local-and-search` - Graph ghosts, search, local graph (PR #203)
 
 - [x] Unresolved wiki-links as dashed ghost nodes; click to create the note (#147)

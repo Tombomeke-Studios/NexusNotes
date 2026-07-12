@@ -11,6 +11,7 @@ import { Rail } from "./components/Workspace/Rail";
 import { TabBar } from "./components/Workspace/TabBar";
 import { DailyCalendar } from "./components/Workspace/DailyCalendar";
 import { ContextMenu } from "./components/Workspace/ContextMenu";
+import { TemplatePicker } from "./components/Workspace/TemplatePicker";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -42,7 +43,8 @@ import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
 import { saveDraft, loadDraft, clearDraft } from "./lib/drafts";
 import type { SortBy } from "./lib/noteFilter";
-import { toIsoDate, dailyNoteTemplate } from "./lib/daily";
+import { toIsoDate } from "./lib/daily";
+import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
 import type { ViewMode } from "./lib/prefs";
 import type { RailView } from "./components/Workspace/Rail";
@@ -75,6 +77,9 @@ export default function App() {
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
   // E2ee vault currently prompting for its passphrase.
   const [unlockVaultId, setUnlockVaultId] = useState<string | null>(null);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  // Bumped nonce asks the editor to insert text at the cursor (#155).
+  const [insertRequest, setInsertRequest] = useState<{ text: string; nonce: number } | null>(null);
   const [closePrompt, setClosePrompt] = useState<{ kind: "window" } | { kind: "tab"; key: string } | null>(null);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -329,8 +334,11 @@ export default function App() {
     }
     if (!activeVaultId) return;
     // A note's path is its folder, so daily notes live in the "Daily" folder;
-    // the title carries the date.
-    const template = dailyNoteTemplate(iso);
+    // the title carries the date. The template is user-configurable (#155).
+    const template = renderTemplate(loadPrefs().dailyTemplate, {
+      ...templateVars(new Date(), iso),
+      date: iso,
+    });
     const { content: payload, checksum } = await encryptOutgoing(activeVaultId, template);
     const created = await notesApi.create(activeVaultId, iso, "Daily", payload, checksum);
     const note = { ...created, content: template };
@@ -476,10 +484,26 @@ export default function App() {
     });
   }, []);
 
+  // Ctrl+T (#155): pick a Templates-folder note to insert into the open note.
+  const openTemplatePicker = useCallback(() => {
+    if (activeNoteRef.current && activeTabKeyRef.current !== GRAPH_TAB_KEY) {
+      setShowTemplatePicker(true);
+    }
+  }, []);
+
+  const handlePickTemplate = useCallback((template: Note) => {
+    setShowTemplatePicker(false);
+    const current = activeNoteRef.current;
+    if (!current) return;
+    const text = renderTemplate(template.content, templateVars(new Date(), current.title));
+    setInsertRequest((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
+  }, []);
+
   const commands = useMemo(() => [
     { id: "new-note", label: "New note", shortcut: "Ctrl+N", action: handleCreateNote },
     { id: "graph-view", label: "Open graph", shortcut: "Ctrl+G", action: openGraphTab },
     { id: "daily-note", label: "Open today's daily note", shortcut: "Ctrl+D", action: () => handleOpenDaily(toIsoDate(new Date())) },
+    { id: "insert-template", label: "Insert template", shortcut: "Ctrl+T", action: openTemplatePicker },
     { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
     { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
@@ -487,7 +511,7 @@ export default function App() {
     { id: "focus-mode", label: "Toggle focus mode", action: toggleFocusMode },
     { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
-  ], [handleCreateNote, handleOpenDaily, openGraphTab, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
+  ], [handleCreateNote, handleOpenDaily, openGraphTab, openTemplatePicker, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -517,6 +541,10 @@ export default function App() {
       if (meta && e.key === "d") {
         e.preventDefault();
         handleOpenDaily(toIsoDate(new Date()));
+      }
+      if (meta && e.key === "t") {
+        e.preventDefault();
+        openTemplatePicker();
       }
       if (meta && e.key === "e") {
         e.preventDefault();
@@ -552,7 +580,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleCreateNote, handleOpenDaily, toggleGraphTab, cycleView, toggleFocusMode]);
+  }, [handleCreateNote, handleOpenDaily, toggleGraphTab, openTemplatePicker, cycleView, toggleFocusMode]);
 
   const handleAuth = useCallback(
     (u: User) => {
@@ -1022,7 +1050,7 @@ export default function App() {
   modalOpenRef.current =
     paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
     showNewVault || recoveryCode !== null || unlockVaultId !== null ||
-    ctxMenu !== null || workspaceMenu !== null;
+    showTemplatePicker || ctxMenu !== null || workspaceMenu !== null;
 
   return (
     <div
@@ -1225,6 +1253,7 @@ export default function App() {
               onCreateNote={handleCreateNoteWithTitle}
               onNavigateToNote={handleSelectNote}
               paused={closePrompt !== null}
+              insertRequest={insertRequest}
             />
           )}
         </div>
@@ -1386,6 +1415,14 @@ export default function App() {
           onUnlock={handleUnlockVault}
           onRecover={handleRecoverVault}
           onCancel={() => setUnlockVaultId(null)}
+        />
+      )}
+
+      {showTemplatePicker && (
+        <TemplatePicker
+          templates={listTemplates(noteList)}
+          onPick={handlePickTemplate}
+          onClose={() => setShowTemplatePicker(false)}
         />
       )}
 

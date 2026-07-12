@@ -40,6 +40,3 @@ export function buildCalendarCells(
   return cells;
 }
 
-export function dailyNoteTemplate(iso: string): string {
-  return `# ${iso}\n\n## Log\n\n- [ ] First entry\n\n#daily`;
-}

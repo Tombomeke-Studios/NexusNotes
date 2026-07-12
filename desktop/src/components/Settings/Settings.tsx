@@ -25,6 +25,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ["New note", "Ctrl+N"],
   ["Open graph", "Ctrl+G"],
   ["Daily note", "Ctrl+D"],
+  ["Insert template", "Ctrl+T"],
   ["Cycle view", "Ctrl+E"],
   ["Global search", "Ctrl+Shift+F"],
   ["Save", "Ctrl+S"],
@@ -172,6 +173,21 @@ export function Settings({
                   <Toggle
                     on={prefs.showStatusBar}
                     onToggle={() => onUpdatePrefs({ showStatusBar: !prefs.showStatusBar })}
+                  />
+                </div>
+                <div className="settings-row settings-row--stacked">
+                  <div>
+                    <div className="settings-row-label">Daily note template</div>
+                    <div className="settings-row-sub">
+                      Used by Ctrl+D. Supports {"{{date}}"}, {"{{time}}"} and {"{{title}}"}.
+                    </div>
+                  </div>
+                  <textarea
+                    className="settings-template-input"
+                    rows={6}
+                    spellCheck={false}
+                    value={prefs.dailyTemplate}
+                    onChange={(e) => onUpdatePrefs({ dailyTemplate: e.target.value })}
                   />
                 </div>
               </>

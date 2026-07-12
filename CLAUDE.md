@@ -185,6 +185,7 @@ is the migrations directory.
 | `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
 | `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |
 | `src/lib/clientSearch.ts` | Client-side full-text search over decrypted in-memory notes (e2ee vaults; server search only sees ciphertext) |
+| `src/lib/templates.ts` | Note templates: Templates-folder discovery, {{date}}/{{time}}/{{title}} substitution, default daily template |
 | `src/lib/welcome.ts` | Sample notes seeded into a new account's first vault (onboarding) |
 | `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 

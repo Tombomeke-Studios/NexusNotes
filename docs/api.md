@@ -172,6 +172,18 @@ List version history. Returns `NoteVersion[]` (newest first).
 
 Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`.
 
+### GET /api/notes/starred
+
+Returns the ids (`string[]`) of every note the authenticated user has starred, across vaults, oldest star first.
+
+### POST /api/notes/:noteId/star
+
+Stars a note (favourite). Idempotent; `204` on success. The caller must own the note's vault.
+
+### DELETE /api/notes/:noteId/star
+
+Removes the star. Idempotent; `204` on success.
+
 ---
 
 ## Search

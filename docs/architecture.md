@@ -144,4 +144,5 @@ erDiagram
   used for conflict detection.
 - **note_versions** — per-save history for the version-history feature.
 - **devices** — registered sync clients and their last-seen time.
+- **starred_notes** — per-user favourite marks on notes (which user starred which note, and when).
 - **attachments** — file metadata; bytes live in MinIO.

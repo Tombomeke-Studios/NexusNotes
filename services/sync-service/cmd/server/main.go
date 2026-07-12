@@ -61,6 +61,7 @@ func main() {
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
+	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
 	wsHandler := handler.NewWSHandler(hub, authService)
 
 	mux := http.NewServeMux()
@@ -89,6 +90,9 @@ func main() {
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
+	protectedMux.HandleFunc("GET /api/notes/starred", starHandler.List)
+	protectedMux.HandleFunc("POST /api/notes/{noteId}/star", starHandler.Star)
+	protectedMux.HandleFunc("DELETE /api/notes/{noteId}/star", starHandler.Unstar)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/search", noteHandler.Search)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags)
 	protectedMux.HandleFunc("GET /api/search", searchHandler.Search)

@@ -204,6 +204,15 @@ export const notes = {
     request<BacklinkNote[]>(`/api/notes/${noteId}/backlinks`),
 };
 
+/** Starred (favourite) notes, per user across vaults (#151). */
+export const stars = {
+  list: () => request<string[]>("/api/notes/starred"),
+  star: (noteId: string) =>
+    request<void>(`/api/notes/${noteId}/star`, { method: "POST" }),
+  unstar: (noteId: string) =>
+    request<void>(`/api/notes/${noteId}/star`, { method: "DELETE" }),
+};
+
 export interface SearchParams {
   q?: string;
   tag?: string;

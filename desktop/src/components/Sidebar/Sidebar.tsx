@@ -81,7 +81,9 @@ interface SidebarProps {
   onClearFilters: () => void;
   onSearchChange: (query: string) => void;
   onSignOut: () => void;
-  pinnedIds: Set<string>;
+  starredIds: Set<string>;
+  /** Starred notes for the sidebar section, in star order. */
+  starredNotes: Array<{ id: string; title: string }>;
   /** Recently opened notes for the active vault, most recent first. */
   recentNotes: Array<{ id: string; title: string }>;
   /** Note with unsaved changes (shows a dot in the tree). */
@@ -119,13 +121,15 @@ export function Sidebar({
   onClearFilters,
   onSearchChange,
   onSignOut,
-  pinnedIds,
+  starredIds,
+  starredNotes,
   recentNotes,
   unsavedNoteId,
   onNoteContextMenu,
 }: SidebarProps) {
   const [showVaults, setShowVaults] = useState(false);
   const [recentOpen, setRecentOpen] = useState(true);
+  const [starredOpen, setStarredOpen] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -440,6 +444,37 @@ export function Sidebar({
         </div>
       )}
 
+      {starredNotes.length > 0 && (
+        <div className="sidebar-recent">
+          <button className="sidebar-recent-head" onClick={() => setStarredOpen((o) => !o)}>
+            <svg
+              width="8"
+              height="8"
+              viewBox="0 0 8 8"
+              fill="none"
+              className={`sidebar-recent-chevron${starredOpen ? " sidebar-recent-chevron--open" : ""}`}
+            >
+              <path d="M2 1l4 3-4 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Starred
+          </button>
+          {starredOpen &&
+            starredNotes.map((n) => (
+              <button
+                key={n.id}
+                className={`sidebar-recent-item${n.id === activeNoteId ? " sidebar-recent-item--active" : ""}`}
+                onClick={(e) => onNoteClick(e, n.id)}
+                title={n.title}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.2L8 11.5l-3.8 2 .7-4.2-3.1-3 4.3-.6L8 1.8z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                <span className="sidebar-recent-title">{n.title}</span>
+              </button>
+            ))}
+        </div>
+      )}
+
       {recentNotes.length > 0 && (
         <div className="sidebar-recent">
           <button className="sidebar-recent-head" onClick={() => setRecentOpen((o) => !o)}>
@@ -525,7 +560,7 @@ export function Sidebar({
             node={node}
             activeNoteId={activeNoteId}
             selectedIds={selectedIds}
-            pinnedIds={pinnedIds}
+            starredIds={starredIds}
             unsavedNoteId={unsavedNoteId}
             onNoteClick={onNoteClick}
             onNoteContextMenu={onNoteContextMenu}
@@ -598,7 +633,7 @@ function TreeItem({
   node,
   activeNoteId,
   selectedIds,
-  pinnedIds,
+  starredIds,
   unsavedNoteId,
   onNoteClick,
   onNoteContextMenu,
@@ -608,7 +643,7 @@ function TreeItem({
   node: TreeNode;
   activeNoteId: string | null;
   selectedIds: Set<string>;
-  pinnedIds: Set<string>;
+  starredIds: Set<string>;
   unsavedNoteId?: string | null;
   onNoteClick: (e: React.MouseEvent, id: string) => void;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
@@ -655,7 +690,7 @@ function TreeItem({
               node={child}
               activeNoteId={activeNoteId}
               selectedIds={selectedIds}
-              pinnedIds={pinnedIds}
+              starredIds={starredIds}
               unsavedNoteId={unsavedNoteId}
               onNoteClick={onNoteClick}
               onNoteContextMenu={onNoteContextMenu}
@@ -704,10 +739,9 @@ function TreeItem({
       {node.noteId && node.noteId === unsavedNoteId && (
         <span className="tree-unsaved-dot" title="Unsaved changes" />
       )}
-      {node.noteId && pinnedIds.has(node.noteId) && (
-        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" className="tree-pin">
-          <circle cx="7" cy="5" r="2.8" stroke="currentColor" strokeWidth="1.4" />
-          <path d="M7 7.8V12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {node.noteId && starredIds.has(node.noteId) && (
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" className="tree-pin" aria-label="Starred">
+          <path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.2L8 11.5l-3.8 2 .7-4.2-3.1-3 4.3-.6L8 1.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
         </svg>
       )}
     </button>

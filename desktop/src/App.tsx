@@ -896,10 +896,19 @@ export default function App() {
     if (!current) return;
     const others = new Set(noteListRef.current.filter((n) => n.id !== current.id).map((n) => n.title));
     const unique = uniqueTitle(others, title.trim() || "Untitled");
-    if (unique === current.title) return;
-    setActiveNote((prev) => (prev ? { ...prev, title: unique } : prev));
-    setNoteList((prev) => prev.map((n) => (n.id === current.id ? { ...n, title: unique } : n)));
-    setSaveStatus("unsaved");
+    if (unique !== current.title) {
+      setActiveNote((prev) => (prev ? { ...prev, title: unique } : prev));
+      setNoteList((prev) => prev.map((n) => (n.id === current.id ? { ...n, title: unique } : n)));
+      setSaveStatus("unsaved");
+    }
+    // Persist any pending rename now: per-keystroke renames only touch local
+    // state and nothing else ever saves them when the content is never
+    // edited (#204). The timeout lets the state updates land first.
+    setTimeout(() => {
+      if (saveStatusRef.current === "unsaved") {
+        handleSaveNoteRef.current(editorContentRef.current);
+      }
+    }, 0);
   }, []);
 
   const handleSaveNote = useCallback(async (content: string) => {

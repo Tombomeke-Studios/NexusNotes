@@ -333,7 +333,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add an encryption toggle when creating a vault, with passphrase prompt and one-time recovery-code display (#198)
 - [x] Add a passphrase unlock dialog when opening an encrypted vault; hold the derived key in memory only, never persist it (#198)
 - [x] Encrypt on save / decrypt on open in the editor path using the unlocked Vault Key (#198)
-- [ ] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes (#199)
+- [x] Add a change-passphrase flow: re-wrap the Vault Key with the new Master Key without re-encrypting notes (#199)
 - [ ] Recovery flow UI: unlock with the backup code, set a new passphrase, show a fresh recovery code (#176)
 - [x] Display a lock icon on encrypted vaults in the sidebar (#198)
 - [ ] Implement a client-side search index (MiniSearch or FlexSearch) for encrypted vaults; server-side search is not possible in zero-knowledge mode (#200)

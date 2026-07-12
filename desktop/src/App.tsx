@@ -22,6 +22,7 @@ import { vaults as vaultsApi, notes as notesApi, getToken, auth } from "./lib/ap
 import {
   setupVaultEncryption,
   unlockVaultKey,
+  rewrapVaultKey,
   vaultKeySession,
   isE2eeVault,
   isVaultLocked,
@@ -579,6 +580,25 @@ export default function App() {
     },
     [loadNotes],
   );
+
+  /**
+   * Change-passphrase (#199): verify the current passphrase, re-wrap the Vault
+   * Key under the new one and replace the server-side key material. Notes are
+   * untouched; a fresh recovery code is shown once.
+   */
+  const handleChangePassphrase = useCallback(async (currentPass: string, newPass: string) => {
+    const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
+    if (!vault || vault.encryption !== "e2ee") throw new Error("not an encrypted vault");
+    const meta = vault.encryption_meta as EncryptionMeta;
+    const vaultKey = await unlockVaultKey(meta, currentPass); // throws when wrong
+    const { meta: newMeta, recoveryCode: code } = await rewrapVaultKey(vaultKey, newPass);
+    await vaultsApi.updateEncryption(vault.id, newMeta); // ApiError on failure
+    vaultKeySession.set(vault.id, vaultKey);
+    setVaultList((prev) =>
+      prev.map((v) => (v.id === vault.id ? { ...v, encryption_meta: newMeta } : v)),
+    );
+    setRecoveryCode(code);
+  }, []);
 
   /** Derives the key from the passphrase; rejects (dialog shows the error) when wrong. */
   const handleUnlockVault = useCallback(async (passphrase: string) => {
@@ -1234,6 +1254,8 @@ export default function App() {
         <Settings
           prefs={prefs}
           lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
+          activeVault={activeVault ?? null}
+          onChangePassphrase={handleChangePassphrase}
           onUpdatePrefs={updatePrefs}
           onSignOut={handleSignOut}
           onClose={() => setShowSettings(false)}

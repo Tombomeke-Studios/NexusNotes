@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { WorkspacePrefs } from "../../lib/prefs";
+import type { Vault } from "../../lib/types";
 import { auth, ApiError } from "../../lib/api";
+import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
 import "./Settings.css";
 
 type SettingsTab = "appearance" | "sync" | "shortcuts" | "account";
@@ -8,6 +10,10 @@ type SettingsTab = "appearance" | "sync" | "shortcuts" | "account";
 interface SettingsProps {
   prefs: WorkspacePrefs;
   lastSyncLabel: string | null;
+  /** The vault whose settings-relevant state (encryption) is shown. */
+  activeVault: Vault | null;
+  /** Re-wraps the active e2ee vault's key under a new passphrase (#199). */
+  onChangePassphrase: (currentPassphrase: string, newPassphrase: string) => Promise<void>;
   onUpdatePrefs: (partial: Partial<WorkspacePrefs>) => void;
   onSignOut: () => void;
   onClose: () => void;
@@ -35,7 +41,15 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
-export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClose }: SettingsProps) {
+export function Settings({
+  prefs,
+  lastSyncLabel,
+  activeVault,
+  onChangePassphrase,
+  onUpdatePrefs,
+  onSignOut,
+  onClose,
+}: SettingsProps) {
   const [tab, setTab] = useState<SettingsTab>("appearance");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -187,6 +201,26 @@ export function Settings({ prefs, lastSyncLabel, onUpdatePrefs, onSignOut, onClo
                   <span>Storage</span>
                   <span>PostgreSQL, server-side</span>
                 </div>
+                {activeVault?.encryption === "e2ee" && (
+                  <>
+                    <div className="settings-section-title settings-section-title--spaced">
+                      Encryption — {activeVault.name}
+                    </div>
+                    <div className="settings-kv">
+                      <span>Mode</span>
+                      <span>End-to-end encrypted (zero-knowledge)</span>
+                    </div>
+                    <div className="settings-row">
+                      <div>
+                        <div className="settings-row-label">Vault passphrase</div>
+                        <div className="settings-row-sub">
+                          Re-wraps the vault key; notes stay encrypted as they are
+                        </div>
+                      </div>
+                    </div>
+                    <ChangePassphraseForm onChange={onChangePassphrase} />
+                  </>
+                )}
               </>
             )}
 

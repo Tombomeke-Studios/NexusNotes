@@ -5,6 +5,7 @@ import { EncryptionSetup } from "./EncryptionSetup";
 import { RecoveryCodeDialog } from "./RecoveryCodeDialog";
 import { CreateVaultDialog } from "./CreateVaultDialog";
 import { UnlockVaultDialog } from "./UnlockVaultDialog";
+import { ChangePassphraseForm } from "./ChangePassphraseForm";
 
 /** Stateful wrapper so the controlled EncryptionSetup behaves like in the app. */
 function SetupHarness({ initialEnabled = false }: { initialEnabled?: boolean }) {
@@ -125,5 +126,72 @@ describe("UnlockVaultDialog", () => {
   it("disables Unlock while empty", () => {
     render(<UnlockVaultDialog vaultName="Secret" onUnlock={vi.fn()} onCancel={() => {}} />);
     expect(screen.getByRole("button", { name: "Unlock" })).toHaveProperty("disabled", true);
+  });
+});
+
+describe("ChangePassphraseForm", () => {
+  const openForm = () => {
+    fireEvent.click(screen.getByRole("button", { name: /change passphrase/i }));
+  };
+
+  it("submits current + new passphrase and collapses on success", async () => {
+    const onChange = vi.fn().mockResolvedValue(undefined);
+    render(<ChangePassphraseForm onChange={onChange} />);
+    openForm();
+
+    fireEvent.change(screen.getByPlaceholderText("Current passphrase"), {
+      target: { value: "old passphrase here" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("New passphrase"), {
+      target: { value: "shiny new passphrase" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm new passphrase"), {
+      target: { value: "shiny new passphrase" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Change passphrase" }));
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith("old passphrase here", "shiny new passphrase"),
+    );
+    // Collapsed back to the entry button.
+    expect(screen.getByRole("button", { name: /change passphrase…/i })).toBeTruthy();
+  });
+
+  it("shows a wrong-passphrase error when the change rejects", async () => {
+    const onChange = vi.fn().mockRejectedValue(new Error("bad unwrap"));
+    render(<ChangePassphraseForm onChange={onChange} />);
+    openForm();
+
+    fireEvent.change(screen.getByPlaceholderText("Current passphrase"), {
+      target: { value: "wrong old one" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("New passphrase"), {
+      target: { value: "shiny new passphrase" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm new passphrase"), {
+      target: { value: "shiny new passphrase" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Change passphrase" }));
+
+    await waitFor(() => expect(screen.getByText(/current passphrase is wrong/i)).toBeTruthy());
+  });
+
+  it("disables submit while the new passphrases do not match", () => {
+    render(<ChangePassphraseForm onChange={vi.fn()} />);
+    openForm();
+
+    fireEvent.change(screen.getByPlaceholderText("Current passphrase"), {
+      target: { value: "old passphrase here" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("New passphrase"), {
+      target: { value: "shiny new passphrase" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Confirm new passphrase"), {
+      target: { value: "different" },
+    });
+    expect(screen.getByRole("button", { name: "Change passphrase" })).toHaveProperty(
+      "disabled",
+      true,
+    );
   });
 });

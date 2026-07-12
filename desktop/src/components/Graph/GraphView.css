@@ -230,3 +230,12 @@
 .graph-node--ghost:hover text {
   fill: var(--accent);
 }
+
+/* Compact (right-panel) variant: tighter dot grid, smaller labels. */
+.graph-view--compact {
+  background-size: 18px 18px;
+}
+
+.graph-view--compact .graph-node text {
+  font-size: 9.5px;
+}

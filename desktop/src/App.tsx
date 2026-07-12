@@ -1250,6 +1250,7 @@ export default function App() {
               tab={prefs.rightTab}
               onTabChange={(t) => updatePrefs({ rightTab: t })}
               onNavigateToNote={handleSelectNote}
+              onCreateNote={handleCreateNoteWithTitle}
               onTagClick={(tag) => {
                 setFilterTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
                 setRailView("files");

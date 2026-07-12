@@ -10,6 +10,8 @@ interface GraphViewProps {
   onSelectNote: (id: string) => void;
   /** Creates a note from an unresolved (ghost) node's title (#147). */
   onCreateNote?: (title: string) => void;
+  /** Chrome-less, tighter layout for the right-panel local graph (#144). */
+  compact?: boolean;
 }
 
 interface SimNode extends d3.SimulationNodeDatum {
@@ -40,7 +42,7 @@ function folderColor(folder: string): string {
   return FOLDER_PALETTE[Math.abs(hash) % FOLDER_PALETTE.length];
 }
 
-export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: GraphViewProps) {
+export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, compact = false }: GraphViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [showOrphans, setShowOrphans] = useState(true);
@@ -90,11 +92,11 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: Gr
     // contained (dragging/pinning a node no longer flings the rest off-screen),
     // and a capped charge keeps repulsion from acting across the whole canvas.
     const simulation = d3.forceSimulation(nodes)
-      .force("link", d3.forceLink(links).id((d) => (d as SimNode).id).distance(90))
-      .force("charge", d3.forceManyBody().strength(-160).distanceMax(320))
-      .force("x", d3.forceX(width / 2).strength(0.06))
-      .force("y", d3.forceY(height / 2).strength(0.06))
-      .force("collision", d3.forceCollide().radius(28));
+      .force("link", d3.forceLink(links).id((d) => (d as SimNode).id).distance(compact ? 55 : 90))
+      .force("charge", d3.forceManyBody().strength(compact ? -100 : -160).distanceMax(320))
+      .force("x", d3.forceX(width / 2).strength(compact ? 0.12 : 0.06))
+      .force("y", d3.forceY(height / 2).strength(compact ? 0.12 : 0.06))
+      .force("collision", d3.forceCollide().radius(compact ? 20 : 28));
 
     const link = g.append("g")
       .selectAll("line")
@@ -193,7 +195,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: Gr
     });
 
     return () => { simulation.stop(); };
-  }, [data, activeNoteId, onSelectNote, onCreateNote, showOrphans]);
+  }, [data, activeNoteId, onSelectNote, onCreateNote, showOrphans, compact]);
 
   useEffect(() => {
     const cleanup = render();
@@ -211,6 +213,14 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote }: Gr
 
   const orphanCount = data.nodes.filter((n) => n.connections === 0).length;
   const noteCount = data.nodes.filter((n) => !n.ghost).length;
+
+  if (compact) {
+    return (
+      <div className="graph-view graph-view--compact">
+        <svg ref={svgRef} className="graph-svg" />
+      </div>
+    );
+  }
 
   return (
     <div className="graph-view">

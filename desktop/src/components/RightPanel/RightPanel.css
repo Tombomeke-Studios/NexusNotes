@@ -32,7 +32,7 @@
 .right-panel-indicator {
   position: absolute;
   bottom: -1px;
-  width: 33.33%;
+  width: 25%;
   height: 2px;
   background: var(--accent);
   border-radius: 2px;
@@ -208,4 +208,42 @@
 
 .info-tag:hover {
   background: rgba(203, 166, 247, 0.18);
+}
+
+/* Local graph tab (#144): the active note's neighbourhood with a depth slider. */
+.right-panel-body--graph {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow: hidden;
+}
+
+.local-graph-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.local-graph-depth {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.local-graph-depth input {
+  width: 72px;
+  accent-color: var(--accent);
+}
+
+.local-graph-canvas {
+  flex: 1;
+  min-height: 280px;
+  display: flex;
+  border: 1px solid var(--border-inner);
+  border-radius: 10px;
+  overflow: hidden;
 }

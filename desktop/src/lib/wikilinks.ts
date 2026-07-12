@@ -37,6 +37,42 @@ export function extractLinks(content: string): string[] {
 }
 
 /**
+ * Neighbourhood subgraph for the local graph panel (#144): the given note
+ * plus everything reachable within `depth` hops (links are treated as
+ * undirected, ghosts count as neighbours). Links are kept only when both
+ * ends are inside the subset.
+ */
+export function localGraph(data: GraphData, noteId: string, depth: number): GraphData {
+  if (!data.nodes.some((n) => n.id === noteId)) return { nodes: [], links: [] };
+
+  const adjacency = new Map<string, string[]>();
+  for (const l of data.links) {
+    (adjacency.get(l.source) ?? adjacency.set(l.source, []).get(l.source)!).push(l.target);
+    (adjacency.get(l.target) ?? adjacency.set(l.target, []).get(l.target)!).push(l.source);
+  }
+
+  const within = new Set<string>([noteId]);
+  let frontier = [noteId];
+  for (let hop = 0; hop < depth && frontier.length > 0; hop++) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      for (const neighbour of adjacency.get(id) ?? []) {
+        if (!within.has(neighbour)) {
+          within.add(neighbour);
+          next.push(neighbour);
+        }
+      }
+    }
+    frontier = next;
+  }
+
+  return {
+    nodes: data.nodes.filter((n) => within.has(n.id)),
+    links: data.links.filter((l) => within.has(l.source) && within.has(l.target)),
+  };
+}
+
+/**
  * Finds the graph node a search query means (#146): prefix matches beat
  * substring matches, real notes beat ghosts, better-connected nodes win ties.
  */

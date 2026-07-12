@@ -6,11 +6,15 @@ export interface GraphNode {
   connections: number;
   /** Top-level folder the note lives in ("" = root); used to colour nodes. */
   folder: string;
+  /** Unresolved wiki-link target: the note does not exist (yet). Clicking creates it. */
+  ghost?: boolean;
 }
 
 export interface GraphLink {
   source: string;
   target: string;
+  /** Link into a ghost node (unresolved target); rendered dashed. */
+  ghost?: boolean;
 }
 
 export interface GraphData {
@@ -41,6 +45,14 @@ export function buildGraphData(notes: Note[]): GraphData {
   const connectionCount = new Map<string, number>();
   const links: GraphLink[] = [];
   const seen = new Set<string>();
+  // Unresolved targets become shared "ghost" nodes (#147): keyed by the
+  // lowercased title, keeping the first-seen casing for create-on-click.
+  const ghosts = new Map<string, string>();
+
+  const countBoth = (a: string, b: string) => {
+    connectionCount.set(a, (connectionCount.get(a) || 0) + 1);
+    connectionCount.set(b, (connectionCount.get(b) || 0) + 1);
+  };
 
   for (const note of notes) {
     const targets = extractLinks(note.content);
@@ -51,8 +63,17 @@ export function buildGraphData(notes: Note[]): GraphData {
         if (!seen.has(key)) {
           seen.add(key);
           links.push({ source: note.id, target: targetId });
-          connectionCount.set(note.id, (connectionCount.get(note.id) || 0) + 1);
-          connectionCount.set(targetId, (connectionCount.get(targetId) || 0) + 1);
+          countBoth(note.id, targetId);
+        }
+      } else if (!targetId) {
+        const ghostKey = target.toLowerCase();
+        if (!ghosts.has(ghostKey)) ghosts.set(ghostKey, target);
+        const ghostId = `ghost:${ghostKey}`;
+        const key = `${note.id}-${ghostId}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          links.push({ source: note.id, target: ghostId, ghost: true });
+          countBoth(note.id, ghostId);
         }
       }
     }
@@ -64,6 +85,16 @@ export function buildGraphData(notes: Note[]): GraphData {
     connections: connectionCount.get(n.id) || 0,
     folder: n.path ? n.path.split("/")[0] : "",
   }));
+
+  for (const [key, title] of ghosts) {
+    nodes.push({
+      id: `ghost:${key}`,
+      title,
+      connections: connectionCount.get(`ghost:${key}`) || 0,
+      folder: "",
+      ghost: true,
+    });
+  }
 
   return { nodes, links };
 }

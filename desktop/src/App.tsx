@@ -1201,6 +1201,7 @@ export default function App() {
               data={graphData}
               activeNoteId={activeNote?.id ?? null}
               onSelectNote={handleSelectNote}
+              onCreateNote={handleCreateNoteWithTitle}
             />
           ) : (
             <Editor

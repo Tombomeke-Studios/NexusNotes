@@ -338,7 +338,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Display a lock icon on encrypted vaults in the sidebar (#198)
 - [ ] Implement a client-side search index (MiniSearch or FlexSearch) for encrypted vaults; server-side search is not possible in zero-knowledge mode (#200)
 - [x] Write unit tests for key derivation, encryption, and decryption (#196)
-- [ ] Write an integration test verifying that an encrypted note survives a full round-trip: encrypt, upload, download, decrypt (#197)
+- [x] Write an integration test verifying that an encrypted note survives a full round-trip: encrypt, upload, download, decrypt (#197)
 
 ---
 

@@ -80,14 +80,21 @@ start_stack() {
   fi
 
   log "Starting backend on :$PORT…"
-  "$bin" &
+  # Run from the service dir: startup auto-migration reads the cwd-relative
+  # "migrations" directory and dies instantly from anywhere else (#201).
+  ( cd "$ROOT/services/sync-service" && exec "$bin" ) &
   local backend_pid=$!
   echo "$newhash" > "$hashfile"
   trap 'log "Stopping backend…"; kill "'"$backend_pid"'" 2>/dev/null || true' EXIT
 
+  local healthy=""
   for _ in $(seq 1 20); do
-    curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1 && break
+    curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1 && { healthy=1; break; }
     sleep 0.5
   done
+  if [ -z "$healthy" ]; then
+    log "Backend failed to become healthy on :$PORT — see its output above."
+    exit 1
+  fi
   log "Backend healthy at http://localhost:$PORT"
 }

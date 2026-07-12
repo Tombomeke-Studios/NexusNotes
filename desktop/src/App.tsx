@@ -231,7 +231,17 @@ export default function App() {
       const unsub = syncClient.onMessage((type, payload) => {
         if (type === "note:created" || type === "note:updated") {
           // E2ee payloads arrive as ciphertext; state only holds plaintext.
-          decryptIncoming(payload as Note).then((note) => {
+          decryptIncoming(payload as Note).then((incoming) => {
+            // An echo must not clobber unsaved local edits on the open note —
+            // e.g. a rename typed right after Ctrl+N would silently revert
+            // and the next autosave would persist the old title (#204).
+            const current = activeNoteRef.current;
+            const dirty =
+              current?.id === incoming.id &&
+              (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving");
+            const note = dirty
+              ? { ...incoming, title: current!.title, content: editorContentRef.current }
+              : incoming;
             setNoteList((prev) => {
               const idx = prev.findIndex((n) => n.id === note.id);
               if (idx >= 0) {
@@ -296,12 +306,26 @@ export default function App() {
     };
   }, [dragging]);
 
+  /**
+   * Persists any unsaved local edits (title and live content) of the note the
+   * editor is about to switch away from. Renames aren't covered by drafts, so
+   * without this a rename typed just before a switch is silently lost (#204).
+   */
+  const flushPendingSave = useCallback(async () => {
+    if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+      await handleSaveNoteRef.current(editorContentRef.current);
+    }
+  }, []);
+
   const handleCreateNoteWithTitle = useCallback(async (title: string) => {
     if (!activeVaultId) return;
     // Keep note names unique (Untitled, Untitled 1, Untitled 2, …).
     const name = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), title);
     const { content: payload, checksum } = await encryptOutgoing(activeVaultId, "");
     const created = await notesApi.create(activeVaultId, name, "", payload, checksum);
+    // The previous note stayed editable while the create was in flight; save
+    // whatever was typed into it (e.g. a rename) before switching (#204).
+    await flushPendingSave();
     const note = { ...created, content: "" };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
@@ -310,7 +334,7 @@ export default function App() {
     setEditorContent("");
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId, encryptOutgoing]);
+  }, [activeVaultId, encryptOutgoing, flushPendingSave]);
 
   const handleCreateNote = useCallback(
     () => handleCreateNoteWithTitle("Untitled"),
@@ -321,6 +345,7 @@ export default function App() {
     setShowCalendar(false);
     const existing = noteListRef.current.find((n) => n.title === iso);
     if (existing) {
+      await flushPendingSave();
       setTabs((prev) =>
         prev.some((t) => t.key === existing.id) ? prev : [...prev, { key: existing.id, type: "note" }],
       );
@@ -341,6 +366,7 @@ export default function App() {
     });
     const { content: payload, checksum } = await encryptOutgoing(activeVaultId, template);
     const created = await notesApi.create(activeVaultId, iso, "Daily", payload, checksum);
+    await flushPendingSave();
     const note = { ...created, content: template };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
@@ -349,7 +375,7 @@ export default function App() {
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId, decryptIncoming, encryptOutgoing]);
+  }, [activeVaultId, decryptIncoming, encryptOutgoing, flushPendingSave]);
 
   const openGraphTab = useCallback(() => {
     setTabs((prev) =>
@@ -438,6 +464,7 @@ export default function App() {
     const title = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), `${src.title} copy`);
     const { content: payload, checksum } = await encryptOutgoing(activeVaultId, src.content);
     const created = await notesApi.create(activeVaultId, title, src.path, payload, checksum);
+    await flushPendingSave();
     const note = { ...created, content: src.content };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
@@ -446,7 +473,7 @@ export default function App() {
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId, encryptOutgoing]);
+  }, [activeVaultId, encryptOutgoing, flushPendingSave]);
 
   const deleteOne = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
@@ -708,6 +735,10 @@ export default function App() {
   }, []);
 
   const handleSelectNote = useCallback(async (noteId: string) => {
+    // Save any unsaved title/content of the outgoing note first (#204).
+    if (activeNoteRef.current && activeNoteRef.current.id !== noteId) {
+      await flushPendingSave();
+    }
     keyboardCursorRef.current = noteId;
     if (activeVaultIdRef.current) {
       setRecentIds(pushRecent(activeVaultIdRef.current, noteId));
@@ -731,7 +762,7 @@ export default function App() {
       setSaveStatus("saved");
     }
     setCursor({ line: 1, col: 1 });
-  }, [decryptIncoming, vaultOf]);
+  }, [decryptIncoming, vaultOf, flushPendingSave]);
 
   // Keyboard navigation of the file tree: Up/Down move a single-note highlight
   // through the visible order, Enter opens it. Ignored while typing, in the

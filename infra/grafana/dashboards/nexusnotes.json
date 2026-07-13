@@ -1,0 +1,78 @@
+{
+  "title": "NexusNotes Sync Service",
+  "uid": "nexusnotes",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Request rate by route (req/s)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(nexusnotes_http_requests_total[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "p95 latency by route (s)",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (route, le) (rate(nexusnotes_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Active WebSocket connections",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 6 },
+      "targets": [{ "expr": "nexusnotes_ws_connections" }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Note operations (ops/min)",
+      "gridPos": { "x": 6, "y": 8, "w": 9, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum by (op) (rate(nexusnotes_note_operations_total[5m])) * 60",
+          "legendFormat": "{{op}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Error responses (5xx/s)",
+      "gridPos": { "x": 15, "y": 8, "w": 9, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(nexusnotes_http_requests_total{status=~\"5..\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Go memory (heap in use)",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 6 },
+      "targets": [{ "expr": "go_memstats_heap_inuse_bytes{job=\"sync-service\"}" }]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Goroutines",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 6 },
+      "targets": [{ "expr": "go_goroutines{job=\"sync-service\"}" }]
+    }
+  ]
+}

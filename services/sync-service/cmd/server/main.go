@@ -55,6 +55,22 @@ func main() {
 
 	hub := ws.NewHub()
 	accountService := service.NewAccountService(userRepo, vaultRepo, noteRepo, indexer, hub)
+	deviceRepo := repository.NewDeviceRepo(pool)
+
+	// Daily cleanup (#46): forget devices that haven't been seen in 90 days.
+	go func() {
+		const retention = 90 * 24 * time.Hour
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			if n, err := deviceRepo.DeleteInactive(context.Background(), retention); err != nil {
+				log.Printf("device cleanup failed: %v", err)
+			} else if n > 0 {
+				log.Printf("device cleanup: removed %d inactive device(s)", n)
+			}
+			<-ticker.C
+		}
+	}()
 
 	authHandler := handler.NewAuthHandler(authService, accountService, userRepo)
 	vaultHandler := handler.NewVaultHandler(vaultRepo)
@@ -62,7 +78,8 @@ func main() {
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
-	wsHandler := handler.NewWSHandler(hub, authService)
+	deviceHandler := handler.NewDeviceHandler(deviceRepo, hub)
+	wsHandler := handler.NewWSHandler(hub, authService, deviceRepo)
 
 	mux := http.NewServeMux()
 
@@ -93,6 +110,8 @@ func main() {
 	protectedMux.HandleFunc("GET /api/notes/starred", starHandler.List)
 	protectedMux.HandleFunc("POST /api/notes/{noteId}/star", starHandler.Star)
 	protectedMux.HandleFunc("DELETE /api/notes/{noteId}/star", starHandler.Unstar)
+	protectedMux.HandleFunc("GET /api/devices", deviceHandler.List)
+	protectedMux.HandleFunc("DELETE /api/devices/{deviceId}", deviceHandler.Revoke)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/search", noteHandler.Search)
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags)
 	protectedMux.HandleFunc("GET /api/search", searchHandler.Search)

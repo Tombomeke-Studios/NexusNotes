@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 )
 
 type Message struct {
@@ -60,6 +61,42 @@ func (h *Hub) DisconnectUser(userID string) {
 	}
 	if len(clients) > 0 {
 		log.Printf("ws: disconnected %d client(s) for user %s", len(clients), userID)
+	}
+}
+
+// DisconnectDevice force-closes the live connections of one revoked device
+// (#45). A best-effort "device:revoked" message goes out first so the client
+// signs itself out — the JWT itself stays valid until expiry (per-device
+// token revocation needs the refresh-token work, #49).
+func (h *Hub) DisconnectDevice(userID, deviceID string) {
+	revoked, _ := json.Marshal(Message{Type: "device:revoked", Payload: json.RawMessage("{}")})
+
+	h.mu.Lock()
+	var targets []*Client
+	for client := range h.clients[userID] {
+		if client.DeviceID == deviceID {
+			targets = append(targets, client)
+			delete(h.clients[userID], client)
+		}
+	}
+	if len(h.clients[userID]) == 0 {
+		delete(h.clients, userID)
+	}
+	h.mu.Unlock()
+
+	for _, client := range targets {
+		select {
+		case client.Send <- revoked:
+		default:
+		}
+		// Give the write pump a moment to flush the message, then close.
+		go func(c *Client) {
+			time.Sleep(200 * time.Millisecond)
+			_ = c.Conn.Close()
+		}(client)
+	}
+	if len(targets) > 0 {
+		log.Printf("ws: revoked device %s for user %s (%d connection(s))", deviceID, userID, len(targets))
 	}
 }
 

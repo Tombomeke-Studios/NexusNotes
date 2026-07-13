@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { WorkspacePrefs } from "../../lib/prefs";
 import type { Vault } from "../../lib/types";
-import { auth, ApiError } from "../../lib/api";
+import { auth, devices as devicesApi, ApiError } from "../../lib/api";
+import type { Device } from "../../lib/types";
+import { relativeTimeLabel } from "../../lib/stats";
 import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
 import "./Settings.css";
 
@@ -59,6 +61,30 @@ export function Settings({
 
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // Devices registered to the account (#44); loaded when Account opens.
+  const [deviceList, setDeviceList] = useState<Device[] | null>(null);
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  const currentDeviceId = localStorage.getItem("nexus_device_id");
+
+  useEffect(() => {
+    if (tab === "account" && deviceList === null) {
+      devicesApi
+        .list()
+        .then(setDeviceList)
+        .catch(() => setDeviceError("Could not load devices"));
+    }
+  }, [tab, deviceList]);
+
+  const handleRevokeDevice = async (id: string) => {
+    setDeviceError(null);
+    try {
+      await devicesApi.revoke(id);
+      setDeviceList((prev) => prev?.filter((d) => d.id !== id) ?? prev);
+    } catch {
+      setDeviceError("Revoking the device failed. Please try again.");
+    }
+  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -271,6 +297,42 @@ export function Settings({
                   </button>
                 </div>
                 {exportError && <div className="settings-danger-error">{exportError}</div>}
+
+                <div className="settings-section-title settings-section-title--spaced">Devices</div>
+                <div className="settings-row-sub settings-devices-sub">
+                  Sync sessions registered to your account. Revoking disconnects the
+                  device and signs it out.
+                </div>
+                {deviceError && <div className="settings-danger-error">{deviceError}</div>}
+                {deviceList !== null && deviceList.length === 0 && (
+                  <div className="settings-row-sub">No devices registered yet.</div>
+                )}
+                <div className="settings-devices">
+                  {(deviceList ?? []).map((d) => (
+                    <div key={d.id} className="settings-device">
+                      <div className="settings-device-info">
+                        <span className="settings-row-label">
+                          {d.name || "Unnamed device"}
+                          {d.id === currentDeviceId && (
+                            <span className="settings-device-badge">This device</span>
+                          )}
+                        </span>
+                        <span className="settings-row-sub">
+                          {d.platform || "unknown"} · last seen {relativeTimeLabel(new Date(d.last_seen))}
+                        </span>
+                      </div>
+                      <button
+                        className="settings-danger-btn settings-device-revoke"
+                        disabled={d.id === currentDeviceId}
+                        title={d.id === currentDeviceId ? "You cannot revoke the device you are using" : "Disconnect and sign out this device"}
+                        onClick={() => handleRevokeDevice(d.id)}
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="settings-danger-zone">
                   <div className="settings-row-label">Delete account</div>
                   <div className="settings-row-sub">

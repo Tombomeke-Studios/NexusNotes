@@ -108,6 +108,16 @@ Vaults can opt in to zero-knowledge E2EE at creation time (full design in
   localStorage draft mirror, and search runs client-side over in-memory
   decrypted notes (the server index only carries title/path).
 
+## Device Management
+
+Each sync client registers itself (stable random device id, human-readable
+name, platform) when its WebSocket connects; Settings lists the account's
+devices with last-seen times. Revoking a device deletes its registration and
+force-closes its connections; the client signs itself out on the
+`device:revoked` message. **Limitation:** access tokens stay valid until
+expiry (24 h), so revocation is cooperative until refresh-token rotation
+(#49) lands. Devices unseen for 90 days are removed by a daily cleanup job.
+
 ## Secrets Management
 
 - `JWT_SECRET` must be set via environment variable

@@ -674,11 +674,11 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/device-management` - Device management
 
-- [ ] Add `GET /api/devices` endpoint returning all devices registered to the authenticated user with name, platform, and last-seen timestamp (#44)
-- [ ] Add `DELETE /api/devices/:id` to revoke a specific device session and invalidate its WebSocket connection (#45)
-- [ ] Show a device list in Settings with name, platform, last seen, and a "Revoke" button (#44)
-- [ ] Auto-expire devices that have been inactive for 90 days via a daily background cleanup job (#46)
-- [ ] Write unit tests for the device repository and revocation handler
+- [x] Add `GET /api/devices` endpoint returning all devices registered to the authenticated user with name, platform, and last-seen timestamp (#44)
+- [x] Add `DELETE /api/devices/:id` to revoke a specific device session and invalidate its WebSocket connection (#45)
+- [x] Show a device list in Settings with name, platform, last seen, and a "Revoke" button (#44)
+- [x] Auto-expire devices that have been inactive for 90 days via a daily background cleanup job (#46)
+- [x] Write a two-context E2E test covering registration, listing, self-revoke guard, and forced sign-out on revocation
 
 ---
 

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,20 +22,26 @@ import (
 )
 
 func main() {
+	// Structured JSON logging (#56); every request line carries a correlation id.
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("load config: %v", err)
+		slog.Error("load config", "error", err)
+		os.Exit(1)
 	}
 
 	ctx := context.Background()
 	pool, err := repository.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("connect database: %v", err)
+		slog.Error("connect database", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	if err := repository.RunMigrations(ctx, pool, "migrations"); err != nil {
-		log.Fatalf("run migrations: %v", err)
+		slog.Error("run migrations", "error", err)
+		os.Exit(1)
 	}
 
 	userRepo := repository.NewUserRepo(pool)
@@ -47,7 +53,7 @@ func main() {
 
 	indexer := search.NewIndexer(cfg.MeiliURL, cfg.MeiliMasterKey)
 	if err := indexer.ConfigureIndex(ctx); err != nil {
-		log.Printf("warn: meilisearch index configuration failed (search may be degraded): %v", err)
+		slog.Warn("meilisearch index configuration failed; search may be degraded", "error", err)
 	}
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
@@ -64,9 +70,9 @@ func main() {
 		defer ticker.Stop()
 		for {
 			if n, err := deviceRepo.DeleteInactive(context.Background(), retention); err != nil {
-				log.Printf("device cleanup failed: %v", err)
+				slog.Error("device cleanup failed", "error", err)
 			} else if n > 0 {
-				log.Printf("device cleanup: removed %d inactive device(s)", n)
+				slog.Info("device cleanup removed inactive devices", "count", n)
 			}
 			<-ticker.C
 		}
@@ -133,16 +139,17 @@ func main() {
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      middleware.Logging(c.Handler(mux)),
+		Handler:      middleware.RequestID(middleware.Logging(c.Handler(mux))),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
 	go func() {
-		log.Printf("sync service listening on :%d", cfg.Port)
+		slog.Info("sync service listening", "port", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v", err)
+			slog.Error("server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
@@ -150,12 +157,13 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("shutting down...")
+	slog.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("shutdown error: %v", err)
+		slog.Error("shutdown error", "error", err)
+		os.Exit(1)
 	}
-	log.Println("server stopped")
+	slog.Info("server stopped")
 }

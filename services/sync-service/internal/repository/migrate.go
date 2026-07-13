@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -76,7 +76,7 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir string
 			return fmt.Errorf("commit migration %s: %w", file, err)
 		}
 
-		log.Printf("migration applied: %s", file)
+		slog.Info("migration applied", "file", file)
 	}
 
 	return nil

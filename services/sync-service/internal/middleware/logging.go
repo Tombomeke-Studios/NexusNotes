@@ -3,7 +3,7 @@ package middleware
 import (
 	"bufio"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"time"
@@ -46,6 +46,12 @@ func Logging(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rw, r)
 
-		log.Printf("%s %s %d %s", r.Method, r.URL.Path, rw.status, time.Since(start))
+		slog.Info("http request",
+			"request_id", GetRequestID(r.Context()),
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.status,
+			"duration_ms", float64(time.Since(start).Microseconds())/1000,
+		)
 	})
 }

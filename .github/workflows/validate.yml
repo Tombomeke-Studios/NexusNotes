@@ -171,6 +171,10 @@ jobs:
         env:
           CI: "true"
           VITE_API_URL: http://localhost:8080
+          # Without this the app falls back to ws://localhost:1420 (Vite) and
+          # the WebSocket never connects on CI — locally a gitignored .env
+          # provides it. Real-time sync behaviour is only tested with it set.
+          VITE_WS_URL: ws://localhost:8080
         run: npm run test:e2e
 
       - name: Upload test report

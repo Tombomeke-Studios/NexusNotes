@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/metrics"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
@@ -147,6 +148,7 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		}()
 	}
 
+	metrics.NoteOps.WithLabelValues("create").Inc()
 	return note, nil
 }
 
@@ -268,6 +270,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		}()
 	}
 
+	metrics.NoteOps.WithLabelValues("update").Inc()
 	return note, nil, nil
 }
 
@@ -290,6 +293,7 @@ func (s *SyncService) DeleteNote(ctx context.Context, noteID, vaultID string) er
 	if s.indexer != nil {
 		s.indexer.DeleteNote(noteID)
 	}
+	metrics.NoteOps.WithLabelValues("delete").Inc()
 	return nil
 }
 

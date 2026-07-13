@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/config"
@@ -125,6 +126,10 @@ func main() {
 	mux.Handle("/api/", authMw(protectedMux))
 	mux.HandleFunc("/ws", wsHandler.HandleConnect)
 
+	// Prometheus scrape endpoint (#57): expose it on the internal network
+	// only; the compose stack keeps it off the public edge.
+	mux.Handle("GET /metrics", promhttp.Handler())
+
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
@@ -139,7 +144,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      middleware.RequestID(middleware.Logging(c.Handler(mux))),
+		Handler:      middleware.RequestID(middleware.Logging(middleware.Metrics(c.Handler(mux)))),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/metrics"
 )
 
 type Message struct {
@@ -31,6 +33,7 @@ func (h *Hub) Register(client *Client) {
 		h.clients[client.UserID] = make(map[*Client]bool)
 	}
 	h.clients[client.UserID][client] = true
+	metrics.WSConnections.Inc()
 	slog.Info("ws client registered", "user_id", client.UserID, "device_id", client.DeviceID, "connections", len(h.clients[client.UserID]))
 }
 
@@ -39,6 +42,9 @@ func (h *Hub) Unregister(client *Client) {
 	defer h.mu.Unlock()
 
 	if clients, ok := h.clients[client.UserID]; ok {
+		if clients[client] {
+			metrics.WSConnections.Dec()
+		}
 		delete(clients, client)
 		if len(clients) == 0 {
 			delete(h.clients, client.UserID)
@@ -56,6 +62,9 @@ func (h *Hub) DisconnectUser(userID string) {
 	delete(h.clients, userID)
 	h.mu.Unlock()
 
+	// The map entries are gone, so the eventual Unregister from each ReadPump
+	// can no longer decrement the gauge — do it here.
+	metrics.WSConnections.Sub(float64(len(clients)))
 	for client := range clients {
 		_ = client.Conn.Close()
 	}
@@ -77,6 +86,7 @@ func (h *Hub) DisconnectDevice(userID, deviceID string) {
 		if client.DeviceID == deviceID {
 			targets = append(targets, client)
 			delete(h.clients[userID], client)
+			metrics.WSConnections.Dec()
 		}
 	}
 	if len(h.clients[userID]) == 0 {

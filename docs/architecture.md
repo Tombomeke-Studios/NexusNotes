@@ -122,6 +122,19 @@ sequenceDiagram
 > Configure Meilisearch searchable attributes and filterable attributes **before** adding
 > documents — changing them after indexing triggers a full reindex.
 
+## Observability
+
+- **Logging:** all sync-service log lines are structured JSON (`slog`); every
+  HTTP request gets a correlation id (inbound `X-Request-ID` honoured, echoed
+  in the response) that is stamped on its request log line.
+- **Metrics:** `GET /metrics` exposes Prometheus instruments — request count
+  and latency by normalized route (ids replaced with `:id`), live WebSocket
+  connection gauge, note create/update/delete counters and Go runtime stats.
+- **Dashboards:** the compose stack ships Prometheus (scraping every 15s) and
+  Grafana with an auto-provisioned NexusNotes dashboard on port 3001.
+- **Admin stats:** `GET /api/admin/stats` (static operator token) reports
+  user/vault/note totals and uptime.
+
 ## Data Model
 
 The relational schema lives in `services/sync-service/migrations/` (source of

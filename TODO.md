@@ -712,12 +712,12 @@ This entry is retained so that existing issue references remain valid.
 > Visibility into what the running application is doing is essential before production.
 > This feature makes the sync service observable without external infrastructure changes.
 
-- [ ] Replace all `fmt.Println` / `log.Println` calls with structured JSON logging using `slog` (Go standard library, no external dependency) (#56)
-- [ ] Add a request-scoped correlation ID middleware; include the ID in every log line for that request (#56)
-- [ ] Add a Prometheus metrics endpoint at `/metrics` exposing: HTTP request count and latency by route, active WebSocket connections, note create/update/delete counters, and Go runtime metrics (#57)
-- [ ] Add Prometheus and Grafana services to `docker-compose.yml` with a pre-built NexusNotes dashboard JSON provisioned at startup (#58)
-- [ ] Add `GET /api/admin/stats` (admin token only) returning: vault count, note count, user count, and uptime (#59)
-- [ ] Write tests for the metrics middleware and the correlation ID propagation
+- [x] Replace all `fmt.Println` / `log.Println` calls with structured JSON logging using `slog` (Go standard library, no external dependency) (#56)
+- [x] Add a request-scoped correlation ID middleware; include the ID in every log line for that request (#56)
+- [x] Add a Prometheus metrics endpoint at `/metrics` exposing: HTTP request count and latency by route, active WebSocket connections, note create/update/delete counters, and Go runtime metrics (#57)
+- [x] Add Prometheus and Grafana services to `docker-compose.yml` with a pre-built NexusNotes dashboard JSON provisioned at startup (#58)
+- [x] Add `GET /api/admin/stats` (admin token only) returning: vault count, note count, user count, and uptime (#59)
+- [x] Write tests for the metrics middleware and the correlation ID propagation
 
 ---
 

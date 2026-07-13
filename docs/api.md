@@ -192,6 +192,10 @@ Returns the caller's registered sync devices (`Device[]`: id, name, platform, la
 
 Revokes a device: forgets it and force-closes its live WebSocket connections after a best-effort `device:revoked` message, which the client honours by signing out. `404` for a device the caller does not own. Note: the JWT itself remains valid until expiry — full per-device token invalidation arrives with refresh-token rotation (#49).
 
+### GET /api/admin/stats
+
+Operator-only: returns instance-wide totals (`users`, `vaults`, `notes`), `uptime_seconds` and `started_at`. Authenticates with a static `ADMIN_TOKEN` bearer configured via environment — separate from user JWTs. Unauthorized or unconfigured requests get a `404`, indistinguishable from a missing route.
+
 ---
 
 ## Search

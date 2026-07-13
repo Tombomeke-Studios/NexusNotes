@@ -179,3 +179,11 @@ GitHub Actions workflow (`.github/workflows/validate.yml`) runs automatically on
 | Run desktop tests | `cd desktop && npm test` |
 | Start full prod stack | `docker compose up -d` |
 | View prod logs | `docker compose logs -f sync-service` |
+
+## Monitoring
+
+`docker compose up` includes Prometheus (`:9090`) and Grafana (`:3001`,
+credentials via `GRAFANA_USER`/`GRAFANA_PASSWORD`, defaults must be changed
+in production). Grafana auto-provisions the Prometheus datasource and the
+NexusNotes dashboard from `infra/grafana/`. Set `ADMIN_TOKEN` to enable the
+operator stats endpoint; leave it unset to disable it entirely.

@@ -672,15 +672,6 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/device-management` - Device management
-
-- [x] Add `GET /api/devices` endpoint returning all devices registered to the authenticated user with name, platform, and last-seen timestamp (#44)
-- [x] Add `DELETE /api/devices/:id` to revoke a specific device session and invalidate its WebSocket connection (#45)
-- [x] Show a device list in Settings with name, platform, last seen, and a "Revoke" button (#44)
-- [x] Auto-expire devices that have been inactive for 90 days via a daily background cleanup job (#46)
-- [x] Write a two-context E2E test covering registration, listing, self-revoke guard, and forced sign-out on revocation
-
----
 
 ## `feature/email-auth` - Email verification and password reset
 
@@ -742,6 +733,12 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/device-management` - Devices: registration, revoke, cleanup (PR #207)
+
+- [x] Devices register on WS connect; Settings lists them with last-seen and a revoke button; revocation force-disconnects and signs out the device (#44, #45)
+- [x] Daily cleanup of devices unseen for 90 days (#46)
+- [x] CI fix: E2E now sets VITE_WS_URL, so WebSocket behaviour is actually exercised on CI
 
 ### `feature/starred-notes` - Server-backed stars (PR #206)
 

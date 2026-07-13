@@ -45,6 +45,7 @@ import { saveDraft, loadDraft, clearDraft } from "./lib/drafts";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
 import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
+import { stripFrontmatter, safeFilename, noteToHtmlDocument, vaultToZip, downloadFile, printNote } from "./lib/export";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
 import type { ViewMode } from "./lib/prefs";
 import type { RailView } from "./components/Workspace/Rail";
@@ -414,6 +415,14 @@ export default function App() {
       openGraphTab();
     }
   }, [openGraphTab]);
+
+  // Vault export (#152): zip built client-side from in-memory notes, so e2ee
+  // vaults export decrypted without their plaintext touching the server.
+  const handleExportVault = useCallback(() => {
+    const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
+    if (!vault || noteListRef.current.length === 0) return;
+    downloadFile(`${safeFilename(vault.name)}.zip`, "application/zip", vaultToZip(noteListRef.current));
+  }, []);
 
   const handleSignOut = useCallback(() => {
     auth.logout();
@@ -1228,7 +1237,7 @@ export default function App() {
               onNoteContextMenu={(e, noteId) =>
                 setCtxMenu({
                   x: Math.min(e.clientX, window.innerWidth - 195),
-                  y: Math.min(e.clientY, window.innerHeight - 175),
+                  y: Math.min(e.clientY, window.innerHeight - 280),
                   noteId,
                 })
               }
@@ -1388,6 +1397,7 @@ export default function App() {
           lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
           activeVault={activeVault ?? null}
           onChangePassphrase={handleChangePassphrase}
+          onExportVault={handleExportVault}
           onUpdatePrefs={updatePrefs}
           onSignOut={handleSignOut}
           onClose={() => setShowSettings(false)}
@@ -1430,6 +1440,30 @@ export default function App() {
               key: "star",
               label: starredSet.has(ctxMenu.noteId) ? "Remove star" : "Star",
               onClick: () => handleToggleStar(ctxMenu.noteId),
+            },
+            {
+              key: "export-md",
+              label: "Export as Markdown",
+              onClick: () => {
+                const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                if (n) downloadFile(`${safeFilename(n.title)}.md`, "text/markdown", stripFrontmatter(n.content));
+              },
+            },
+            {
+              key: "export-html",
+              label: "Export as HTML",
+              onClick: () => {
+                const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                if (n) downloadFile(`${safeFilename(n.title)}.html`, "text/html", noteToHtmlDocument(n));
+              },
+            },
+            {
+              key: "export-pdf",
+              label: "Export as PDF…",
+              onClick: () => {
+                const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                if (n) printNote(n);
+              },
             },
             {
               key: "wikilink",

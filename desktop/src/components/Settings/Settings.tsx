@@ -16,6 +16,8 @@ interface SettingsProps {
   activeVault: Vault | null;
   /** Re-wraps the active e2ee vault's key under a new passphrase (#199). */
   onChangePassphrase: (currentPassphrase: string, newPassphrase: string) => Promise<void>;
+  /** Downloads the active vault as an Obsidian-compatible zip (#152). */
+  onExportVault: () => void;
   onUpdatePrefs: (partial: Partial<WorkspacePrefs>) => void;
   onSignOut: () => void;
   onClose: () => void;
@@ -49,6 +51,7 @@ export function Settings({
   lastSyncLabel,
   activeVault,
   onChangePassphrase,
+  onExportVault,
   onUpdatePrefs,
   onSignOut,
   onClose,
@@ -242,6 +245,19 @@ export function Settings({
                 <div className="settings-kv">
                   <span>Storage</span>
                   <span>PostgreSQL, server-side</span>
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Export vault</div>
+                    <div className="settings-row-sub">
+                      Download {activeVault ? `"${activeVault.name}"` : "the vault"} as a zip of
+                      markdown files (Obsidian-compatible). Encrypted vaults export decrypted,
+                      entirely on this device.
+                    </div>
+                  </div>
+                  <button className="settings-export-btn" onClick={onExportVault} disabled={!activeVault}>
+                    Export .zip
+                  </button>
                 </div>
                 {activeVault?.encryption === "e2ee" && (
                   <>

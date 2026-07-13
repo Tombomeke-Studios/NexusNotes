@@ -15,6 +15,8 @@ type Config struct {
 	MeiliMasterKey      string
 	AuthRateLimitPerMin int
 	AuthRateLimitBurst  int
+	// AdminToken guards /api/admin/*; the endpoints are disabled when empty.
+	AdminToken string
 }
 
 func Load() (*Config, error) {
@@ -48,6 +50,7 @@ func Load() (*Config, error) {
 	}
 
 	meiliMasterKey := os.Getenv("MEILI_MASTER_KEY")
+	adminToken := os.Getenv("ADMIN_TOKEN")
 
 	authRatePerMin, err := intEnv("AUTH_RATE_LIMIT_PER_MIN", 10)
 	if err != nil {
@@ -67,6 +70,7 @@ func Load() (*Config, error) {
 		MeiliMasterKey:      meiliMasterKey,
 		AuthRateLimitPerMin: authRatePerMin,
 		AuthRateLimitBurst:  authRateBurst,
+		AdminToken:          adminToken,
 	}, nil
 }
 

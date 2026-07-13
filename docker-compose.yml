@@ -84,8 +84,36 @@ services:
       retries: 5
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - sync-service
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-change-me-in-production}
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
   meili_data:
+  prometheus_data:
+  grafana_data:

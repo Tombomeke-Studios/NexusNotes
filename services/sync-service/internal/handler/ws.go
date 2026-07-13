@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -53,14 +53,14 @@ func (h *WSHandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		platform := r.URL.Query().Get("platform")
 		go func() {
 			if err := h.deviceRepo.Upsert(context.Background(), deviceID, claims.UserID, name, platform); err != nil {
-				log.Printf("ws: device upsert failed: %v", err)
+				slog.Error("ws device upsert failed", "device_id", deviceID, "error", err)
 			}
 		}()
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("ws: upgrade error: %v", err)
+		slog.Warn("ws upgrade error", "error", err)
 		return
 	}
 

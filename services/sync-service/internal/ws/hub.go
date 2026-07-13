@@ -2,7 +2,7 @@ package ws
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -31,7 +31,7 @@ func (h *Hub) Register(client *Client) {
 		h.clients[client.UserID] = make(map[*Client]bool)
 	}
 	h.clients[client.UserID][client] = true
-	log.Printf("ws: client registered for user %s (total: %d)", client.UserID, len(h.clients[client.UserID]))
+	slog.Info("ws client registered", "user_id", client.UserID, "device_id", client.DeviceID, "connections", len(h.clients[client.UserID]))
 }
 
 func (h *Hub) Unregister(client *Client) {
@@ -44,7 +44,7 @@ func (h *Hub) Unregister(client *Client) {
 			delete(h.clients, client.UserID)
 		}
 	}
-	log.Printf("ws: client unregistered for user %s", client.UserID)
+	slog.Info("ws client unregistered", "user_id", client.UserID, "device_id", client.DeviceID)
 }
 
 // DisconnectUser force-closes every live connection of the user, e.g. after
@@ -60,7 +60,7 @@ func (h *Hub) DisconnectUser(userID string) {
 		_ = client.Conn.Close()
 	}
 	if len(clients) > 0 {
-		log.Printf("ws: disconnected %d client(s) for user %s", len(clients), userID)
+		slog.Info("ws disconnected all clients of user", "user_id", userID, "count", len(clients))
 	}
 }
 
@@ -96,14 +96,14 @@ func (h *Hub) DisconnectDevice(userID, deviceID string) {
 		}(client)
 	}
 	if len(targets) > 0 {
-		log.Printf("ws: revoked device %s for user %s (%d connection(s))", deviceID, userID, len(targets))
+		slog.Info("ws device revoked", "user_id", userID, "device_id", deviceID, "connections", len(targets))
 	}
 }
 
 func (h *Hub) BroadcastToUser(userID string, msg Message, exclude *Client) {
 	data, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("ws: marshal broadcast message: %v", err)
+		slog.Error("ws marshal broadcast message", "error", err)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *Hub) BroadcastToUser(userID string, msg Message, exclude *Client) {
 		select {
 		case client.Send <- data:
 		default:
-			log.Printf("ws: client send buffer full, dropping message")
+			slog.Warn("ws client send buffer full, dropping message", "user_id", client.UserID, "device_id", client.DeviceID)
 		}
 	}
 }

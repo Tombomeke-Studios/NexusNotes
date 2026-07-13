@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -124,7 +124,7 @@ func (s *AuthService) Login(ctx context.Context, email, password, clientIP strin
 	if needsRehash {
 		if newHash, err := hashPassword(password); err == nil {
 			if err := s.userRepo.UpdatePasswordHash(ctx, user.ID, newHash); err != nil {
-				log.Printf("warn: password rehash for user %s failed: %v", user.ID, err)
+				slog.Warn("password rehash failed", "user_id", user.ID, "error", err)
 			}
 		}
 	}

@@ -86,6 +86,7 @@ func main() {
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
 	deviceHandler := handler.NewDeviceHandler(deviceRepo, hub)
+	adminHandler := handler.NewAdminHandler(repository.NewStatsRepo(pool), cfg.AdminToken, time.Now())
 	wsHandler := handler.NewWSHandler(hub, authService, deviceRepo)
 
 	mux := http.NewServeMux()
@@ -129,6 +130,9 @@ func main() {
 	// Prometheus scrape endpoint (#57): expose it on the internal network
 	// only; the compose stack keeps it off the public edge.
 	mux.Handle("GET /metrics", promhttp.Handler())
+
+	// Operator-only; guarded by its own static token, not user JWTs (#59).
+	mux.HandleFunc("GET /api/admin/stats", adminHandler.Stats)
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

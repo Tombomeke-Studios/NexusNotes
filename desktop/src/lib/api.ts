@@ -1,4 +1,4 @@
-import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit } from "./types";
+import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit, Device } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -213,6 +213,13 @@ export const stars = {
     request<void>(`/api/notes/${noteId}/star`, { method: "DELETE" }),
 };
 
+/** Sync devices registered to the account (#44, #45). */
+export const devices = {
+  list: () => request<Device[]>("/api/devices"),
+  revoke: (deviceId: string) =>
+    request<void>(`/api/devices/${deviceId}`, { method: "DELETE" }),
+};
+
 export interface SearchParams {
   q?: string;
   tag?: string;
@@ -235,7 +242,8 @@ export const search = {
   },
 };
 
-function getDeviceId(): string {
+/** Stable per-installation device id, minted on first use. */
+export function getDeviceId(): string {
   let id = localStorage.getItem("nexus_device_id");
   if (!id) {
     id = crypto.randomUUID();

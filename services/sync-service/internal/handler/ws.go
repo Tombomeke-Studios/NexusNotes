@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/ws"
 )
@@ -21,10 +23,11 @@ var upgrader = websocket.Upgrader{
 type WSHandler struct {
 	hub         *ws.Hub
 	authService *service.AuthService
+	deviceRepo  *repository.DeviceRepo
 }
 
-func NewWSHandler(hub *ws.Hub, authService *service.AuthService) *WSHandler {
-	return &WSHandler{hub: hub, authService: authService}
+func NewWSHandler(hub *ws.Hub, authService *service.AuthService, deviceRepo *repository.DeviceRepo) *WSHandler {
+	return &WSHandler{hub: hub, authService: authService, deviceRepo: deviceRepo}
 }
 
 func (h *WSHandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +44,19 @@ func (h *WSHandler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	deviceID := r.URL.Query().Get("device_id")
+
+	// Register/refresh the device (#44): the client identifies itself with a
+	// stable device id plus a human-readable name and platform. Done async so
+	// a slow write never delays the upgrade.
+	if deviceID != "" {
+		name := r.URL.Query().Get("device_name")
+		platform := r.URL.Query().Get("platform")
+		go func() {
+			if err := h.deviceRepo.Upsert(context.Background(), deviceID, claims.UserID, name, platform); err != nil {
+				log.Printf("ws: device upsert failed: %v", err)
+			}
+		}()
+	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

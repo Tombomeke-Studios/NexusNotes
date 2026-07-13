@@ -1,4 +1,5 @@
-import { getToken } from "./api";
+import { getToken, setToken, getDeviceId } from "./api";
+import { deviceDescription } from "./platform";
 
 const WS_BASE = import.meta.env.VITE_WS_URL ||
   `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
@@ -17,8 +18,12 @@ export class SyncClient {
     const token = getToken();
     if (!token) return;
 
-    const deviceId = localStorage.getItem("nexus_device_id") || "";
-    const url = `${WS_BASE}/ws?token=${encodeURIComponent(token)}&device_id=${encodeURIComponent(deviceId)}`;
+    const deviceId = getDeviceId();
+    // The connect also registers this device server-side (#44).
+    const device = deviceDescription();
+    const url =
+      `${WS_BASE}/ws?token=${encodeURIComponent(token)}&device_id=${encodeURIComponent(deviceId)}` +
+      `&device_name=${encodeURIComponent(device.name)}&platform=${encodeURIComponent(device.platform)}`;
 
     this.ws = new WebSocket(url);
 
@@ -29,6 +34,14 @@ export class SyncClient {
     this.ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
+        if (msg.type === "device:revoked") {
+          // This device was revoked from another session (#45): sign out and
+          // stop reconnecting instead of silently re-registering ourselves.
+          this.disconnect();
+          setToken(null);
+          window.dispatchEvent(new CustomEvent("nexus:logout"));
+          return;
+        }
         this.handlers.forEach((h) => h(msg.type, msg.payload));
       } catch {
         // ignore malformed messages

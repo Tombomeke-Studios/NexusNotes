@@ -184,6 +184,14 @@ Stars a note (favourite). Idempotent; `204` on success. The caller must own the 
 
 Removes the star. Idempotent; `204` on success.
 
+### GET /api/devices
+
+Returns the caller's registered sync devices (`Device[]`: id, name, platform, last_seen, created_at), most recently seen first. Devices register themselves on WebSocket connect via the `device_id`, `device_name` and `platform` query parameters; inactive devices are cleaned up daily after 90 days.
+
+### DELETE /api/devices/:deviceId
+
+Revokes a device: forgets it and force-closes its live WebSocket connections after a best-effort `device:revoked` message, which the client honours by signing out. `404` for a device the caller does not own. Note: the JWT itself remains valid until expiry — full per-device token invalidation arrives with refresh-token rotation (#49).
+
 ---
 
 ## Search

@@ -45,6 +45,15 @@ export interface ConflictInfo {
   client_checksum: string;
 }
 
+export interface Device {
+  id: string;
+  user_id: string;
+  name: string;
+  platform: string;
+  last_seen: string;
+  created_at: string;
+}
+
 export interface TreeNode {
   name: string;
   path: string;

@@ -114,9 +114,18 @@ Each sync client registers itself (stable random device id, human-readable
 name, platform) when its WebSocket connects; Settings lists the account's
 devices with last-seen times. Revoking a device deletes its registration and
 force-closes its connections; the client signs itself out on the
-`device:revoked` message. **Limitation:** access tokens stay valid until
-expiry (24 h), so revocation is cooperative until refresh-token rotation
-(#49) lands. Devices unseen for 90 days are removed by a daily cleanup job.
+`device:revoked` message and its refresh-token chain is deleted, so it
+cannot mint new access tokens — the current one dies within the hour.
+Devices unseen for 90 days are removed by a daily cleanup job.
+
+## Sessions and Token Rotation
+
+Access tokens are 1-hour JWTs. Long-lived sessions come from opaque refresh
+tokens: stored server-side as SHA-256 hashes, bound to the issuing device,
+valid 30 days, and **single-use** — every refresh rotates the token. Replay
+of an already-rotated token is treated as theft and revokes the device's
+entire chain. Sign-out invalidates the presented refresh token server-side;
+expired tokens are pruned daily.
 
 ## Secrets Management
 

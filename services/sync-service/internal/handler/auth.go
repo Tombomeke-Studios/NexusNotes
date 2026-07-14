@@ -73,6 +73,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Email       string `json:"email"`
 		Password    string `json:"password"`
 		DisplayName string `json:"display_name"`
+		DeviceID    string `json:"device_id"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -99,9 +100,16 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refresh, err := h.authService.IssueRefreshToken(r.Context(), user.ID, req.DeviceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to register")
+		return
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
-		"user":  user,
-		"token": token,
+		"user":          user,
+		"token":         token,
+		"refresh_token": refresh,
 	})
 }
 
@@ -109,6 +117,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
+		DeviceID string `json:"device_id"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -134,10 +143,51 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refresh, err := h.authService.IssueRefreshToken(r.Context(), user.ID, req.DeviceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to login")
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"user":  user,
-		"token": token,
+		"user":          user,
+		"token":         token,
+		"refresh_token": refresh,
 	})
+}
+
+// Refresh rotates a refresh token into a fresh access + refresh pair (#49).
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+		DeviceID     string `json:"device_id"`
+	}
+	if err := decodeJSON(r, &req); err != nil || req.RefreshToken == "" {
+		writeError(w, http.StatusBadRequest, "refresh_token is required")
+		return
+	}
+
+	access, refresh, err := h.authService.Refresh(r.Context(), req.RefreshToken, req.DeviceID)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"token":         access,
+		"refresh_token": refresh,
+	})
+}
+
+// Logout invalidates the presented refresh token (the token itself is the
+// credential, so no JWT is required). Always 204.
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if err := decodeJSON(r, &req); err == nil {
+		h.authService.Logout(r.Context(), req.RefreshToken)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {

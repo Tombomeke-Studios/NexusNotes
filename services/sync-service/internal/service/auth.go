@@ -35,6 +35,7 @@ type AuthService struct {
 	userRepo  UserStore
 	jwtSecret []byte
 	throttle  *loginThrottle
+	refreshStore RefreshStore
 	sleep     func(time.Duration) // swappable so tests don't actually wait
 }
 
@@ -160,7 +161,7 @@ func (s *AuthService) generateToken(userID string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ID:        uuid.New().String(),
 		},

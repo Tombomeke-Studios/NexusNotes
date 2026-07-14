@@ -9,8 +9,43 @@ export function setToken(token: string | null) {
   if (token) {
     localStorage.setItem("nexus_token", token);
   } else {
+    // Ending the session invalidates the refresh chain locally too.
     localStorage.removeItem("nexus_token");
+    localStorage.removeItem("nexus_refresh");
   }
+}
+
+function setRefreshToken(token: string) {
+  localStorage.setItem("nexus_refresh", token);
+}
+
+// Single-flight guard: concurrent 401s share one rotation instead of racing
+// (a raced second rotation would trip the server's reuse detection).
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Rotates the refresh token into a fresh session; false when impossible. */
+function tryRefresh(): Promise<boolean> {
+  refreshInFlight ??= (async () => {
+    const refresh = localStorage.getItem("nexus_refresh");
+    if (!refresh) return false;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh, device_id: getDeviceId() }),
+      });
+      if (!res.ok) return false;
+      const body = await res.json();
+      setToken(body.token);
+      setRefreshToken(body.refresh_token);
+      return true;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
 }
 
 export function getToken(): string | null {
@@ -23,7 +58,7 @@ export function getToken(): string | null {
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  { autoLogoutOn401 = true }: { autoLogoutOn401?: boolean } = {},
+  { autoLogoutOn401 = true, isRetry = false }: { autoLogoutOn401?: boolean; isRetry?: boolean } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -42,6 +77,11 @@ async function request<T>(
 
   if (!res.ok) {
     if (res.status === 401 && autoLogoutOn401) {
+      // The access token may simply have aged out (1h TTL): rotate the
+      // refresh token and replay the request once before giving up (#49).
+      if (!isRetry && (await tryRefresh())) {
+        return request<T>(path, options, { autoLogoutOn401, isRetry: true });
+      }
       setToken(null);
       window.dispatchEvent(new CustomEvent("nexus:logout"));
     }
@@ -72,7 +112,7 @@ export const auth = {
     password: string,
     displayName: string,
   ): Promise<{ user: User; token: string }> {
-    const result = await request<{ user: User; token: string }>(
+    const result = await request<{ user: User; token: string; refresh_token: string }>(
       "/api/auth/register",
       {
         method: "POST",
@@ -80,10 +120,12 @@ export const auth = {
           email,
           password,
           display_name: displayName,
+          device_id: getDeviceId(),
         }),
       },
     );
     setToken(result.token);
+    setRefreshToken(result.refresh_token);
     return result;
   },
 
@@ -91,18 +133,28 @@ export const auth = {
     email: string,
     password: string,
   ): Promise<{ user: User; token: string }> {
-    const result = await request<{ user: User; token: string }>(
+    const result = await request<{ user: User; token: string; refresh_token: string }>(
       "/api/auth/login",
       {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, device_id: getDeviceId() }),
       },
     );
     setToken(result.token);
+    setRefreshToken(result.refresh_token);
     return result;
   },
 
   logout() {
+    // Best-effort server-side invalidation of the refresh chain.
+    const refresh = localStorage.getItem("nexus_refresh");
+    if (refresh) {
+      fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh }),
+      }).catch(() => {});
+    }
     setToken(null);
   },
 

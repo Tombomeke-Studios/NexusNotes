@@ -674,8 +674,8 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Send a verification email on registration; require verification before creating a vault (#47)
 - [ ] Add `POST /api/auth/forgot-password` — generates a signed reset link and emails it (#48)
 - [ ] Add `POST /api/auth/reset-password` — validates the token and updates the password hash (#48)
-- [ ] Add refresh token rotation: issue a long-lived refresh token alongside the access token; exchange for a new access token on each use; revoke both on logout (#49)
-- [ ] Add a `refresh_tokens` table and `POST /api/auth/refresh` endpoint (#49)
+- [x] Add refresh token rotation: issue a long-lived refresh token alongside the access token; exchange for a new access token on each use; revoke both on logout (#49)
+- [x] Add a refresh_tokens store and `POST /api/auth/refresh` endpoint; reuse detection revokes the device chain, device revocation deletes it (#49)
 - [ ] Configure SMTP via environment variables (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`) (#50)
 - [ ] Write unit tests for token generation, validation, and expiry logic
 

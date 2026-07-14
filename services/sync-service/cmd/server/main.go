@@ -58,6 +58,8 @@ func main() {
 	}
 
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+	refreshRepo := repository.NewRefreshRepo(pool)
+	authService.SetRefreshStore(refreshRepo)
 	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, indexer)
 
 	hub := ws.NewHub()
@@ -75,6 +77,11 @@ func main() {
 			} else if n > 0 {
 				slog.Info("device cleanup removed inactive devices", "count", n)
 			}
+			if n, err := refreshRepo.DeleteExpired(context.Background()); err != nil {
+				slog.Error("refresh token cleanup failed", "error", err)
+			} else if n > 0 {
+				slog.Info("refresh token cleanup removed expired tokens", "count", n)
+			}
 			<-ticker.C
 		}
 	}()
@@ -85,7 +92,7 @@ func main() {
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
-	deviceHandler := handler.NewDeviceHandler(deviceRepo, hub)
+	deviceHandler := handler.NewDeviceHandler(deviceRepo, refreshRepo, hub)
 	adminHandler := handler.NewAdminHandler(repository.NewStatsRepo(pool), cfg.AdminToken, time.Now())
 	wsHandler := handler.NewWSHandler(hub, authService, deviceRepo)
 
@@ -94,6 +101,8 @@ func main() {
 	authLimiter := middleware.NewRateLimiter(cfg.AuthRateLimitPerMin, cfg.AuthRateLimitBurst)
 	mux.Handle("POST /api/auth/register", authLimiter.Middleware(http.HandlerFunc(authHandler.Register)))
 	mux.Handle("POST /api/auth/login", authLimiter.Middleware(http.HandlerFunc(authHandler.Login)))
+	mux.Handle("POST /api/auth/refresh", authLimiter.Middleware(http.HandlerFunc(authHandler.Refresh)))
+	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
 
 	authMw := middleware.Auth(authService)
 

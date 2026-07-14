@@ -11,12 +11,13 @@ import (
 
 // DeviceHandler exposes the user's registered sync devices (#44, #45).
 type DeviceHandler struct {
-	deviceRepo *repository.DeviceRepo
-	hub        *ws.Hub
+	deviceRepo  *repository.DeviceRepo
+	refreshRepo *repository.RefreshRepo
+	hub         *ws.Hub
 }
 
-func NewDeviceHandler(deviceRepo *repository.DeviceRepo, hub *ws.Hub) *DeviceHandler {
-	return &DeviceHandler{deviceRepo: deviceRepo, hub: hub}
+func NewDeviceHandler(deviceRepo *repository.DeviceRepo, refreshRepo *repository.RefreshRepo, hub *ws.Hub) *DeviceHandler {
+	return &DeviceHandler{deviceRepo: deviceRepo, refreshRepo: refreshRepo, hub: hub}
 }
 
 // List returns the caller's devices, most recently seen first.
@@ -49,6 +50,9 @@ func (h *DeviceHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "device not found")
 		return
 	}
+	// With its refresh chain gone the device cannot mint new access tokens;
+	// the current JWT dies within the hour (#49 closes the old caveat).
+	_ = h.refreshRepo.DeleteByUserDevice(r.Context(), userID, deviceID)
 	h.hub.DisconnectDevice(userID, deviceID)
 	w.WriteHeader(http.StatusNoContent)
 }

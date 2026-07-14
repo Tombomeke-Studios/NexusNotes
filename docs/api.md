@@ -238,6 +238,26 @@ Removes a member (owner) or leaves the vault (a member removing themselves) → 
 
 Shared vaults also appear in `GET /api/vaults`, each stamped with the caller's `role` (`owner`/`editor`/`viewer`). Note create/update/delete broadcast over WebSocket to the owner and all members.
 
+## Attachments
+
+Attachments are stored in S3-compatible object storage (MinIO); endpoints return `503` when it isn't configured.
+
+### POST /api/notes/:noteId/attachments
+
+Multipart upload (field `file`, max 25 MiB) → the created `Attachment`. Write access required.
+
+### GET /api/notes/:noteId/attachments
+
+Lists a note's attachments (`Attachment[]`). Read access required.
+
+### GET /api/attachments/:id
+
+Streams the file bytes (read access). Authenticated, so inline images are loaded by the client as a blob URL rather than a bare `<img src>`.
+
+### DELETE /api/attachments/:id
+
+Removes the attachment (metadata + object). Write access required.
+
 ## Search
 
 ### GET /api/vaults/:vaultId/search?q=

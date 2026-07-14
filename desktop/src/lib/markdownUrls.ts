@@ -8,6 +8,6 @@ import { defaultUrlTransform } from "react-markdown";
  * sanitizer for everything else.
  */
 export function wikiUrlTransform(url: string): string {
-  if (url.startsWith("wikilink://") || url.startsWith("tag://")) return url;
+  if (url.startsWith("wikilink://") || url.startsWith("tag://") || url.startsWith("attachment://")) return url;
   return defaultUrlTransform(url);
 }

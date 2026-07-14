@@ -19,7 +19,10 @@ import { cursorPosition } from "../../lib/stats";
 import { toggleTask } from "../../lib/tasks";
 import { remarkWikilinks } from "../../lib/remarkWikilinks";
 import { remarkTags } from "../../lib/remarkTags";
+import { remarkImageEmbeds } from "../../lib/remarkImageEmbeds";
 import { wikiUrlTransform } from "../../lib/markdownUrls";
+import { attachments as attachmentsApi, type Attachment } from "../../lib/api";
+import { AttachmentImage } from "./AttachmentImage";
 import "./Editor.css";
 
 hljs.registerLanguage("javascript", javascript);
@@ -84,6 +87,9 @@ export function Editor({
   const [hasChanges, setHasChanges] = useState(false);
   const [splitDragging, setSplitDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // The current note's attachments, for resolving ![[image]] embeds (#153).
+  const [attachmentList, setAttachmentList] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
   const contentRowRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -95,6 +101,8 @@ export function Editor({
   contentRef.current = content;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  const noteRef = useRef(note);
+  noteRef.current = note;
 
   const notesByTitle = useMemo(() => {
     const map = new Map<string, string>();
@@ -118,11 +126,60 @@ export function Editor({
     }
   }, [note]);
 
+  // Load the note's attachments so ![[image]] embeds resolve (#153).
+  useEffect(() => {
+    if (!note) {
+      setAttachmentList([]);
+      return;
+    }
+    let active = true;
+    attachmentsApi
+      .list(note.id)
+      .then((list) => active && setAttachmentList(list))
+      .catch(() => active && setAttachmentList([]));
+    return () => {
+      active = false;
+    };
+  }, [note]);
+
   const reportCursor = (el: HTMLTextAreaElement) => {
     if (!onCursorChange || typeof el.selectionStart !== "number") return;
     const { line, col } = cursorPosition(el.value, el.selectionStart);
     onCursorChange(line, col);
   };
+
+  // Uploads dropped/pasted files to the current note and inserts an embed for
+  // each at the cursor: images as `![[name]]`, other files as `[[name]]` (#153).
+  const uploadFiles = useCallback(async (files: File[]) => {
+    const current = noteRef.current;
+    if (!current || files.length === 0) return;
+    setUploading(true);
+    try {
+      for (const file of files) {
+        try {
+          const att = await attachmentsApi.upload(current.id, file);
+          setAttachmentList((prev) => [...prev, att]);
+          const embed = att.mime_type.startsWith("image/") ? `![[${att.filename}]]` : `[[${att.filename}]]`;
+          const el = textareaRef.current;
+          const value = contentRef.current;
+          const at = el && typeof el.selectionStart === "number" ? el.selectionStart : value.length;
+          const insert = (at > 0 && value[at - 1] !== "\n" ? "\n" : "") + embed + "\n";
+          const next = value.slice(0, at) + insert + value.slice(at);
+          handleChangeRef.current(next);
+          requestAnimationFrame(() => {
+            if (!el) return;
+            const caret = at + insert.length;
+            el.focus();
+            el.setSelectionRange(caret, caret);
+          });
+        } catch {
+          /* skip a file that failed to upload */
+        }
+      }
+    } finally {
+      setUploading(false);
+    }
+  }, []);
 
   const handleChange = useCallback(
     (value: string) => {
@@ -141,6 +198,8 @@ export function Editor({
     },
     [onLiveChange],
   );
+  const handleChangeRef = useRef(handleChange);
+  handleChangeRef.current = handleChange;
 
   // Template insertion (#155): splice the text in at the cursor (replacing a
   // selection if any) and route it through handleChange so the dirty flag,
@@ -271,6 +330,20 @@ export function Editor({
     [],
   );
 
+  // Renders an ![[image]] embed (attachment:// url) via the authenticated
+  // loader; falls back to a normal <img> for ordinary markdown images (#153).
+  const renderImage = useCallback(
+    ({ src, alt }: React.ImgHTMLAttributes<HTMLImageElement>) => {
+      const url = typeof src === "string" ? src : "";
+      if (url.startsWith("attachment://")) {
+        const name = decodeURIComponent(url.slice("attachment://".length));
+        return <AttachmentImage name={name} alt={alt ?? ""} list={attachmentList} />;
+      }
+      return <img className="attachment-image" src={url} alt={alt ?? ""} />;
+    },
+    [attachmentList],
+  );
+
   const renderAnchor = useCallback(
     ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children?: React.ReactNode }) => {
       if (href?.startsWith("tag://")) {
@@ -399,9 +472,26 @@ export function Editor({
             onSelect={(e) => reportCursor(e.currentTarget)}
             onClick={(e) => reportCursor(e.currentTarget)}
             onKeyUp={(e) => reportCursor(e.currentTarget)}
+            onDrop={(e) => {
+              const files = Array.from(e.dataTransfer.files);
+              if (files.length > 0) {
+                e.preventDefault();
+                uploadFiles(files);
+              }
+            }}
+            onPaste={(e) => {
+              const files = Array.from(e.clipboardData.files);
+              if (files.length > 0) {
+                e.preventDefault();
+                uploadFiles(files);
+              }
+            }}
             spellCheck={false}
             placeholder="Start writing..."
           />
+        )}
+        {uploading && (
+          <div className="editor-uploading">Uploading…</div>
         )}
         {mode === "split" && (
           <div
@@ -420,8 +510,8 @@ export function Editor({
           <div ref={previewRef} className="editor-preview markdown-body" style={{ fontSize }}>
             <div className="markdown-body-inner">
               <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkWikilinks, remarkTags]}
-                components={{ code: renderCode, pre: renderPre, a: renderAnchor, input: renderCheckbox }}
+                remarkPlugins={[remarkGfm, remarkImageEmbeds, remarkWikilinks, remarkTags]}
+                components={{ code: renderCode, pre: renderPre, a: renderAnchor, input: renderCheckbox, img: renderImage }}
                 urlTransform={wikiUrlTransform}
               >
                 {content}

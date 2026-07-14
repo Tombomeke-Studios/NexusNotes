@@ -196,3 +196,10 @@ configured, registration sends a verification email and a verified address is
 required before creating a vault; "forgot password" sends a reset link. Leave
 `SMTP_HOST` empty to disable email entirely (messages are logged instead and
 the verification requirement is not enforced).
+
+## Attachments (optional)
+
+Set `MINIO_ENDPOINT` (host:port), `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` and
+optionally `MINIO_BUCKET` (default `attachments`) to enable note attachments
+backed by MinIO or any S3-compatible store; the bucket is created on startup.
+Leave `MINIO_ENDPOINT` empty to disable attachments (the endpoints return 503).

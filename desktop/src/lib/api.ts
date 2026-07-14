@@ -306,6 +306,46 @@ export const stars = {
     request<void>(`/api/notes/${noteId}/star`, { method: "DELETE" }),
 };
 
+export interface Attachment {
+  id: string;
+  note_id: string;
+  vault_id: string;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+/** Note attachments backed by object storage (#153). */
+export const attachments = {
+  list: (noteId: string) => request<Attachment[]>(`/api/notes/${noteId}/attachments`),
+  async upload(noteId: string, file: File): Promise<Attachment> {
+    const form = new FormData();
+    form.append("file", file);
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/notes/${noteId}/attachments`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new ApiError(res.status, body.error || "Upload failed");
+    }
+    return res.json();
+  },
+  remove: (id: string) => request<void>(`/api/attachments/${id}`, { method: "DELETE" }),
+  /** Fetches the bytes with auth and returns an object URL (caller revokes it). */
+  async objectUrl(id: string): Promise<string> {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/api/attachments/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new ApiError(res.status, "Failed to load attachment");
+    return URL.createObjectURL(await res.blob());
+  },
+};
+
 /** Sync devices registered to the account (#44, #45). */
 export const devices = {
   list: () => request<Device[]>("/api/devices"),

@@ -29,6 +29,11 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM=${SMTP_FROM:-}
+      # Attachment object storage (#153); attachments are disabled if unset.
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-nexus_minio}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-nexus_minio_pass}
+      - MINIO_BUCKET=${MINIO_BUCKET:-attachments}
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,6 +41,8 @@ services:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
+      minio:
+        condition: service_started
     restart: unless-stopped
 
   postgres:

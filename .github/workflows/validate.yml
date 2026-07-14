@@ -132,6 +132,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: nexus_minio
+          MINIO_ROOT_PASSWORD: nexus_minio_dev
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -sf http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -146,6 +159,9 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: e2e-ci-secret
           PORT: "8080"
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ACCESS_KEY: nexus_minio
+          MINIO_SECRET_KEY: nexus_minio_dev
         run: |
           go mod download
           go run cmd/migrate/main.go

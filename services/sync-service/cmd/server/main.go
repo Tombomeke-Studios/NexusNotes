@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/config"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/handler"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/mail"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
@@ -60,6 +61,14 @@ func main() {
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	refreshRepo := repository.NewRefreshRepo(pool)
 	authService.SetRefreshStore(refreshRepo)
+
+	mailer := mail.New(mail.SMTPConfig{
+		Host: cfg.SMTPHost, Port: cfg.SMTPPort,
+		User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
+	})
+	verifyRepo := repository.NewEmailVerificationRepo(pool)
+	resetRepo := repository.NewPasswordResetRepo(pool)
+	emailAuth := service.NewEmailAuthService(userRepo, verifyRepo, resetRepo, refreshRepo, mailer, cfg.AppBaseURL)
 	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, indexer)
 
 	hub := ws.NewHub()
@@ -82,12 +91,18 @@ func main() {
 			} else if n > 0 {
 				slog.Info("refresh token cleanup removed expired tokens", "count", n)
 			}
+			if _, err := verifyRepo.DeleteExpired(context.Background()); err != nil {
+				slog.Error("verification token cleanup failed", "error", err)
+			}
+			if _, err := resetRepo.DeleteExpired(context.Background()); err != nil {
+				slog.Error("reset token cleanup failed", "error", err)
+			}
 			<-ticker.C
 		}
 	}()
 
-	authHandler := handler.NewAuthHandler(authService, accountService, userRepo)
-	vaultHandler := handler.NewVaultHandler(vaultRepo)
+	authHandler := handler.NewAuthHandler(authService, accountService, emailAuth, userRepo)
+	vaultHandler := handler.NewVaultHandler(vaultRepo, userRepo, mailer.Enabled())
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
@@ -103,6 +118,9 @@ func main() {
 	mux.Handle("POST /api/auth/login", authLimiter.Middleware(http.HandlerFunc(authHandler.Login)))
 	mux.Handle("POST /api/auth/refresh", authLimiter.Middleware(http.HandlerFunc(authHandler.Refresh)))
 	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
+	mux.Handle("POST /api/auth/verify-email", authLimiter.Middleware(http.HandlerFunc(authHandler.VerifyEmail)))
+	mux.Handle("POST /api/auth/forgot-password", authLimiter.Middleware(http.HandlerFunc(authHandler.ForgotPassword)))
+	mux.Handle("POST /api/auth/reset-password", authLimiter.Middleware(http.HandlerFunc(authHandler.ResetPassword)))
 
 	authMw := middleware.Auth(authService)
 

@@ -50,10 +50,10 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	var u model.User
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, display_name, created_at, updated_at
+		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at
 		 FROM users WHERE email = $1`,
 		email,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -93,10 +93,10 @@ func (r *UserRepo) UpdatePasswordHash(ctx context.Context, id, passwordHash stri
 func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) {
 	var u model.User
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, display_name, created_at, updated_at
+		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at
 		 FROM users WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -104,4 +104,14 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) 
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
 	return &u, nil
+}
+
+// SetEmailVerified marks the user's email address as confirmed (#47).
+func (r *UserRepo) SetEmailVerified(ctx context.Context, id string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET email_verified = true, updated_at = now() WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("set email verified: %w", err)
+	}
+	return nil
 }

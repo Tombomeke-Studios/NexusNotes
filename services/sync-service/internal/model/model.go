@@ -10,6 +10,7 @@ type User struct {
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"`
 	DisplayName  string    `json:"display_name"`
+	EmailVerified bool     `json:"email_verified"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

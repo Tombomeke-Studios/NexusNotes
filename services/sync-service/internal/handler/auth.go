@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -14,11 +15,12 @@ import (
 type AuthHandler struct {
 	authService    *service.AuthService
 	accountService *service.AccountService
+	emailAuth      *service.EmailAuthService
 	userRepo       *repository.UserRepo
 }
 
-func NewAuthHandler(authService *service.AuthService, accountService *service.AccountService, userRepo *repository.UserRepo) *AuthHandler {
-	return &AuthHandler{authService: authService, accountService: accountService, userRepo: userRepo}
+func NewAuthHandler(authService *service.AuthService, accountService *service.AccountService, emailAuth *service.EmailAuthService, userRepo *repository.UserRepo) *AuthHandler {
+	return &AuthHandler{authService: authService, accountService: accountService, emailAuth: emailAuth, userRepo: userRepo}
 }
 
 // ExportAccount streams a zip with all of the user's data (GDPR portability):
@@ -106,6 +108,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Kick off email verification (#47); best effort — a mail failure must not
+	// fail registration, and with SMTP unconfigured this is a logged no-op.
+	if h.emailAuth != nil {
+		if err := h.emailAuth.SendVerification(r.Context(), user.ID, user.Email); err != nil {
+			slog.Warn("send verification email on register", "user_id", user.ID, "error", err)
+		}
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"user":          user,
 		"token":         token,
@@ -154,6 +164,57 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"token":         token,
 		"refresh_token": refresh,
 	})
+}
+
+// VerifyEmail confirms an address from the token in a verification email (#47).
+func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := decodeJSON(r, &req); err != nil || req.Token == "" {
+		writeError(w, http.StatusBadRequest, "token is required")
+		return
+	}
+	if err := h.emailAuth.VerifyEmail(r.Context(), req.Token); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid or expired verification link")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ForgotPassword emails a reset link (#48). Always 204 so the response never
+// reveals whether the address is registered.
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := decodeJSON(r, &req); err != nil || req.Email == "" {
+		writeError(w, http.StatusBadRequest, "email is required")
+		return
+	}
+	h.emailAuth.RequestPasswordReset(r.Context(), req.Email)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ResetPassword sets a new password from a reset token and revokes sessions (#48).
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+	if err := decodeJSON(r, &req); err != nil || req.Token == "" {
+		writeError(w, http.StatusBadRequest, "token is required")
+		return
+	}
+	if len(req.Password) < 8 {
+		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+	if err := h.emailAuth.ResetPassword(r.Context(), req.Token, req.Password); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid or expired reset link")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Refresh rotates a refresh token into a fresh access + refresh pair (#49).

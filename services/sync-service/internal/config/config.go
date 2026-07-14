@@ -17,6 +17,15 @@ type Config struct {
 	AuthRateLimitBurst  int
 	// AdminToken guards /api/admin/*; the endpoints are disabled when empty.
 	AdminToken string
+	// SMTP_* mail settings; when SMTPHost is empty, mail is logged not sent
+	// and email verification is not enforced (#50).
+	SMTPHost string
+	SMTPPort int
+	SMTPUser string
+	SMTPPass string
+	SMTPFrom string
+	// AppBaseURL is the public origin used to build action links in emails.
+	AppBaseURL string
 }
 
 func Load() (*Config, error) {
@@ -61,6 +70,15 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	smtpPort, err := intEnv("SMTP_PORT", 587)
+	if err != nil {
+		return nil, err
+	}
+	appBaseURL := os.Getenv("APP_BASE_URL")
+	if appBaseURL == "" {
+		appBaseURL = "http://localhost:1420"
+	}
+
 	return &Config{
 		Port:                port,
 		DatabaseURL:         dbURL,
@@ -71,6 +89,12 @@ func Load() (*Config, error) {
 		AuthRateLimitPerMin: authRatePerMin,
 		AuthRateLimitBurst:  authRateBurst,
 		AdminToken:          adminToken,
+		SMTPHost:            os.Getenv("SMTP_HOST"),
+		SMTPPort:            smtpPort,
+		SMTPUser:            os.Getenv("SMTP_USER"),
+		SMTPPass:            os.Getenv("SMTP_PASS"),
+		SMTPFrom:            os.Getenv("SMTP_FROM"),
+		AppBaseURL:          appBaseURL,
 	}, nil
 }
 

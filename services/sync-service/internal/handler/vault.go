@@ -15,14 +15,31 @@ import (
 
 type VaultHandler struct {
 	vaultRepo *repository.VaultRepo
+	userRepo  *repository.UserRepo
+	// requireVerified gates vault creation on a confirmed email (#47); only
+	// active when SMTP is configured, so mail-less self-hosts are unaffected.
+	requireVerified bool
 }
 
-func NewVaultHandler(vaultRepo *repository.VaultRepo) *VaultHandler {
-	return &VaultHandler{vaultRepo: vaultRepo}
+func NewVaultHandler(vaultRepo *repository.VaultRepo, userRepo *repository.UserRepo, requireVerified bool) *VaultHandler {
+	return &VaultHandler{vaultRepo: vaultRepo, userRepo: userRepo, requireVerified: requireVerified}
 }
 
 func (h *VaultHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
+
+	// Require a verified email before the account can hold data (#47).
+	if h.requireVerified {
+		user, err := h.userRepo.GetByID(r.Context(), userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to create vault")
+			return
+		}
+		if !user.EmailVerified {
+			writeError(w, http.StatusForbidden, "please verify your email address before creating a vault")
+			return
+		}
+	}
 
 	var req struct {
 		Name string `json:"name"`

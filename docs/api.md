@@ -35,6 +35,18 @@ Response (201):
 
 Response (200): same shape as register.
 
+### POST /api/auth/verify-email
+
+Confirms an email address from a verification-link token: `{token}` → `204`. Tokens are single-use and expire in 24 hours. A verification email is sent on registration when SMTP is configured.
+
+### POST /api/auth/forgot-password
+
+Requests a password-reset email: `{email}` → always `204`, whether or not the address is registered (no account enumeration).
+
+### POST /api/auth/reset-password
+
+Sets a new password from a reset-link token: `{token, password}` → `204`. Tokens are single-use, expire in 1 hour, and a successful reset revokes all of the user's existing sessions.
+
 ### POST /api/auth/refresh
 
 Rotates a refresh token: `{refresh_token, device_id}` → `{token, refresh_token}`. Refresh tokens are single-use and bound to the device that logged in; replaying an already-rotated token revokes the device's whole chain (theft signal). Access tokens live 1 hour; login/register responses include the first `refresh_token`.

@@ -29,8 +29,8 @@ test.describe("YAML front-matter", () => {
     await textarea.fill("---\ntags: [backend, api]\n---\n\nNote content");
     await waitForAutosave(page);
 
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "backend" })).toBeVisible();
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "api" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "backend" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "api" })).toBeVisible();
   });
 
   test("front-matter tags and inline tags are both shown", async ({ page }) => {
@@ -40,8 +40,8 @@ test.describe("YAML front-matter", () => {
     await textarea.fill("---\ntags: [fromfm]\n---\n\nThis also has #inlinetag");
     await waitForAutosave(page);
 
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "fromfm" })).toBeVisible();
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "inlinetag" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "fromfm" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "inlinetag" })).toBeVisible();
   });
 
   test("note without front-matter shows no tag chips", async ({ page }) => {

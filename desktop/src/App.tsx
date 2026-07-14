@@ -13,6 +13,7 @@ import { TabBar } from "./components/Workspace/TabBar";
 import { DailyCalendar } from "./components/Workspace/DailyCalendar";
 import { ContextMenu } from "./components/Workspace/ContextMenu";
 import { TemplatePicker } from "./components/Workspace/TemplatePicker";
+import { RenameTagDialog } from "./components/Workspace/RenameTagDialog";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -36,7 +37,8 @@ import {
 import { syncClient } from "./lib/sync";
 import { buildTree, flattenTreeNoteIds } from "./lib/tree";
 import { buildGraphData } from "./lib/wikilinks";
-import { buildTagCounts } from "./lib/tags";
+import { buildTagCounts, extractTags } from "./lib/tags";
+import { renameTagInContent, normalizeTag, contentHasTag } from "./lib/tagRename";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
 import { drainLegacyPins } from "./lib/stars";
 import { loadRecent, pushRecent } from "./lib/recent";
@@ -107,6 +109,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [authAction, setAuthAction] = useState(() => currentAuthAction());
+  // Tag being renamed via the sidebar tag panel (#154).
+  const [renameTag, setRenameTag] = useState<string | null>(null);
 
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
@@ -1106,6 +1110,41 @@ export default function App() {
     setFilterTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
   }, []);
 
+  // Renames a tag (and its nested children) across every note that carries it
+  // (#154). Runs client-side over the in-memory plaintext so it works for e2ee
+  // vaults; each changed note is re-encrypted on save. Any active tag filter
+  // that referenced the old tag is remapped to the new one.
+  const handleRenameTag = useCallback(async (oldTag: string, rawNewTag: string) => {
+    const from = normalizeTag(oldTag);
+    const to = normalizeTag(rawNewTag);
+    setRenameTag(null);
+    if (!to || from === to) return;
+
+    const affected = noteListRef.current.filter((n) =>
+      contentHasTag(extractTags(n.content), from),
+    );
+    for (const note of affected) {
+      const newContent = renameTagInContent(note.content, from, to);
+      if (newContent === note.content) continue;
+      try {
+        const { content: payload, checksum } = await encryptOutgoing(note.vault_id, newContent);
+        const updated = await notesApi.update(note.id, note.title, note.path, payload, note.checksum, checksum);
+        if ("checksum" in updated) {
+          const u = { ...(updated as Note), content: newContent };
+          setNoteList((prev) => prev.map((n) => (n.id === u.id ? u : n)));
+          setActiveNote((prev) => (prev?.id === u.id ? u : prev));
+          if (activeNoteRef.current?.id === u.id) setEditorContent(newContent);
+        }
+      } catch {
+        /* skip a note that failed to save; the rest still proceed */
+      }
+    }
+    // Remap an active filter on the renamed tag (or a descendant) onto the new name.
+    setFilterTags((prev) =>
+      prev.map((t) => (t === from || t.startsWith(`${from}/`) ? to + t.slice(from.length) : t)),
+    );
+  }, [encryptOutgoing]);
+
   const clearFilters = useCallback(() => {
     setFilterTags([]);
     setFilterFolder(null);
@@ -1155,7 +1194,7 @@ export default function App() {
   modalOpenRef.current =
     paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
     showNewVault || recoveryCode !== null || unlockVaultId !== null ||
-    showTemplatePicker || ctxMenu !== null || workspaceMenu !== null;
+    showTemplatePicker || renameTag !== null || ctxMenu !== null || workspaceMenu !== null;
 
   return (
     <div
@@ -1240,6 +1279,7 @@ export default function App() {
               newFolderNonce={newFolderNonce}
               onRequestNewVault={() => setShowNewVault(true)}
               onToggleTag={toggleTagFilter}
+              onRenameTag={setRenameTag}
               onSetFolder={setFilterFolder}
               onSetSort={setSortBy}
               onClearFilters={clearFilters}
@@ -1554,6 +1594,15 @@ export default function App() {
           templates={listTemplates(noteList)}
           onPick={handlePickTemplate}
           onClose={() => setShowTemplatePicker(false)}
+        />
+      )}
+
+      {renameTag && (
+        <RenameTagDialog
+          tag={renameTag}
+          affectedCount={noteList.filter((n) => contentHasTag(extractTags(n.content), renameTag)).length}
+          onRename={handleRenameTag}
+          onClose={() => setRenameTag(null)}
         />
       )}
 

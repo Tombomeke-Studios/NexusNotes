@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
 import { ROOT_FOLDER } from "../../lib/noteFilter";
+import { buildTagTree } from "../../lib/tagTree";
 import { ContextMenu } from "../Workspace/ContextMenu";
+import { TagTree } from "./TagTree";
 import "./Sidebar.css";
 
 /** Drag-and-drop context threaded through the tree so notes can be moved. */
@@ -76,6 +78,8 @@ interface SidebarProps {
   /** Opens the app-level "new vault" dialog (name + encryption opt-in). */
   onRequestNewVault: () => void;
   onToggleTag: (tag: string) => void;
+  /** Rename a tag (and its nested children) across every note (#154). */
+  onRenameTag: (tag: string) => void;
   onSetFolder: (folder: string | null) => void;
   onSetSort: (sort: SortBy) => void;
   onClearFilters: () => void;
@@ -116,6 +120,7 @@ export function Sidebar({
   newFolderNonce,
   onRequestNewVault,
   onToggleTag,
+  onRenameTag,
   onSetFolder,
   onSetSort,
   onClearFilters,
@@ -220,6 +225,7 @@ export function Sidebar({
     shiftHeld,
   };
 
+  const tagTree = useMemo(() => buildTagTree(tagCounts), [tagCounts]);
   const activeVault = vaults.find((v) => v.id === activeVaultId);
   const filterCount = filterTags.length + (filterFolder ? 1 : 0);
   const hasFilter = filterCount > 0;
@@ -606,18 +612,12 @@ export function Sidebar({
       {tagCounts.length > 0 && (
         <div className="sidebar-tags">
           <div className="sidebar-tags-label">Tags</div>
-          <div className="sidebar-chip-row">
-            {tagCounts.map(({ tag, count }) => (
-              <button
-                key={tag}
-                className={`sidebar-chip${filterTags.includes(tag) ? " sidebar-chip--active" : ""}`}
-                onClick={() => onToggleTag(tag)}
-              >
-                #{tag}
-                <span className="sidebar-chip-count">{count}</span>
-              </button>
-            ))}
-          </div>
+          <TagTree
+            nodes={tagTree}
+            filterTags={filterTags}
+            onToggleTag={onToggleTag}
+            onRenameTag={onRenameTag}
+          />
         </div>
       )}
     </div>

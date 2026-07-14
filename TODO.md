@@ -696,6 +696,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/tag-panel` - Nested tag tree with rename (PR pending)
+
+- [x] Sidebar tag panel shows tags as a collapsible nested tree (grouped on `/`), click a tag to filter, right-click to rename across all notes — cascades to nested children, runs client-side so e2ee vaults work (#154)
+
 ### `feature/email-auth` - Verification, password reset, SMTP (PR #211)
 
 - [x] SMTP mailer with a log-only fallback; email verification on register gated on vault creation when configured (#47, #50)

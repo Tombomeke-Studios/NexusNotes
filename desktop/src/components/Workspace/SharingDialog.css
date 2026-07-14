@@ -1,0 +1,86 @@
+/* Vault sharing panel (#55). */
+.share-dialog {
+  width: 460px;
+  max-width: calc(100vw - 32px);
+}
+
+.share-invite {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 12px;
+}
+
+.share-invite .enc-input {
+  flex: 1;
+}
+
+.share-role {
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--bg-crust);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 12.5px;
+}
+
+.share-members {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 16px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.share-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--bg-crust);
+}
+
+.share-member--owner {
+  opacity: 0.75;
+}
+
+.share-member-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-role-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-inner);
+  text-transform: capitalize;
+}
+
+.share-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.share-remove:hover {
+  color: var(--error);
+  background: rgba(243, 139, 168, 0.14);
+}
+
+.share-empty {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  padding: 4px 2px;
+}

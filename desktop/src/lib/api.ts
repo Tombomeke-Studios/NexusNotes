@@ -1,4 +1,4 @@
-import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit, Device } from "./types";
+import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -232,6 +232,23 @@ export const vaults = {
     }),
   delete: (id: string) =>
     request<void>(`/api/vaults/${id}`, { method: "DELETE" }),
+};
+
+/** Collaborative vault sharing: members and their roles (#55). */
+export const members = {
+  list: (vaultId: string) => request<VaultMember[]>(`/api/vaults/${vaultId}/members`),
+  invite: (vaultId: string, email: string, role: "viewer" | "editor") =>
+    request<void>(`/api/vaults/${vaultId}/members`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    }),
+  updateRole: (vaultId: string, userId: string, role: "viewer" | "editor") =>
+    request<void>(`/api/vaults/${vaultId}/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+  remove: (vaultId: string, userId: string) =>
+    request<void>(`/api/vaults/${vaultId}/members/${userId}`, { method: "DELETE" }),
 };
 
 export const notes = {

@@ -77,6 +77,8 @@ interface SidebarProps {
   newFolderNonce?: number;
   /** Opens the app-level "new vault" dialog (name + encryption opt-in). */
   onRequestNewVault: () => void;
+  /** Opens the sharing panel for a vault (#55). */
+  onShareVault: (vaultId: string) => void;
   onToggleTag: (tag: string) => void;
   /** Rename a tag (and its nested children) across every note (#154). */
   onRenameTag: (tag: string) => void;
@@ -119,6 +121,7 @@ export function Sidebar({
   onDeleteFolder,
   newFolderNonce,
   onRequestNewVault,
+  onShareVault,
   onToggleTag,
   onRenameTag,
   onSetFolder,
@@ -316,31 +319,50 @@ export function Sidebar({
       {showVaults && (
         <div className="sidebar-vault-list">
           {vaults.map((v) => (
-            <button
-              key={v.id}
-              className={`sidebar-vault-item${v.id === activeVaultId ? " active" : ""}`}
-              onClick={() => {
-                onSelectVault(v.id);
-                setShowVaults(false);
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M2 4l6-2 6 2v8l-6 2-6-2V4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                <path d="M8 2v12M2 4l6 2 6-2" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-              </svg>
-              <span>{v.name}</span>
-              {v.encryption === "e2ee" && (
-                <svg className="sidebar-vault-lock" width="11" height="11" viewBox="0 0 16 16" fill="none" aria-label="Encrypted vault">
-                  <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-                  <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.6" />
+            <div key={v.id} className={`sidebar-vault-row${v.id === activeVaultId ? " active" : ""}`}>
+              <button
+                className="sidebar-vault-item"
+                onClick={() => {
+                  onSelectVault(v.id);
+                  setShowVaults(false);
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 4l6-2 6 2v8l-6 2-6-2V4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                  <path d="M8 2v12M2 4l6 2 6-2" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                 </svg>
-              )}
-              {v.id === activeVaultId && (
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="sidebar-vault-check">
-                  <path d="M2.5 6.5L5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <span>{v.name}</span>
+                {v.role && v.role !== "owner" && (
+                  <span className="sidebar-vault-role" title={`Shared with you (${v.role})`}>{v.role}</span>
+                )}
+                {v.encryption === "e2ee" && (
+                  <svg className="sidebar-vault-lock" width="11" height="11" viewBox="0 0 16 16" fill="none" aria-label="Encrypted vault">
+                    <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.6" />
+                  </svg>
+                )}
+                {v.id === activeVaultId && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="sidebar-vault-check">
+                    <path d="M2.5 6.5L5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <button
+                className="sidebar-vault-share"
+                title={v.role && v.role !== "owner" ? "Sharing & members" : "Share vault"}
+                onClick={() => {
+                  setShowVaults(false);
+                  onShareVault(v.id);
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <circle cx="4" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+                  <circle cx="12" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+                  <circle cx="12" cy="12" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+                  <path d="M5.6 7.1l4.8-2.2M5.6 8.9l4.8 2.2" stroke="currentColor" strokeWidth="1.3" />
                 </svg>
-              )}
-            </button>
+              </button>
+            </div>
           ))}
           <button
             className="sidebar-vault-item sidebar-vault-item--new"

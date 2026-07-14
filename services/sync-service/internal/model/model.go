@@ -32,6 +32,28 @@ type Vault struct {
 	EncryptionMeta json.RawMessage `json:"encryption_meta,omitempty"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
+	// Role is the caller's role for this vault when listed: "owner" for vaults
+	// they own, or "viewer"/"editor" for shared ones (#51). Empty otherwise.
+	Role string `json:"role,omitempty"`
+}
+
+// Vault roles. Owner is implicit (vaults.user_id); members are viewer/editor.
+const (
+	VaultRoleOwner  = "owner"
+	VaultRoleEditor = "editor"
+	VaultRoleViewer = "viewer"
+)
+
+// VaultMember is a user's membership in a shared vault (#51).
+type VaultMember struct {
+	VaultID     string     `json:"vault_id"`
+	UserID      string     `json:"user_id"`
+	Email       string     `json:"email"`
+	DisplayName string     `json:"display_name"`
+	Role        string     `json:"role"`
+	InvitedBy   string     `json:"invited_by,omitempty"`
+	AcceptedAt  *time.Time `json:"accepted_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
 
 type Note struct {

@@ -29,14 +29,13 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify caller owns the vault
+	// Verify caller may read the vault (owner or member).
 	userID := middleware.GetUserID(r.Context())
 	if userID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
 	}
-	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
-	if err != nil || vault == nil || vault.UserID != userID {
+	if !canRead(r.Context(), h.vaultRepo, vaultID, userID) {
 		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 		return
 	}

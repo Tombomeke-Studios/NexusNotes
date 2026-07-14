@@ -14,15 +14,16 @@ import (
 )
 
 type VaultHandler struct {
-	vaultRepo *repository.VaultRepo
-	userRepo  *repository.UserRepo
+	vaultRepo  *repository.VaultRepo
+	userRepo   *repository.UserRepo
+	memberRepo *repository.VaultMemberRepo
 	// requireVerified gates vault creation on a confirmed email (#47); only
 	// active when SMTP is configured, so mail-less self-hosts are unaffected.
 	requireVerified bool
 }
 
-func NewVaultHandler(vaultRepo *repository.VaultRepo, userRepo *repository.UserRepo, requireVerified bool) *VaultHandler {
-	return &VaultHandler{vaultRepo: vaultRepo, userRepo: userRepo, requireVerified: requireVerified}
+func NewVaultHandler(vaultRepo *repository.VaultRepo, userRepo *repository.UserRepo, memberRepo *repository.VaultMemberRepo, requireVerified bool) *VaultHandler {
+	return &VaultHandler{vaultRepo: vaultRepo, userRepo: userRepo, memberRepo: memberRepo, requireVerified: requireVerified}
 }
 
 func (h *VaultHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -95,6 +96,17 @@ func (h *VaultHandler) List(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to list vaults")
 		return
 	}
+	for i := range vaults {
+		vaults[i].Role = model.VaultRoleOwner
+	}
+
+	// Include vaults shared with this user, each stamped with their role (#55).
+	shared, err := h.memberRepo.ListSharedVaults(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to list vaults")
+		return
+	}
+	vaults = append(vaults, shared...)
 
 	if vaults == nil {
 		vaults = []model.Vault{}
@@ -113,10 +125,12 @@ func (h *VaultHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vault.UserID != userID {
+	role, err := h.vaultRepo.AccessRole(r.Context(), vaultID, userID)
+	if err != nil || role == "" {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
+	vault.Role = role
 
 	writeJSON(w, http.StatusOK, vault)
 }

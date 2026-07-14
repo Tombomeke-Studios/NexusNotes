@@ -35,6 +35,14 @@ Response (201):
 
 Response (200): same shape as register.
 
+### POST /api/auth/refresh
+
+Rotates a refresh token: `{refresh_token, device_id}` → `{token, refresh_token}`. Refresh tokens are single-use and bound to the device that logged in; replaying an already-rotated token revokes the device's whole chain (theft signal). Access tokens live 1 hour; login/register responses include the first `refresh_token`.
+
+### POST /api/auth/logout
+
+Invalidates the presented refresh token (`{refresh_token}`); the token itself is the credential. Always `204`.
+
 ### GET /api/auth/export
 
 Requires `Authorization: Bearer <token>`. Streams a zip containing all data

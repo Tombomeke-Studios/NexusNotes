@@ -80,3 +80,65 @@ describe("notes client checksum plumbing (e2ee vaults)", () => {
     expect(body.checksum).toBe("next-sum");
   });
 });
+
+describe("access token refresh on 401 (#49)", () => {
+  beforeEach(() => {
+    setToken("stale-token");
+    localStorage.setItem("nexus_refresh", "refresh-1");
+  });
+  afterEach(() => {
+    setToken(null);
+    vi.unstubAllGlobals();
+  });
+
+  it("rotates the refresh token and replays the request once", async () => {
+    const calls: string[] = [];
+    const fetchMock = vi.fn().mockImplementation((url: string, init: RequestInit) => {
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (String(url).includes("/api/auth/refresh")) {
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: () => Promise.resolve({ token: "fresh-token", refresh_token: "refresh-2" }),
+        });
+      }
+      // First data call 401s (stale token); the replay succeeds.
+      const authed = (init?.headers as Record<string, string>)?.Authorization === "Bearer fresh-token";
+      return Promise.resolve({
+        ok: authed, status: authed ? 200 : 401, statusText: "s",
+        json: () => Promise.resolve(authed ? [] : { error: "unauthorized" }),
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const logoutListener = vi.fn();
+    window.addEventListener("nexus:logout", logoutListener);
+
+    const result = await notes.list("v1");
+
+    expect(result).toEqual([]);
+    expect(calls.filter((c) => c.includes("/api/auth/refresh"))).toHaveLength(1);
+    expect(getToken()).toBe("fresh-token");
+    expect(localStorage.getItem("nexus_refresh")).toBe("refresh-2");
+    expect(logoutListener).not.toHaveBeenCalled();
+    window.removeEventListener("nexus:logout", logoutListener);
+  });
+
+  it("logs out when the refresh itself is rejected", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const isRefresh = String(url).includes("/api/auth/refresh");
+      return Promise.resolve({
+        ok: false, status: isRefresh ? 401 : 401, statusText: "s",
+        json: () => Promise.resolve({ error: "nope" }),
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const logoutListener = vi.fn();
+    window.addEventListener("nexus:logout", logoutListener);
+
+    await expect(notes.list("v1")).rejects.toThrow(ApiError);
+
+    expect(logoutListener).toHaveBeenCalledOnce();
+    expect(getToken()).toBeNull();
+    expect(localStorage.getItem("nexus_refresh")).toBeNull();
+    window.removeEventListener("nexus:logout", logoutListener);
+  });
+});

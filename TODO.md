@@ -664,22 +664,6 @@ This entry is retained so that existing issue references remain valid.
 ---
 
 
-## `feature/email-auth` - Email verification and password reset
-
-> Phase 1 ships without email verification. This feature closes that gap before a public
-> release so accounts are tied to verified addresses and recoverable on passphrase loss.
-
-- [x] Add an email_verifications store (single-use hashed tokens) (#47)
-- [x] Add a password_reset_tokens store (single-use hashed tokens) (#48)
-- [x] Send a verification email on registration; require verification before creating a vault when SMTP is configured (#47)
-- [x] Add `POST /api/auth/forgot-password` — emails a reset link; always 204 (no enumeration) (#48)
-- [x] Add `POST /api/auth/reset-password` — single-use token, updates the hash, revokes all sessions (#48)
-- [x] Add refresh token rotation: issue a long-lived refresh token alongside the access token; exchange for a new access token on each use; revoke both on logout (#49)
-- [x] Add a refresh_tokens store and `POST /api/auth/refresh` endpoint; reuse detection revokes the device chain, device revocation deletes it (#49)
-- [x] Configure SMTP via environment variables with a log-only fallback when unset (#50)
-- [x] Write unit tests for verification/reset token generation, single-use, expiry and no-enumeration
-
----
 
 ## `feature/vault-sharing` - Collaborative vault sharing
 
@@ -711,6 +695,11 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/email-auth` - Verification, password reset, SMTP (PR #211)
+
+- [x] SMTP mailer with a log-only fallback; email verification on register gated on vault creation when configured (#47, #50)
+- [x] Forgot/reset password with single-use hashed tokens, no enumeration, and session revocation on reset (#48)
 
 ### `feature/refresh-tokens` - Session rotation (PR #210)
 

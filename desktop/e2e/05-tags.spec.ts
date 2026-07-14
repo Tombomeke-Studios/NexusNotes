@@ -17,8 +17,8 @@ test.describe("Tags", () => {
     await textarea.fill("This note has #work and #project tags");
     await waitForAutosave(page);
 
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "work" })).toBeVisible();
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "project" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "work" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "project" })).toBeVisible();
   });
 
   test("no tag chips shown for notes without #tags", async ({ page }) => {
@@ -72,7 +72,7 @@ test.describe("Tags", () => {
     await textarea.fill(`Note with #${tag}`);
     await waitForAutosave(page);
 
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: tag })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: tag })).toBeVisible();
   });
 
   test("clearing the tag filter shows all notes again", async ({ page }) => {
@@ -83,7 +83,7 @@ test.describe("Tags", () => {
     await textarea.fill(`Note #${tag}`);
     await waitForAutosave(page);
 
-    await page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: tag }).click();
+    await page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: tag }).click();
     await expect(page.locator(".sidebar-filter-banner")).toBeVisible();
 
     await page.locator(".sidebar-filter-banner button").click();
@@ -97,7 +97,7 @@ test.describe("Tags", () => {
     await textarea.fill("---\ntags: [frontend, design]\n---\n\nNote body");
     await waitForAutosave(page);
 
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "frontend" })).toBeVisible();
-    await expect(page.locator(".sidebar-tags .sidebar-chip").filter({ hasText: "design" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "frontend" })).toBeVisible();
+    await expect(page.locator(".sidebar-tags .tag-tree-label").filter({ hasText: "design" })).toBeVisible();
   });
 });

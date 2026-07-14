@@ -158,6 +158,7 @@ is the migrations directory.
 | `internal/service/` | Business logic (sync, conflict detection, versioning) |
 | `internal/middleware/` | Auth, logging, CORS middleware |
 | `internal/ws/` | WebSocket hub and client management |
+| `internal/mail/` | SMTP mailer with a log-only fallback for transactional auth emails |
 | `migrations/` | SQL migration files |
 
 ### desktop (Tauri + React)

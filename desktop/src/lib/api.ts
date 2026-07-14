@@ -185,6 +185,30 @@ export const auth = {
   },
 
   me: () => request<User>("/api/auth/me"),
+
+  /** Confirms an email address from a verification link token (#47). */
+  verifyEmail: (token: string) =>
+    request<void>("/api/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  /**
+   * Requests a password-reset email (#48). Always resolves, even for unknown
+   * addresses, so the UI can't be used to probe which emails are registered.
+   */
+  forgotPassword: (email: string) =>
+    request<void>("/api/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  /** Sets a new password from a reset-link token (#48). */
+  resetPassword: (token: string, password: string) =>
+    request<void>("/api/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    }),
 };
 
 export const vaults = {

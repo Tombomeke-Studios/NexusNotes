@@ -20,6 +20,15 @@ services:
       - REDIS_URL=redis://redis:6379
       - MEILI_URL=http://meilisearch:7700
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-change-me-in-production}
+      # Transactional email (#50). Leave SMTP_HOST empty to disable email
+      # (mail is logged, and email verification is not enforced). APP_BASE_URL
+      # is the public origin used to build the links in verification/reset mails.
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:3000}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     depends_on:
       postgres:
         condition: service_healthy

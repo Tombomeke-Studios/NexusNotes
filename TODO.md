@@ -669,15 +669,15 @@ This entry is retained so that existing issue references remain valid.
 > Phase 1 ships without email verification. This feature closes that gap before a public
 > release so accounts are tied to verified addresses and recoverable on passphrase loss.
 
-- [ ] Add `email_verifications` table: `id`, `user_id`, `token_hash`, `expires_at`, `used_at` (#47)
-- [ ] Add `password_reset_tokens` table: `id`, `user_id`, `token_hash`, `expires_at`, `used_at` (#48)
-- [ ] Send a verification email on registration; require verification before creating a vault (#47)
-- [ ] Add `POST /api/auth/forgot-password` — generates a signed reset link and emails it (#48)
-- [ ] Add `POST /api/auth/reset-password` — validates the token and updates the password hash (#48)
+- [x] Add an email_verifications store (single-use hashed tokens) (#47)
+- [x] Add a password_reset_tokens store (single-use hashed tokens) (#48)
+- [x] Send a verification email on registration; require verification before creating a vault when SMTP is configured (#47)
+- [x] Add `POST /api/auth/forgot-password` — emails a reset link; always 204 (no enumeration) (#48)
+- [x] Add `POST /api/auth/reset-password` — single-use token, updates the hash, revokes all sessions (#48)
 - [x] Add refresh token rotation: issue a long-lived refresh token alongside the access token; exchange for a new access token on each use; revoke both on logout (#49)
 - [x] Add a refresh_tokens store and `POST /api/auth/refresh` endpoint; reuse detection revokes the device chain, device revocation deletes it (#49)
-- [ ] Configure SMTP via environment variables (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`) (#50)
-- [ ] Write unit tests for token generation, validation, and expiry logic
+- [x] Configure SMTP via environment variables with a log-only fallback when unset (#50)
+- [x] Write unit tests for verification/reset token generation, single-use, expiry and no-enumeration
 
 ---
 

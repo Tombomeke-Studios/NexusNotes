@@ -187,3 +187,12 @@ credentials via `GRAFANA_USER`/`GRAFANA_PASSWORD`, defaults must be changed
 in production). Grafana auto-provisions the Prometheus datasource and the
 NexusNotes dashboard from `infra/grafana/`. Set `ADMIN_TOKEN` to enable the
 operator stats endpoint; leave it unset to disable it entirely.
+
+## Email (optional)
+
+Set `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USER`, `SMTP_PASS`,
+`SMTP_FROM` and `APP_BASE_URL` to enable transactional email. With SMTP
+configured, registration sends a verification email and a verified address is
+required before creating a vault; "forgot password" sends a reset link. Leave
+`SMTP_HOST` empty to disable email entirely (messages are logged instead and
+the verification requirement is not enforced).

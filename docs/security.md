@@ -127,6 +127,16 @@ of an already-rotated token is treated as theft and revokes the device's
 entire chain. Sign-out invalidates the presented refresh token server-side;
 expired tokens are pruned daily.
 
+## Email Verification and Password Reset
+
+Verification and reset tokens are opaque, stored only as SHA-256 hashes,
+single-use, and short-lived (verification 24 h, reset 1 h). "Forgot password"
+always responds identically whether or not the address exists, so it can't
+enumerate accounts; a completed reset revokes every existing session. When
+SMTP is configured, a verified email is required before an account can create
+a vault; with SMTP unset, mail is logged and the requirement is not enforced,
+so mail-less self-hosts keep working.
+
 ## Secrets Management
 
 - `JWT_SECRET` must be set via environment variable

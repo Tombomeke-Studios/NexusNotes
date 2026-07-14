@@ -578,6 +578,13 @@ input:focus, textarea:focus {
 
 .auth-toggle:hover { color: var(--accent); }
 
+/* Secondary link (e.g. "Forgot password?") sits tighter under the primary one. */
+.auth-toggle--muted {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 .auth-footer {
   margin-top: 26px;
   padding-top: 18px;

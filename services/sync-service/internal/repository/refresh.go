@@ -90,6 +90,15 @@ func (r *RefreshRepo) DeleteByUserDevice(ctx context.Context, userID, deviceID s
 	return nil
 }
 
+// DeleteByUser revokes every session of a user — used after a password reset.
+func (r *RefreshRepo) DeleteByUser(ctx context.Context, userID string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM refresh_tokens WHERE user_id = $1`, userID)
+	if err != nil {
+		return fmt.Errorf("delete user refresh tokens: %w", err)
+	}
+	return nil
+}
+
 // DeleteExpired removes tokens past their expiry (daily cleanup).
 func (r *RefreshRepo) DeleteExpired(ctx context.Context) (int64, error) {
 	tag, err := r.pool.Exec(ctx, `DELETE FROM refresh_tokens WHERE expires_at < now()`)

@@ -6,6 +6,7 @@ import { GraphView } from "./components/Graph";
 import { CommandPalette } from "./components/CommandPalette";
 import { StatusBar } from "./components/StatusBar";
 import { Auth } from "./components/Auth";
+import { AuthAction } from "./components/AuthAction";
 import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
 import { TabBar } from "./components/Workspace/TabBar";
@@ -51,6 +52,7 @@ import type { ViewMode } from "./lib/prefs";
 import type { RailView } from "./components/Workspace/Rail";
 import { relativeTimeLabel } from "./lib/stats";
 import { isTauriWindow } from "./lib/platform";
+import { currentAuthAction, clearAuthActionUrl } from "./lib/authAction";
 import type { User, Vault, Note } from "./lib/types";
 
 const VIEW_CYCLE: ViewMode[] = ["edit", "split", "preview"];
@@ -104,6 +106,7 @@ export default function App() {
   const [railView, setRailView] = useState<RailView>("files");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authAction, setAuthAction] = useState(() => currentAuthAction());
 
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
@@ -1113,6 +1116,20 @@ export default function App() {
       <div className="loading-screen">
         <div className="spinner" />
       </div>
+    );
+  }
+
+  // Email-link flows (verify-email / reset-password) render before the normal
+  // auth screen since the user arrives from an email while signed out (#47/#48).
+  if (authAction) {
+    return (
+      <AuthAction
+        action={authAction}
+        onDone={() => {
+          clearAuthActionUrl();
+          setAuthAction(null);
+        }}
+      />
     );
   }
 

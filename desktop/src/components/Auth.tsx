@@ -12,6 +12,8 @@ interface AuthProps {
 
 export function Auth({ onAuth }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
+  const [forgot, setForgot] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -31,6 +33,25 @@ export function Auth({ onAuth }: AuthProps) {
     }
     e.currentTarget.style.setProperty("--px", `${x / rect.width - 0.5}`);
     e.currentTarget.style.setProperty("--py", `${y / rect.height - 0.5}`);
+  };
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await auth.forgotPassword(email);
+      // Always confirm regardless of whether the address exists (no enumeration).
+      setForgotSent(true);
+    } catch (err) {
+      setError(
+        err instanceof TypeError
+          ? "The server is currently unavailable. Please try again in a moment."
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,9 +95,59 @@ export function Auth({ onAuth }: AuthProps) {
         <div className="auth-logo"><Logo size={40} variant="dark" /></div>
         <h1 className="auth-title">NexusNotes</h1>
         <p className="auth-subtitle">
-          {isLogin ? "Welcome back to your second brain" : "Create your account"}
+          {forgot
+            ? "Reset your password"
+            : isLogin
+              ? "Welcome back to your second brain"
+              : "Create your account"}
         </p>
 
+        {forgot ? (
+          forgotSent ? (
+            <>
+              <p className="auth-subtitle">
+                If an account exists for that address, a reset link is on its way. Check your inbox.
+              </p>
+              <button
+                className="auth-toggle"
+                onClick={() => {
+                  setForgot(false);
+                  setForgotSent(false);
+                  setError("");
+                }}
+              >
+                Back to sign in
+              </button>
+            </>
+          ) : (
+            <>
+              <form onSubmit={handleForgot} className="auth-form">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  className="auth-input"
+                  required
+                  autoFocus
+                />
+                {error && <div className="auth-error">{error}</div>}
+                <button type="submit" className="auth-button" disabled={loading}>
+                  {loading ? "Sending…" : "Send reset link"}
+                </button>
+              </form>
+              <button
+                className="auth-toggle"
+                onClick={() => {
+                  setForgot(false);
+                  setError("");
+                }}
+              >
+                Back to sign in
+              </button>
+            </>
+          )
+        ) : (
         <form onSubmit={handleSubmit} className="auth-form">
           {!isLogin && (
             <input
@@ -116,16 +187,31 @@ export function Auth({ onAuth }: AuthProps) {
             ) : isLogin ? "Sign in" : "Create account"}
           </button>
         </form>
+        )}
 
-        <button
-          className="auth-toggle"
-          onClick={() => {
-            setIsLogin(!isLogin);
-            setError("");
-          }}
-        >
-          {isLogin ? "No account? Sign up" : "Have an account? Sign in"}
-        </button>
+        {!forgot && (
+          <button
+            className="auth-toggle"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError("");
+            }}
+          >
+            {isLogin ? "No account? Sign up" : "Have an account? Sign in"}
+          </button>
+        )}
+
+        {!forgot && isLogin && (
+          <button
+            className="auth-toggle auth-toggle--muted"
+            onClick={() => {
+              setForgot(true);
+              setError("");
+            }}
+          >
+            Forgot password?
+          </button>
+        )}
 
         <div className="auth-footer">
           <span className="auth-footer-dot" />

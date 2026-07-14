@@ -712,6 +712,10 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/refresh-tokens` - Session rotation (PR #210)
+
+- [x] Device-bound single-use refresh tokens with reuse detection; 1h access JWTs; logout invalidation; device revocation kills the chain; client rotates transparently on 401 (#49)
+
 ### `feature/note-export` - Export notes and vaults (PR #209)
 
 - [x] Note context menu: export as Markdown (front-matter stripped), standalone HTML, or PDF via the native print dialog (#152)

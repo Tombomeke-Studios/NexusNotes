@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
@@ -20,6 +21,30 @@ type VaultRepo struct {
 
 func NewVaultRepo(pool *pgxpool.Pool) *VaultRepo {
 	return &VaultRepo{pool: pool}
+}
+
+// AccessRole returns the caller's effective role for a vault in one query:
+// "owner" (they own it), "editor"/"viewer" (shared with them), or "" for no
+// access (#53). Centralizes the owner-or-member check every data handler needs.
+func (r *VaultRepo) AccessRole(ctx context.Context, vaultID, userID string) (string, error) {
+	var role string
+	err := r.pool.QueryRow(ctx,
+		`SELECT CASE
+		          WHEN v.user_id = $2 THEN 'owner'
+		          ELSE m.role
+		        END
+		 FROM vaults v
+		 LEFT JOIN vault_members m ON m.vault_id = v.id AND m.user_id = $2
+		 WHERE v.id = $1 AND (v.user_id = $2 OR m.user_id IS NOT NULL)`,
+		vaultID, userID,
+	).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("get access role: %w", err)
+	}
+	return role, nil
 }
 
 func (r *VaultRepo) Create(ctx context.Context, vault *model.Vault) error {

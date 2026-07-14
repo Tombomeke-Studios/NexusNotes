@@ -74,6 +74,7 @@ func main() {
 	hub := ws.NewHub()
 	accountService := service.NewAccountService(userRepo, vaultRepo, noteRepo, indexer, hub)
 	deviceRepo := repository.NewDeviceRepo(pool)
+	memberRepo := repository.NewVaultMemberRepo(pool)
 
 	// Daily cleanup (#46): forget devices that haven't been seen in 90 days.
 	go func() {
@@ -102,8 +103,9 @@ func main() {
 	}()
 
 	authHandler := handler.NewAuthHandler(authService, accountService, emailAuth, userRepo)
-	vaultHandler := handler.NewVaultHandler(vaultRepo, userRepo, mailer.Enabled())
-	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, hub)
+	vaultHandler := handler.NewVaultHandler(vaultRepo, userRepo, memberRepo, mailer.Enabled())
+	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, memberRepo, hub)
+	memberHandler := handler.NewMemberHandler(vaultRepo, memberRepo, userRepo)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
@@ -134,6 +136,10 @@ func main() {
 	protectedMux.HandleFunc("PUT /api/vaults/{id}", vaultHandler.Update)
 	protectedMux.HandleFunc("PUT /api/vaults/{id}/encryption", vaultHandler.UpdateEncryption)
 	protectedMux.HandleFunc("DELETE /api/vaults/{id}", vaultHandler.Delete)
+	protectedMux.HandleFunc("GET /api/vaults/{id}/members", memberHandler.List)
+	protectedMux.HandleFunc("POST /api/vaults/{id}/members", memberHandler.Invite)
+	protectedMux.HandleFunc("PATCH /api/vaults/{id}/members/{userId}", memberHandler.UpdateRole)
+	protectedMux.HandleFunc("DELETE /api/vaults/{id}/members/{userId}", memberHandler.Remove)
 
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/notes", noteHandler.List)
 	protectedMux.HandleFunc("POST /api/vaults/{vaultId}/notes", noteHandler.Create)
@@ -168,7 +174,7 @@ func main() {
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:1420", "http://localhost:5173", "tauri://localhost"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
 	})

@@ -15,14 +15,33 @@ import (
 type NoteHandler struct {
 	syncService *service.SyncService
 	vaultRepo   *repository.VaultRepo
+	memberRepo  *repository.VaultMemberRepo
 	hub         *ws.Hub
 }
 
-func NewNoteHandler(syncService *service.SyncService, vaultRepo *repository.VaultRepo, hub *ws.Hub) *NoteHandler {
+func NewNoteHandler(syncService *service.SyncService, vaultRepo *repository.VaultRepo, memberRepo *repository.VaultMemberRepo, hub *ws.Hub) *NoteHandler {
 	return &NoteHandler{
 		syncService: syncService,
 		vaultRepo:   vaultRepo,
+		memberRepo:  memberRepo,
 		hub:         hub,
+	}
+}
+
+// broadcastToVault pushes a note event to everyone with access to the vault —
+// the owner and every member — so shared vaults sync in real time (#54).
+func (h *NoteHandler) broadcastToVault(r *http.Request, vaultID string, msg ws.Message) {
+	recipients := map[string]bool{}
+	if vault, err := h.vaultRepo.GetByID(r.Context(), vaultID); err == nil {
+		recipients[vault.UserID] = true
+	}
+	if ids, err := h.memberRepo.MemberUserIDs(r.Context(), vaultID); err == nil {
+		for _, id := range ids {
+			recipients[id] = true
+		}
+	}
+	for userID := range recipients {
+		h.hub.BroadcastToUser(userID, msg, nil)
 	}
 }
 
@@ -30,8 +49,7 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	vaultID := r.PathValue("vaultId")
 
-	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
-	if err != nil || vault.UserID != userID {
+	if !canWrite(r.Context(), h.vaultRepo, vaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
@@ -61,10 +79,7 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload, _ := json.Marshal(note)
-	h.hub.BroadcastToUser(userID, ws.Message{
-		Type:    "note:created",
-		Payload: payload,
-	}, nil)
+	h.broadcastToVault(r, vaultID, ws.Message{Type: "note:created", Payload: payload})
 
 	writeJSON(w, http.StatusCreated, note)
 }
@@ -73,8 +88,7 @@ func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	vaultID := r.PathValue("vaultId")
 
-	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
-	if err != nil || vault.UserID != userID {
+	if !canRead(r.Context(), h.vaultRepo, vaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
@@ -102,8 +116,7 @@ func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vault, err := h.vaultRepo.GetByID(r.Context(), note.VaultID)
-	if err != nil || vault.UserID != userID {
+	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
@@ -120,8 +133,7 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "note not found")
 		return
 	}
-	vault, err := h.vaultRepo.GetByID(r.Context(), existing.VaultID)
-	if err != nil || vault.UserID != userID {
+	if !canWrite(r.Context(), h.vaultRepo, existing.VaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
@@ -161,10 +173,7 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload, _ := json.Marshal(note)
-	h.hub.BroadcastToUser(userID, ws.Message{
-		Type:    "note:updated",
-		Payload: payload,
-	}, nil)
+	h.broadcastToVault(r, note.VaultID, ws.Message{Type: "note:updated", Payload: payload})
 
 	writeJSON(w, http.StatusOK, note)
 }
@@ -174,16 +183,18 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	vaultID := r.PathValue("vaultId")
 	noteID := r.PathValue("noteId")
 
+	if !canWrite(r.Context(), h.vaultRepo, vaultID, userID) {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+
 	if err := h.syncService.DeleteNote(r.Context(), noteID, vaultID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete note")
 		return
 	}
 
 	payload, _ := json.Marshal(map[string]string{"note_id": noteID})
-	h.hub.BroadcastToUser(userID, ws.Message{
-		Type:    "note:deleted",
-		Payload: payload,
-	}, nil)
+	h.broadcastToVault(r, vaultID, ws.Message{Type: "note:deleted", Payload: payload})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -208,8 +219,7 @@ func (h *NoteHandler) Search(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	vaultID := r.PathValue("vaultId")
 
-	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
-	if err != nil || vault.UserID != userID {
+	if !canRead(r.Context(), h.vaultRepo, vaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
@@ -242,8 +252,7 @@ func (h *NoteHandler) Backlinks(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "note not found")
 		return
 	}
-	vault, err := h.vaultRepo.GetByID(r.Context(), note.VaultID)
-	if err != nil || vault.UserID != userID {
+	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}

@@ -22,8 +22,7 @@ func (h *TagHandler) ListVaultTags(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	vaultID := r.PathValue("vaultId")
 
-	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
-	if err != nil || vault.UserID != userID {
+	if !canRead(r.Context(), h.vaultRepo, vaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}

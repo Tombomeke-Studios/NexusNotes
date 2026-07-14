@@ -44,8 +44,7 @@ func (h *StarHandler) requireOwnedNote(w http.ResponseWriter, r *http.Request) (
 		writeError(w, http.StatusNotFound, "note not found")
 		return "", false
 	}
-	vault, err := h.vaultRepo.GetByID(r.Context(), note.VaultID)
-	if err != nil || vault.UserID != userID {
+	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return "", false
 	}

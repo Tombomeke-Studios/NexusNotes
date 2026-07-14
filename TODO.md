@@ -696,7 +696,7 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
-### `feature/tag-panel` - Nested tag tree with rename (PR pending)
+### `feature/tag-panel` - Nested tag tree with rename (PR #212)
 
 - [x] Sidebar tag panel shows tags as a collapsible nested tree (grouped on `/`), click a tag to filter, right-click to rename across all notes — cascades to nested children, runs client-side so e2ee vaults work (#154)
 

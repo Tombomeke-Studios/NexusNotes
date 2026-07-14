@@ -503,3 +503,36 @@
 .hljs-variable { color: #f38ba8; }
 .hljs-property { color: #89dceb; }
 .hljs-punctuation { color: #9399b2; }
+
+/* Attachments (#153): inline images and upload states. */
+.attachment-image {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.attachment-loading,
+.attachment-missing {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-crust);
+  border: 1px dashed var(--border-inner);
+}
+
+.editor-uploading {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: rgba(24, 24, 37, 0.95);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-popover);
+  z-index: 5;
+}

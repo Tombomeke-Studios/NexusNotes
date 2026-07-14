@@ -26,6 +26,12 @@ type Config struct {
 	SMTPFrom string
 	// AppBaseURL is the public origin used to build action links in emails.
 	AppBaseURL string
+	// MinIO/S3 object storage for attachments (#153); disabled when Endpoint empty.
+	MinIOEndpoint  string
+	MinIOAccessKey string
+	MinIOSecretKey string
+	MinIOBucket    string
+	MinIOUseSSL    bool
 }
 
 func Load() (*Config, error) {
@@ -79,6 +85,11 @@ func Load() (*Config, error) {
 		appBaseURL = "http://localhost:1420"
 	}
 
+	minioBucket := os.Getenv("MINIO_BUCKET")
+	if minioBucket == "" {
+		minioBucket = "attachments"
+	}
+
 	return &Config{
 		Port:                port,
 		DatabaseURL:         dbURL,
@@ -95,6 +106,11 @@ func Load() (*Config, error) {
 		SMTPPass:            os.Getenv("SMTP_PASS"),
 		SMTPFrom:            os.Getenv("SMTP_FROM"),
 		AppBaseURL:          appBaseURL,
+		MinIOEndpoint:       os.Getenv("MINIO_ENDPOINT"),
+		MinIOAccessKey:      os.Getenv("MINIO_ACCESS_KEY"),
+		MinIOSecretKey:      os.Getenv("MINIO_SECRET_KEY"),
+		MinIOBucket:         minioBucket,
+		MinIOUseSSL:         os.Getenv("MINIO_USE_SSL") == "true",
 	}, nil
 }
 

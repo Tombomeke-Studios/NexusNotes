@@ -92,7 +92,7 @@ type Attachment struct {
 	Filename    string    `json:"filename"`
 	MimeType    string    `json:"mime_type"`
 	SizeBytes   int64     `json:"size_bytes"`
-	StoragePath string    `json:"storage_path"`
+	StoragePath string    `json:"-"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 

@@ -457,14 +457,14 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/attachments` - Attachment upload and management
 
-- [ ] Add `POST /notes/:id/attachments` for multipart upload to MinIO
-- [ ] Add `GET /notes/:id/attachments` to list attachments
-- [ ] Add `DELETE /attachments/:id` to remove an attachment
-- [ ] For encrypted vaults, encrypt attachment bytes client-side before upload
-- [ ] Build drag-and-drop file upload into the editor
-- [ ] Render uploaded images inline using `![[filename]]` embed syntax
-- [ ] Add an attachment panel in the editor sidebar
-- [ ] Write tests for the attachment handler and MinIO storage layer
+- [x] Add `POST /notes/:id/attachments` for multipart upload to MinIO (#153)
+- [x] Add `GET /notes/:id/attachments` to list attachments (#153)
+- [x] Add `DELETE /attachments/:id` to remove an attachment (#153)
+- [ ] For encrypted vaults, encrypt attachment bytes client-side before upload (follow-up)
+- [x] Build drag-and-drop (and paste) file upload into the editor (#153)
+- [x] Render uploaded images inline using `![[filename]]` embed syntax (#153)
+- [ ] Add an attachment panel in the editor sidebar (follow-up)
+- [x] Write tests for the image-embed transform + an E2E drop/upload/render test (#153)
 
 ---
 

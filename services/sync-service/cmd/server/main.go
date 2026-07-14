@@ -20,6 +20,7 @@ import (
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/storage"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/ws"
 )
 
@@ -52,6 +53,17 @@ func main() {
 	linkRepo := repository.NewLinkRepo(pool)
 	tagRepo := repository.NewTagRepo(pool)
 	aliasRepo := repository.NewAliasRepo(pool)
+
+	attachStore, err := storage.New(ctx, storage.Config{
+		Endpoint:  cfg.MinIOEndpoint,
+		AccessKey: cfg.MinIOAccessKey,
+		SecretKey: cfg.MinIOSecretKey,
+		Bucket:    cfg.MinIOBucket,
+		UseSSL:    cfg.MinIOUseSSL,
+	})
+	if err != nil {
+		slog.Warn("object storage unavailable; attachments disabled", "error", err)
+	}
 
 	indexer := search.NewIndexer(cfg.MeiliURL, cfg.MeiliMasterKey)
 	if err := indexer.ConfigureIndex(ctx); err != nil {
@@ -106,6 +118,7 @@ func main() {
 	vaultHandler := handler.NewVaultHandler(vaultRepo, userRepo, memberRepo, mailer.Enabled())
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, memberRepo, hub)
 	memberHandler := handler.NewMemberHandler(vaultRepo, memberRepo, userRepo)
+	attachHandler := handler.NewAttachmentHandler(attachStore, repository.NewAttachmentRepo(pool), vaultRepo, syncService)
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
@@ -148,6 +161,10 @@ func main() {
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
+	protectedMux.HandleFunc("POST /api/notes/{noteId}/attachments", attachHandler.Upload)
+	protectedMux.HandleFunc("GET /api/notes/{noteId}/attachments", attachHandler.List)
+	protectedMux.HandleFunc("GET /api/attachments/{id}", attachHandler.Download)
+	protectedMux.HandleFunc("DELETE /api/attachments/{id}", attachHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/starred", starHandler.List)
 	protectedMux.HandleFunc("POST /api/notes/{noteId}/star", starHandler.Star)
 	protectedMux.HandleFunc("DELETE /api/notes/{noteId}/star", starHandler.Unstar)

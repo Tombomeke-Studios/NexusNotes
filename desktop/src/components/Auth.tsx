@@ -203,7 +203,7 @@ export function Auth({ onAuth }: AuthProps) {
 
         {!forgot && isLogin && (
           <button
-            className="auth-toggle auth-toggle--muted"
+            className="auth-forgot-link"
             onClick={() => {
               setForgot(true);
               setError("");

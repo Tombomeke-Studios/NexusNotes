@@ -578,12 +578,18 @@ input:focus, textarea:focus {
 
 .auth-toggle:hover { color: var(--accent); }
 
-/* Secondary link (e.g. "Forgot password?") sits tighter under the primary one. */
-.auth-toggle--muted {
-  margin-top: 10px;
+/* Secondary link ("Forgot password?") — deliberately NOT .auth-toggle so the
+   e2e helper's `.auth-toggle` selector stays unique to the sign-up toggle. */
+.auth-forgot-link {
+  display: block;
+  margin: 10px auto 0;
   font-size: 12px;
+  color: var(--text-muted);
   opacity: 0.85;
+  transition: color var(--transition-fast);
 }
+
+.auth-forgot-link:hover { color: var(--accent); }
 
 .auth-footer {
   margin-top: 26px;

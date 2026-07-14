@@ -680,7 +680,7 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
-### `feature/vault-sharing` - Collaborative vaults (PR pending)
+### `feature/vault-sharing` - Collaborative vaults (PR #213)
 
 - [x] vault_members table, invite/list/role/remove endpoints, centralized owner/editor/viewer access control across all data handlers, shared vaults in GET /vaults, WS broadcast to members, sharing panel UI + shared indicator (#51-#55)
 

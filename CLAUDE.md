@@ -189,6 +189,7 @@ is the migrations directory.
 | `src/lib/clientSearch.ts` | Client-side full-text search over decrypted in-memory notes (e2ee vaults; server search only sees ciphertext) |
 | `src/lib/tagTree.ts` | Builds the nested tag tree (grouped on `/`) for the sidebar tag panel |
 | `src/lib/tagRename.ts` | Renames a tag across note content (inline + front-matter, cascades to nested children) |
+| `src/components/Workspace/SharingDialog.tsx` | Vault sharing panel: invite by email, per-member roles, leave (#55) |
 | `src/lib/templates.ts` | Note templates: Templates-folder discovery, {{date}}/{{time}}/{{title}} substitution, default daily template |
 | `src/lib/export.ts` | Note export (#152): front-matter strip, standalone HTML via the preview's markdown pipeline, vault zip, print-to-PDF |
 | `src/lib/zip.ts` | Dependency-free store-only ZIP writer (CRC32) used by the client-side vault export |

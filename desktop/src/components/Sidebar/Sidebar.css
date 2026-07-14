@@ -739,3 +739,56 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Vault row wrapper with a share action (#55). */
+.sidebar-vault-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.sidebar-vault-row .sidebar-vault-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-vault-row:hover {
+  background: var(--bg-overlay);
+}
+
+.sidebar-vault-row.active .sidebar-vault-item {
+  color: var(--text-primary);
+}
+
+.sidebar-vault-role {
+  flex: none !important;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: var(--accent);
+  border: 1px solid var(--accent-bg-strong);
+}
+
+.sidebar-vault-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.sidebar-vault-row:hover .sidebar-vault-share {
+  opacity: 1;
+}
+
+.sidebar-vault-share:hover {
+  color: var(--accent);
+  background: var(--bg-overlay);
+}

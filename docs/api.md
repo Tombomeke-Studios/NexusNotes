@@ -218,6 +218,26 @@ Operator-only: returns instance-wide totals (`users`, `vaults`, `notes`), `uptim
 
 ---
 
+## Vault Sharing
+
+### GET /api/vaults/:id/members
+
+Lists the vault's members (`VaultMember[]`). Any member or the owner may view.
+
+### POST /api/vaults/:id/members
+
+Invites a registered user by email as `viewer` or `editor`: `{email, role}` → `204`. Owner only. Membership is auto-accepted, so the vault appears for the invitee immediately.
+
+### PATCH /api/vaults/:id/members/:userId
+
+Changes a member's role: `{role}` → `204`. Owner only.
+
+### DELETE /api/vaults/:id/members/:userId
+
+Removes a member (owner) or leaves the vault (a member removing themselves) → `204`.
+
+Shared vaults also appear in `GET /api/vaults`, each stamped with the caller's `role` (`owner`/`editor`/`viewer`). Note create/update/delete broadcast over WebSocket to the owner and all members.
+
 ## Search
 
 ### GET /api/vaults/:vaultId/search?q=

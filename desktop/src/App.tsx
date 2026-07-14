@@ -14,6 +14,7 @@ import { DailyCalendar } from "./components/Workspace/DailyCalendar";
 import { ContextMenu } from "./components/Workspace/ContextMenu";
 import { TemplatePicker } from "./components/Workspace/TemplatePicker";
 import { RenameTagDialog } from "./components/Workspace/RenameTagDialog";
+import { SharingDialog } from "./components/Workspace/SharingDialog";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -111,6 +112,8 @@ export default function App() {
   const [authAction, setAuthAction] = useState(() => currentAuthAction());
   // Tag being renamed via the sidebar tag panel (#154).
   const [renameTag, setRenameTag] = useState<string | null>(null);
+  // Vault whose sharing panel is open (#55).
+  const [shareVaultId, setShareVaultId] = useState<string | null>(null);
 
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
@@ -1194,7 +1197,8 @@ export default function App() {
   modalOpenRef.current =
     paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
     showNewVault || recoveryCode !== null || unlockVaultId !== null ||
-    showTemplatePicker || renameTag !== null || ctxMenu !== null || workspaceMenu !== null;
+    showTemplatePicker || renameTag !== null || shareVaultId !== null ||
+    ctxMenu !== null || workspaceMenu !== null;
 
   return (
     <div
@@ -1278,6 +1282,7 @@ export default function App() {
               onDeleteFolder={handleDeleteFolder}
               newFolderNonce={newFolderNonce}
               onRequestNewVault={() => setShowNewVault(true)}
+              onShareVault={setShareVaultId}
               onToggleTag={toggleTagFilter}
               onRenameTag={setRenameTag}
               onSetFolder={setFilterFolder}
@@ -1605,6 +1610,27 @@ export default function App() {
           onClose={() => setRenameTag(null)}
         />
       )}
+
+      {shareVaultId && user && (() => {
+        const v = vaultList.find((x) => x.id === shareVaultId);
+        if (!v) return null;
+        return (
+          <SharingDialog
+            vault={v}
+            currentUserId={user.id}
+            isOwner={(v.role ?? "owner") === "owner"}
+            onClose={() => setShareVaultId(null)}
+            onLeft={() => {
+              setShareVaultId(null);
+              setVaultList((prev) => prev.filter((x) => x.id !== v.id));
+              if (activeVaultId === v.id) {
+                const next = vaultListRef.current.find((x) => x.id !== v.id);
+                if (next) handleSelectVault(next.id);
+              }
+            }}
+          />
+        );
+      })()}
 
       {showCalendar && (
         <DailyCalendar

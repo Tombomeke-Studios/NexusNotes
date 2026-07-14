@@ -7,6 +7,8 @@ export interface User {
   updated_at: string;
 }
 
+export type VaultRole = "owner" | "editor" | "viewer";
+
 export interface Vault {
   id: string;
   user_id: string;
@@ -14,8 +16,20 @@ export interface Vault {
   encryption: "none" | "e2ee";
   /** Opaque client-written key material for e2ee vaults (see lib/vaultKeys). */
   encryption_meta?: unknown;
+  /** The caller's role for this vault: "owner" for owned, else shared (#51). */
+  role?: VaultRole;
   created_at: string;
   updated_at: string;
+}
+
+export interface VaultMember {
+  vault_id: string;
+  user_id: string;
+  email: string;
+  display_name: string;
+  role: "viewer" | "editor";
+  accepted_at?: string;
+  created_at: string;
 }
 
 export interface Note {

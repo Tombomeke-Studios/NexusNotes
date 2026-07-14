@@ -665,22 +665,6 @@ This entry is retained so that existing issue references remain valid.
 
 
 
-## `feature/vault-sharing` - Collaborative vault sharing
-
-> Users can invite others to a vault with viewer or editor access. Shared vaults
-> appear in the sidebar for all members and sync in real time via WebSocket.
-
-- [ ] Add `vault_members` table: `vault_id`, `user_id`, `role` (`viewer` or `editor`), `invited_by`, `accepted_at`, `created_at` (#51)
-- [ ] Add `POST /vaults/:id/members` to invite a user by email address (#51)
-- [ ] Add `PATCH /vaults/:id/members/:userId` to change a member's role (#52)
-- [ ] Add `DELETE /vaults/:id/members/:userId` to remove a member or leave a vault (#52)
-- [ ] Extend the authorization middleware to allow vault access for all members, enforcing role-based write checks (#53)
-- [ ] Show shared vaults in the sidebar with a "shared" icon and member count tooltip (#55)
-- [ ] Add a Sharing panel in the vault context menu listing members and invite form (#55)
-- [ ] Broadcast WebSocket note updates to all connected members of the vault, not just the owner (#54)
-- [ ] Write unit tests for the membership repository and authorization middleware changes
-
----
 
 
 ## Backlog
@@ -695,6 +679,10 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/vault-sharing` - Collaborative vaults (PR pending)
+
+- [x] vault_members table, invite/list/role/remove endpoints, centralized owner/editor/viewer access control across all data handlers, shared vaults in GET /vaults, WS broadcast to members, sharing panel UI + shared indicator (#51-#55)
 
 ### `feature/tag-panel` - Nested tag tree with rename (PR #212)
 

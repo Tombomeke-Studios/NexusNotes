@@ -515,15 +515,6 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/note-export` - Note export (PDF, HTML, plain markdown)
-
-- [x] Add "Export as PDF" via the print dialog (native save-as-PDF; works in the Tauri shell and browsers) (#152)
-- [x] Add "Export as HTML" to render markdown to a standalone HTML file (#152)
-- [x] Add "Export as plain Markdown" to strip front-matter and write to a file (#152)
-- [x] Add "Export vault" to zip all notes as `.md` files in an Obsidian-compatible format — built client-side so e2ee vaults export decrypted (#152)
-- [x] Write tests for export transformations (front-matter strip, HTML doc, zip structure, CRC32) (#152)
-
----
 
 ## `feature/ai-intelligence` - AI and semantic intelligence
 
@@ -720,6 +711,11 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/note-export` - Export notes and vaults (PR #209)
+
+- [x] Note context menu: export as Markdown (front-matter stripped), standalone HTML, or PDF via the native print dialog (#152)
+- [x] Vault export as an Obsidian-compatible zip, built by a dependency-free client-side ZIP writer so e2ee vaults export decrypted locally (#152)
 
 ### `feature/observability` - Logs, metrics, dashboards, admin stats (PR #208)
 

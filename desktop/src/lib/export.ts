@@ -21,7 +21,7 @@ export function stripFrontmatter(content: string): string {
 
 /** Makes a note title safe as a filename across platforms. */
 export function safeFilename(title: string): string {
-  const cleaned = title.replace(/[\\/:*?"<>|\x00-\x1f]/g, "_").trim();
+  const cleaned = title.replace(/[\\/:*?"<>|]/g, "_").trim();
   return cleaned || "Untitled";
 }
 

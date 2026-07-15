@@ -680,6 +680,11 @@ Lower priority items not focused on the desktop application.
 
 ## Done
 
+### `feature/attachments` - Note attachments (PR #214)
+
+- [x] MinIO object storage, upload/list/download/delete API with vault access control, editor drag-drop/paste upload, inline ![[image]] rendering via authenticated blob URLs; CI gained a MinIO service (#153)
+- [x] CI: bump to golangci-lint v2 (go 1.25 module target from minio-go) and check Close() returns
+
 ### `feature/vault-sharing` - Collaborative vaults (PR #213)
 
 - [x] vault_members table, invite/list/role/remove endpoints, centralized owner/editor/viewer access control across all data handlers, shared vaults in GET /vaults, WS broadcast to members, sharing panel UI + shared indicator (#51-#55)

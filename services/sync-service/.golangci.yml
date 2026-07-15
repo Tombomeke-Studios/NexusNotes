@@ -1,0 +1,6 @@
+# golangci-lint v1 config. The go directive in go.mod is 1.25 (pulled in by
+# minio-go), but the CI linter binary is built with an older Go; pin the
+# analysis target so it doesn't refuse to run. Default linters/excludes are
+# kept (including the built-in errcheck exclusions for io.Closer.Close).
+run:
+  go: "1.23"

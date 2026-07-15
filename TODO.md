@@ -40,7 +40,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/graph-view` - Graph view (2D and 3D interactive knowledge map)
+## `feature/graph-view` - Graph view (2D and 3D interactive knowledge map) (#216)
 
 > Notes are rendered as nodes, wiki-links as directed edges. The graph view is one of
 > the most differentiating features of the application and must perform well at scale.
@@ -104,7 +104,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/animations-and-ux` - Animations, transitions, and micro-interactions
+## `feature/animations-and-ux` - Animations, transitions, and micro-interactions (#217)
 
 > The application must feel responsive and intentional. Every state change should be
 > accompanied by a purposeful motion. Use Framer Motion for React-state-driven animations
@@ -194,7 +194,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/onboarding` - First-run experience and discoverability
+## `feature/onboarding` - First-run experience and discoverability (#218)
 
 > New users should understand the application immediately without external documentation.
 > The first-run experience must guide a user to their first meaningful action within
@@ -212,7 +212,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/startup-performance` - Sub-second startup and runtime performance
+## `feature/startup-performance` - Sub-second startup and runtime performance (#219)
 
 > The application must start quickly and remain responsive as vaults grow. Tauri provides
 > a significant advantage over Electron-based alternatives, but deliberate optimisation
@@ -231,7 +231,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/db-performance` - Database performance and indexing
+## `feature/db-performance` - Database performance and indexing (#220)
 
 > All queries must remain fast as vaults grow to tens of thousands of notes.
 > The target for common read operations is under 10 ms.
@@ -294,13 +294,13 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Support linking raw URLs; fetch on open through a server-side proxy (avoids CORS)
 - [x] Allow personal annotations on top of a read-only linked file; store them separately so syncing the source never overwrites them (#64)
 - [x] Write unit tests for the linked_files handler (source-type validation); repo verified live over HTTP
-- [ ] Add a "Link existing file" entry to the sidebar context menu accessible via `Ctrl+Shift+L`
+- [ ] Add a "Link existing file" entry to the sidebar context menu accessible via `Ctrl+Shift+L` (#241)
 - [ ] Support linking local filesystem paths using the Tauri `fs` API; read the file on open — native app only
 - [ ] Support linking an entire local directory: scan recursively for `.md` files, display as a virtual folder, auto-update on add/remove (#60) — native app only
 - [ ] Watch linked local paths with Tauri `fs.watch`; refresh the sidebar entry and editor on disk change (#61) — native app only
 - [ ] Add a "last synced" timestamp and a manual "Sync now" button on each linked file entry (#62) — native app only
 - [ ] Show a visual indicator when on-disk content has changed since the last read (#63) — native app only
-- [ ] Support linking GitHub file paths using the existing GitHub connection when available
+- [ ] Support linking GitHub file paths using the existing GitHub connection when available (#241)
 
 > Native-filesystem items (#60/#61/#63, local paths, Sync-now) run only in the packaged
 > Tauri app (`isTauriWindow===true`); the web/CI harness can't exercise them, so they're
@@ -309,7 +309,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/mcp-server` - NexusNotes MCP server
+## `feature/mcp-server` - NexusNotes MCP server (#221)
 
 > A first-class Model Context Protocol server that lets Claude, Codex, Cursor, and any
 > MCP-compatible AI client read, search, create, and update notes — just like the
@@ -368,7 +368,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/tauri-native` - Tauri native desktop wrapper
+## `feature/tauri-native` - Tauri native desktop wrapper (#222)
 
 - [ ] Add Tauri wrapper for native desktop app (#31)
 - [ ] Implement system tray icon with a quick-capture shortcut opening a lightweight input window in under 500 ms
@@ -378,7 +378,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/editor-enhancements` - Editor quality of life
+## `feature/editor-enhancements` - Editor quality of life (#223)
 
 - [ ] Add Vim keybinding mode (toggle in settings)
 - [ ] Add `Ctrl+F` in-note search and replace
@@ -405,7 +405,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add a template picker; templates are notes in a `Templates` folder in the vault (#155)
 - [x] Add a `Ctrl+T` "Insert template" command in the command palette (#155)
 - [x] Support template variables: `{{date}}`, `{{time}}`, `{{title}}` (#155)
-- [ ] Add periodic notes: weekly (`YYYY-Www`) and monthly (`YYYY-MM`) with separate templates
+- [ ] Add periodic notes: weekly (`YYYY-Www`) and monthly (`YYYY-MM`) with separate templates (#240)
 - [x] Write tests for template variable substitution (#155)
 
 ---
@@ -425,7 +425,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/canvas` - Canvas (infinite visual workspace)
+## `feature/canvas` - Canvas (infinite visual workspace) (#224)
 
 > An infinite 2D board where notes, images, and free-form text cards can be placed and
 > connected with arrows — analogous to Obsidian Canvas.
@@ -449,7 +449,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/conflict-resolution-ui` - Conflict resolution merge UI
+## `feature/conflict-resolution-ui` - Conflict resolution merge UI (#225)
 
 - [ ] Design and build a split-pane diff/merge UI component
 - [ ] Wire the `type: conflict` WebSocket event to open the merge modal
@@ -465,15 +465,15 @@ This entry is retained so that existing issue references remain valid.
 - [x] Add `POST /notes/:id/attachments` for multipart upload to MinIO (#153)
 - [x] Add `GET /notes/:id/attachments` to list attachments (#153)
 - [x] Add `DELETE /attachments/:id` to remove an attachment (#153)
-- [ ] For encrypted vaults, encrypt attachment bytes client-side before upload (follow-up)
+- [ ] For encrypted vaults, encrypt attachment bytes client-side before upload (#238)
 - [x] Build drag-and-drop (and paste) file upload into the editor (#153)
 - [x] Render uploaded images inline using `![[filename]]` embed syntax (#153)
-- [ ] Add an attachment panel in the editor sidebar (follow-up)
+- [ ] Add an attachment panel in the editor sidebar (#238)
 - [x] Write tests for the image-embed transform + an E2E drop/upload/render test (#153)
 
 ---
 
-## `feature/version-history-ui` - Version history viewer
+## `feature/version-history-ui` - Version history viewer (#226)
 
 - [ ] Build a version history panel listing saved versions per note
 - [ ] Render a diff between any two selected versions (side-by-side or inline)
@@ -483,7 +483,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/offline-support` - Offline queue and deferred sync
+## `feature/offline-support` - Offline queue and deferred sync (#227)
 
 - [ ] Implement a local IndexedDB queue for edits made while offline
 - [ ] Detect WebSocket disconnect and enqueue saves locally
@@ -493,7 +493,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/github-integration` - GitHub OAuth and repository import
+## `feature/github-integration` - GitHub OAuth and repository import (#228)
 
 - [ ] Add a GitHub OAuth flow (PKCE) with a backend callback and token exchange
 - [ ] Store the encrypted `access_token` in a `github_connections` table
@@ -521,7 +521,7 @@ This entry is retained so that existing issue references remain valid.
 ---
 
 
-## `feature/ai-intelligence` - AI and semantic intelligence
+## `feature/ai-intelligence` - AI and semantic intelligence (#229)
 
 > All AI features are opt-in. Users supply their own API key (OpenAI, Anthropic, Gemini)
 > or run a local Ollama model. For encrypted vaults, AI features are disabled by default
@@ -558,7 +558,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/task-management` - Task management and GTD
+## `feature/task-management` - Task management and GTD (#230)
 
 - [ ] Parse due dates from `- [ ] Task text` lines using the `date:YYYY-MM-DD` front-matter syntax or a configurable inline marker
 - [ ] Parse priority levels (`high`, `medium`, `low`) from inline markers or front-matter
@@ -573,7 +573,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/publishing` - Publish notes as public URLs
+## `feature/publishing` - Publish notes as public URLs (#231)
 
 > Notes can be published as publicly accessible, server-rendered HTML pages — no client
 > application required to view them. Publishing is opt-in per note and supports optional
@@ -593,7 +593,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/pdf-and-media` - PDF viewer and media handling
+## `feature/pdf-and-media` - PDF viewer and media handling (#232)
 
 - [ ] Integrate `pdf.js` for inline PDF rendering; open `.pdf` attachments inside the editor
 - [ ] Support PDF annotation: highlight text in a PDF and save the annotation as a linked note block
@@ -605,7 +605,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/spaced-repetition` - Flashcards and spaced repetition
+## `feature/spaced-repetition` - Flashcards and spaced repetition (#233)
 
 - [ ] Parse the `#flashcard` tag on a note block and register it in the review queue
 - [ ] Add `flashcard_reviews` table with columns: `note_id`, `block_ref`, `due_date`, `ease_factor`, `interval`, `repetitions`
@@ -618,7 +618,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/writing-experience` - Writing quality of life
+## `feature/writing-experience` - Writing quality of life (#234)
 
 - [ ] Show a reading time estimate in the status bar based on word count at 200 words per minute
 - [ ] Add typewriter mode: keep the active line vertically centred in the viewport using CSS `scroll-margin`
@@ -632,7 +632,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/structured-data` - Note properties and database views
+## `feature/structured-data` - Note properties and database views (#235)
 
 - [ ] Build a note properties panel in the editor sidebar that renders YAML front-matter as an editable key-value interface rather than raw YAML
 - [ ] Support property types: text, number, date, checkbox, select, multi-select, and relation
@@ -643,7 +643,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/themes-and-customization` - Themes and visual customisation
+## `feature/themes-and-customization` - Themes and visual customisation (#236)
 
 - [ ] Add an accent colour picker in settings applied to links, graph nodes, tag pills, and focus borders via a CSS variable
 - [ ] Add a font size slider in settings (12 to 20 px) remembered per vault
@@ -655,7 +655,7 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/import-and-migration` - Import from other applications
+## `feature/import-and-migration` - Import from other applications (#237)
 
 - [ ] Build an import wizard UI supporting drag-and-drop of a folder, ZIP archive, or export file
 - [ ] Implement Obsidian vault import: read `.md` files, preserve folder structure and wiki-links
@@ -672,7 +672,7 @@ This entry is retained so that existing issue references remain valid.
 
 
 
-## Backlog
+## Backlog (#239)
 
 Lower priority items not focused on the desktop application.
 

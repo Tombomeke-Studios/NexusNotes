@@ -36,7 +36,7 @@ func NewClient(hub *Hub, conn *websocket.Conn, userID, deviceID string) *Client 
 func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.Unregister(c)
-		c.Conn.Close()
+		_ = c.Conn.Close()
 	}()
 
 	c.Conn.SetReadLimit(maxMessageSize)
@@ -60,7 +60,7 @@ func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.Conn.Close()
+		_ = c.Conn.Close()
 	}()
 
 	for {

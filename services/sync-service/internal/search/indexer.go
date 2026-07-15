@@ -98,7 +98,7 @@ func (idx *Indexer) deleteByVaults(ctx context.Context, vaultIDs []string) error
 	if err != nil {
 		return fmt.Errorf("http: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)
@@ -126,7 +126,7 @@ func (idx *Indexer) upsertDoc(ctx context.Context, doc NoteDoc) error {
 	if err != nil {
 		return fmt.Errorf("http: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)
@@ -148,7 +148,7 @@ func (idx *Indexer) deleteDoc(ctx context.Context, noteID string) error {
 	if err != nil {
 		return fmt.Errorf("http: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)

@@ -33,7 +33,7 @@ func readZip(t *testing.T, data []byte) map[string]string {
 			t.Fatalf("open %s: %v", f.Name, err)
 		}
 		content, err := io.ReadAll(rc)
-		rc.Close()
+		_ = rc.Close()
 		if err != nil {
 			t.Fatalf("read %s: %v", f.Name, err)
 		}

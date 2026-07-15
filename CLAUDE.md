@@ -187,6 +187,7 @@ is the migrations directory.
 | `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
 | `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |
 | `src/lib/clientSearch.ts` | Client-side full-text search over decrypted in-memory notes (e2ee vaults; server search only sees ciphertext) |
+| `src/lib/remarkCallouts.ts` | remark plugin: `> [!NOTE]` blockquotes → styled callout blocks in the preview (#223) |
 | `src/lib/tagTree.ts` | Builds the nested tag tree (grouped on `/`) for the sidebar tag panel |
 | `src/lib/tagRename.ts` | Renames a tag across note content (inline + front-matter, cascades to nested children) |
 | `src/components/Workspace/SharingDialog.tsx` | Vault sharing panel: invite by email, per-member roles, leave (#55) |

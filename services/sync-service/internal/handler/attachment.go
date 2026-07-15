@@ -64,7 +64,7 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "a 'file' field is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if header.Size > maxAttachmentBytes {
 		writeError(w, http.StatusRequestEntityTooLarge, "file exceeds the 25 MiB limit")
@@ -150,7 +150,7 @@ func (h *AttachmentHandler) Download(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to read file")
 		return
 	}
-	defer obj.Close()
+	defer func() { _ = obj.Close() }()
 
 	w.Header().Set("Content-Type", att.MimeType)
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")

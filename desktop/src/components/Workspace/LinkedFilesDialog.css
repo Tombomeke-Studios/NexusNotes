@@ -1,0 +1,193 @@
+/* Linked files panel (#60-64). */
+.links-dialog {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+}
+
+.links-note {
+  margin: 2px 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.links-add {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.links-add .enc-input:first-child {
+  flex: 0 0 34%;
+}
+
+.links-add .enc-input:nth-child(2) {
+  flex: 1;
+}
+
+.links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 16px;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
+.links-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.links-open {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-crust);
+  color: var(--text-primary);
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.links-open:hover {
+  background: var(--bg-surface);
+}
+
+.links-open svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.links-name {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.links-type {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-inner);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.links-empty {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  padding: 10px 2px;
+}
+
+/* Read-only linked-file viewer. */
+.linkview {
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+}
+
+.linkview-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.linkview-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.linkview-back:hover {
+  color: var(--text-primary);
+  background: var(--bg-crust);
+}
+
+.linkview-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkview-ro {
+  font-size: 10.5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  white-space: nowrap;
+}
+
+.linkview-body {
+  flex: 1;
+  min-height: 140px;
+  max-height: 34vh;
+  overflow: auto;
+  border: 1px solid var(--border-inner);
+  border-radius: 8px;
+  background: var(--bg-crust);
+}
+
+.linkview-content {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.linkview-annotate {
+  margin-top: 12px;
+}
+
+.linkview-annotate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.linkview-saved {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.linkview-annotate-input {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-crust);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.linkview-annotate-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}

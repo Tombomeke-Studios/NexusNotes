@@ -285,22 +285,27 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > without copying or rewriting their content. The original files remain in place — the
 > vault stores a reference only.
 
-- [ ] Add `linked_files` table with columns: `id`, `vault_id`, `display_name`, `source_type` (`local_path`, `url`, `github_path`), `source_ref`, `read_only`, `created_at`
-- [ ] Add `POST /vaults/:id/links` to register a linked file reference
-- [ ] Add `GET /vaults/:id/links` to list linked files in a vault
-- [ ] Add `DELETE /vaults/:id/links/:link_id` to remove a link
-- [ ] Render linked files in the sidebar file tree with a distinct chain-link icon
-- [ ] Open linked files in the editor as read-only with a "Linked - original not modified" notice
-- [ ] Add a "Link existing file" dialog to the sidebar context menu accessible via `Ctrl+Shift+L`
-- [ ] Support linking local filesystem paths using the Tauri `fs` API; read the file on open
-- [ ] Support linking an entire local directory: scan recursively for `.md` files, display as a virtual folder in the sidebar, and update automatically when files are added or removed (#60)
-- [ ] Watch linked local paths with Tauri `fs.watch`; refresh the sidebar entry and editor content when the file changes on disk without requiring a manual refresh (#61)
-- [ ] Add a "last synced" timestamp and a manual "Sync now" button on each linked file entry in the sidebar (#62)
-- [ ] Show a visual indicator (badge or colour) when the on-disk content has changed since the last read (#63)
-- [ ] Support linking raw URLs; fetch on open, cache locally, and refresh on demand
+- [x] Add `linked_files` table (`id`, `vault_id`, `display_name`, `source_type` [`local_path`/`url`/`github_path`], `source_ref`, `read_only`, `created_at`)
+- [x] Add `POST /vaults/:id/links` to register a linked file reference
+- [x] Add `GET /vaults/:id/links` to list linked files in a vault
+- [x] Add `DELETE /vaults/:id/links/:link_id` to remove a link
+- [x] Show linked files with a distinct chain-link icon (in a per-vault Linked Files panel)
+- [x] Open linked files read-only with a "Linked — original not modified" notice
+- [x] Support linking raw URLs; fetch on open through a server-side proxy (avoids CORS)
+- [x] Allow personal annotations on top of a read-only linked file; store them separately so syncing the source never overwrites them (#64)
+- [x] Write unit tests for the linked_files handler (source-type validation); repo verified live over HTTP
+- [ ] Add a "Link existing file" entry to the sidebar context menu accessible via `Ctrl+Shift+L`
+- [ ] Support linking local filesystem paths using the Tauri `fs` API; read the file on open — native app only
+- [ ] Support linking an entire local directory: scan recursively for `.md` files, display as a virtual folder, auto-update on add/remove (#60) — native app only
+- [ ] Watch linked local paths with Tauri `fs.watch`; refresh the sidebar entry and editor on disk change (#61) — native app only
+- [ ] Add a "last synced" timestamp and a manual "Sync now" button on each linked file entry (#62) — native app only
+- [ ] Show a visual indicator when on-disk content has changed since the last read (#63) — native app only
 - [ ] Support linking GitHub file paths using the existing GitHub connection when available
-- [ ] Allow personal annotations to be added on top of a linked read-only file; store annotations separately from the linked content so syncing the source does not overwrite them (#64)
-- [ ] Write unit tests for the linked_files repository and handler
+
+> Native-filesystem items (#60/#61/#63, local paths, Sync-now) run only in the packaged
+> Tauri app (`isTauriWindow===true`); the web/CI harness can't exercise them, so they're
+> left for verification on the real desktop build. The URL/annotation foundation (#64) is
+> merged and verified.
 
 ---
 

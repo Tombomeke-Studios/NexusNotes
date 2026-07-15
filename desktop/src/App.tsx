@@ -15,6 +15,7 @@ import { ContextMenu } from "./components/Workspace/ContextMenu";
 import { TemplatePicker } from "./components/Workspace/TemplatePicker";
 import { RenameTagDialog } from "./components/Workspace/RenameTagDialog";
 import { SharingDialog } from "./components/Workspace/SharingDialog";
+import { LinkedFilesDialog } from "./components/Workspace/LinkedFilesDialog";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -114,6 +115,7 @@ export default function App() {
   const [renameTag, setRenameTag] = useState<string | null>(null);
   // Vault whose sharing panel is open (#55).
   const [shareVaultId, setShareVaultId] = useState<string | null>(null);
+  const [linksVaultId, setLinksVaultId] = useState<string | null>(null);
 
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
@@ -1198,7 +1200,7 @@ export default function App() {
     paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
     showNewVault || recoveryCode !== null || unlockVaultId !== null ||
     showTemplatePicker || renameTag !== null || shareVaultId !== null ||
-    ctxMenu !== null || workspaceMenu !== null;
+    linksVaultId !== null || ctxMenu !== null || workspaceMenu !== null;
 
   return (
     <div
@@ -1283,6 +1285,7 @@ export default function App() {
               newFolderNonce={newFolderNonce}
               onRequestNewVault={() => setShowNewVault(true)}
               onShareVault={setShareVaultId}
+              onOpenLinks={setLinksVaultId}
               onToggleTag={toggleTagFilter}
               onRenameTag={setRenameTag}
               onSetFolder={setFilterFolder}
@@ -1628,6 +1631,18 @@ export default function App() {
                 if (next) handleSelectVault(next.id);
               }
             }}
+          />
+        );
+      })()}
+
+      {linksVaultId && (() => {
+        const v = vaultList.find((x) => x.id === linksVaultId);
+        if (!v) return null;
+        return (
+          <LinkedFilesDialog
+            vault={v}
+            canWrite={(v.role ?? "owner") !== "viewer"}
+            onClose={() => setLinksVaultId(null)}
           />
         );
       })()}

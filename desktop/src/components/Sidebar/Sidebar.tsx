@@ -79,6 +79,8 @@ interface SidebarProps {
   onRequestNewVault: () => void;
   /** Opens the sharing panel for a vault (#55). */
   onShareVault: (vaultId: string) => void;
+  /** Opens the linked-files panel for a vault (#60-64). */
+  onOpenLinks: (vaultId: string) => void;
   onToggleTag: (tag: string) => void;
   /** Rename a tag (and its nested children) across every note (#154). */
   onRenameTag: (tag: string) => void;
@@ -122,6 +124,7 @@ export function Sidebar({
   newFolderNonce,
   onRequestNewVault,
   onShareVault,
+  onOpenLinks,
   onToggleTag,
   onRenameTag,
   onSetFolder,
@@ -346,6 +349,19 @@ export function Sidebar({
                     <path d="M2.5 6.5L5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
+              </button>
+              <button
+                className="sidebar-vault-share"
+                title="Linked files"
+                onClick={() => {
+                  setShowVaults(false);
+                  onOpenLinks(v.id);
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M6.5 9.5l3-3M7 4.5l.8-.8a2.4 2.4 0 013.5 3.4l-.9.9M9 11.5l-.8.8a2.4 2.4 0 01-3.5-3.4l.9-.9"
+                    stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                </svg>
               </button>
               <button
                 className="sidebar-vault-share"

@@ -44,6 +44,25 @@ const (
 	VaultRoleViewer = "viewer"
 )
 
+// LinkedFile references an external file linked into a vault without copying
+// it (URL, local path, or GitHub file) — the original stays in place.
+type LinkedFile struct {
+	ID          string    `json:"id"`
+	VaultID     string    `json:"vault_id"`
+	DisplayName string    `json:"display_name"`
+	SourceType  string    `json:"source_type"` // 'url' | 'local_path' | 'github_path'
+	SourceRef   string    `json:"source_ref"`
+	ReadOnly    bool      `json:"read_only"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+// Linked-file source types.
+const (
+	LinkedSourceURL    = "url"
+	LinkedSourceLocal  = "local_path"
+	LinkedSourceGitHub = "github_path"
+)
+
 // VaultMember is a user's membership in a shared vault (#51).
 type VaultMember struct {
 	VaultID     string     `json:"vault_id"`

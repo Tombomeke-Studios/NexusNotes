@@ -258,6 +258,43 @@ Streams the file bytes (read access). Authenticated, so inline images are loaded
 
 Removes the attachment (metadata + object). Write access required.
 
+## Linked Files
+
+Linked files reference an external file *by reference* — NexusNotes never copies
+or modifies the original. A link records a display name, a `source_type` (`url`,
+`local_path`, or `github_path`) and a `source_ref`. URL sources are fetched fresh
+on open through a server-side proxy (avoids browser CORS); `local_path`/`github_path`
+are read by the native desktop app. Each user keeps their own annotations, stored
+separately from the source so re-syncing never overwrites them (#64).
+
+### GET /api/vaults/:id/links
+
+Lists a vault's linked files (`LinkedFile[]`). Read access required.
+
+### POST /api/vaults/:id/links
+
+Registers a link from `{ display_name?, source_type, source_ref }` → the created
+`LinkedFile`. An unknown `source_type` or empty `source_ref` returns `400`. Write access required.
+
+### DELETE /api/vaults/:id/links/:linkId
+
+Removes a link (and its annotations). Write access required.
+
+### GET /api/links/:linkId/content
+
+Fetches the current content of a `url` link `{ content, content_type, fetched_at }`
+(capped at 5 MiB). Returns `422` for non-URL links, `502` when the source can't be
+reached. Read access required.
+
+### GET /api/links/:linkId/annotation
+
+Returns the caller's annotation `{ content }` (empty string when none). Read access required.
+
+### PUT /api/links/:linkId/annotation
+
+Upserts the caller's annotation from `{ content }` → `204`. Read access required
+(each member keeps their own notes).
+
 ## Search
 
 ### GET /api/vaults/:vaultId/search?q=

@@ -20,6 +20,7 @@ import { toggleTask } from "../../lib/tasks";
 import { remarkWikilinks } from "../../lib/remarkWikilinks";
 import { remarkTags } from "../../lib/remarkTags";
 import { remarkImageEmbeds } from "../../lib/remarkImageEmbeds";
+import { remarkCallouts } from "../../lib/remarkCallouts";
 import { wikiUrlTransform } from "../../lib/markdownUrls";
 import { attachments as attachmentsApi, type Attachment } from "../../lib/api";
 import { AttachmentImage } from "./AttachmentImage";
@@ -510,7 +511,7 @@ export function Editor({
           <div ref={previewRef} className="editor-preview markdown-body" style={{ fontSize }}>
             <div className="markdown-body-inner">
               <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkImageEmbeds, remarkWikilinks, remarkTags]}
+                remarkPlugins={[remarkGfm, remarkImageEmbeds, remarkWikilinks, remarkTags, remarkCallouts]}
                 components={{ code: renderCode, pre: renderPre, a: renderAnchor, input: renderCheckbox, img: renderImage }}
                 urlTransform={wikiUrlTransform}
               >

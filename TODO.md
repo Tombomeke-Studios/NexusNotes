@@ -385,7 +385,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add `Ctrl+,` settings panel with options for theme, font size, Vim mode, and sync interval
 - [ ] Add `![[image.png]]` embed syntax rendering inline images from attachments
 - [ ] Add `[[Note name#Section]]` section anchor navigation
-- [ ] Add callout blocks (`> [!NOTE]`, `> [!WARNING]`, etc.)
+- [x] Add callout blocks (`> [!NOTE]`, `> [!WARNING]`, etc.) (#223)
 - [ ] Add KaTeX math rendering for inline (`$...$`) and block (`$$...$$`) expressions
 - [ ] Add footnote support using `[^1]` syntax
 - [ ] Implement a table-of-contents panel generated from `##` headings

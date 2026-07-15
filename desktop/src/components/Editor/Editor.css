@@ -273,6 +273,42 @@
   font-style: italic;
 }
 
+/* Callout blocks (#223): `> [!NOTE] Title` rendered by lib/remarkCallouts. */
+.markdown-body .callout {
+  --callout-color: var(--accent);
+  border: 1px solid var(--border-inner);
+  border-left: 3px solid var(--callout-color);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0.9em 0;
+  background: color-mix(in srgb, var(--callout-color) 8%, transparent);
+  color: var(--text-secondary);
+  font-style: normal;
+}
+
+.markdown-body .callout-title {
+  font-weight: 600;
+  color: var(--callout-color);
+  margin: 0 0 0.35em;
+  text-transform: capitalize;
+  letter-spacing: 0.01em;
+}
+
+.markdown-body .callout > :not(.callout-title):last-child {
+  margin-bottom: 0;
+}
+
+/* Type accents; unknown types fall back to the accent colour above. */
+.markdown-body .callout-note,
+.markdown-body .callout-info { --callout-color: var(--blue); }
+.markdown-body .callout-tip,
+.markdown-body .callout-success { --callout-color: #a6e3a1; }
+.markdown-body .callout-warning,
+.markdown-body .callout-caution { --callout-color: var(--warning); }
+.markdown-body .callout-danger,
+.markdown-body .callout-error,
+.markdown-body .callout-bug { --callout-color: var(--pink); }
+
 .markdown-body a {
   color: var(--blue);
   text-decoration: none;

@@ -62,7 +62,7 @@ func (idx *Indexer) ConfigureIndex(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("http: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)

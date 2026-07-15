@@ -346,6 +346,53 @@ export const attachments = {
   },
 };
 
+export interface LinkedFile {
+  id: string;
+  vault_id: string;
+  display_name: string;
+  source_type: "url" | "local_path" | "github_path";
+  source_ref: string;
+  read_only: boolean;
+  created_at: string;
+}
+
+export interface LinkedContent {
+  content: string;
+  content_type: string;
+  fetched_at: string;
+}
+
+/**
+ * Files linked into a vault by reference (#60-64). The original is never
+ * copied or modified; URL content is fetched fresh on open (server-side proxy
+ * to avoid CORS). Annotations are per-user and stored separately from the
+ * source so re-syncing never overwrites them (#64).
+ */
+export const links = {
+  list: (vaultId: string) =>
+    request<LinkedFile[]>(`/api/vaults/${vaultId}/links`),
+  create: (vaultId: string, input: {
+    display_name: string;
+    source_type: LinkedFile["source_type"];
+    source_ref: string;
+  }) =>
+    request<LinkedFile>(`/api/vaults/${vaultId}/links`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  remove: (vaultId: string, linkId: string) =>
+    request<void>(`/api/vaults/${vaultId}/links/${linkId}`, { method: "DELETE" }),
+  content: (linkId: string) =>
+    request<LinkedContent>(`/api/links/${linkId}/content`),
+  getAnnotation: (linkId: string) =>
+    request<{ content: string }>(`/api/links/${linkId}/annotation`),
+  saveAnnotation: (linkId: string, content: string) =>
+    request<void>(`/api/links/${linkId}/annotation`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+};
+
 /** Sync devices registered to the account (#44, #45). */
 export const devices = {
   list: () => request<Device[]>("/api/devices"),

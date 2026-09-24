@@ -1,6 +1,8 @@
 import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+// Falls back to the bundled sidecar's fixed port (see src-tauri/src/lib.rs) —
+// a packaged build has no VITE_API_URL env var at runtime.
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 let authToken: string | null = null;
 

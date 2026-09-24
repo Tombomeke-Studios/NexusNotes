@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.tombomeke-studios.nexusnotes",
   "build": {
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build:sidecar && npm run build",
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
@@ -18,7 +18,12 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "externalBin": ["binaries/sync-service"],
+    "resources": {
+      "../../docker-compose.dev.yml": "docker-compose.dev.yml",
+      "../../services/sync-service/migrations": "migrations"
+    }
   },
   "app": {
     "windows": [

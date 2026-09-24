@@ -70,6 +70,33 @@ and backend; the Docker infra keeps running. Stop it with
 The manual steps below are the same thing spelled out, for when you want to run
 a single piece on its own.
 
+### Even easier: a standalone `.exe` (no terminal, no scripts)
+
+For just *using* the app day to day (not developing it), build a packaged
+installer once:
+
+```bash
+cd desktop
+npm install
+npm run tauri build          # first run only; rebuild after backend/frontend changes
+```
+
+This produces an installer under `desktop/src-tauri/target/release/bundle/`.
+Install it and launch **NexusNotes** like any other app — double-click, no
+terminal. On startup it automatically:
+
+1. Runs `docker compose up -d postgres redis` (Docker Desktop must already be
+   running — the app doesn't start Docker itself).
+2. Starts the Go backend, bundled inside the app as a "sidecar" binary, and
+   waits for it to become healthy.
+3. Opens the native window once the backend is ready.
+
+Closing the app stops the bundled backend process; the Docker containers are
+left running so the next launch is fast (same behaviour as the dev scripts).
+This is **not** a dev workflow — code changes require rebuilding the
+installer — use `./scripts/dev-app.sh` + `npm run tauri dev` (below) while
+actively developing.
+
 ### 1. Infra + backend (always required)
 
 Run from the repo root, each in its own terminal (leave them running).

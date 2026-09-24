@@ -70,6 +70,8 @@ interface SidebarProps {
   selectedIds: Set<string>;
   onSetSelectedIds: (ids: Set<string>) => void;
   onCreateNote: () => void;
+  /** Creates a note inside a specific folder (right-click "New note" on a folder). */
+  onCreateNoteInFolder: (path: string) => void;
   onCreateFolder: (path: string) => void;
   onMoveNote: (noteId: string, folderPath: string) => void;
   onDeleteFolder: (path: string) => void;
@@ -118,6 +120,7 @@ export function Sidebar({
   selectedIds,
   onSetSelectedIds,
   onCreateNote,
+  onCreateNoteInFolder,
   onCreateFolder,
   onMoveNote,
   onDeleteFolder,
@@ -629,6 +632,11 @@ export function Sidebar({
           y={folderMenu.y}
           onClose={() => setFolderMenu(null)}
           items={[
+            {
+              key: "note",
+              label: "New note",
+              onClick: () => onCreateNoteInFolder(folderMenu.path),
+            },
             {
               key: "subfolder",
               label: "New subfolder",

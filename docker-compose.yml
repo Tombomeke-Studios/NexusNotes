@@ -72,7 +72,12 @@ services:
     restart: unless-stopped
 
   minio:
-    image: minio/minio:latest
+    # minio/minio and quay.io/minio/minio both deny anonymous pulls now (#248);
+    # this Bitnami build is the same upstream binary and stays public.
+    image: bitnamilegacy/minio:latest
+    # Bitnami's default non-root user can't init a fresh named volume here;
+    # root avoids that without changing behaviour.
+    user: root
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"

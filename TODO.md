@@ -370,6 +370,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/tauri-native` - Tauri native desktop wrapper (#222)
 
+- [ ] Bundle the Go backend as a Tauri sidecar so the packaged app starts Docker infra + backend automatically (#243)
 - [ ] Add Tauri wrapper for native desktop app (#31)
 - [ ] Implement system tray icon with a quick-capture shortcut opening a lightweight input window in under 500 ms
 - [ ] Add native OS notifications for sync events and conflicts

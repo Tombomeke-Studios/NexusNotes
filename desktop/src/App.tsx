@@ -377,6 +377,11 @@ export default function App() {
     [handleCreateNoteWithTitle],
   );
 
+  const handleCreateNoteInFolder = useCallback(
+    (folderPath: string) => handleCreateNoteWithTitle(`${folderPath}/Untitled`),
+    [handleCreateNoteWithTitle],
+  );
+
   const handleOpenDaily = useCallback(async (iso: string) => {
     setShowCalendar(false);
     const existing = noteListRef.current.find((n) => n.title === iso);
@@ -1279,6 +1284,7 @@ export default function App() {
               selectedIds={selectedIds}
               onSetSelectedIds={setSelectedIds}
               onCreateNote={handleCreateNote}
+              onCreateNoteInFolder={handleCreateNoteInFolder}
               onCreateFolder={handleCreateFolder}
               onMoveNote={handleMoveNote}
               onDeleteFolder={handleDeleteFolder}

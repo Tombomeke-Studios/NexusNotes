@@ -373,9 +373,10 @@ Response (200):
 
 The ticket is valid for `expires_in` seconds and is consumed by the first
 connect attempt that presents it, whether or not that attempt succeeds; fetch a
-fresh ticket for every (re)connect. `401` without a valid access token; `503`
-with a `Retry-After` header when the server's cap on outstanding tickets is
-reached.
+fresh ticket for every (re)connect. A user holds at most 5 unredeemed tickets;
+requesting another evicts that user's oldest one. `401` without a valid access
+token; `503` with a `Retry-After` header when the server-wide cap on
+outstanding tickets is reached.
 
 ### GET /ws
 

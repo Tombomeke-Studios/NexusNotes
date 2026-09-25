@@ -391,7 +391,7 @@ Connect: `ws://localhost:8080/ws?ticket=<ticket>&device_id=<uuid>&device_name=<n
 |---|---|
 | `101` | Upgraded |
 | `401` | Missing, unknown, expired or already-used ticket |
-| `403` | The `Origin` header is neither the server's own origin nor on the allowlist shared with CORS (`http://localhost:1420`, `http://localhost:5173`, `tauri://localhost`, `http://tauri.localhost`). Checked before the ticket, so a rejected origin does not consume it |
+| `403` | The `Origin` header is neither the server's own origin nor on the allowlist shared with CORS (`CORS_ALLOWED_ORIGINS`; defaults `http://localhost:1420`, `http://localhost:5173`, `tauri://localhost`, `http://tauri.localhost`). Checked before the ticket, so a rejected origin does not consume it |
 
 Clients that send no `Origin` header (non-browser clients) are authenticated by
 the ticket alone.

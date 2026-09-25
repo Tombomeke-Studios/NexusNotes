@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -32,6 +34,21 @@ type Config struct {
 	MinIOSecretKey string
 	MinIOBucket    string
 	MinIOUseSSL    bool
+	// AllowedOrigins is the browser-origin allowlist shared by CORS and the
+	// WebSocket handshake (#258), from CORS_ALLOWED_ORIGINS (comma separated).
+	AllowedOrigins []string
+}
+
+// DefaultAllowedOrigins covers the desktop app and local development:
+// the Vite dev servers, tauri://localhost (packaged app on macOS/Linux) and
+// http://tauri.localhost (packaged app on Windows, WebView2). A web UI
+// served through a proxy on the API's own host needs no entry: the
+// WebSocket check also accepts the server's own origin.
+var DefaultAllowedOrigins = []string{
+	"http://localhost:1420",
+	"http://localhost:5173",
+	"tauri://localhost",
+	"http://tauri.localhost",
 }
 
 func Load() (*Config, error) {
@@ -90,6 +107,11 @@ func Load() (*Config, error) {
 		minioBucket = "attachments"
 	}
 
+	allowedOrigins, err := parseAllowedOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Port:                port,
 		DatabaseURL:         dbURL,
@@ -111,7 +133,34 @@ func Load() (*Config, error) {
 		MinIOSecretKey:      os.Getenv("MINIO_SECRET_KEY"),
 		MinIOBucket:         minioBucket,
 		MinIOUseSSL:         os.Getenv("MINIO_USE_SSL") == "true",
+		AllowedOrigins:      allowedOrigins,
 	}, nil
+}
+
+// parseAllowedOrigins turns a comma-separated CORS_ALLOWED_ORIGINS value into
+// an origin list, falling back to DefaultAllowedOrigins when it is blank.
+// Every entry must be a bare origin (scheme://host[:port]); a wildcard is
+// refused because credentialed CORS plus "*" would let any site in.
+func parseAllowedOrigins(raw string) ([]string, error) {
+	var origins []string
+	for _, part := range strings.Split(raw, ",") {
+		o := strings.TrimSuffix(strings.TrimSpace(part), "/")
+		if o == "" {
+			continue
+		}
+		if strings.Contains(o, "*") {
+			return nil, fmt.Errorf("invalid CORS_ALLOWED_ORIGINS entry %q: wildcards are not allowed", o)
+		}
+		u, err := url.Parse(o)
+		if err != nil || u.Scheme == "" || u.Host == "" || u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+			return nil, fmt.Errorf("invalid CORS_ALLOWED_ORIGINS entry %q: want scheme://host[:port]", o)
+		}
+		origins = append(origins, o)
+	}
+	if len(origins) == 0 {
+		return append([]string(nil), DefaultAllowedOrigins...), nil
+	}
+	return origins, nil
 }
 
 // intEnv reads an integer environment variable, falling back to def when unset.

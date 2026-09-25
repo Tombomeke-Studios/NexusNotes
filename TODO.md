@@ -32,7 +32,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
-> (no open triage items)
+- [x] Add "New note" to the folder right-click context menu (#246)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload

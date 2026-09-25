@@ -39,3 +39,12 @@ export function assessHealth(health: HealthPayload | null, appVersion: string): 
   }
   return { state: "ok", serverVersion: health.version };
 }
+
+/** One-line version summary for the settings footer, e.g. "NexusNotes v0.5.0 · server v0.5.2". */
+export function formatVersionLabel(appVersion: string, status: ServerStatus | null): string {
+  const base = `NexusNotes v${appVersion}`;
+  if (!status) return base;
+  if (status.state === "unreachable") return `${base} · server unreachable`;
+  const server = parseVersion(status.serverVersion) ? `v${status.serverVersion}` : "dev build";
+  return `${base} · server ${server}`;
+}

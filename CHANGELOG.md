@@ -26,6 +26,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   local data directory. After upgrading, the first request renews your session through
   its refresh token, so you normally stay signed in; you only have to sign in once more
   if you had not used the app for 30 days or more.
+- The packaged app's backend and the development Postgres, Redis, MinIO and Meilisearch
+  containers now listen on localhost only instead of every network interface. The next
+  start recreates the Postgres and Redis containers with the new port bindings; your data
+  volumes are kept.
 
 ## [0.5.0] - baseline
 

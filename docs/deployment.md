@@ -134,6 +134,10 @@ and never blocks the window:
   first run and kept in the `jwt-secret` file in the app's local data directory
   (`%LOCALAPPDATA%\com.tombomeke-studios.nexusnotes\` on Windows). Deleting the file
   rotates the secret on the next start; see [security.md](security.md#packaged-desktop-app).
+- The bundled backend listens on localhost only (`BIND_ADDR=127.0.0.1,::1`), and the
+  bundled compose file publishes Postgres and Redis on `127.0.0.1` only. The database
+  still uses the fixed development password (#277), so the machine itself is the trust
+  boundary.
 
 Backend output is written to the app's stderr with a `[backend]` prefix. To watch it,
 start the .exe from a terminal.

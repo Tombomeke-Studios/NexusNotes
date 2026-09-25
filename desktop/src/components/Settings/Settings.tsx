@@ -4,6 +4,8 @@ import type { Vault } from "../../lib/types";
 import { auth, devices as devicesApi, ApiError } from "../../lib/api";
 import type { Device } from "../../lib/types";
 import { relativeTimeLabel } from "../../lib/stats";
+import { APP_VERSION, formatVersionLabel } from "../../lib/version";
+import { useServerStatus } from "../../lib/useServerStatus";
 import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
 import "./Settings.css";
 
@@ -57,6 +59,7 @@ export function Settings({
   onClose,
 }: SettingsProps) {
   const [tab, setTab] = useState<SettingsTab>("appearance");
+  const serverStatus = useServerStatus();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -153,7 +156,7 @@ export function Settings({
             </svg>
             Sign out
           </button>
-          <div className="settings-version">NexusNotes 0.1.0</div>
+          <div className="settings-version">{formatVersionLabel(APP_VERSION, serverStatus)}</div>
         </div>
         <div className="settings-content">
           <div className="settings-content-head">

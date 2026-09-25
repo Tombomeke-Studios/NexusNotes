@@ -3,7 +3,7 @@ import pkg from "../../package.json";
 import tauriConf from "../../src-tauri/tauri.conf.json";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { APP_VERSION, parseVersion, assessHealth } from "./version";
+import { APP_VERSION, parseVersion, assessHealth, formatVersionLabel } from "./version";
 
 // Vitest runs from desktop/, so the repo root is one level up.
 const read = (...p: string[]) => readFileSync(resolve(process.cwd(), ...p), "utf8");
@@ -72,5 +72,30 @@ describe("assessHealth", () => {
   it("treats a dev or missing server version as compatible", () => {
     expect(assessHealth({ status: "ok", version: "dev" }, "0.5.0").state).toBe("ok");
     expect(assessHealth({ status: "ok" }, "0.5.0").state).toBe("ok");
+  });
+});
+
+describe("formatVersionLabel", () => {
+  it("shows only the app version until the server has answered", () => {
+    expect(formatVersionLabel("0.5.0", null)).toBe("NexusNotes v0.5.0");
+  });
+
+  it("adds the server version when known", () => {
+    expect(formatVersionLabel("0.5.0", { state: "ok", serverVersion: "0.5.2" })).toBe(
+      "NexusNotes v0.5.0 · server v0.5.2",
+    );
+    expect(
+      formatVersionLabel("0.5.0", { state: "mismatch", serverVersion: "0.6.0", appVersion: "0.5.0" }),
+    ).toBe("NexusNotes v0.5.0 · server v0.6.0");
+  });
+
+  it("labels an unversioned dev server and an unreachable one", () => {
+    expect(formatVersionLabel("0.5.0", { state: "ok", serverVersion: "dev" })).toBe(
+      "NexusNotes v0.5.0 · server dev build",
+    );
+    expect(formatVersionLabel("0.5.0", { state: "ok" })).toBe("NexusNotes v0.5.0 · server dev build");
+    expect(formatVersionLabel("0.5.0", { state: "unreachable" })).toBe(
+      "NexusNotes v0.5.0 · server unreachable",
+    );
   });
 });

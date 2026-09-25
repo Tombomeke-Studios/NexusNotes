@@ -350,10 +350,59 @@ Upserts the caller's annotation from `{ content }` → `204`. Read access requir
 
 ## Search
 
+Both search endpoints require `Authorization: Bearer <token>` and read access
+to the vault. Notes in e2ee vaults are ciphertext to the server, so the desktop
+app searches those vaults client-side instead (see [encryption.md](encryption.md)).
+
+### GET /api/search
+
+Full-text search across notes in a vault, served by Meilisearch (typo-tolerant,
+ranked, with highlighted snippets). This is the endpoint the desktop app uses.
+
+**Query parameters:**
+
+| Param | Required | Description |
+|---|---|---|
+| `vault` | Yes | Vault ID to search in |
+| `q` | No | Search query string |
+| `tag` | No | Filter by tag (exact match) |
+| `date_from` | No | ISO 8601 date — notes updated on or after |
+| `date_to` | No | ISO 8601 date — notes updated on or before |
+| `limit` | No | Max results (default 20, max 100) |
+| `offset` | No | Pagination offset (default 0) |
+
+**Response (200):**
+
+```json
+[
+  {
+    "id": "note-uuid",
+    "vault_id": "vault-uuid",
+    "title": "My Note",
+    "path": "folder/my-note.md",
+    "tags": ["work", "project"],
+    "updated_at": "2024-06-01T12:00:00Z",
+    "snippet": "...highlighted <em>match</em> in content..."
+  }
+]
+```
+
+When Meilisearch is not configured, unreachable or returns an error, the
+endpoint does **not** fail: it falls back to the database search behind
+`GET /api/vaults/:vaultId/search` (using `q`, or `tag` as a plain search term
+when `q` is empty). Fallback results are capped at 50, ordered by `updated_at`
+descending, carry an unhighlighted snippet, and ignore `date_from`, `date_to`,
+`limit` and `offset`.
+
+Errors: `400` when `vault` is missing, `404` when the vault does not exist or
+the caller cannot read it.
+
 ### GET /api/vaults/:vaultId/search?q=
 
-Full-text search across all notes in a vault. Searches note title, content, inline `#tags`,
-YAML front-matter tags, and front-matter aliases. Requires `?q=<query>`.
+Database-backed search across all notes in a vault, independent of Meilisearch.
+Case-insensitive substring match on note title, content, inline `#tags`,
+YAML front-matter tags, and front-matter aliases. Requires `?q=<query>`
+(`400` without it); `403` without read access to the vault.
 
 Response (200): `NoteSearchResult[]` ordered by `updated_at` descending, up to 50 results.
 
@@ -435,46 +484,6 @@ the ticket alone.
 { "type": "note:updated", "payload": { ...Note } }
 { "type": "note:deleted", "payload": { "note_id": "..." } }
 ```
-
----
-
-## Search
-
-All search endpoints require authentication (`Authorization: Bearer <token>`).
-
-### GET /api/search
-
-Full-text search across notes in a vault.
-
-**Query parameters:**
-
-| Param | Required | Description |
-|---|---|---|
-| `vault` | Yes | Vault ID to search in |
-| `q` | No | Search query string |
-| `tag` | No | Filter by tag (exact match) |
-| `date_from` | No | ISO 8601 date — notes updated on or after |
-| `date_to` | No | ISO 8601 date — notes updated on or before |
-| `limit` | No | Max results (default 20, max 100) |
-| `offset` | No | Pagination offset (default 0) |
-
-**Response (200):**
-
-```json
-[
-  {
-    "id": "note-uuid",
-    "vault_id": "vault-uuid",
-    "title": "My Note",
-    "path": "folder/my-note.md",
-    "tags": ["work", "project"],
-    "updated_at": "2024-06-01T12:00:00Z",
-    "snippet": "...highlighted <em>match</em> in content..."
-  }
-]
-```
-
-Returns `503 Service Unavailable` if Meilisearch is unreachable.
 
 ---
 

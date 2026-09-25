@@ -240,8 +240,12 @@ GitHub Actions workflow (`.github/workflows/validate.yml`) runs automatically on
 `docker compose up` includes Prometheus (`:9090`) and Grafana (`:3001`,
 credentials via `GRAFANA_USER`/`GRAFANA_PASSWORD`, defaults must be changed
 in production). Grafana auto-provisions the Prometheus datasource and the
-NexusNotes dashboard from `infra/grafana/`. Set `ADMIN_TOKEN` to enable the
-operator stats endpoint; leave it unset to disable it entirely.
+NexusNotes dashboard from `infra/grafana/`. The operator stats endpoint
+(`GET /api/admin/stats`) is enabled by an `ADMIN_TOKEN` in the sync service's
+environment and disabled while it is unset. `docker-compose.yml` does not pass
+`ADMIN_TOKEN` through to the sync service yet, so setting it in `.env` alone has
+no effect: add `- ADMIN_TOKEN=${ADMIN_TOKEN:-}` to the sync-service
+`environment:` list first.
 
 ## Email (optional)
 

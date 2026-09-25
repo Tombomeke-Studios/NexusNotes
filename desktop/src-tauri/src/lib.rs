@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{self, Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::{Ipv6Addr, SocketAddr, TcpListener, TcpStream};
 use std::path::Path;
 use std::process::{Command as StdCommand, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -113,6 +113,22 @@ fn backend_jwt_secret(app: &tauri::AppHandle) -> io::Result<String> {
         eprintln!("[backend] cannot store the JWT secret ({err}); using one for this run only");
         generate_secret()
     })
+}
+
+/// BIND_ADDR for the bundled backend: loopback only. `localhost` resolves to ::1
+/// first on most systems, so without an IPv6 listener every new connection would
+/// wait for ::1 to be refused before falling back to 127.0.0.1.
+fn loopback_bind_addrs(ipv6_loopback: bool) -> &'static str {
+    if ipv6_loopback {
+        "127.0.0.1,::1"
+    } else {
+        "127.0.0.1"
+    }
+}
+
+/// False when IPv6 is disabled, in which case the backend could not listen on ::1.
+fn ipv6_loopback_available() -> bool {
+    TcpListener::bind((Ipv6Addr::LOCALHOST, 0)).is_ok()
 }
 
 /// Holds the backend sidecar child process so it can be killed on app exit.
@@ -234,6 +250,7 @@ fn supervise_backend(app: tauri::AppHandle) {
             return;
         }
     };
+    let bind_addrs = loopback_bind_addrs(ipv6_loopback_available());
     let shutting_down = || app.state::<Shutdown>().0.load(Ordering::SeqCst);
     let mut failures: u32 = 0;
 
@@ -264,6 +281,7 @@ fn supervise_backend(app: tauri::AppHandle) {
                     ("DATABASE_URL", DATABASE_URL),
                     ("REDIS_URL", "redis://localhost:6379"),
                     ("JWT_SECRET", jwt_secret.as_str()),
+                    ("BIND_ADDR", bind_addrs),
                     ("PORT", &BACKEND_PORT.to_string()),
                 ])
                 .spawn()
@@ -362,6 +380,19 @@ mod tests {
         ));
         assert!(!is_healthy_response("HTTP/1.1 200 OK\r\n\r\n<html>some other server</html>"));
         assert!(!is_healthy_response(""));
+    }
+
+    #[test]
+    fn backend_binds_to_loopback_addresses_only() {
+        for ipv6 in [true, false] {
+            let addrs = loopback_bind_addrs(ipv6);
+            for addr in addrs.split(',') {
+                let ip: std::net::IpAddr = addr.parse().unwrap();
+                assert!(ip.is_loopback(), "{addr} is not a loopback address");
+            }
+            assert_eq!(addrs.contains("::1"), ipv6);
+            assert!(addrs.contains("127.0.0.1"));
+        }
     }
 
     /// A unique scratch directory under the system temp dir, removed on drop.

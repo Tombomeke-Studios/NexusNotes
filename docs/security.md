@@ -243,3 +243,19 @@ are opaque values stored hashed in the database and do not depend on the JWT
 secret, so the client renews its session silently on the next request. A
 re-login is only needed when the refresh token itself has expired (30 days
 unused) or is missing.
+
+**Localhost only.** The bundled backend is started with `BIND_ADDR` set to the
+loopback addresses (`127.0.0.1` and `::1`, or only `127.0.0.1` when IPv6 is
+disabled), so it no longer listens on the network interfaces. The compose file
+publishes Postgres, Redis, MinIO and Meilisearch on `127.0.0.1` only. Before
+#260 all of them, and the backend, were reachable from the local network.
+
+**Residual risk: fixed database credentials.** Postgres still uses the fixed
+development password and Redis has no password at all. Both are now reachable
+from the local machine only, but any process on that machine, under any user
+account, can connect with the well-known credentials and read or change every
+note. The password was left unchanged on purpose: the Postgres container and
+its volume are shared with the dev scripts, and the password is fixed when the
+volume is first initialised, so changing it without an in-place migration
+would lock existing installations out of their data. A per-install database
+password with a safe migration is tracked in #277.

@@ -12,6 +12,10 @@ import (
 
 var ErrRefreshTokenNotFound = errors.New("refresh token not found")
 
+// ErrRefreshTokenReused is returned by Rotate when the token was already
+// consumed (by an earlier or a concurrent rotation).
+var ErrRefreshTokenReused = errors.New("refresh token already used")
+
 // RefreshToken is one stored (hashed) refresh token in a rotation chain (#49).
 type RefreshToken struct {
 	ID        string
@@ -58,13 +62,35 @@ func (r *RefreshRepo) GetByHash(ctx context.Context, tokenHash string) (*Refresh
 	return &t, nil
 }
 
-// MarkUsed stamps a token as consumed by a rotation; a second use of the
-// same token is the reuse signal that revokes the whole chain.
-func (r *RefreshRepo) MarkUsed(ctx context.Context, id string) error {
-	_, err := r.pool.Exec(ctx,
-		`UPDATE refresh_tokens SET used_at = now() WHERE id = $1`, id)
+// Rotate consumes the old token and stores its successor in one transaction:
+// either both happen or neither does, so a failure can never burn the old token
+// without issuing a new one. A token that is already used (including by a
+// concurrent rotation that won the race) yields ErrRefreshTokenReused; a second
+// use is the reuse signal that revokes the whole chain.
+func (r *RefreshRepo) Rotate(ctx context.Context, oldID, userID, deviceID, newHash string, expiresAt time.Time) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin rotation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	tag, err := tx.Exec(ctx,
+		`UPDATE refresh_tokens SET used_at = now() WHERE id = $1 AND used_at IS NULL`, oldID)
 	if err != nil {
 		return fmt.Errorf("mark refresh token used: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrRefreshTokenReused
+	}
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO refresh_tokens (user_id, device_id, token_hash, expires_at)
+		 VALUES ($1, $2, $3, $4)`,
+		userID, deviceID, newHash, expiresAt,
+	); err != nil {
+		return fmt.Errorf("create refresh token: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit rotation: %w", err)
 	}
 	return nil
 }

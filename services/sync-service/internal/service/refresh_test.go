@@ -11,9 +11,10 @@ import (
 
 // fakeRefreshStore keeps refresh tokens in memory, keyed by hash.
 type fakeRefreshStore struct {
-	rows   map[string]*repository.RefreshToken // hash -> row
-	nextID int
-	getErr error // when set, GetByHash fails with it (simulates a database outage)
+	rows      map[string]*repository.RefreshToken // hash -> row
+	nextID    int
+	getErr    error // when set, GetByHash fails with it (simulates a database outage)
+	rotateErr error // when set, Rotate fails with it and changes nothing
 }
 
 func newFakeRefreshStore() *fakeRefreshStore {
@@ -40,14 +41,21 @@ func (f *fakeRefreshStore) GetByHash(_ context.Context, hash string) (*repositor
 	return &copied, nil
 }
 
-func (f *fakeRefreshStore) MarkUsed(_ context.Context, id string) error {
-	now := time.Now()
+// Rotate is atomic like the real store: on failure nothing changes.
+func (f *fakeRefreshStore) Rotate(ctx context.Context, oldID, userID, deviceID, newHash string, expiresAt time.Time) error {
+	if f.rotateErr != nil {
+		return f.rotateErr
+	}
 	for _, row := range f.rows {
-		if row.ID == id {
+		if row.ID == oldID {
+			if row.UsedAt != nil {
+				return repository.ErrRefreshTokenReused
+			}
+			now := time.Now()
 			row.UsedAt = &now
 		}
 	}
-	return nil
+	return f.Create(ctx, userID, deviceID, newHash, expiresAt)
 }
 
 func (f *fakeRefreshStore) Delete(_ context.Context, id string) error {
@@ -171,5 +179,40 @@ func TestRefresh_StoreFailureIsNotReportedAsInvalidToken(t *testing.T) {
 	}
 	if errors.Is(err, ErrInvalidRefreshToken) {
 		t.Fatalf("a store failure must not be reported as an invalid token, got %v", err)
+	}
+}
+
+// A rotation that fails part-way must not burn the presented token: the client
+// retries with it, and a half-applied rotation would look like token reuse and
+// revoke the whole device chain.
+func TestRefresh_FailedRotationKeepsTheOldTokenUsable(t *testing.T) {
+	store := newFakeRefreshStore()
+	svc := newRefreshAuthService(store)
+	token, err := svc.IssueRefreshToken(context.Background(), "user-1", "device-1")
+	if err != nil {
+		t.Fatalf("issue: %v", err)
+	}
+
+	store.rotateErr = errors.New("write failed")
+	if _, _, err := svc.Refresh(context.Background(), token, "device-1"); err == nil || errors.Is(err, ErrInvalidRefreshToken) {
+		t.Fatalf("a failed rotation should be a server error, got %v", err)
+	}
+
+	store.rotateErr = nil
+	if _, _, err := svc.Refresh(context.Background(), token, "device-1"); err != nil {
+		t.Fatalf("the old token must still work after a failed rotation: %v", err)
+	}
+}
+
+// Two refreshes racing with the same token: the store lets only one rotate;
+// the other is treated as reuse.
+func TestRefresh_LosingAConcurrentRotationIsReuse(t *testing.T) {
+	store := newFakeRefreshStore()
+	svc := newRefreshAuthService(store)
+	token, _ := svc.IssueRefreshToken(context.Background(), "user-1", "device-1")
+
+	store.rotateErr = repository.ErrRefreshTokenReused
+	if _, _, err := svc.Refresh(context.Background(), token, "device-1"); !errors.Is(err, ErrInvalidRefreshToken) {
+		t.Fatalf("losing the rotation race must be rejected as reuse, got %v", err)
 	}
 }

@@ -6,6 +6,15 @@ services:
       - ..:/workspaces/NexusNotes:cached
       # Host node_modules would carry Windows native binaries; keep Linux ones separate.
       - desktop_node_modules:/workspaces/NexusNotes/desktop/node_modules
+      # WSLg's X11/Wayland sockets, so the native Tauri window can render.
+      # No-ops (empty bind) on hosts without WSLg — see docs/deployment.md.
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /mnt/wslg:/mnt/wslg
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
+      - XDG_RUNTIME_DIR=/mnt/wslg/runtime-dir
+      - PULSE_SERVER=${PULSE_SERVER:-/mnt/wslg/PulseServer}
 
   # Infra shares the dev container's network namespace so scripts/_stack.sh's
   # localhost URLs work unchanged.

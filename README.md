@@ -38,10 +38,15 @@ docker compose down -v    # stop + wipe database
 ### Dev container (recommended for a reproducible setup)
 
 Open the repo in VS Code and choose **Reopen in Container** (needs Docker Desktop
-and the Dev Containers extension). It provides Go 1.25, Node 20, Postgres and
-Redis, so no machine-specific toolchain is needed. Then run `./scripts/dev-web.sh`
-inside the container and open http://localhost:1420. The native Tauri window and
-the Windows `.exe` cannot be built in the container — do that on the host (below).
+and the Dev Containers extension). It provides Go 1.25, Node 20, Rust, Postgres and
+Redis, so no machine-specific toolchain is needed. Run `./scripts/dev-web.sh` inside
+the container and open http://localhost:1420 for UI work, or `npm run tauri dev` /
+`desktop/e2e` (Playwright) for a native/native-like window — on Windows hosts with
+WSLg (the default on Windows 11), the container forwards its display so the Tauri
+window renders; without WSLg, that window can't render and you should stick to
+`dev-web.sh` or test on the host instead. Either way, **the Windows `.exe`
+installer** is a cross-compile target the container can't produce — build that on
+a Windows host (below).
 
 **Windows host, native app:** use the **MSVC** Rust toolchain
 (`rustup default stable-x86_64-pc-windows-msvc`) with the Visual Studio C++ build

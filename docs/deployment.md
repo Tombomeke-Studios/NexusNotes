@@ -11,6 +11,23 @@
 | Docker | Latest | PostgreSQL, Redis, MinIO |
 | Docker Compose | v2+ | Infrastructure orchestration |
 
+### Dev Container
+
+`.devcontainer/` provides a reproducible Debian-based environment (Go, Node, Rust,
+Postgres, Redis) so the app builds and runs the same on every machine. Open the repo
+in VS Code and "Reopen in Container", or use the Dev Containers CLI.
+
+The native Tauri window needs a display. On Windows 11 with WSL2, WSLg provides one
+automatically and the container's `docker-compose.yml` forwards its X11/Wayland
+sockets (`/tmp/.X11-unix`, `/mnt/wslg`) — no extra setup needed. On hosts without
+WSLg (older Windows 10, or Docker Desktop without a WSLg-backed distro), those mounts
+are absent and `npm run tauri dev` inside the container will fail to open a window;
+in that case use `./scripts/dev-web.sh` and test in a browser, or run the desktop app
+natively outside the container instead. Either way, `desktop/e2e/*.spec.ts`
+(Playwright, headless Chromium) always work inside the container regardless of
+display availability — that's the primary way to test UI behavior in CI-like
+conditions.
+
 ### Step-by-Step Setup
 
 #### 1. Clone and enter the repo

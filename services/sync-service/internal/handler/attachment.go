@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -18,12 +19,21 @@ import (
 
 const maxAttachmentBytes = 25 << 20 // 25 MiB
 
+// noteGetter looks up a note (*service.SyncService in production).
+type noteGetter interface {
+	GetNote(ctx context.Context, noteID string) (*model.Note, error)
+}
+
+var _ noteGetter = (*service.SyncService)(nil)
+
 // AttachmentHandler manages note attachments backed by object storage (#153).
+// Note lookup and access checks go through narrow interfaces so the request
+// handling can be unit tested without a database.
 type AttachmentHandler struct {
 	store       *storage.Store
 	attachRepo  *repository.AttachmentRepo
-	vaultRepo   *repository.VaultRepo
-	syncService *service.SyncService
+	vaultRepo   vaultRoles
+	syncService noteGetter
 }
 
 func NewAttachmentHandler(store *storage.Store, attachRepo *repository.AttachmentRepo, vaultRepo *repository.VaultRepo, syncService *service.SyncService) *AttachmentHandler {

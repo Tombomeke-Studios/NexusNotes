@@ -48,8 +48,8 @@ import { drainLegacyPins } from "./lib/stars";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
-import { loadDraft, clearDraft } from "./lib/drafts";
-import { useNoteSave, type SaveStatus } from "./lib/useNoteSave";
+import { loadDraft } from "./lib/drafts";
+import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
 import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
@@ -195,8 +195,15 @@ export default function App() {
     [vaultOf],
   );
 
-  const { saveNote: handleSaveNote, liveChange: handleLiveChange } = useNoteSave({
+  const {
+    saveNote: handleSaveNote,
+    liveChange: handleLiveChange,
+    markDirty,
+    discard: discardUnsaved,
+    saveError,
+  } = useNoteSave({
     activeNoteRef,
+    editorContentRef,
     setActiveNote,
     setNoteList,
     setEditorContent,
@@ -204,6 +211,9 @@ export default function App() {
     onSynced: () => setLastSyncAt(new Date()),
     encryptOutgoing,
     keepsDrafts: (vaultId) => !isE2eeVault(vaultOf(vaultId)),
+    // Background saves (retries) must not persist text the user may be about
+    // to discard in the close-confirmation dialog.
+    paused: closePrompt !== null,
   });
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
@@ -282,7 +292,7 @@ export default function App() {
             const current = activeNoteRef.current;
             const dirty =
               current?.id === incoming.id &&
-              (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving");
+              isDirtyStatus(saveStatusRef.current);
             const note = dirty
               ? { ...incoming, title: current!.title, content: editorContentRef.current }
               : incoming;
@@ -376,7 +386,7 @@ export default function App() {
    * without this a rename typed just before a switch is silently lost (#204).
    */
   const flushPendingSave = useCallback(async () => {
-    if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+    if (isDirtyStatus(saveStatusRef.current)) {
       await handleSaveNoteRef.current(editorContentRef.current);
     }
   }, []);
@@ -940,8 +950,8 @@ export default function App() {
         return current && n.id === current.id ? { ...n, title } : n;
       }),
     );
-    setSaveStatus("unsaved");
-  }, []);
+    markDirty();
+  }, [markDirty]);
 
   // On commit (blur/Enter), make the title unique against the other notes so two
   // notes can't share a name — like on create (Untitled, Untitled 1, …).
@@ -953,7 +963,7 @@ export default function App() {
     if (unique !== current.title) {
       setActiveNote((prev) => (prev ? { ...prev, title: unique } : prev));
       setNoteList((prev) => prev.map((n) => (n.id === current.id ? { ...n, title: unique } : n)));
-      setSaveStatus("unsaved");
+      markDirty();
     }
     // Persist any pending rename now: per-keystroke renames only touch local
     // state and nothing else ever saves them when the content is never
@@ -963,14 +973,14 @@ export default function App() {
         handleSaveNoteRef.current(editorContentRef.current);
       }
     }, 0);
-  }, []);
+  }, [markDirty]);
 
   // Warn before losing unsaved work on close. In the browser, the native
   // beforeunload prompt; in the native app, intercept the close and show our own
   // Save / Don't save / Cancel dialog (like Word).
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+      if (isDirtyStatus(saveStatusRef.current)) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -987,7 +997,7 @@ export default function App() {
           // routes through requestClose() + destroy() and does not come here. A
           // React dialog can't be shown reliably from this native callback, so
           // save-and-close to avoid losing work or trapping the window.
-          if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+          if (isDirtyStatus(saveStatusRef.current)) {
             event.preventDefault();
             await handleSaveNoteRef.current(editorContentRef.current);
             await win.destroy();
@@ -1031,18 +1041,17 @@ export default function App() {
 
   const handleDiscardAndClose = useCallback(async () => {
     if (!closePrompt) return;
-    // Truly discard: drop the local draft so the note reverts to its saved
-    // version, and mark clean so a following window-close doesn't re-prompt.
-    const id = activeNoteRef.current?.id;
-    if (id) clearDraft(id);
-    setSaveStatus("saved");
+    // Truly discard: drop the local draft and any pending retry so the note
+    // reverts to its saved version, and mark clean so a following
+    // window-close doesn't re-prompt.
+    discardUnsaved();
     await finishClose(closePrompt);
-  }, [closePrompt, finishClose]);
+  }, [closePrompt, finishClose, discardUnsaved]);
 
   // The visible window close button routes through here (a real React click) so
   // the unsaved-changes dialog renders reliably; a clean note closes at once.
   const requestClose = useCallback(() => {
-    if (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving") {
+    if (isDirtyStatus(saveStatusRef.current)) {
       setClosePrompt({ kind: "window" });
     } else {
       closeWindowNow();
@@ -1055,7 +1064,7 @@ export default function App() {
     const dirty =
       key === activeTabKeyRef.current &&
       tab?.type === "note" &&
-      (saveStatusRef.current === "unsaved" || saveStatusRef.current === "saving");
+      isDirtyStatus(saveStatusRef.current);
     if (dirty) {
       setClosePrompt({ kind: "tab", key });
     } else {
@@ -1286,7 +1295,7 @@ export default function App() {
               starredNotes={starredNotes}
               recentNotes={recentNotes}
               unsavedNoteId={
-                (saveStatus === "unsaved" || saveStatus === "saving") ? activeNote?.id ?? null : null
+                isDirtyStatus(saveStatus) ? activeNote?.id ?? null : null
               }
               onNoteContextMenu={(e, noteId) =>
                 setCtxMenu({
@@ -1313,7 +1322,7 @@ export default function App() {
             <TabBar
               tabs={tabItems}
               activeKey={activeTabKey}
-              unsavedKey={saveStatus === "unsaved" || saveStatus === "saving" ? activeTabKey : null}
+              unsavedKey={isDirtyStatus(saveStatus) ? activeTabKey : null}
               onSelect={(key) => {
                 const tab = tabs.find((t) => t.key === key);
                 if (tab?.type === "note") handleSelectNote(key);
@@ -1436,6 +1445,7 @@ export default function App() {
         <StatusBar
           content={graphActive ? "" : editorContent}
           saveStatus={activeNote ? saveStatus : "idle"}
+          saveError={saveError && saveError.noteId === activeNote?.id ? saveError : null}
           hasNote={!graphActive && !!activeNote}
           lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
           line={cursor.line}

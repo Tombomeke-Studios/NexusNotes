@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { Logo } from "../Logo";
 import { WindowControls } from "./WindowControls";
 import { isTauriWindow } from "../../lib/platform";
+import type { SaveStatus } from "../../lib/useNoteSave";
 import "./Workspace.css";
 
 interface TopBarProps {
@@ -9,7 +10,7 @@ interface TopBarProps {
   noteTitle: string | null;
   /** Folder path of the active note ("" = root); shown between vault and title. */
   notePath?: string;
-  syncStatus: "saved" | "saving" | "unsaved" | "idle";
+  syncStatus: SaveStatus;
   leftOpen: boolean;
   rightOpen: boolean;
   onOpenPalette: () => void;
@@ -24,12 +25,13 @@ const CrumbSep = () => (
   </svg>
 );
 
-const SYNC_MAP = {
+const SYNC_MAP: Record<SaveStatus, { color: string; label: string; pulse: boolean }> = {
   saved: { color: "var(--success)", label: "Synced", pulse: false },
   idle: { color: "var(--success)", label: "Synced", pulse: false },
   saving: { color: "var(--warning)", label: "Syncing…", pulse: true },
   unsaved: { color: "var(--warning)", label: "Pending", pulse: false },
-} as const;
+  conflict: { color: "var(--error)", label: "Conflict", pulse: false },
+};
 
 export function TopBar({
   vaultName,

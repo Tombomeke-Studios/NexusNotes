@@ -194,7 +194,7 @@ it is what it exists for:
 | `src/components/Encryption/` | E2EE vault UI: encryption opt-in (EncryptionSetup), new-vault dialog, one-time recovery-code dialog, unlock dialog |
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
-| `src/lib/useNoteSave.ts` | Saving the open note: PUT to the sync service, save status, local draft mirror |
+| `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |

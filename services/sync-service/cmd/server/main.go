@@ -126,12 +126,10 @@ func main() {
 	linkHandler := handler.NewLinkedFileHandler(repository.NewLinkedFileRepo(pool), vaultRepo)
 	deviceHandler := handler.NewDeviceHandler(deviceRepo, refreshRepo, hub)
 	adminHandler := handler.NewAdminHandler(repository.NewStatsRepo(pool), cfg.AdminToken, time.Now())
-	// One origin allowlist for both CORS and the WebSocket handshake (#258).
-	// tauri://localhost is the packaged app's origin on macOS/Linux;
-	// http://tauri.localhost is the equivalent on Windows (WebView2).
-	allowedOrigins := []string{"http://localhost:1420", "http://localhost:5173", "tauri://localhost", "http://tauri.localhost"}
+	// One origin allowlist for both CORS and the WebSocket handshake (#258);
+	// defaults in config.DefaultAllowedOrigins, override via CORS_ALLOWED_ORIGINS.
 	wsTickets := service.NewWSTicketStore(service.DefaultWSTicketTTL)
-	wsHandler := handler.NewWSHandler(hub, wsTickets, deviceRepo, allowedOrigins)
+	wsHandler := handler.NewWSHandler(hub, wsTickets, deviceRepo, cfg.AllowedOrigins)
 
 	mux := http.NewServeMux()
 
@@ -201,7 +199,7 @@ func main() {
 	mux.HandleFunc("GET /health", buildinfo.HealthHandler)
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   allowedOrigins,
+		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,

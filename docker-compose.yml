@@ -37,6 +37,10 @@ services:
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-nexus_minio}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-nexus_minio_pass}
       - MINIO_BUCKET=${MINIO_BUCKET:-attachments}
+      # Browser origins allowed for CORS and the WebSocket handshake, comma
+      # separated. Empty = desktop app + local dev defaults; the web UI on
+      # :3000 is proxied same-origin and needs no entry.
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
     depends_on:
       postgres:
         condition: service_healthy

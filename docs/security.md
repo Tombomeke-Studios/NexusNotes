@@ -155,8 +155,9 @@ authenticated `POST /api/ws/ticket` endpoint and dials `/ws?ticket=...`.
   fetches is never refused. A global cap on outstanding tickets remains as a
   backstop (`503` once reached).
 - The handshake's `Origin` must be the server's own origin or one on the same
-  allowlist the CORS middleware uses; anything else gets `403` before the
-  ticket is even looked at. This blocks cross-site WebSocket hijacking by a
+  allowlist the CORS middleware uses (`CORS_ALLOWED_ORIGINS`, see
+  deployment.md; wildcards are refused at startup); anything else gets `403`
+  before the ticket is even looked at. This blocks cross-site WebSocket hijacking by a
   malicious page. Non-browser clients that send no `Origin` are authenticated
   by the ticket alone.
 - The device registration a connect triggers runs in the background with a

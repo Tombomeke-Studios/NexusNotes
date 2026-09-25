@@ -252,6 +252,26 @@ required before creating a vault; "forgot password" sends a reset link. Leave
 `SMTP_HOST` empty to disable email entirely (messages are logged instead and
 the verification requirement is not enforced).
 
+## Allowed origins (CORS and WebSocket)
+
+`CORS_ALLOWED_ORIGINS` is a comma-separated list of browser origins
+(`scheme://host[:port]`, no path) that may call the API cross-origin and open
+the sync WebSocket. The same list drives both checks. Unset or empty means the
+defaults: the Vite dev servers (`http://localhost:1420`,
+`http://localhost:5173`) and the packaged desktop app (`tauri://localhost`,
+`http://tauri.localhost`). Setting the variable **replaces** the defaults, so
+keep the Tauri origins in the list if desktop clients connect to that server.
+Wildcards are rejected at startup.
+
+The web UI in the compose stack needs no entry: nginx serves it and proxies
+`/api/` and `/ws` on the same host, and the WebSocket check always accepts the
+server's own origin. This relies on the proxy forwarding the browser's `Host`
+header **with its port** (`proxy_set_header Host $http_host;`, as in
+`desktop/nginx.conf`). A proxy that sends `$host` drops the port, so a UI on
+`:3000` fails the same-origin check with `403`. If you put another reverse
+proxy in front that rewrites `Host`, either forward it unchanged or add the
+public origin (e.g. `https://notes.example.com`) to `CORS_ALLOWED_ORIGINS`.
+
 ## Attachments (optional)
 
 Set `MINIO_ENDPOINT` (host:port), `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` and

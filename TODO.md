@@ -48,7 +48,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Fix lost update when two saves race on the same note (#256)
 - [x] Limit request body sizes on all JSON endpoints (#257)
 - [ ] WebSocket: validate the Origin and stop passing the JWT in the URL (#258)
-- [ ] Harden attachment downloads against stored XSS (#259)
+- [x] Harden attachment downloads against stored XSS (#259)
 - [ ] Packaged app: replace the hardcoded JWT secret and database password (#260)
 - [ ] Add LICENSE, SECURITY.md and CONTRIBUTING.md (#261)
 - [ ] docs/api.md: document /api/auth/me and /metrics, merge the duplicate Search sections (#262)

@@ -252,7 +252,9 @@ Attachments are stored in S3-compatible object storage (MinIO); endpoints return
 
 ### POST /api/notes/:noteId/attachments
 
-Multipart upload (field `file`, max 25 MiB) → the created `Attachment`. Write access required.
+Multipart upload (field `file`, max 25 MiB; anything larger is cut off with `413`) → the created `Attachment`. Write access required.
+
+The client-declared `Content-Type` is not trusted. The stored `mime_type` is decided from the file's bytes: a real PNG/JPEG/GIF/WebP/BMP is stored as that type whatever was declared, an image claim the bytes do not back up becomes `application/octet-stream`, and HTML/XML/JavaScript types are stored as `application/octet-stream`. Other declared types are kept.
 
 ### GET /api/notes/:noteId/attachments
 
@@ -261,6 +263,8 @@ Lists a note's attachments (`Attachment[]`). Read access required.
 ### GET /api/attachments/:id
 
 Streams the file bytes (read access). Authenticated, so inline images are loaded by the client as a blob URL rather than a bare `<img src>`.
+
+Every response carries `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; sandbox`. Raster images (PNG/JPEG/GIF/WebP/BMP) are sent `inline`; everything else, SVG included, is sent as `Content-Disposition: attachment`, and active types are always served as `application/octet-stream`.
 
 ### DELETE /api/attachments/:id
 

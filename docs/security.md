@@ -145,6 +145,19 @@ SMTP is configured, a verified email is required before an account can create
 a vault; with SMTP unset, mail is logged and the requirement is not enforced,
 so mail-less self-hosts keep working.
 
+## Attachments
+
+Attachments are user-supplied files that other vault members can open, so they are
+treated as hostile content. On upload the stored content type is derived from the
+file's bytes rather than the client's claim (a spoofed image type is downgraded and
+HTML/XML/JavaScript types are neutralised), and the request body is capped at 25 MiB
+plus multipart framing. On download every response sends `nosniff` and a
+`Content-Security-Policy` that blocks all sources and sandboxes the response; only
+raster images are served inline and everything else (SVG included) is an attachment.
+Combined with the fact that downloads need an `Authorization` header, an uploaded
+`text/html` or `image/svg+xml` file cannot execute script with the API's origin, which
+closes the stored-XSS path between members of a shared vault.
+
 ## Vault Sharing and Authorization
 
 Vaults can be shared with other users as viewer (read) or editor (read/write);

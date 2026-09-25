@@ -33,7 +33,7 @@ export function ServerUnavailable({ onRecovered }: { onRecovered: () => void }) 
   return (
     <div className="loading-screen connection-screen">
       <div className="connection-screen__card">
-        <Logo size={40} variant="dark" />
+        <Logo size={48} />
         <h1>Waiting for the server…</h1>
         <p>{notice?.message ?? "Connecting…"}</p>
         {notice?.hint && <p className="connection-screen__hint">{notice.hint}</p>}

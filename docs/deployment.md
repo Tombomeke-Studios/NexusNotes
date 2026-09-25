@@ -47,6 +47,13 @@ This starts:
 - **PostgreSQL** on port 5432 (user: `nexus`, password: `nexus_dev`, db: `nexus_notes`)
 - **Redis** on port 6379
 - **MinIO** on port 9000 (console on 9001, user: `nexus_minio`, password: `nexus_minio_dev`)
+- **Meilisearch** on port 7700 (only when started explicitly)
+
+Every port is published on `127.0.0.1` only. The credentials above are fixed development
+values, so the services must not be reachable from other machines; reach them from the
+host via `localhost`. If you upgrade from a version that published on all interfaces,
+the next `docker compose up` recreates the containers with the new bindings — the data
+volumes are kept.
 
 Verify everything is running:
 

@@ -144,6 +144,22 @@ is the migrations directory.
 | Build desktop | `cd desktop && npm run build` |
 | DB migrations | `cd services/sync-service && go run cmd/migrate/main.go` |
 
+## 6a. Navigate with graphify first
+
+A knowledge graph of the whole repo (code, docs, config) lives in `graphify-out/`
+(`graph.json`, `GRAPH_REPORT.md`, `graph.html`). **Use it before grepping around blindly** —
+it is what it exists for:
+
+- Orientation / "how does X work", "what calls Y", "where does Z live": run
+  `/graphify query "<question>"` (or `graphify query "..."`), `/graphify path "A" "B"` or
+  `/graphify explain "<node>"` first, then open only the files it points to.
+- Skim `graphify-out/GRAPH_REPORT.md` (god nodes, communities, surprising connections) at the
+  start of a larger task.
+- Reach for Grep/Glob only for exact-string lookups or when the graph has no answer.
+- The graph is a snapshot: after a batch of code changes refresh it with `/graphify . --update`
+  (incremental, AST-only for code so it costs no tokens).
+- `graphify-out/` is generated output — never hand-edit it.
+
 ## 7. Codebase map — where is what
 
 ### services/sync-service (Go)

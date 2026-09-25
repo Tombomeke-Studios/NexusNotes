@@ -153,48 +153,39 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 }
 
 func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model.Note, *ConflictInfo, error) {
-	currentChecksum, err := s.noteRepo.GetByChecksum(ctx, update.NoteID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get current checksum: %w", err)
-	}
-
-	if currentChecksum != update.PrevChecksum {
-		existing, err := s.noteRepo.GetByID(ctx, update.NoteID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("get existing note for conflict: %w", err)
-		}
-
-		conflict := &ConflictInfo{
-			NoteID:         update.NoteID,
-			ServerContent:  existing.Content,
-			ServerChecksum: existing.Checksum,
-			ClientContent:  update.Content,
-			ClientChecksum: firstNonEmpty(update.Checksum, ComputeChecksum(update.Content)),
-		}
-		return nil, conflict, ErrConflict
-	}
-
-	current, err := s.noteRepo.GetByID(ctx, update.NoteID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get note: %w", err)
-	}
-	vault, err := s.vaultRepo.GetByID(ctx, current.VaultID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("get vault: %w", err)
-	}
-	newChecksum := resolveChecksum(vault.Encryption, update.Content, update.Checksum)
-	now := time.Now().UTC()
-
 	tx, err := s.noteRepo.BeginTx(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	note, err := s.noteRepo.GetByID(ctx, update.NoteID)
+	// Lock the row before comparing checksums: the optimistic-lock check and the
+	// write must be one atomic step, otherwise two saves that both saw the same
+	// previous checksum both pass the check and the later one silently overwrites
+	// the earlier (#256). Concurrent saves queue here; the loser then sees the
+	// winner's checksum and gets a conflict.
+	note, err := s.noteRepo.GetForUpdateTx(ctx, tx, update.NoteID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("get note for update: %w", err)
+		return nil, nil, err
 	}
+
+	if note.Checksum != update.PrevChecksum {
+		conflict := &ConflictInfo{
+			NoteID:         update.NoteID,
+			ServerContent:  note.Content,
+			ServerChecksum: note.Checksum,
+			ClientContent:  update.Content,
+			ClientChecksum: firstNonEmpty(update.Checksum, ComputeChecksum(update.Content)),
+		}
+		return nil, conflict, ErrConflict
+	}
+
+	vault, err := s.vaultRepo.GetByID(ctx, note.VaultID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get vault: %w", err)
+	}
+	newChecksum := resolveChecksum(vault.Encryption, update.Content, update.Checksum)
+	now := time.Now().UTC()
 
 	fm, _ := ParseFrontmatter(update.Content)
 	effectiveTitle := update.Title

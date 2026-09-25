@@ -73,7 +73,7 @@ sequenceDiagram
     participant B as Device B
 
     A->>S: PUT /api/notes/:id {content, prev_checksum}
-    S->>S: SHA-256(content) vs stored checksum
+    S->>S: Lock the note row, compare prev_checksum with the stored checksum
     alt Checksums match
         S->>S: Update note, create version record
         S->>B: WebSocket push {type: note:updated}
@@ -84,6 +84,11 @@ sequenceDiagram
         A->>S: PUT /api/notes/:id {resolved_content}
     end
 ```
+
+The comparison and the write happen in one database transaction that holds a row lock on
+the note. Two devices saving at the same moment with the same previous checksum therefore
+queue up: the first wins, and the second sees the new checksum and receives the `409`
+instead of silently overwriting the first device's edit.
 
 ### Search indexing
 

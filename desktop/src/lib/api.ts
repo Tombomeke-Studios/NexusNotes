@@ -130,8 +130,9 @@ export const server = {
     try {
       const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(timeoutMs) });
       if (!res.ok) return assessHealth(null, APP_VERSION);
-      const body = (await res.json().catch(() => ({ status: "ok" }))) as HealthPayload;
-      return assessHealth(body, APP_VERSION);
+      // Require our own payload: another service answering 200 on the port is not our server.
+      const body = (await res.json().catch(() => null)) as HealthPayload | null;
+      return assessHealth(body?.status === "ok" ? body : null, APP_VERSION);
     } catch {
       return assessHealth(null, APP_VERSION);
     }

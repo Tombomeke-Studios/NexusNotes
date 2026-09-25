@@ -172,6 +172,13 @@ describe("server.status", () => {
     await expect(server.status()).resolves.toEqual({ state: "unreachable" });
   });
 
+  it("is unreachable when a 200 is not our health payload (e.g. another service on the port)", async () => {
+    mockFetch(200); // body is not JSON
+    await expect(server.status()).resolves.toEqual({ state: "unreachable" });
+    mockFetch(200, { status: "degraded" });
+    await expect(server.status()).resolves.toEqual({ state: "unreachable" });
+  });
+
   it("is unreachable on a non-2xx answer (e.g. a proxy error page)", async () => {
     mockFetch(502, { error: "bad gateway" });
     await expect(server.status()).resolves.toEqual({ state: "unreachable" });

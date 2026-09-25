@@ -302,3 +302,11 @@ Set `MINIO_ENDPOINT` (host:port), `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` and
 optionally `MINIO_BUCKET` (default `attachments`) to enable note attachments
 backed by MinIO or any S3-compatible store; the bucket is created on startup.
 Leave `MINIO_ENDPOINT` empty to disable attachments (the endpoints return 503).
+
+## Linked files (optional)
+
+The linked-file URL proxy only connects to public internet addresses. To let
+users link resources on your own network (a NAS, an intranet wiki), set
+`LINKED_FILES_ALLOW_PRIVATE=true`; any authenticated user can then make the
+server fetch internal URLs, so only enable it on a trusted, single-tenant
+instance. See docs/security.md.

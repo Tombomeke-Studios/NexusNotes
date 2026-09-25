@@ -221,6 +221,20 @@ additionally require the resource to belong to it. Missing resources answer
 note: a shared e2ee vault's passphrase is out of band — the server never holds
 the key, so collaborators must share the passphrase themselves.
 
+## Linked-File URL Proxy
+
+URL-linked files are fetched by the server on the user's behalf, so the proxy
+must not become a way to reach the server's own network. Every outgoing
+connection is checked after DNS resolution, at connect time, and refused
+unless the address is publicly routable: loopback, private (RFC 1918 and
+IPv6 unique-local), link-local (including cloud metadata endpoints),
+unspecified, multicast, carrier-grade NAT and other special-purpose ranges are
+blocked. Because the check sits in the dialer, it also applies to every
+redirect hop and to hostnames that resolve differently between lookups.
+Environment proxy settings are ignored for these fetches and the whole fetch
+times out after 15 seconds. Self-hosters who want to link LAN resources can set
+`LINKED_FILES_ALLOW_PRIVATE=true`, which lifts the address check only.
+
 ## Secrets Management
 
 - `JWT_SECRET` must be set via environment variable

@@ -122,7 +122,7 @@ func main() {
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
-	linkHandler := handler.NewLinkedFileHandler(repository.NewLinkedFileRepo(pool), vaultRepo)
+	linkHandler := handler.NewLinkedFileHandler(repository.NewLinkedFileRepo(pool), vaultRepo, cfg.LinkedFilesAllowPrivate)
 	deviceHandler := handler.NewDeviceHandler(deviceRepo, refreshRepo, hub)
 	adminHandler := handler.NewAdminHandler(repository.NewStatsRepo(pool), cfg.AdminToken, time.Now())
 	// One origin allowlist for both CORS and the WebSocket handshake (#258);

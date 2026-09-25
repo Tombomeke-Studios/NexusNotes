@@ -43,6 +43,10 @@ type Config struct {
 	// AllowedOrigins is the browser-origin allowlist shared by CORS and the
 	// WebSocket handshake (#258), from CORS_ALLOWED_ORIGINS (comma separated).
 	AllowedOrigins []string
+	// LinkedFilesAllowPrivate lets the linked-file URL proxy fetch loopback,
+	// private and link-local addresses. Off by default; only for self-hosters
+	// who deliberately link resources on their own network.
+	LinkedFilesAllowPrivate bool
 }
 
 // DefaultAllowedOrigins covers the desktop app and local development:
@@ -108,6 +112,11 @@ func Load() (*Config, error) {
 		appBaseURL = "http://localhost:1420"
 	}
 
+	linkedAllowPrivate, err := boolEnv("LINKED_FILES_ALLOW_PRIVATE", false)
+	if err != nil {
+		return nil, err
+	}
+
 	minioBucket := os.Getenv("MINIO_BUCKET")
 	if minioBucket == "" {
 		minioBucket = "attachments"
@@ -119,28 +128,29 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		Port:                port,
-		BindAddrs:           splitList(os.Getenv("BIND_ADDR")),
-		DatabaseURL:         dbURL,
-		JWTSecret:           jwtSecret,
-		RedisURL:            redisURL,
-		MeiliURL:            meiliURL,
-		MeiliMasterKey:      meiliMasterKey,
-		AuthRateLimitPerMin: authRatePerMin,
-		AuthRateLimitBurst:  authRateBurst,
-		AdminToken:          adminToken,
-		SMTPHost:            os.Getenv("SMTP_HOST"),
-		SMTPPort:            smtpPort,
-		SMTPUser:            os.Getenv("SMTP_USER"),
-		SMTPPass:            os.Getenv("SMTP_PASS"),
-		SMTPFrom:            os.Getenv("SMTP_FROM"),
-		AppBaseURL:          appBaseURL,
-		MinIOEndpoint:       os.Getenv("MINIO_ENDPOINT"),
-		MinIOAccessKey:      os.Getenv("MINIO_ACCESS_KEY"),
-		MinIOSecretKey:      os.Getenv("MINIO_SECRET_KEY"),
-		MinIOBucket:         minioBucket,
-		MinIOUseSSL:         os.Getenv("MINIO_USE_SSL") == "true",
-		AllowedOrigins:      allowedOrigins,
+		Port:                    port,
+		BindAddrs:               splitList(os.Getenv("BIND_ADDR")),
+		DatabaseURL:             dbURL,
+		JWTSecret:               jwtSecret,
+		RedisURL:                redisURL,
+		MeiliURL:                meiliURL,
+		MeiliMasterKey:          meiliMasterKey,
+		AuthRateLimitPerMin:     authRatePerMin,
+		AuthRateLimitBurst:      authRateBurst,
+		AdminToken:              adminToken,
+		SMTPHost:                os.Getenv("SMTP_HOST"),
+		SMTPPort:                smtpPort,
+		SMTPUser:                os.Getenv("SMTP_USER"),
+		SMTPPass:                os.Getenv("SMTP_PASS"),
+		SMTPFrom:                os.Getenv("SMTP_FROM"),
+		AppBaseURL:              appBaseURL,
+		MinIOEndpoint:           os.Getenv("MINIO_ENDPOINT"),
+		MinIOAccessKey:          os.Getenv("MINIO_ACCESS_KEY"),
+		MinIOSecretKey:          os.Getenv("MINIO_SECRET_KEY"),
+		MinIOBucket:             minioBucket,
+		MinIOUseSSL:             os.Getenv("MINIO_USE_SSL") == "true",
+		AllowedOrigins:          allowedOrigins,
+		LinkedFilesAllowPrivate: linkedAllowPrivate,
 	}, nil
 }
 
@@ -206,4 +216,18 @@ func intEnv(name string, def int) (int, error) {
 		return 0, fmt.Errorf("invalid %s: %w", name, err)
 	}
 	return n, nil
+}
+
+// boolEnv reads a boolean environment variable ("true"/"false", "1"/"0", ...),
+// falling back to def when unset.
+func boolEnv(name string, def bool) (bool, error) {
+	v := os.Getenv(name)
+	if v == "" {
+		return def, nil
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false, fmt.Errorf("invalid %s: %w", name, err)
+	}
+	return b, nil
 }

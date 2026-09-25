@@ -1,8 +1,12 @@
+import { APP_VERSION, assessHealth, type HealthPayload, type ServerStatus } from "./version";
 import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember } from "./types";
 
 // Falls back to the bundled sidecar's fixed port (see src-tauri/src/lib.rs) —
 // a packaged build has no VITE_API_URL env var at runtime.
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+
+/** Origin of the sync server this build talks to (shown in connection messages). */
+export const API_URL: string = API_BASE;
 
 let authToken: string | null = null;
 
@@ -107,6 +111,32 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
+
+/**
+ * True when a request failed before any HTTP answer arrived (server down, DNS,
+ * timeout) as opposed to the server rejecting it — callers must not treat this
+ * as "signed out" or "bad credentials".
+ */
+export function isNetworkError(err: unknown): boolean {
+  return (
+    err instanceof TypeError ||
+    (err instanceof DOMException && (err.name === "TimeoutError" || err.name === "AbortError"))
+  );
+}
+
+export const server = {
+  /** Probes GET /health and classifies the server (ok / unreachable / version mismatch). */
+  async status(timeoutMs = 4000): Promise<ServerStatus> {
+    try {
+      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(timeoutMs) });
+      if (!res.ok) return assessHealth(null, APP_VERSION);
+      const body = (await res.json().catch(() => ({ status: "ok" }))) as HealthPayload;
+      return assessHealth(body, APP_VERSION);
+    } catch {
+      return assessHealth(null, APP_VERSION);
+    }
+  },
+};
 
 export const auth = {
   async register(

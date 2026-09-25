@@ -198,6 +198,8 @@ is the migrations directory.
 | `src/lib/zip.ts` | Dependency-free store-only ZIP writer (CRC32) used by the client-side vault export |
 | `src/lib/welcome.ts` | Sample notes seeded into a new account's first vault (onboarding) |
 | `src/lib/version.ts` | App version (`APP_VERSION`, from package.json) and `assessHealth`: classifies the server as ok / unreachable / version-mismatch from `/health` |
+| `src/lib/connection.ts` + `useServerStatus.ts` | Server-status wording (`describeServerStatus`) and the polling hook that feeds the connection banner |
+| `src/components/ConnectionBanner.tsx` | Persistent "server unreachable / version mismatch" banner and the full-screen `ServerUnavailable` state (session is kept, not signed out) |
 | `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 
 ### Infrastructure

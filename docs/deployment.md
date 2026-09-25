@@ -179,6 +179,8 @@ bump is always compatible. `1.0.0` marks the first stable release.
 - The backend gets the version at build time (the Dockerfile's `VERSION` build arg,
   fed from `NEXUS_VERSION`; `scripts/start-backend.sh` exports it for you) and reports
   it in `GET /health`.
+- The desktop app compares its own version with the server's and shows a banner
+  when major.minor differs, so an old `.exe` never fails silently against a newer server.
 - Release notes live in [CHANGELOG.md](../CHANGELOG.md). Tag releases `vX.Y.Z` on `main`
   (see the promotion flow in CLAUDE.md).
 

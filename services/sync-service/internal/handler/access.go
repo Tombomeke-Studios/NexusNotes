@@ -7,14 +7,22 @@ import (
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 )
 
+// vaultRoles looks up a user's role in a vault. *repository.VaultRepo is the
+// production implementation; tests can substitute a fake.
+type vaultRoles interface {
+	AccessRole(ctx context.Context, vaultID, userID string) (string, error)
+}
+
+var _ vaultRoles = (*repository.VaultRepo)(nil)
+
 // canRead reports whether the user may read a vault (owner or any member).
-func canRead(ctx context.Context, vaultRepo *repository.VaultRepo, vaultID, userID string) bool {
+func canRead(ctx context.Context, vaultRepo vaultRoles, vaultID, userID string) bool {
 	role, err := vaultRepo.AccessRole(ctx, vaultID, userID)
 	return err == nil && role != ""
 }
 
 // canWrite reports whether the user may modify a vault's notes (owner or editor).
-func canWrite(ctx context.Context, vaultRepo *repository.VaultRepo, vaultID, userID string) bool {
+func canWrite(ctx context.Context, vaultRepo vaultRoles, vaultID, userID string) bool {
 	role, err := vaultRepo.AccessRole(ctx, vaultID, userID)
 	return err == nil && (role == model.VaultRoleOwner || role == model.VaultRoleEditor)
 }

@@ -50,12 +50,18 @@ email or password is missing or the password is shorter than 8 characters,
 ```
 
 Response (200): same shape as register. Errors: `400` when email or password is
-missing, `401` for wrong credentials, `429` while the email+IP pair is locked
-out after repeated failures (see [security.md](security.md#brute-force-protection)).
+missing, `401` for wrong credentials, `429` while the email and connecting
+address are locked out after repeated failures (see
+[security.md](security.md#brute-force-protection)).
 
-Register, login, refresh, verify-email, forgot-password and reset-password are
-rate limited per client IP; over the limit they answer `429` with a
-`Retry-After` header.
+Register, login, refresh, verify-email, forgot-password and reset-password share
+a token-bucket rate limit; over the limit they answer `429` with a `Retry-After`
+header. The limiter (and the login lockout) keys on the TCP peer address of the
+connection and ignores `X-Real-IP` / `X-Forwarded-For`. Behind a reverse proxy,
+including the nginx front end in the production compose stack, every request
+appears to come from the proxy, so the limit is effectively **one bucket shared
+by all clients**, not per client IP. A trusted-proxy client IP is tracked in the
+backend-scalability backlog (#265).
 
 ### POST /api/auth/verify-email
 

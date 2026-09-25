@@ -20,6 +20,10 @@ var ErrConflict = errors.New("checksum conflict: note was modified by another de
 // while an update was waiting for it).
 var ErrNoteNotFound = repository.ErrNoteNotFound
 
+// ErrNoteBusy is returned when another save held the note for too long;
+// the client can simply retry.
+var ErrNoteBusy = repository.ErrNoteLocked
+
 type SyncService struct {
 	noteRepo  *repository.NoteRepo
 	vaultRepo *repository.VaultRepo
@@ -27,16 +31,19 @@ type SyncService struct {
 	tagRepo   *repository.TagRepo
 	aliasRepo *repository.AliasRepo
 	indexer   *search.Indexer
+	// lockTimeout bounds how long an update waits for a note another save holds.
+	lockTimeout string
 }
 
 func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, aliasRepo *repository.AliasRepo, indexer *search.Indexer) *SyncService {
 	return &SyncService{
-		noteRepo:  noteRepo,
-		vaultRepo: vaultRepo,
-		linkRepo:  linkRepo,
-		tagRepo:   tagRepo,
-		aliasRepo: aliasRepo,
-		indexer:   indexer,
+		noteRepo:    noteRepo,
+		vaultRepo:   vaultRepo,
+		linkRepo:    linkRepo,
+		tagRepo:     tagRepo,
+		aliasRepo:   aliasRepo,
+		indexer:     indexer,
+		lockTimeout: "5s",
 	}
 }
 
@@ -168,7 +175,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 	// previous checksum both pass the check and the later one silently overwrites
 	// the earlier (#256). Concurrent saves queue here; the loser then sees the
 	// winner's checksum and gets a conflict.
-	if err := s.noteRepo.SetLockTimeoutTx(ctx, tx, "5s"); err != nil {
+	if err := s.noteRepo.SetLockTimeoutTx(ctx, tx, s.lockTimeout); err != nil {
 		return nil, nil, err
 	}
 	note, err := s.noteRepo.GetForUpdateTx(ctx, tx, update.NoteID)

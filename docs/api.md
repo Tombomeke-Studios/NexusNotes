@@ -526,12 +526,16 @@ major.minor differs (see [Versioning](deployment.md#versioning)).
 
 ### GET /metrics
 
-Prometheus scrape endpoint (text exposition format). It takes **no
-authentication** and is meant for the internal network only: in the production
-compose stack the sync service publishes no port and the web front end's proxy
-forwards only `/api/`, `/ws` and `/health`, so Prometheus can scrape it inside
-the stack while it stays unreachable from outside. If you expose the sync
-service's port directly, block `/metrics` at your reverse proxy.
+Prometheus scrape endpoint (text exposition format) served by the sync service.
+It has **no authentication**; anyone who can reach it can read it.
+
+In the production compose stack the sync service publishes no port of its own
+and the web front end's proxy does not forward `/metrics`. The bundled
+Prometheus that scrapes it, however, is published on port `9090` without
+authentication, so the collected metrics are readable from any host that can
+reach that port. If you expose the sync service's port directly, `/metrics` is
+public as well. Restricting these ports is tracked in the production-hardening
+backlog (#264).
 
 It reports request count and latency per normalised route, the live WebSocket
 connection gauge, note create/update/delete counters and Go runtime metrics

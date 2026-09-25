@@ -143,7 +143,12 @@ Vaults can be shared with other users as viewer (read) or editor (read/write);
 the owner keeps exclusive rights to rename, delete, re-key and manage members.
 Every data endpoint authorizes through a single `AccessRole` check
 (owner/editor/viewer/none) rather than ad-hoc ownership comparisons, which also
-closed a pre-existing gap where note deletion performed no access check. E2EE
+closed a pre-existing gap where note deletion performed no access check.
+Endpoints addressed by a note, attachment or link id (including a note's
+version history) first resolve the vault that owns the resource and check the
+caller's role on *that* vault; routes that also name a vault in the path
+additionally require the resource to belong to it. Missing resources answer
+`404`, resources the caller cannot access answer `403`. E2EE
 note: a shared e2ee vault's passphrase is out of band — the server never holds
 the key, so collaborators must share the passphrase themselves.
 

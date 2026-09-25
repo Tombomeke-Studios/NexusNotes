@@ -520,7 +520,19 @@ connection gauge, note create/update/delete counters and Go runtime metrics
 
 ### GET /api/admin/stats
 
-Operator-only: returns instance-wide totals (`users`, `vaults`, `notes`), `uptime_seconds` and `started_at`. Authenticates with a static `ADMIN_TOKEN` bearer configured via environment — separate from user JWTs. Unauthorized or unconfigured requests get a `404`, indistinguishable from a missing route.
+Operator-only: returns instance-wide totals (`users`, `vaults`, `notes`), `uptime_seconds` and `started_at`.
+
+**Authentication:** send the static token from the server's `ADMIN_TOKEN`
+environment variable as `Authorization: Bearer <ADMIN_TOKEN>`; it is compared in
+constant time. User JWTs are never accepted — the route is registered outside
+the JWT middleware. When `ADMIN_TOKEN` is unset the endpoint is disabled, and a
+missing or wrong token gets the same `404 {"error":"not found"}` as that
+disabled state, so the route is indistinguishable from one that does not exist.
+
+Response (200):
+```json
+{ "users": 12, "vaults": 30, "notes": 1480, "uptime_seconds": 86400, "started_at": "2026-01-01T08:00:00Z" }
+```
 
 ---
 

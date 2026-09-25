@@ -125,21 +125,34 @@ func (idx *Indexer) Search(ctx context.Context, p SearchParams) ([]Hit, error) {
 	return hits, nil
 }
 
+// buildFilter renders the Meilisearch filter expression. Every value is
+// caller-supplied, so each one is escaped before it goes between quotes: the
+// vault clause must hold no matter what the other values contain.
 func buildFilter(p SearchParams) string {
 	var parts []string
 
 	if p.VaultID != "" {
-		parts = append(parts, fmt.Sprintf(`vault_id = "%s"`, p.VaultID))
+		parts = append(parts, fmt.Sprintf(`vault_id = "%s"`, escapeFilterValue(p.VaultID)))
 	}
 	if p.Tag != "" {
-		parts = append(parts, fmt.Sprintf(`tags = "%s"`, p.Tag))
+		parts = append(parts, fmt.Sprintf(`tags = "%s"`, escapeFilterValue(p.Tag)))
 	}
 	if p.DateFrom != "" {
-		parts = append(parts, fmt.Sprintf(`updated_at >= "%s"`, p.DateFrom))
+		parts = append(parts, fmt.Sprintf(`updated_at >= "%s"`, escapeFilterValue(p.DateFrom)))
 	}
 	if p.DateTo != "" {
-		parts = append(parts, fmt.Sprintf(`updated_at <= "%s"`, p.DateTo))
+		parts = append(parts, fmt.Sprintf(`updated_at <= "%s"`, escapeFilterValue(p.DateTo)))
 	}
 
 	return strings.Join(parts, " AND ")
+}
+
+// filterEscaper escapes a value for a double-quoted Meilisearch filter string:
+// the backslash first (it is the escape character), then the quote.
+var filterEscaper = strings.NewReplacer(`\`, `\\`, `"`, `\"`)
+
+// escapeFilterValue makes s safe to place between double quotes in a
+// Meilisearch filter, so it can never end its string early.
+func escapeFilterValue(s string) string {
+	return filterEscaper.Replace(s)
 }

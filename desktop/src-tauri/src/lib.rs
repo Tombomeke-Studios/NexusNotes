@@ -1,5 +1,7 @@
-use std::io::{Read, Write};
+use std::fs;
+use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpStream};
+use std::path::Path;
 use std::process::{Command as StdCommand, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -10,6 +12,108 @@ use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
 const BACKEND_PORT: u16 = 8080;
+
+/// Fixed development credentials: the Postgres container is shared with the dev
+/// scripts and its volume was initialised with them, so they cannot change without
+/// a migration. The port is published on 127.0.0.1 only (see docs/security.md).
+const DATABASE_URL: &str = "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable";
+
+/// File in the app's local data dir holding this install's JWT signing secret.
+const JWT_SECRET_FILE: &str = "jwt-secret";
+
+/// Bytes of CSPRNG output per secret; hex-encoded to twice as many characters.
+const SECRET_BYTES: usize = 32;
+
+fn to_hex(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
+    let mut out = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        out.push(char::from(DIGITS[usize::from(byte >> 4)]));
+        out.push(char::from(DIGITS[usize::from(byte & 0x0f)]));
+    }
+    out
+}
+
+/// A fresh secret: `SECRET_BYTES` from the OS CSPRNG, hex-encoded.
+fn generate_secret() -> io::Result<String> {
+    let mut bytes = [0u8; SECRET_BYTES];
+    // getrandom's error only implements std::error::Error with its "std" feature.
+    getrandom::fill(&mut bytes).map_err(|err| io::Error::other(err.to_string()))?;
+    Ok(to_hex(&bytes))
+}
+
+/// True for a secret shaped like the ones `generate_secret` makes. Anything else
+/// (empty, cut short by a crash, the old "dev-secret") gets replaced.
+fn is_valid_secret(secret: &str) -> bool {
+    secret.len() >= SECRET_BYTES * 2 && secret.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// Creates a new file that only the current user can read, where the OS allows it.
+#[cfg(unix)]
+fn create_private_file(path: &Path) -> io::Result<fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+}
+
+/// On Windows the file inherits the ACL of the per-user app data directory,
+/// which grants access to the user (plus SYSTEM and administrators) only.
+#[cfg(not(unix))]
+fn create_private_file(path: &Path) -> io::Result<fs::File> {
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+}
+
+/// Writes through a temp file and a rename, so a crash never leaves a half-written file.
+fn write_private(path: &Path, contents: &str) -> io::Result<()> {
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    let tmp = path.with_extension("tmp");
+    let _ = fs::remove_file(&tmp); // left over from an interrupted earlier write
+    {
+        let mut file = create_private_file(&tmp)?;
+        file.write_all(contents.as_bytes())?;
+        file.sync_all()?;
+    }
+    fs::rename(&tmp, path)
+}
+
+/// Returns the secret stored at `path`, generating and storing one on first run.
+fn load_or_create_secret(path: &Path) -> io::Result<String> {
+    match fs::read_to_string(path) {
+        Ok(contents) if is_valid_secret(contents.trim()) => return Ok(contents.trim().to_owned()),
+        Ok(_) => eprintln!(
+            "[backend] replacing the invalid secret in {}",
+            path.display()
+        ),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
+        Err(err) => return Err(err),
+    }
+    let secret = generate_secret()?;
+    write_private(path, &secret)?;
+    Ok(secret)
+}
+
+/// This install's JWT secret, kept in the app's local data dir so sign-ins survive
+/// restarts. If it cannot be stored, a secret for this run only is still far better
+/// than a shared constant: open sessions then renew through their refresh token.
+fn backend_jwt_secret(app: &tauri::AppHandle) -> io::Result<String> {
+    let stored = app
+        .path()
+        .app_local_data_dir()
+        .map_err(io::Error::other)
+        .and_then(|dir| load_or_create_secret(&dir.join(JWT_SECRET_FILE)));
+    stored.or_else(|err| {
+        eprintln!("[backend] cannot store the JWT secret ({err}); using one for this run only");
+        generate_secret()
+    })
+}
 
 /// Holds the backend sidecar child process so it can be killed on app exit.
 struct Backend(Mutex<Option<CommandChild>>);
@@ -122,6 +226,14 @@ fn supervise_backend(app: tauri::AppHandle) {
             return;
         }
     };
+    let jwt_secret = match backend_jwt_secret(&app) {
+        Ok(secret) => secret,
+        Err(err) => {
+            // Only reachable when the OS has no working CSPRNG; never fall back to a fixed secret.
+            eprintln!("[backend] cannot generate a JWT secret: {err}");
+            return;
+        }
+    };
     let shutting_down = || app.state::<Shutdown>().0.load(Ordering::SeqCst);
     let mut failures: u32 = 0;
 
@@ -149,12 +261,9 @@ fn supervise_backend(app: tauri::AppHandle) {
         let spawned = app.shell().sidecar("sync-service").map(|cmd| {
             cmd.current_dir(&resource_dir)
                 .envs([
-                    (
-                        "DATABASE_URL",
-                        "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable",
-                    ),
+                    ("DATABASE_URL", DATABASE_URL),
                     ("REDIS_URL", "redis://localhost:6379"),
-                    ("JWT_SECRET", "dev-secret"),
+                    ("JWT_SECRET", jwt_secret.as_str()),
                     ("PORT", &BACKEND_PORT.to_string()),
                 ])
                 .spawn()
@@ -253,5 +362,137 @@ mod tests {
         ));
         assert!(!is_healthy_response("HTTP/1.1 200 OK\r\n\r\n<html>some other server</html>"));
         assert!(!is_healthy_response(""));
+    }
+
+    /// A unique scratch directory under the system temp dir, removed on drop.
+    struct TempDir(std::path::PathBuf);
+
+    impl TempDir {
+        fn new(name: &str) -> Self {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let dir = std::env::temp_dir().join(format!(
+                "nexusnotes-test-{name}-{}-{nanos}",
+                std::process::id()
+            ));
+            fs::create_dir_all(&dir).unwrap();
+            TempDir(dir)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn to_hex_encodes_each_byte_as_two_lowercase_digits() {
+        assert_eq!(to_hex(&[0x00, 0x0f, 0xa5, 0xff]), "000fa5ff");
+        assert_eq!(to_hex(&[]), "");
+    }
+
+    #[test]
+    fn generated_secrets_are_long_random_hex() {
+        let first = generate_secret().unwrap();
+        let second = generate_secret().unwrap();
+        assert_eq!(first.len(), SECRET_BYTES * 2);
+        assert!(is_valid_secret(&first));
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn secret_validation_rejects_short_or_non_hex_values() {
+        assert!(!is_valid_secret(""));
+        assert!(!is_valid_secret("dev-secret"));
+        assert!(!is_valid_secret(&"a".repeat(SECRET_BYTES * 2 - 1)));
+        assert!(!is_valid_secret(&"z".repeat(SECRET_BYTES * 2)));
+        assert!(is_valid_secret(&"A1".repeat(SECRET_BYTES)));
+    }
+
+    #[test]
+    fn secret_is_created_on_first_run_with_its_directory() {
+        let tmp = TempDir::new("create");
+        let path = tmp.0.join("app").join(JWT_SECRET_FILE);
+
+        let secret = load_or_create_secret(&path).unwrap();
+
+        assert!(is_valid_secret(&secret));
+        assert_eq!(fs::read_to_string(&path).unwrap(), secret);
+        assert!(
+            !path.with_extension("tmp").exists(),
+            "temp file left behind"
+        );
+    }
+
+    #[test]
+    fn secret_is_reused_on_later_runs() {
+        let tmp = TempDir::new("reuse");
+        let path = tmp.0.join(JWT_SECRET_FILE);
+
+        let first = load_or_create_secret(&path).unwrap();
+        let second = load_or_create_secret(&path).unwrap();
+
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn stored_secret_is_read_without_surrounding_whitespace() {
+        let tmp = TempDir::new("trim");
+        let path = tmp.0.join(JWT_SECRET_FILE);
+        let secret = "ab".repeat(SECRET_BYTES);
+        fs::write(&path, format!("{secret}\r\n")).unwrap();
+
+        assert_eq!(load_or_create_secret(&path).unwrap(), secret);
+    }
+
+    #[test]
+    fn invalid_stored_secret_is_replaced() {
+        for stored in ["", "dev-secret", "0123abcd"] {
+            let tmp = TempDir::new("invalid");
+            let path = tmp.0.join(JWT_SECRET_FILE);
+            fs::write(&path, stored).unwrap();
+
+            let secret = load_or_create_secret(&path).unwrap();
+
+            assert!(is_valid_secret(&secret), "kept {stored:?}");
+            assert_eq!(fs::read_to_string(&path).unwrap(), secret);
+        }
+    }
+
+    #[test]
+    fn leftover_temp_file_does_not_block_creation() {
+        let tmp = TempDir::new("leftover");
+        let path = tmp.0.join(JWT_SECRET_FILE);
+        fs::write(path.with_extension("tmp"), "half-writ").unwrap();
+
+        let secret = load_or_create_secret(&path).unwrap();
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), secret);
+    }
+
+    #[test]
+    fn unreadable_secret_path_is_an_error_not_an_overwrite() {
+        let tmp = TempDir::new("unreadable");
+        let path = tmp.0.join(JWT_SECRET_FILE);
+        fs::create_dir(&path).unwrap(); // a directory where the file should be
+
+        assert!(load_or_create_secret(&path).is_err());
+        assert!(path.is_dir());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn secret_file_is_readable_by_the_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = TempDir::new("mode");
+        let path = tmp.0.join(JWT_SECRET_FILE);
+
+        load_or_create_secret(&path).unwrap();
+
+        let mode = fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
     }
 }

@@ -20,6 +20,13 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - The app no longer signs you out when the server is merely unreachable at start-up; your
   session is kept and restored as soon as the server answers.
 
+### Security
+- The packaged app's backend no longer signs sessions with the shared `dev-secret`: each
+  installation generates its own random JWT secret on first run and keeps it in the app's
+  local data directory. After upgrading, the first request renews your session through
+  its refresh token, so you normally stay signed in; you only have to sign in once more
+  if you had not used the app for 30 days or more.
+
 ## [0.5.0] - baseline
 
 First versioned release. Covers the work to date: markdown editor with live preview, vaults

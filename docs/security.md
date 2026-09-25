@@ -218,3 +218,28 @@ the key, so collaborators must share the passphrase themselves.
 - Never committed to version control
 - `.env` files are gitignored
 - `.env.example` contains placeholder values only
+
+## Packaged Desktop App
+
+The installed app runs its own backend: the bundled sync service, talking to
+Postgres and Redis from the bundled development compose file.
+
+**Per-install JWT secret (#260).** On first run the app draws 32 bytes from the
+operating system's CSPRNG, hex-encodes them and stores them in a `jwt-secret`
+file in its local app data directory (on Windows
+`%LOCALAPPDATA%\com.tombomeke-studios.nexusnotes\`). Every later start reuses
+that file; an empty, truncated or otherwise malformed file is replaced. On macOS
+and Linux the file is created readable by its owner only (mode 0600); on Windows
+it inherits the ACL of the per-user profile, which admits only the user, SYSTEM
+and administrators. The local (not roaming) directory keeps the secret on this
+machine. If the file cannot be written, the app uses a secret for that run only;
+it never falls back to a fixed value. Earlier versions signed every
+installation's tokens with the shared constant `dev-secret`, so anyone who could
+reach a backend could forge a token for any user on it.
+
+To rotate the secret, quit the app, delete the file and start the app again.
+Access tokens signed with the old secret are then rejected, but refresh tokens
+are opaque values stored hashed in the database and do not depend on the JWT
+secret, so the client renews its session silently on the next request. A
+re-login is only needed when the refresh token itself has expired (30 days
+unused) or is missing.

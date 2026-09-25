@@ -130,6 +130,10 @@ and never blocks the window:
 - If the bundled backend exits it is restarted with a capped backoff (1s → 30s).
 - Until the server answers, the app shows a "Waiting for the server…" screen and keeps
   your session; it picks up automatically once `/health` responds.
+- The bundled backend signs sessions with a random per-install JWT secret, generated on
+  first run and kept in the `jwt-secret` file in the app's local data directory
+  (`%LOCALAPPDATA%\com.tombomeke-studios.nexusnotes\` on Windows). Deleting the file
+  rotates the secret on the next start; see [security.md](security.md#packaged-desktop-app).
 
 Backend output is written to the app's stderr with a `[backend]` prefix. To watch it,
 start the .exe from a terminal.

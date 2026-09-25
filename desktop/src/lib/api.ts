@@ -27,26 +27,34 @@ function setRefreshToken(token: string) {
 
 // Single-flight guard: concurrent 401s share one rotation instead of racing
 // (a raced second rotation would trip the server's reuse detection).
-let refreshInFlight: Promise<boolean> | null = null;
+let refreshInFlight: Promise<RefreshResult> | null = null;
 
-/** Rotates the refresh token into a fresh session; false when impossible. */
-function tryRefresh(): Promise<boolean> {
+/**
+ * "rejected" means the server refused the refresh token (sign out);
+ * "unavailable" means the refresh could not run (server down or failing) and
+ * the stored session must be kept so it can be retried later.
+ */
+type RefreshResult = "ok" | "rejected" | "unavailable";
+
+/** Rotates the refresh token into a fresh session. */
+function tryRefresh(): Promise<RefreshResult> {
   refreshInFlight ??= (async () => {
     const refresh = localStorage.getItem("nexus_refresh");
-    if (!refresh) return false;
+    if (!refresh) return "rejected";
     try {
       const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refresh, device_id: getDeviceId() }),
       });
-      if (!res.ok) return false;
+      if (res.status === 400 || res.status === 401 || res.status === 403) return "rejected";
+      if (!res.ok) return "unavailable";
       const body = await res.json();
       setToken(body.token);
       setRefreshToken(body.refresh_token);
-      return true;
+      return "ok";
     } catch {
-      return false;
+      return "unavailable";
     }
   })().finally(() => {
     refreshInFlight = null;
@@ -85,8 +93,12 @@ async function request<T>(
     if (res.status === 401 && autoLogoutOn401) {
       // The access token may simply have aged out (1h TTL): rotate the
       // refresh token and replay the request once before giving up (#49).
-      if (!isRetry && (await tryRefresh())) {
+      const refreshed = isRetry ? "rejected" : await tryRefresh();
+      if (refreshed === "ok") {
         return request<T>(path, options, { autoLogoutOn401, isRetry: true });
+      }
+      if (refreshed === "unavailable") {
+        throw new ApiError(503, "server unavailable");
       }
       setToken(null);
       window.dispatchEvent(new CustomEvent("nexus:logout"));

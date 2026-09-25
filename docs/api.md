@@ -356,7 +356,44 @@ Response (200): `TagCount[]`
 
 ## WebSocket
 
-Connect: `ws://localhost:8080/ws?token=<jwt>&device_id=<uuid>`
+Browsers cannot set an `Authorization` header on a WebSocket handshake, so the
+client first exchanges its access token for a short-lived ticket and connects
+with that. The access token never appears in a URL, and so never in proxy or
+access logs.
+
+### POST /api/ws/ticket
+
+Requires `Authorization: Bearer <token>`. Issues a single-use ticket bound to
+the caller:
+
+Response (200):
+```json
+{ "ticket": "k3J...", "expires_in": 30 }
+```
+
+The ticket is valid for `expires_in` seconds and is consumed by the first
+connect attempt that presents it, whether or not that attempt succeeds; fetch a
+fresh ticket for every (re)connect. `401` without a valid access token; `503`
+with a `Retry-After` header when the server's cap on outstanding tickets is
+reached.
+
+### GET /ws
+
+Connect: `ws://localhost:8080/ws?ticket=<ticket>&device_id=<uuid>&device_name=<name>&platform=<platform>`
+
+- `ticket` is required. The legacy `?token=<jwt>` parameter is no longer
+  accepted.
+- `device_id`, `device_name` and `platform` register or refresh the device
+  (see `GET /api/devices`).
+
+| Status | Meaning |
+|---|---|
+| `101` | Upgraded |
+| `401` | Missing, unknown, expired or already-used ticket |
+| `403` | The `Origin` header is neither the server's own origin nor on the allowlist shared with CORS (`http://localhost:1420`, `http://localhost:5173`, `tauri://localhost`, `http://tauri.localhost`). Checked before the ticket, so a rejected origin does not consume it |
+
+Clients that send no `Origin` header (non-browser clients) are authenticated by
+the ticket alone.
 
 ### Server → Client Messages
 

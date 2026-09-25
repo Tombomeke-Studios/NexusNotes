@@ -120,7 +120,7 @@ Returns the caller's registered sync devices (`Device[]`: id, name, platform, la
 
 ### DELETE /api/devices/:deviceId
 
-Revokes a device: forgets it and force-closes its live WebSocket connections after a best-effort `device:revoked` message, which the client honours by signing out. `404` for a device the caller does not own. Note: the JWT itself remains valid until expiry — full per-device token invalidation arrives with refresh-token rotation (#49).
+Revokes a device: forgets it, deletes its refresh-token chain and force-closes its live WebSocket connections after a best-effort `device:revoked` message, which the client honours by signing out. Without a refresh token the device cannot mint new access tokens; an access token it already holds stays valid until it expires (at most 1 hour). `204` on success, `404` for a device the caller does not own.
 
 ---
 
@@ -130,7 +130,9 @@ All vault endpoints require `Authorization: Bearer <token>`.
 
 ### GET /api/vaults
 
-List all vaults for the authenticated user. Returns `Vault[]`.
+List all vaults for the authenticated user. Returns `Vault[]`: the caller's own
+vaults first, then the vaults shared with them, each group sorted by name and
+each vault stamped with the caller's `role`.
 
 ### POST /api/vaults
 
@@ -147,7 +149,9 @@ sends the mode plus its opaque key-material blob:
 
 Response (201): `Vault`. `encryption` defaults to `"none"`;
 `encryption_meta` is required when `encryption` is `"e2ee"` and is never
-interpreted by the server.
+interpreted by the server. `400` for a missing `name`, an unknown `encryption`
+mode or an e2ee vault without `encryption_meta`. When SMTP is configured, an
+account whose email is not yet verified gets `403`.
 
 ### PUT /api/vaults/:id/encryption
 
@@ -158,7 +162,8 @@ not exist, is not owned by the caller, or is not encrypted.
 
 ### GET /api/vaults/:id
 
-Response (200): `Vault`
+Response (200): `Vault`, including the caller's `role`. `404` when the vault
+does not exist, `403` when the caller is neither its owner nor a member.
 
 ### PUT /api/vaults/:id
 
@@ -166,17 +171,27 @@ Response (200): `Vault`
 { "name": "Renamed Vault" }
 ```
 
+Owner only. Response (200): the vault's `id`, `user_id`, `name` and new
+`updated_at`; the remaining `Vault` fields are not filled in, so re-read the
+vault with `GET /api/vaults/:id` when you need them. A request for a vault the
+caller does not own changes nothing.
+
 ### DELETE /api/vaults/:id
 
-Response (204)
+Owner only; deletes the vault with all its notes. Response (204). A request for
+a vault the caller does not own changes nothing.
 
 ---
 
 ## Notes
 
+All note endpoints require `Authorization: Bearer <token>`. "Read access" means
+any role on the vault (owner, editor or viewer); "write access" means owner or
+editor. Without the required access the API answers `403`.
+
 ### GET /api/vaults/:vaultId/notes
 
-List all notes in a vault. Returns `Note[]`.
+List all notes in a vault, sorted by path. Returns `Note[]`. Read access required.
 
 ### POST /api/vaults/:vaultId/notes
 
@@ -195,11 +210,11 @@ For notes in an e2ee vault, `content` is the client-encrypted payload
 for conflict detection. The same `checksum` field applies to
 `PUT /api/notes/:noteId`. For standard vaults client checksums are ignored.
 
-Response (201): `Note`
+Response (201): `Note`. Write access required; `400` when `title` is missing.
 
 ### GET /api/notes/:noteId
 
-Response (200): `Note`
+Response (200): `Note`. Read access required; `404` for an unknown note.
 
 ### PUT /api/notes/:noteId
 
@@ -212,6 +227,9 @@ Response (200): `Note`
   "device_id": "uuid"
 }
 ```
+
+Write access required; `404` for an unknown note. `prev_checksum` must equal
+the note's current `checksum`.
 
 Response (200): `Note` on success.
 Response (409): `ConflictInfo` on checksum mismatch:
@@ -227,7 +245,7 @@ Response (409): `ConflictInfo` on checksum mismatch:
 
 ### DELETE /api/vaults/:vaultId/notes/:noteId
 
-Response (204)
+Response (204). Write access required.
 
 ### GET /api/notes/:noteId/versions
 
@@ -235,7 +253,7 @@ List version history. Returns `NoteVersion[]` (newest first).
 
 ### GET /api/notes/:noteId/backlinks
 
-Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`.
+Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`. Read access required; `404` for an unknown note.
 
 ---
 
@@ -250,11 +268,14 @@ Returns the ids (`string[]`) of every note the authenticated user has starred, a
 
 ### POST /api/notes/:noteId/star
 
-Stars a note (favourite). Idempotent; `204` on success. The caller must own the note's vault.
+Stars a note (favourite). Idempotent; `204` on success. The caller needs read
+access to the note's vault (any role: owner, editor or viewer); `404` for an
+unknown note, `403` without access.
 
 ### DELETE /api/notes/:noteId/star
 
-Removes the star. Idempotent; `204` on success.
+Removes the star. Idempotent; `204` on success. Same access rule and errors as
+starring.
 
 ---
 
@@ -262,19 +283,20 @@ Removes the star. Idempotent; `204` on success.
 
 ### GET /api/vaults/:id/members
 
-Lists the vault's members (`VaultMember[]`). Any member or the owner may view.
+Lists the vault's members (`VaultMember[]`), oldest membership first; the owner
+is not included. Any member or the owner may view; anyone else gets `403`.
 
 ### POST /api/vaults/:id/members
 
-Invites a registered user by email as `viewer` or `editor`: `{email, role}` → `204`. Owner only. Membership is auto-accepted, so the vault appears for the invitee immediately.
+Invites a registered user by email as `viewer` or `editor`: `{email, role}` → `204`. `role` defaults to `viewer`. Owner only (`403` otherwise). Membership is auto-accepted, so the vault appears for the invitee immediately. `404` when no account uses that email, `400` for an unknown role or when the owner invites themselves.
 
 ### PATCH /api/vaults/:id/members/:userId
 
-Changes a member's role: `{role}` → `204`. Owner only.
+Changes a member's role: `{role}` → `204`. Owner only (`403` otherwise); `400` for a role other than `viewer`/`editor`, `404` when the user is not a member.
 
 ### DELETE /api/vaults/:id/members/:userId
 
-Removes a member (owner) or leaves the vault (a member removing themselves) → `204`.
+Removes a member (owner) or leaves the vault (a member removing themselves) → `204`. Anyone else gets `403`; `404` when the user is not a member.
 
 Shared vaults also appear in `GET /api/vaults`, each stamped with the caller's `role` (`owner`/`editor`/`viewer`). Note create/update/delete broadcast over WebSocket to the owner and all members.
 
@@ -322,22 +344,22 @@ separately from the source so re-syncing never overwrites them (#64).
 
 ### GET /api/vaults/:id/links
 
-Lists a vault's linked files (`LinkedFile[]`). Read access required.
+Lists a vault's linked files (`LinkedFile[]`), sorted by display name. Read access required.
 
 ### POST /api/vaults/:id/links
 
-Registers a link from `{ display_name?, source_type, source_ref }` → the created
-`LinkedFile`. An unknown `source_type` or empty `source_ref` returns `400`. Write access required.
+Registers a link from `{ display_name?, source_type, source_ref }` → `201` with the created
+`LinkedFile`; `display_name` defaults to `source_ref`. An unknown `source_type` or empty `source_ref` returns `400`. Write access required.
 
 ### DELETE /api/vaults/:id/links/:linkId
 
-Removes a link (and its annotations). Write access required.
+Removes a link (and its annotations) → `204`; `404` when the link does not exist in that vault. Write access required.
 
 ### GET /api/links/:linkId/content
 
 Fetches the current content of a `url` link `{ content, content_type, fetched_at }`
-(capped at 5 MiB). Returns `422` for non-URL links, `502` when the source can't be
-reached. Read access required.
+(capped at 5 MiB). Returns `422` for non-URL links, `400` when `source_ref` is not an
+`http(s)` URL, `502` when the source can't be reached or answers with an error. Read access required.
 
 ### GET /api/links/:linkId/annotation
 
@@ -426,7 +448,8 @@ Response (200): `NoteSearchResult[]` ordered by `updated_at` descending, up to 5
 
 ### GET /api/vaults/:vaultId/tags
 
-Returns all tags used in the vault with their note counts, ordered by count descending.
+Returns all tags used in the vault with their note counts, ordered by count descending
+(ties alphabetically). Read access required.
 
 Response (200): `TagCount[]`
 ```json

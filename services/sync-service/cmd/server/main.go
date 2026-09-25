@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/buildinfo"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/config"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/handler"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/mail"
@@ -191,10 +192,7 @@ func main() {
 	// Operator-only; guarded by its own static token, not user JWTs (#59).
 	mux.HandleFunc("GET /api/admin/stats", adminHandler.Stats)
 
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
+	mux.HandleFunc("GET /health", buildinfo.HealthHandler)
 
 	c := cors.New(cors.Options{
 		// tauri://localhost is the packaged app's origin on macOS/Linux;

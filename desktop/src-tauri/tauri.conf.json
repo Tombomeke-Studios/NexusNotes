@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/schema.json",
   "productName": "NexusNotes",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "identifier": "com.tombomeke-studios.nexusnotes",
   "build": {
     "beforeBuildCommand": "npm run build:sidecar && npm run build",

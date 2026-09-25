@@ -152,7 +152,7 @@ This starts the sync service, PostgreSQL, Redis, and MinIO. The sync service aut
 
 ```bash
 curl http://localhost:8080/health
-# {"status":"ok"}
+# {"status":"ok","version":"0.5.0"}
 ```
 
 ### Services
@@ -164,6 +164,23 @@ curl http://localhost:8080/health
 | redis | 6379 | Cache and sessions |
 | minio | 9000 | S3 attachment storage |
 | minio console | 9001 | MinIO admin UI |
+
+---
+
+## Versioning
+
+NexusNotes follows [semantic versioning](https://semver.org). It is pre-1.0, so
+a **minor** bump (`0.5` → `0.6`) may change the API or sync protocol, and a patch
+bump is always compatible. `1.0.0` marks the first stable release.
+
+- The repo-root `VERSION` file is the single source of truth.
+- `./scripts/set-version.sh 0.6.0` updates it and syncs `package.json`,
+  `tauri.conf.json`, `Cargo.toml` and the lockfiles; a Vitest test fails if they drift.
+- The backend gets the version at build time (the Dockerfile's `VERSION` build arg,
+  fed from `NEXUS_VERSION`; `scripts/start-backend.sh` exports it for you) and reports
+  it in `GET /health`.
+- Release notes live in [CHANGELOG.md](../CHANGELOG.md). Tag releases `vX.Y.Z` on `main`
+  (see the promotion flow in CLAUDE.md).
 
 ---
 

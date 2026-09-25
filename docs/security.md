@@ -170,7 +170,8 @@ into a blob URL, and a blob URL belongs to the app's own origin, where the sessi
 tokens live; opened in a tab, an SVG or HTML blob would run its script there. The
 client therefore rebuilds every attachment blob with its own type: the five raster
 image types are kept and everything else becomes `application/octet-stream`, which a
-browser only ever downloads.
+browser only ever downloads. The preview likewise only renders raster images inline;
+any other embedded attachment (an `![[drawing.svg]]`, say) is shown as a download link.
 
 ## Vault Sharing and Authorization
 

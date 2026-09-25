@@ -38,6 +38,14 @@
   ensure the proxy passes the real client IP as the connection source (or
   terminate rate limiting at the proxy instead)
 
+### Request body limits
+
+Every JSON endpoint reads its body through `http.MaxBytesReader`: 64 KiB for the
+authentication endpoints, 8 MiB elsewhere (`internal/handler/response.go`). An
+oversized body is answered with `413` and never buffered, so an authenticated (or, on
+the auth endpoints, anonymous) client cannot exhaust memory or fill the database with a
+single request. Attachment uploads are capped separately at 25 MiB.
+
 ## Authorization
 
 - Users can only access their own vaults and notes

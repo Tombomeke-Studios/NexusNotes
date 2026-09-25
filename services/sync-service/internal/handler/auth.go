@@ -49,8 +49,8 @@ func (h *AuthHandler) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Password string `json:"password"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeSmallJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 	if req.Password == "" {
@@ -77,8 +77,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		DisplayName string `json:"display_name"`
 		DeviceID    string `json:"device_id"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeSmallJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 
@@ -129,8 +129,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 		DeviceID string `json:"device_id"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeSmallJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 
@@ -171,8 +171,8 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Token string `json:"token"`
 	}
-	if err := decodeJSON(r, &req); err != nil || req.Token == "" {
-		writeError(w, http.StatusBadRequest, "token is required")
+	if err := decodeSmallJSON(w, r, &req); err != nil || req.Token == "" {
+		writeBodyError(w, err, "token is required")
 		return
 	}
 	if err := h.emailAuth.VerifyEmail(r.Context(), req.Token); err != nil {
@@ -188,8 +188,8 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
 	}
-	if err := decodeJSON(r, &req); err != nil || req.Email == "" {
-		writeError(w, http.StatusBadRequest, "email is required")
+	if err := decodeSmallJSON(w, r, &req); err != nil || req.Email == "" {
+		writeBodyError(w, err, "email is required")
 		return
 	}
 	h.emailAuth.RequestPasswordReset(r.Context(), req.Email)
@@ -202,8 +202,8 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		Token    string `json:"token"`
 		Password string `json:"password"`
 	}
-	if err := decodeJSON(r, &req); err != nil || req.Token == "" {
-		writeError(w, http.StatusBadRequest, "token is required")
+	if err := decodeSmallJSON(w, r, &req); err != nil || req.Token == "" {
+		writeBodyError(w, err, "token is required")
 		return
 	}
 	if len(req.Password) < 8 {
@@ -223,8 +223,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		RefreshToken string `json:"refresh_token"`
 		DeviceID     string `json:"device_id"`
 	}
-	if err := decodeJSON(r, &req); err != nil || req.RefreshToken == "" {
-		writeError(w, http.StatusBadRequest, "refresh_token is required")
+	if err := decodeSmallJSON(w, r, &req); err != nil || req.RefreshToken == "" {
+		writeBodyError(w, err, "refresh_token is required")
 		return
 	}
 
@@ -250,7 +250,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		RefreshToken string `json:"refresh_token"`
 	}
-	if err := decodeJSON(r, &req); err == nil {
+	if err := decodeSmallJSON(w, r, &req); err == nil {
 		h.authService.Logout(r.Context(), req.RefreshToken)
 	}
 	w.WriteHeader(http.StatusNoContent)

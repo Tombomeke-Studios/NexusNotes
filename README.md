@@ -271,6 +271,7 @@ cd desktop && npm test
 | [Deployment](docs/deployment.md) | Docker, environment setup |
 | [Security](docs/security.md) | Auth, encryption, known gaps |
 | [Security policy](SECURITY.md) | How to report a vulnerability privately; supported versions |
+| [Contributing](CONTRIBUTING.md) | Branches, commit format, TDD, test and lint commands |
 | [Encryption](docs/encryption.md) | E2EE design, key hierarchy, threat model |
 | [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol |
 
@@ -286,4 +287,5 @@ NexusNotes is part of the Tombomeke Studios product ecosystem alongside FinVault
 feature/<topic>  →  dev  →  staging  →  main (production)
 ```
 
-See [CLAUDE.md](CLAUDE.md) for full workflow rules.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor workflow and
+[CLAUDE.md](CLAUDE.md) for the full rules.

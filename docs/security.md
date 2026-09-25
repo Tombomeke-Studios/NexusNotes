@@ -148,15 +148,22 @@ so mail-less self-hosts keep working.
 ## Attachments
 
 Attachments are user-supplied files that other vault members can open, so they are
-treated as hostile content. On upload the stored content type is derived from the
-file's bytes rather than the client's claim (a spoofed image type is downgraded and
-HTML/XML/JavaScript types are neutralised), and the request body is capped at 25 MiB
-plus multipart framing. On download every response sends `nosniff` and a
-`Content-Security-Policy` that blocks all sources and sandboxes the response; only
-raster images are served inline and everything else (SVG included) is an attachment.
-Combined with the fact that downloads need an `Authorization` header, an uploaded
-`text/html` or `image/svg+xml` file cannot execute script with the API's origin, which
-closes the stored-XSS path between members of a shared vault.
+treated as hostile content. Their content type comes from an allowlist of passive
+formats rather than from the client's claim: PNG, JPEG, GIF, WebP and BMP images and
+PDF and ZIP files are recognised from their own bytes, `text/plain`, `text/markdown`
+and `text/csv` are kept when declared, and everything else is stored as
+`application/octet-stream`. That includes SVG, HTML, XML and every `+xml` type,
+JavaScript, and any image format not listed; an allowlist is used because the set of
+types a browser will run script in is open-ended. The request body is capped at
+25 MiB plus multipart framing.
+
+On download the same allowlist is applied again, so attachments stored before it
+existed (for example an SVG) are served as `application/octet-stream`. Every response
+sends `nosniff` and a `Content-Security-Policy` that blocks all sources and sandboxes
+the response; only the five raster image types are served inline and everything else
+is an attachment. Combined with the fact that downloads need an `Authorization`
+header, an uploaded HTML or SVG file cannot execute script with the API's origin,
+which closes the stored-XSS path between members of a shared vault.
 
 ## Vault Sharing and Authorization
 

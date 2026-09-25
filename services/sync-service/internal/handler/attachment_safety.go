@@ -8,6 +8,11 @@ import (
 
 const octetStream = "application/octet-stream"
 
+// Attachments are stored and served only as one of a small allowlist of passive
+// types; everything else (SVG, HTML, every +xml flavour, JavaScript, and any type
+// not listed here) becomes application/octet-stream. An allowlist rather than a
+// denylist, because the set of types a browser will run script in is open-ended.
+
 // inlineImageTypes are the raster formats that are safe to display inline.
 // http.DetectContentType recognises exactly these by their magic bytes.
 var inlineImageTypes = map[string]bool{
@@ -18,15 +23,20 @@ var inlineImageTypes = map[string]bool{
 	"image/bmp":  true,
 }
 
-// activeTypes can run script or load resources when a browser renders them as a
-// document, so an attachment must never be stored or served as one of these.
-var activeTypes = map[string]bool{
-	"text/html":              true,
-	"application/xhtml+xml":  true,
-	"text/xml":               true,
-	"application/xml":        true,
-	"text/javascript":        true,
-	"application/javascript": true,
+// sniffedDocumentTypes are passive binary formats that are only stored when the
+// file's own magic bytes say so (a claim alone is not enough).
+var sniffedDocumentTypes = map[string]bool{
+	"application/pdf": true,
+	"application/zip": true,
+}
+
+// declaredTextTypes are plain-text formats with no magic bytes to check. They are
+// kept when declared: every download carries nosniff, so a browser shows them as
+// text whatever the bytes contain.
+var declaredTextTypes = map[string]bool{
+	"text/plain":    true,
+	"text/markdown": true,
+	"text/csv":      true,
 }
 
 // baseMediaType returns the lower-cased "type/subtype" of a Content-Type value
@@ -40,31 +50,37 @@ func baseMediaType(value string) string {
 }
 
 // resolveUploadType decides the content type stored for an upload. The client's
-// declared type is untrusted: a real raster image is stored as what its bytes
-// say, an image claim the bytes do not back up is downgraded, and active
-// document types are neutralised. SVG keeps its type so inline previews still
-// work; setAttachmentHeaders stops it running as a document on download.
+// declared type is untrusted: raster images, PDF and ZIP are stored as what the
+// file's bytes say whatever was declared, plain-text types are kept when
+// declared, and everything else is stored as application/octet-stream.
 func resolveUploadType(declared string, head []byte) string {
-	if sniffed := baseMediaType(http.DetectContentType(head)); inlineImageTypes[sniffed] {
+	sniffed := baseMediaType(http.DetectContentType(head))
+	if inlineImageTypes[sniffed] || sniffedDocumentTypes[sniffed] {
 		return sniffed
 	}
-	decl := baseMediaType(declared)
-	switch {
-	case decl == "", inlineImageTypes[decl], activeTypes[decl]:
-		return octetStream
+	if decl := baseMediaType(declared); declaredTextTypes[decl] {
+		return decl
 	}
-	return decl
+	return octetStream
+}
+
+// servedType maps a stored content type onto the allowlist. Uploads only ever
+// store allowlisted types, but rows written before the allowlist may still say
+// image/svg+xml or text/html; those are served as opaque bytes.
+func servedType(mimeType string) string {
+	mt := baseMediaType(mimeType)
+	if inlineImageTypes[mt] || sniffedDocumentTypes[mt] || declaredTextTypes[mt] {
+		return mt
+	}
+	return octetStream
 }
 
 // setAttachmentHeaders hardens a download response so a stored file can never be
-// rendered as a same-origin document: no MIME sniffing, a CSP that blocks every
-// source and sandboxes the response, and "attachment" disposition for anything
-// that is not a raster image.
+// rendered as a same-origin document: an allowlisted content type, no MIME
+// sniffing, a CSP that blocks every source and sandboxes the response, and
+// "attachment" disposition for anything that is not a raster image.
 func setAttachmentHeaders(h http.Header, mimeType, filename string) {
-	mt := baseMediaType(mimeType)
-	if mt == "" || activeTypes[mt] {
-		mt = octetStream
-	}
+	mt := servedType(mimeType)
 	disposition := "attachment"
 	if inlineImageTypes[mt] {
 		disposition = "inline"

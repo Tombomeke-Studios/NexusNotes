@@ -3,11 +3,13 @@ package handler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -114,5 +116,45 @@ func TestLinkedFileClient_RedirectTargetIsCheckedAtConnectTime(t *testing.T) {
 	}
 	if !errors.Is(err, errBlockedDestination) {
 		t.Fatalf("err = %v, want errBlockedDestination", err)
+	}
+}
+
+func TestLinkedFileClient_CapsRedirects(t *testing.T) {
+	var hops atomic.Int32
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := hops.Add(1)
+		http.Redirect(w, r, fmt.Sprintf("%s/hop%d", srv.URL, n), http.StatusFound)
+	}))
+	defer srv.Close()
+
+	resp, err := get(newLinkedFileClient(true), srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+		t.Fatal("endless redirect chain succeeded")
+	}
+	if !errors.Is(err, errTooManyRedirects) {
+		t.Fatalf("err = %v, want errTooManyRedirects", err)
+	}
+	if got := int(hops.Load()); got != maxLinkedRedirects+1 {
+		t.Fatalf("server saw %d requests, want %d (first request + %d redirects)", got, maxLinkedRedirects+1, maxLinkedRedirects)
+	}
+}
+
+func TestReadLinkedBody_RejectsOversizedSources(t *testing.T) {
+	within := strings.Repeat("a", maxLinkedContentBytes)
+	body, err := readLinkedBody(&http.Response{ContentLength: -1, Body: io.NopCloser(strings.NewReader(within))})
+	if err != nil || len(body) != maxLinkedContentBytes {
+		t.Fatalf("body at the limit: len=%d err=%v", len(body), err)
+	}
+
+	over := within + "b"
+	if _, err := readLinkedBody(&http.Response{ContentLength: -1, Body: io.NopCloser(strings.NewReader(over))}); !errors.Is(err, errSourceTooLarge) {
+		t.Fatalf("streamed body over the limit: err = %v, want errSourceTooLarge", err)
+	}
+
+	// A declared length over the limit is refused without reading the body.
+	if _, err := readLinkedBody(&http.Response{ContentLength: maxLinkedContentBytes + 1, Body: io.NopCloser(strings.NewReader(""))}); !errors.Is(err, errSourceTooLarge) {
+		t.Fatalf("declared length over the limit: err = %v, want errSourceTooLarge", err)
 	}
 }

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -11,9 +10,6 @@ import (
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 )
-
-// maxLinkedContentBytes caps the size of a proxied URL fetch.
-const maxLinkedContentBytes = 5 << 20 // 5 MiB
 
 // LinkedFileHandler manages external file references linked into a vault plus
 // their per-user annotations (#64). URL content is proxied server-side to
@@ -162,11 +158,14 @@ func (h *LinkedFileHandler) Content(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := h.client.Do(req)
 	if err != nil {
-		if errors.Is(err, errBlockedDestination) {
+		switch {
+		case errors.Is(err, errBlockedDestination):
 			writeError(w, http.StatusUnprocessableEntity, "this URL points to a private or local network address, which the server does not fetch")
-			return
+		case errors.Is(err, errTooManyRedirects):
+			writeError(w, http.StatusBadGateway, "source redirected too many times")
+		default:
+			writeError(w, http.StatusBadGateway, "failed to fetch source")
 		}
-		writeError(w, http.StatusBadGateway, "failed to fetch source")
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -175,7 +174,11 @@ func (h *LinkedFileHandler) Content(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxLinkedContentBytes))
+	body, err := readLinkedBody(resp)
+	if errors.Is(err, errSourceTooLarge) {
+		writeError(w, http.StatusBadGateway, "source is larger than the 5 MiB limit")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "failed to read source")
 		return

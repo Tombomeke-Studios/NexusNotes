@@ -231,8 +231,9 @@ IPv6 unique-local), link-local (including cloud metadata endpoints),
 unspecified, multicast, carrier-grade NAT and other special-purpose ranges are
 blocked. Because the check sits in the dialer, it also applies to every
 redirect hop and to hostnames that resolve differently between lookups.
-Environment proxy settings are ignored for these fetches and the whole fetch
-times out after 15 seconds. Self-hosters who want to link LAN resources can set
+Environment proxy settings are ignored for these fetches, redirects are capped
+at 3, the whole fetch times out after 15 seconds, and sources larger than
+5 MiB are refused. Self-hosters who want to link LAN resources can set
 `LINKED_FILES_ALLOW_PRIVATE=true`, which lifts the address check only.
 
 ## Secrets Management

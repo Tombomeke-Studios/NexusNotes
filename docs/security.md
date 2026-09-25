@@ -10,7 +10,8 @@
   response timing does not reveal whether an account exists
 - JWT tokens with HS256 signing, 24-hour expiry
 - Token passed via `Authorization: Bearer <token>` header
-- WebSocket auth via query parameter `?token=<jwt>`
+- WebSocket auth via a short-lived, single-use ticket — the access token never
+  appears in a URL (see [WebSocket Authentication](#websocket-authentication))
 
 ### Brute-force protection
 
@@ -63,7 +64,6 @@ single request. Attachment uploads are capped separately at 25 MiB.
 | Gap | Severity | Plan |
 |---|---|---|
 | No refresh token rotation | Medium | Add in Phase 2 |
-| WebSocket token in URL query string | Low | Acceptable for self-hosted; add ticket-based auth later |
 | No HTTPS in dev Docker stack | Low | Add Nginx with TLS for production compose |
 | Passwords: no complexity beyond length | Low | Consider zxcvbn integration |
 
@@ -134,6 +134,29 @@ valid 30 days, and **single-use** — every refresh rotates the token. Replay
 of an already-rotated token is treated as theft and revokes the device's
 entire chain. Sign-out invalidates the presented refresh token server-side;
 expired tokens are pruned daily.
+
+## WebSocket Authentication
+
+Browsers cannot attach an `Authorization` header to a WebSocket handshake, so
+whatever authenticates it has to travel in the URL, where reverse proxies and
+access logs can record it. The client therefore never puts its access token
+there: before every (re)connect it exchanges the token for a ticket at the
+authenticated `POST /api/ws/ticket` endpoint and dials `/ws?ticket=...`.
+
+- Tickets are 256-bit random values, bound to the requesting user, valid for
+  30 seconds and **single-use**: the first connect attempt consumes the ticket
+  whether or not it succeeds, so a ticket that ends up in a log is worthless.
+  The legacy `?token=<jwt>` parameter is rejected.
+- Tickets are held in memory only (single-instance deployment model); expired
+  tickets are swept on every issue and the number outstanding is capped, so
+  ticket requests cannot grow memory without bound.
+- The handshake's `Origin` must be the server's own origin or one on the same
+  allowlist the CORS middleware uses; anything else gets `403` before the
+  ticket is even looked at. This blocks cross-site WebSocket hijacking by a
+  malicious page. Non-browser clients that send no `Origin` are authenticated
+  by the ticket alone.
+- The device registration a connect triggers runs in the background with a
+  5-second timeout, so a stalled database cannot pile up goroutines.
 
 ## Email Verification and Password Reset
 

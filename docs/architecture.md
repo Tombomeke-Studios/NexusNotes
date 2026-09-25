@@ -116,7 +116,9 @@ sequenceDiagram
     S->>C: 200 {user, token (JWT 24h)}
     C->>C: Store token in localStorage
     C->>S: GET /api/vaults (Authorization: Bearer <token>)
-    C->>S: WS /ws?token=<jwt>&device_id=<uuid>
+    C->>S: POST /api/ws/ticket (Authorization: Bearer <token>)
+    S->>C: 200 {ticket (single-use, 30s)}
+    C->>S: WS /ws?ticket=<ticket>&device_id=<uuid> (Origin checked)
 ```
 
 ### Search indexing

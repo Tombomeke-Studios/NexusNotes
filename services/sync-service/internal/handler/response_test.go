@@ -24,6 +24,17 @@ func TestDecodeJSON_AcceptsBodyWithinLimit(t *testing.T) {
 	}
 }
 
+// The general cap must really be the larger one: a note-sized body well over the
+// auth cap has to decode through decodeJSON.
+func TestDecodeJSON_AcceptsBodiesLargerThanTheAuthCap(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(jsonBody(1<<20)))
+	var v struct{ Email string }
+	if err := decodeJSON(rec, req, &v); err != nil {
+		t.Fatalf("a 1 MiB body must pass the general cap: %v", err)
+	}
+}
+
 func TestDecodeJSON_RejectsBodyOverGeneralLimit(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(jsonBody(maxJSONBody+1)))

@@ -101,16 +101,20 @@ func (r *NoteRepo) Delete(ctx context.Context, id, vaultID string) error {
 	return nil
 }
 
-func (r *NoteRepo) GetByChecksum(ctx context.Context, id string) (string, error) {
-	var checksum string
-	err := r.pool.QueryRow(ctx,
-		`SELECT checksum FROM notes WHERE id = $1`,
+// GetForUpdateTx reads the note inside tx and row-locks it until the transaction
+// ends. Concurrent updates of the same note therefore queue up behind each other,
+// which makes "compare the checksum, then write" atomic (see SyncService.UpdateNote).
+func (r *NoteRepo) GetForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*model.Note, error) {
+	var n model.Note
+	err := tx.QueryRow(ctx,
+		`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
+		 FROM notes WHERE id = $1 FOR UPDATE`,
 		id,
-	).Scan(&checksum)
+	).Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt)
 	if err != nil {
-		return "", fmt.Errorf("get checksum: %w", err)
+		return nil, fmt.Errorf("get note for update: %w", err)
 	}
-	return checksum, nil
+	return &n, nil
 }
 
 func (r *NoteRepo) CreateVersion(ctx context.Context, version *model.NoteVersion) error {

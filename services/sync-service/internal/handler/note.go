@@ -168,6 +168,10 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, conflict)
 			return
 		}
+		if errors.Is(err, service.ErrNoteNotFound) {
+			writeError(w, http.StatusNotFound, "note not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "failed to update note")
 		return
 	}

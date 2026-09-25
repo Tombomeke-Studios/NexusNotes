@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,6 +11,9 @@ import (
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
+
+// ErrNoteNotFound is returned when a note does not exist.
+var ErrNoteNotFound = errors.New("note not found")
 
 type NoteRepo struct {
 	pool *pgxpool.Pool
@@ -104,13 +108,22 @@ func (r *NoteRepo) Delete(ctx context.Context, id, vaultID string) error {
 // GetForUpdateTx reads the note inside tx and row-locks it until the transaction
 // ends. Concurrent updates of the same note therefore queue up behind each other,
 // which makes "compare the checksum, then write" atomic (see SyncService.UpdateNote).
+//
+// FOR NO KEY UPDATE, not FOR UPDATE: resolving another note's links takes a
+// FOR KEY SHARE lock on this row (the note_links foreign key), which FOR UPDATE
+// would block, so two notes that link to each other would deadlock when saved
+// at the same moment. The note's key never changes here, so the weaker lock is
+// enough to serialise updates.
 func (r *NoteRepo) GetForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*model.Note, error) {
 	var n model.Note
 	err := tx.QueryRow(ctx,
 		`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
-		 FROM notes WHERE id = $1 FOR UPDATE`,
+		 FROM notes WHERE id = $1 FOR NO KEY UPDATE`,
 		id,
 	).Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNoteNotFound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get note for update: %w", err)
 	}
@@ -171,6 +184,15 @@ func (r *NoteRepo) CreateVersionTx(ctx context.Context, tx pgx.Tx, version *mode
 	)
 	if err != nil {
 		return fmt.Errorf("insert note version tx: %w", err)
+	}
+	return nil
+}
+
+// SetLockTimeoutTx bounds how long statements in tx wait for a row lock, so a
+// stuck writer turns into an error instead of piling up requests.
+func (r *NoteRepo) SetLockTimeoutTx(ctx context.Context, tx pgx.Tx, timeout string) error {
+	if _, err := tx.Exec(ctx, "SELECT set_config('lock_timeout', $1, true)", timeout); err != nil {
+		return fmt.Errorf("set lock timeout: %w", err)
 	}
 	return nil
 }

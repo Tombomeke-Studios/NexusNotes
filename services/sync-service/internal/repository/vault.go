@@ -77,6 +77,24 @@ func (r *VaultRepo) GetByID(ctx context.Context, id string) (*model.Vault, error
 	return &v, nil
 }
 
+// GetByIDTx is GetByID on an open transaction's connection. Used while the
+// transaction holds a row lock, so the lock holder never needs a second pool
+// connection (which could all be taken by requests queued on that lock).
+func (r *VaultRepo) GetByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model.Vault, error) {
+	var v model.Vault
+	var meta []byte
+	err := tx.QueryRow(ctx,
+		`SELECT id, user_id, name, encryption, encryption_meta, created_at, updated_at
+		 FROM vaults WHERE id = $1`,
+		id,
+	).Scan(&v.ID, &v.UserID, &v.Name, &v.Encryption, &meta, &v.CreatedAt, &v.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("get vault: %w", err)
+	}
+	v.EncryptionMeta = meta
+	return &v, nil
+}
+
 func (r *VaultRepo) ListByUser(ctx context.Context, userID string) ([]model.Vault, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, user_id, name, encryption, encryption_meta, created_at, updated_at

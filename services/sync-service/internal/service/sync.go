@@ -16,6 +16,10 @@ import (
 
 var ErrConflict = errors.New("checksum conflict: note was modified by another device")
 
+// ErrNoteNotFound is returned when the note does not exist (or was deleted
+// while an update was waiting for it).
+var ErrNoteNotFound = repository.ErrNoteNotFound
+
 type SyncService struct {
 	noteRepo  *repository.NoteRepo
 	vaultRepo *repository.VaultRepo
@@ -164,6 +168,9 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 	// previous checksum both pass the check and the later one silently overwrites
 	// the earlier (#256). Concurrent saves queue here; the loser then sees the
 	// winner's checksum and gets a conflict.
+	if err := s.noteRepo.SetLockTimeoutTx(ctx, tx, "5s"); err != nil {
+		return nil, nil, err
+	}
 	note, err := s.noteRepo.GetForUpdateTx(ctx, tx, update.NoteID)
 	if err != nil {
 		return nil, nil, err
@@ -180,7 +187,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, conflict, ErrConflict
 	}
 
-	vault, err := s.vaultRepo.GetByID(ctx, note.VaultID)
+	vault, err := s.vaultRepo.GetByIDTx(ctx, tx, note.VaultID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get vault: %w", err)
 	}

@@ -197,3 +197,38 @@ func TestVersions_AccessControl(t *testing.T) {
 		}
 	})
 }
+
+func TestDelete_NoteMustBelongToThePathVault(t *testing.T) {
+	f := newNoteAccessFixture(t)
+	ctx := context.Background()
+
+	// The outsider has write access to their own vault, but the note lives in
+	// someone else's: naming it under their vault must not report success.
+	rec := call(f.h.Delete, http.MethodDelete, f.outsider, map[string]string{
+		"vaultId": f.outsiderVault, "noteId": f.note.ID,
+	})
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("cross-vault delete status = %d, want 404", rec.Code)
+	}
+	if _, err := f.svc.GetNote(ctx, f.note.ID); err != nil {
+		t.Fatalf("note should still exist: %v", err)
+	}
+
+	// A viewer of the right vault may read but not delete.
+	rec = call(f.h.Delete, http.MethodDelete, f.viewer, map[string]string{
+		"vaultId": f.ownerVault, "noteId": f.note.ID,
+	})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("viewer delete status = %d, want 403", rec.Code)
+	}
+
+	rec = call(f.h.Delete, http.MethodDelete, f.owner, map[string]string{
+		"vaultId": f.ownerVault, "noteId": f.note.ID,
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("owner delete status = %d, want 204", rec.Code)
+	}
+	if _, err := f.svc.GetNote(ctx, f.note.ID); err == nil {
+		t.Fatal("note should be gone after the owner deletes it")
+	}
+}

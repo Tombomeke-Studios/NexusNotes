@@ -3,7 +3,9 @@ import { Logo } from "./Logo";
 import { AuthBackground } from "./AuthBackground";
 import { WindowControls } from "./Workspace/WindowControls";
 import { isTauriWindow } from "../lib/platform";
-import { auth } from "../lib/api";
+import { auth, API_URL, isNetworkError } from "../lib/api";
+import { unreachableMessage } from "../lib/connection";
+import { ConnectionBanner } from "./ConnectionBanner";
 import type { User } from "../lib/types";
 
 interface AuthProps {
@@ -45,8 +47,8 @@ export function Auth({ onAuth }: AuthProps) {
       setForgotSent(true);
     } catch (err) {
       setError(
-        err instanceof TypeError
-          ? "The server is currently unavailable. Please try again in a moment."
+        isNetworkError(err)
+          ? `${unreachableMessage(API_URL)} Please try again in a moment.`
           : "Something went wrong. Please try again.",
       );
     } finally {
@@ -88,6 +90,7 @@ export function Auth({ onAuth }: AuthProps) {
       <div className="auth-aurora" aria-hidden="true" />
       <AuthBackground />
       <div className="auth-cursor-glow" ref={glowRef} aria-hidden="true" />
+      <ConnectionBanner />
       <div className="auth-titlebar" data-tauri-drag-region>
         {isTauriWindow && <WindowControls />}
       </div>

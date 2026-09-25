@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, notes, getToken, setToken, ApiError } from "./api";
+import { auth, notes, server, getToken, setToken, isNetworkError, ApiError } from "./api";
 
 function mockFetch(status: number, body?: unknown) {
   const fn = vi.fn().mockResolvedValue({
@@ -140,5 +140,40 @@ describe("access token refresh on 401 (#49)", () => {
     expect(getToken()).toBeNull();
     expect(localStorage.getItem("nexus_refresh")).toBeNull();
     window.removeEventListener("nexus:logout", logoutListener);
+  });
+});
+
+describe("isNetworkError", () => {
+  it("is true for fetch network failures and timeouts, false for API errors", () => {
+    expect(isNetworkError(new TypeError("Failed to fetch"))).toBe(true);
+    expect(isNetworkError(new DOMException("timed out", "TimeoutError"))).toBe(true);
+    expect(isNetworkError(new ApiError(401, "Unauthorized"))).toBe(false);
+    expect(isNetworkError(new Error("boom"))).toBe(false);
+  });
+});
+
+describe("server.status", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("classifies a healthy server from GET /health", async () => {
+    const fetchMock = mockFetch(200, { status: "ok", version: "0.5.2" });
+    await expect(server.status()).resolves.toEqual({ state: "ok", serverVersion: "0.5.2" });
+    expect(String(fetchMock.mock.calls[0][0])).toMatch(/\/health$/);
+  });
+
+  it("reports a version mismatch", async () => {
+    mockFetch(200, { status: "ok", version: "9.0.0" });
+    const status = await server.status();
+    expect(status.state).toBe("mismatch");
+  });
+
+  it("is unreachable when fetch rejects", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    await expect(server.status()).resolves.toEqual({ state: "unreachable" });
+  });
+
+  it("is unreachable on a non-2xx answer (e.g. a proxy error page)", async () => {
+    mockFetch(502, { error: "bad gateway" });
+    await expect(server.status()).resolves.toEqual({ state: "unreachable" });
   });
 });

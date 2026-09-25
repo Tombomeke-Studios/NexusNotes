@@ -15,7 +15,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Introduce product versioning (v0.5.0) with app/server compatibility check (#254)
 - [ ] Run the dev backend as an auto-restarting Docker service for everyday use (#252)
-- [ ] Show a clear, persistent message when the app cannot reach the server (#253)
+- [x] Show a clear, persistent message when the app cannot reach the server (#253)
 
 ---
 

@@ -6,6 +6,7 @@ import { GraphView } from "./components/Graph";
 import { CommandPalette } from "./components/CommandPalette";
 import { StatusBar } from "./components/StatusBar";
 import { Auth } from "./components/Auth";
+import { ConnectionBanner, ServerUnavailable } from "./components/ConnectionBanner";
 import { AuthAction } from "./components/AuthAction";
 import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
@@ -23,7 +24,7 @@ import { Logo } from "./components/Logo";
 import { CreateVaultDialog } from "./components/Encryption/CreateVaultDialog";
 import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
 import { UnlockVaultDialog } from "./components/Encryption/UnlockVaultDialog";
-import { vaults as vaultsApi, notes as notesApi, stars as starsApi, getToken, auth } from "./lib/api";
+import { vaults as vaultsApi, notes as notesApi, stars as starsApi, getToken, auth, isNetworkError } from "./lib/api";
 import {
   setupVaultEncryption,
   unlockVaultKey,
@@ -224,22 +225,33 @@ export default function App() {
     }
   }, [loadNotes]);
 
-  useEffect(() => {
-    async function restore() {
-      const token = getToken();
-      if (token) {
-        try {
-          const u = await auth.me();
-          setUser(u);
-          loadVaults();
-        } catch {
-          auth.logout();
+  // A stored session is restored on start. If the server simply is not answering
+  // (Docker still booting, backend restarting) the session is kept and a waiting
+  // screen shows — only a real rejection from the server signs the user out.
+  const [serverDown, setServerDown] = useState(false);
+  const restore = useCallback(async () => {
+    const token = getToken();
+    if (token) {
+      try {
+        const u = await auth.me();
+        setUser(u);
+        setServerDown(false);
+        loadVaults();
+      } catch (err) {
+        if (isNetworkError(err)) {
+          setServerDown(true);
+          setLoading(false);
+          return;
         }
+        auth.logout();
       }
-      setLoading(false);
     }
-    restore();
+    setLoading(false);
   }, [loadVaults]);
+
+  useEffect(() => {
+    restore();
+  }, [restore]);
 
   useEffect(() => {
     if (user) {
@@ -1182,6 +1194,10 @@ export default function App() {
     );
   }
 
+  if (serverDown) {
+    return <ServerUnavailable onRecovered={restore} />;
+  }
+
   if (!user) {
     return <Auth onAuth={handleAuth} />;
   }
@@ -1223,6 +1239,7 @@ export default function App() {
         });
       }}
     >
+      <ConnectionBanner />
       <TopBar
         vaultName={activeVault?.name ?? "NexusNotes"}
         noteTitle={graphActive ? "Graph" : activeNote?.title ?? null}

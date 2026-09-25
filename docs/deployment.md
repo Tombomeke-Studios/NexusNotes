@@ -158,6 +158,11 @@ JWT_SECRET=GENERATE_A_RANDOM_64_CHAR_STRING
 REDIS_URL=redis://redis:6379
 ```
 
+`BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
+comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the
+container must listen on every interface or its published port cannot reach it.
+Set it when you run the binary directly on a host and put a reverse proxy in front.
+
 ### 2. Start the stack
 
 ```bash

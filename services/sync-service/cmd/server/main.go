@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -206,20 +205,28 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      middleware.RequestID(middleware.Logging(middleware.Metrics(c.Handler(mux)))),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	go func() {
-		slog.Info("sync service listening", "port", cfg.Port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("server error", "error", err)
-			os.Exit(1)
-		}
-	}()
+	// One listener per BIND_ADDR entry (every interface when unset); Shutdown
+	// closes all of them.
+	listeners, err := listenAll(cfg.ListenAddrs())
+	if err != nil {
+		slog.Error("listen", "error", err)
+		os.Exit(1)
+	}
+	for _, ln := range listeners {
+		go func() {
+			slog.Info("sync service listening", "addr", ln.Addr().String())
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+				slog.Error("server error", "error", err)
+				os.Exit(1)
+			}
+		}()
+	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

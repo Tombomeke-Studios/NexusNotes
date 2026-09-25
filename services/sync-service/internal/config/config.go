@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -9,7 +10,12 @@ import (
 )
 
 type Config struct {
-	Port                int
+	Port int
+	// BindAddrs are the host addresses the HTTP server listens on (BIND_ADDR,
+	// comma-separated). Empty means every interface, which the Docker image
+	// needs; the packaged desktop app passes its loopback addresses so the
+	// bundled backend cannot be reached from the network (#260).
+	BindAddrs           []string
 	DatabaseURL         string
 	JWTSecret           string
 	RedisURL            string
@@ -114,6 +120,7 @@ func Load() (*Config, error) {
 
 	return &Config{
 		Port:                port,
+		BindAddrs:           splitList(os.Getenv("BIND_ADDR")),
 		DatabaseURL:         dbURL,
 		JWTSecret:           jwtSecret,
 		RedisURL:            redisURL,
@@ -161,6 +168,31 @@ func parseAllowedOrigins(raw string) ([]string, error) {
 		return append([]string(nil), DefaultAllowedOrigins...), nil
 	}
 	return origins, nil
+}
+
+// ListenAddrs returns one host:port per bind address, or ":port" (every
+// interface) when no bind address is configured.
+func (c *Config) ListenAddrs() []string {
+	port := strconv.Itoa(c.Port)
+	if len(c.BindAddrs) == 0 {
+		return []string{":" + port}
+	}
+	addrs := make([]string, 0, len(c.BindAddrs))
+	for _, host := range c.BindAddrs {
+		addrs = append(addrs, net.JoinHostPort(host, port))
+	}
+	return addrs
+}
+
+// splitList splits a comma-separated value, dropping blanks and spaces.
+func splitList(v string) []string {
+	var out []string
+	for _, part := range strings.Split(v, ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 // intEnv reads an integer environment variable, falling back to def when unset.

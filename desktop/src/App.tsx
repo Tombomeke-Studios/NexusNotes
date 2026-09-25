@@ -48,7 +48,8 @@ import { drainLegacyPins } from "./lib/stars";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
-import { saveDraft, loadDraft, clearDraft } from "./lib/drafts";
+import { loadDraft, clearDraft } from "./lib/drafts";
+import { useNoteSave, type SaveStatus } from "./lib/useNoteSave";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
 import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
@@ -105,7 +106,7 @@ export default function App() {
   const graphActiveRef = useRef(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
   const [workspaceMenu, setWorkspaceMenu] = useState<{ x: number; y: number } | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "idle">("idle");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("title");
@@ -193,6 +194,19 @@ export default function App() {
       encryptNoteForVault(vaultOf(vaultId) ?? { id: vaultId }, plaintext),
     [vaultOf],
   );
+
+  const { saveNote: handleSaveNote, liveChange: handleLiveChange } = useNoteSave({
+    activeNoteRef,
+    setActiveNote,
+    setNoteList,
+    setEditorContent,
+    setSaveStatus,
+    onSynced: () => setLastSyncAt(new Date()),
+    encryptOutgoing,
+    keepsDrafts: (vaultId) => !isE2eeVault(vaultOf(vaultId)),
+  });
+  const handleSaveNoteRef = useRef(handleSaveNote);
+  handleSaveNoteRef.current = handleSaveNote;
 
   const loadNotes = useCallback(async (vaultId: string) => {
     try {
@@ -950,56 +964,6 @@ export default function App() {
       }
     }, 0);
   }, []);
-
-  const handleSaveNote = useCallback(async (content: string) => {
-    const current = activeNoteRef.current;
-    if (!current) return;
-    setEditorContent(content);
-    setSaveStatus("saving");
-    try {
-      // For e2ee vaults only ciphertext + the plaintext checksum go out; the
-      // server echoes the ciphertext back, so state keeps the local plaintext.
-      const { content: payload, checksum } = await encryptOutgoing(current.vault_id, content);
-      const updated = await notesApi.update(
-        current.id,
-        current.title,
-        current.path,
-        payload,
-        current.checksum,
-        checksum,
-      );
-      if ("checksum" in updated) {
-        const note = { ...(updated as Note), content };
-        clearDraft(note.id);
-        setNoteList((prev) => prev.map((n) => (n.id === note.id ? note : n)));
-        // Only refresh the open note / status if we haven't since navigated away
-        // (e.g. a save flushed on blur while clicking a preview link).
-        setActiveNote((prev) => (prev && prev.id === note.id ? note : prev));
-        if (activeNoteRef.current?.id === note.id) {
-          setSaveStatus("saved");
-        }
-        setLastSyncAt(new Date());
-      }
-    } catch {
-      setSaveStatus("unsaved");
-    }
-  }, [encryptOutgoing]);
-  const handleSaveNoteRef = useRef(handleSaveNote);
-  handleSaveNoteRef.current = handleSaveNote;
-
-  // Live editor edits mark the note dirty immediately (so the tab dot / status
-  // show unsaved before the debounced autosave runs).
-  const handleLiveChange = useCallback((content: string) => {
-    setEditorContent(content);
-    setSaveStatus((s) => (s === "unsaved" ? s : "unsaved"));
-    // Mirror to a local draft so nothing is lost if the app closes before the
-    // debounced server save runs — except for e2ee vaults, where plaintext
-    // must never touch disk (localStorage included).
-    const current = activeNoteRef.current;
-    if (current && !isE2eeVault(vaultOf(current.vault_id))) {
-      saveDraft(current.id, content);
-    }
-  }, [vaultOf]);
 
   // Warn before losing unsaved work on close. In the browser, the native
   // beforeunload prompt; in the native app, intercept the close and show our own

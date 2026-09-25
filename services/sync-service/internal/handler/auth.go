@@ -229,8 +229,13 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	access, refresh, err := h.authService.Refresh(r.Context(), req.RefreshToken, req.DeviceID)
-	if err != nil {
+	if errors.Is(err, service.ErrInvalidRefreshToken) {
 		writeError(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+	if err != nil {
+		// Not a verdict on the token: clients keep their session and retry.
+		writeError(w, http.StatusServiceUnavailable, "could not refresh the session right now")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{

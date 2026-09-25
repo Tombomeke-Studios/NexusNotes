@@ -51,6 +51,8 @@ Sets a new password from a reset-link token: `{token, password}` → `204`. Toke
 
 Rotates a refresh token: `{refresh_token, device_id}` → `{token, refresh_token}`. Refresh tokens are single-use and bound to the device that logged in; replaying an already-rotated token revokes the device's whole chain (theft signal). Access tokens live 1 hour; login/register responses include the first `refresh_token`.
 
+Errors: `401` when the token is rejected (unknown, expired, reused, other device) — the client signs out; `503` when the refresh could not be performed (e.g. the database is unavailable) — the client keeps its session and retries later.
+
 ### POST /api/auth/logout
 
 Invalidates the presented refresh token (`{refresh_token}`); the token itself is the credential. Always `204`.

@@ -64,14 +64,19 @@ func (s *AuthService) IssueRefreshToken(ctx context.Context, userID, deviceID st
 }
 
 // Refresh exchanges a valid refresh token for a fresh access + refresh pair.
-// All failures collapse into ErrInvalidRefreshToken so callers leak nothing.
+// Every rejection collapses into ErrInvalidRefreshToken so callers leak nothing;
+// a failure to look the token up (e.g. the database is down) is returned as a
+// different error so clients keep their session instead of signing out.
 func (s *AuthService) Refresh(ctx context.Context, refreshToken, deviceID string) (accessToken, newRefreshToken string, err error) {
 	if s.refreshStore == nil {
 		return "", "", ErrInvalidRefreshToken
 	}
 	stored, err := s.refreshStore.GetByHash(ctx, hashRefreshToken(refreshToken))
-	if err != nil {
+	if errors.Is(err, repository.ErrRefreshTokenNotFound) {
 		return "", "", ErrInvalidRefreshToken
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("look up refresh token: %w", err)
 	}
 	if time.Now().After(stored.ExpiresAt) {
 		_ = s.refreshStore.Delete(ctx, stored.ID)

@@ -200,7 +200,20 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 	noteID := r.PathValue("noteId")
+
+	// Past versions carry full note content, so they need the same vault read
+	// access as the note itself.
+	note, err := h.syncService.GetNote(r.Context(), noteID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "note not found")
+		return
+	}
+	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
 
 	versions, err := h.syncService.GetVersions(r.Context(), noteID)
 	if err != nil {

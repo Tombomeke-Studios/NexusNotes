@@ -5,9 +5,8 @@ Base URL: `http://localhost:8080`
 ## Request size limits
 
 JSON request bodies are capped: 64 KiB on the authentication endpoints and 8 MiB on
-all other JSON endpoints (note content included). A larger body is rejected with
-`413 Request Entity Too Large` and `{"error":"request body too large"}` without being
-read into memory. Attachment uploads have their own 25 MiB limit.
+all other JSON endpoints (note content included). Reading stops at the cap and a larger body
+is rejected with `413 Request Entity Too Large` and `{"error":"request body too large"}`. Attachment uploads have their own 25 MiB limit.
 
 ## Authentication
 

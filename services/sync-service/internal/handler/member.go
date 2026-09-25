@@ -65,8 +65,8 @@ func (h *MemberHandler) Invite(w http.ResponseWriter, r *http.Request) {
 		Email string `json:"email"`
 		Role  string `json:"role"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 	if req.Role == "" {
@@ -108,8 +108,8 @@ func (h *MemberHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Role string `json:"role"`
 	}
-	if err := decodeJSON(r, &req); err != nil || !validRole(req.Role) {
-		writeError(w, http.StatusBadRequest, "role must be 'viewer' or 'editor'")
+	if err := decodeJSON(w, r, &req); err != nil || !validRole(req.Role) {
+		writeBodyError(w, err, "role must be 'viewer' or 'editor'")
 		return
 	}
 	ok, err := h.memberRepo.UpdateRole(r.Context(), vaultID, memberID, req.Role)

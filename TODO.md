@@ -46,7 +46,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > work; each is a small, separate branch/PR (`priority:high`).
 
 - [ ] Fix lost update when two saves race on the same note (#256)
-- [ ] Limit request body sizes on all JSON endpoints (#257)
+- [x] Limit request body sizes on all JSON endpoints (#257)
 - [ ] WebSocket: validate the Origin and stop passing the JWT in the URL (#258)
 - [ ] Harden attachment downloads against stored XSS (#259)
 - [ ] Packaged app: replace the hardcoded JWT secret and database password (#260)

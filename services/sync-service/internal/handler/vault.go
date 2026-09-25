@@ -48,8 +48,8 @@ func (h *VaultHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Encryption     string          `json:"encryption"`
 		EncryptionMeta json.RawMessage `json:"encryption_meta"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 
@@ -142,8 +142,8 @@ func (h *VaultHandler) Update(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name string `json:"name"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 
@@ -172,8 +172,8 @@ func (h *VaultHandler) UpdateEncryption(w http.ResponseWriter, r *http.Request) 
 	var req struct {
 		EncryptionMeta json.RawMessage `json:"encryption_meta"`
 	}
-	if err := decodeJSON(r, &req); err != nil || len(req.EncryptionMeta) == 0 {
-		writeError(w, http.StatusBadRequest, "encryption_meta is required")
+	if err := decodeJSON(w, r, &req); err != nil || len(req.EncryptionMeta) == 0 {
+		writeBodyError(w, err, "encryption_meta is required")
 		return
 	}
 

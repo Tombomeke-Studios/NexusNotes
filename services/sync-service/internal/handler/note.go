@@ -62,8 +62,8 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		// Client plaintext checksum; only honoured for e2ee vaults.
 		Checksum string `json:"checksum"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 
@@ -147,8 +147,8 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Checksum string `json:"checksum"`
 		DeviceID string `json:"device_id"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 

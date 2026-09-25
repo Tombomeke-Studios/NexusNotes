@@ -52,8 +52,8 @@ func (h *LinkedFileHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SourceType  string `json:"source_type"`
 		SourceRef   string `json:"source_ref"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 	if req.SourceRef == "" {
@@ -203,8 +203,8 @@ func (h *LinkedFileHandler) PutAnnotation(w http.ResponseWriter, r *http.Request
 	var req struct {
 		Content string `json:"content"`
 	}
-	if err := decodeJSON(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
 		return
 	}
 	if err := h.repo.UpsertAnnotation(r.Context(), lf.ID, middleware.GetUserID(r.Context()), req.Content); err != nil {

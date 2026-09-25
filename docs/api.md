@@ -18,44 +18,60 @@ Create a new account.
 {
   "email": "user@example.com",
   "password": "min8chars",
-  "display_name": "Jane Doe"
+  "display_name": "Jane Doe",
+  "device_id": "uuid"
 }
 ```
+
+`device_id` is the client's stable device id; the first refresh token is bound
+to it (see `POST /api/auth/refresh`).
 
 Response (201):
 ```json
 {
-  "user": { "id": "...", "email": "...", "display_name": "..." },
-  "token": "eyJ..."
+  "user": { "id": "...", "email": "...", "display_name": "...", "email_verified": false, "created_at": "...", "updated_at": "..." },
+  "token": "eyJ...",
+  "refresh_token": "..."
 }
 ```
+
+`user` is a [`User`](#user); `token` is a 1-hour access JWT. Errors: `400` when
+email or password is missing or the password is shorter than 8 characters,
+`409` when the email is already taken.
 
 ### POST /api/auth/login
 
 ```json
 {
   "email": "user@example.com",
-  "password": "min8chars"
+  "password": "min8chars",
+  "device_id": "uuid"
 }
 ```
 
-Response (200): same shape as register.
+Response (200): same shape as register. Errors: `400` when email or password is
+missing, `401` for wrong credentials, `429` while the email+IP pair is locked
+out after repeated failures (see [security.md](security.md#brute-force-protection)).
+
+Register, login, refresh, verify-email, forgot-password and reset-password are
+rate limited per client IP; over the limit they answer `429` with a
+`Retry-After` header.
 
 ### POST /api/auth/verify-email
 
-Confirms an email address from a verification-link token: `{token}` → `204`. Tokens are single-use and expire in 24 hours. A verification email is sent on registration when SMTP is configured.
+Confirms an email address from a verification-link token: `{token}` → `204`. Tokens are single-use and expire in 24 hours; a missing, invalid or expired token is a `400`. A verification email is sent on registration when SMTP is configured.
 
 ### POST /api/auth/forgot-password
 
-Requests a password-reset email: `{email}` → always `204`, whether or not the address is registered (no account enumeration).
+Requests a password-reset email: `{email}` → always `204`, whether or not the address is registered (no account enumeration). Only a missing `email` is a `400`.
 
 ### POST /api/auth/reset-password
 
-Sets a new password from a reset-link token: `{token, password}` → `204`. Tokens are single-use, expire in 1 hour, and a successful reset revokes all of the user's existing sessions.
+Sets a new password from a reset-link token: `{token, password}` → `204`. Tokens are single-use, expire in 1 hour, and a successful reset revokes all of the user's existing sessions. `400` for an invalid or expired token or a password shorter than 8 characters.
 
 ### POST /api/auth/refresh
 
-Rotates a refresh token: `{refresh_token, device_id}` → `{token, refresh_token}`. Refresh tokens are single-use and bound to the device that logged in; replaying an already-rotated token revokes the device's whole chain (theft signal). Access tokens live 1 hour; login/register responses include the first `refresh_token`.
+Rotates a refresh token: `{refresh_token, device_id}` → `{token, refresh_token}`. Refresh tokens are single-use and bound to the device that logged in; replaying an already-rotated token revokes the device's whole chain (theft signal). Access tokens live 1 hour; login/register responses include the first `refresh_token`. `400` when `refresh_token` is missing, `401` when it is invalid, expired or already used.
 
 Errors: `401` when the token is rejected (unknown, expired, reused, other device) — the client signs out; `503` when the refresh could not be performed (e.g. the database is unavailable) — the client keeps its session and retries later.
 

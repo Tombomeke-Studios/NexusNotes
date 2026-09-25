@@ -472,6 +472,17 @@ export const devices = {
     request<void>(`/api/devices/${deviceId}`, { method: "DELETE" }),
 };
 
+/**
+ * WebSocket handshake tickets (#258). A ticket is short-lived and single-use,
+ * so the sync socket authenticates without the access token ever appearing in
+ * a URL. Going through `request` means an expired access token is refreshed
+ * first, and a dead session signs out like any other 401.
+ */
+export const wsTickets = {
+  issue: () =>
+    request<{ ticket: string; expires_in: number }>("/api/ws/ticket", { method: "POST" }),
+};
+
 export interface SearchParams {
   q?: string;
   tag?: string;

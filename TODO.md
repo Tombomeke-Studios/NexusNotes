@@ -28,6 +28,85 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## `fix/security-audit` - TOP PRIORITY: verified audit findings
+
+> Found by the skill-assisted audit and re-verified in the code. Fix these before any new feature
+> work; each is a small, separate branch/PR (`priority:high`).
+
+- [ ] Fix lost update when two saves race on the same note (#256)
+- [ ] Limit request body sizes on all JSON endpoints (#257)
+- [ ] WebSocket: validate the Origin and stop passing the JWT in the URL (#258)
+- [ ] Harden attachment downloads against stored XSS (#259)
+- [ ] Packaged app: replace the hardcoded JWT secret and database password (#260)
+- [ ] Add LICENSE, SECURITY.md and CONTRIBUTING.md (#261)
+- [ ] docs/api.md: document /api/auth/me and /metrics, merge the duplicate Search sections (#262)
+- [ ] Desktop: a save finishing must not mark newer edits as saved, and save errors need handling (#263)
+
+---
+
+## `fix/production-hardening` - Production hardening (#264)
+
+- [ ] Production compose: fail fast on unset secrets, remove weak defaults, publish only public ports, pin images, resource limits
+- [ ] Sync service image: non-root user, HEALTHCHECK, `/ready` endpoint that pings Postgres and Redis, keep `/metrics` internal
+- [ ] Auth config: minimum JWT secret length, pin HS256, require the Bearer scheme and a minimum length for the admin token
+- [ ] Tauri: strict webview CSP and a shell capability limited to the sidecar
+- [ ] Tauri supervisor follow-ups: no compose polling while a foreign backend is healthy, handle `RunEvent::Exit`, re-check shutdown after spawn, restart on failing health
+- [ ] CI: build both Dockerfiles so an unbuildable image is caught
+- [ ] Graceful shutdown: drain the WebSocket hub, per-route write deadlines
+- [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash)
+
+---
+
+## `feature/backend-scalability` - Backend scalability (#265)
+
+> Complements `feature/db-performance` (#220).
+
+- [ ] Search fallback: `EXISTS` for tags/aliases plus a trigram/full-text index instead of leading-wildcard `LIKE`
+- [ ] Paginate or slim the note list; cap and prune `note_versions`
+- [ ] Indexing worker queue with retry and shutdown drain; one shared helper
+- [ ] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit
+- [ ] Rate limiter: periodic purge and trusted-proxy client IP
+- [ ] Distinguish not-found from database errors in handlers
+
+---
+
+## `feature/frontend-quality` - Frontend quality (#266)
+
+- [ ] Decompose `App.tsx` into hooks (`useNoteSave`, `useTabs`, `useVaults`, `useStars`, `useCloseGuard`, ...) and `Workspace` / `ModalHost` components
+- [ ] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths
+- [ ] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed
+- [ ] E2E: replace `waitForTimeout` waits with real signals
+- [ ] Settings: show the app and server versions instead of a hard-coded string
+
+---
+
+## `feature/design-polish` - Design polish (#267)
+
+> Measured on the running UI: `--text-muted` 3.36:1, `--text-faint` 2.46:1, `--text-ghost` 1.80:1 on the base
+> surface (4.5:1 needed) and a 1.71:1 focus ring (3:1 needed). Overlaps #217 / #236.
+
+- [ ] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity
+- [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
+- [ ] Markdown syntax highlighting in the editor source pane
+- [ ] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel
+- [ ] Composed empty states with a call to action; skeleton loaders instead of spinners
+- [ ] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops
+- [ ] Dialog focus trap and focus return audit; skip link
+
+---
+
+## `feature/release-readiness` - Release readiness toward 1.0 (#268)
+
+- [ ] README rewrite around what ships, hero image and screenshots, docs index
+- [ ] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo
+- [ ] CHANGELOG: date 0.5.0 and add compare links
+- [ ] API stability promise for the pre-1.0 window
+- [ ] Backup/restore and upgrade guide for self-hosters
+- [ ] Signed installer and an update path
+- [ ] Cut or mark the mobile app and web clipper as post-1.0
+
+---
+
 ## Reported issues (triage) - not yet started
 
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.

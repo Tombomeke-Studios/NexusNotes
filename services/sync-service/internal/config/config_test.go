@@ -78,3 +78,71 @@ func TestLoad_FailsOnAnInvalidAllowedOrigin(t *testing.T) {
 		t.Fatal("expected Load to reject a wildcard origin")
 	}
 }
+
+// setRequired sets the variables Load refuses to run without.
+func setRequired(t *testing.T) {
+	t.Helper()
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("JWT_SECRET", "test-secret")
+}
+
+func TestLoad_ListenAddrsDefaultsToAllInterfaces(t *testing.T) {
+	setRequired(t)
+	t.Setenv("PORT", "")
+	t.Setenv("BIND_ADDR", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// Docker needs every interface; an unset BIND_ADDR must keep that.
+	if got, want := cfg.ListenAddrs(), []string{":8080"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("ListenAddrs() = %v, want %v", got, want)
+	}
+}
+
+func TestLoad_ListenAddrsFromBindAddr(t *testing.T) {
+	setRequired(t)
+	t.Setenv("PORT", "8083")
+	t.Setenv("BIND_ADDR", "127.0.0.1,::1")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	want := []string{"127.0.0.1:8083", "[::1]:8083"}
+	if got := cfg.ListenAddrs(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("ListenAddrs() = %v, want %v", got, want)
+	}
+}
+
+func TestLoad_BindAddrIgnoresBlanksAndSpaces(t *testing.T) {
+	setRequired(t)
+	t.Setenv("PORT", "")
+	t.Setenv("BIND_ADDR", " 127.0.0.1 , ,")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got, want := cfg.BindAddrs, []string{"127.0.0.1"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("BindAddrs = %v, want %v", got, want)
+	}
+	if got, want := cfg.ListenAddrs(), []string{"127.0.0.1:8080"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("ListenAddrs() = %v, want %v", got, want)
+	}
+}
+
+func TestLoad_BindAddrOfOnlySeparatorsMeansAllInterfaces(t *testing.T) {
+	setRequired(t)
+	t.Setenv("PORT", "")
+	t.Setenv("BIND_ADDR", " , ")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got, want := cfg.ListenAddrs(), []string{":8080"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("ListenAddrs() = %v, want %v", got, want)
+	}
+}

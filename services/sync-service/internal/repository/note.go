@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
@@ -14,6 +15,13 @@ import (
 
 // ErrNoteNotFound is returned when a note does not exist.
 var ErrNoteNotFound = errors.New("note not found")
+
+// ErrNoteLocked is returned when waiting for a note's row lock exceeded the
+// transaction's lock_timeout (another save is holding it).
+var ErrNoteLocked = errors.New("note is locked by another update")
+
+// pgLockNotAvailable is Postgres' SQLSTATE for an exceeded lock_timeout.
+const pgLockNotAvailable = "55P03"
 
 type NoteRepo struct {
 	pool *pgxpool.Pool
@@ -123,6 +131,10 @@ func (r *NoteRepo) GetForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*m
 	).Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNoteNotFound
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == pgLockNotAvailable {
+		return nil, ErrNoteLocked
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get note for update: %w", err)

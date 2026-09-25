@@ -273,3 +273,29 @@ func TestUpdateNote_SmallPoolDoesNotStarve(t *testing.T) {
 		t.Fatalf("save failed instead of winning or conflicting (pool starvation?): %v", err)
 	}
 }
+
+// A writer stuck behind a long-held lock gives up with a retryable error
+// instead of a generic failure.
+func TestUpdateNote_LockTimeoutIsReportedAsBusy(t *testing.T) {
+	pool := newIsolatedDB(t)
+	svc := newTestSync(pool)
+	svc.lockTimeout = "200ms"
+	note := seedNote(t, pool, svc, "original")
+
+	ctx := context.Background()
+	holder, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = holder.Rollback(ctx) }()
+	if _, err := holder.Exec(ctx, "SELECT 1 FROM notes WHERE id = $1 FOR UPDATE", note.ID); err != nil {
+		t.Fatalf("hold lock: %v", err)
+	}
+
+	_, _, err = svc.UpdateNote(ctx, NoteUpdate{
+		NoteID: note.ID, Content: "x", Title: "Note", Path: "note.md", PrevChecksum: note.Checksum,
+	})
+	if !errors.Is(err, ErrNoteBusy) {
+		t.Fatalf("expected ErrNoteBusy while another transaction holds the note, got %v", err)
+	}
+}

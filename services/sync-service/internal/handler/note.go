@@ -172,6 +172,11 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "note not found")
 			return
 		}
+		if errors.Is(err, service.ErrNoteBusy) {
+			w.Header().Set("Retry-After", "1")
+			writeError(w, http.StatusServiceUnavailable, "note is being saved by another device, retry")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "failed to update note")
 		return
 	}

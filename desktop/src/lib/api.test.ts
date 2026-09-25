@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { auth, notes, server, getToken, setToken, isNetworkError, ApiError } from "./api";
+import { auth, notes, server, attachments, getToken, setToken, isNetworkError, ApiError, safeBlobType, isInlineImageType } from "./api";
 
 function mockFetch(status: number, body?: unknown) {
   const fn = vi.fn().mockResolvedValue({
@@ -207,5 +207,102 @@ describe("server.status", () => {
   it("is unreachable on a non-2xx answer (e.g. a proxy error page)", async () => {
     mockFetch(502, { error: "bad gateway" });
     await expect(server.status()).resolves.toEqual({ state: "unreachable" });
+  });
+});
+
+describe("attachment blob types", () => {
+  const raster = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp"];
+  // Types a blob URL must never keep: opened in a tab they are documents that
+  // can run script in the app's origin (or are simply not raster images).
+  const unsafe = [
+    "image/svg+xml",
+    "text/html",
+    "application/xhtml+xml",
+    "text/xml",
+    "application/xml",
+    "application/atom+xml",
+    "application/rss+xml",
+    "text/javascript",
+    "text/ecmascript",
+    "application/pdf",
+    "text/plain",
+    "image/avif",
+    "",
+    "garbage",
+  ];
+
+  it("keeps raster image types, ignoring case and parameters", () => {
+    for (const type of raster) {
+      expect(safeBlobType(type)).toBe(type);
+      expect(safeBlobType(`${type.toUpperCase()}; charset=binary`)).toBe(type);
+      expect(isInlineImageType(type)).toBe(true);
+    }
+  });
+
+  it("turns every other type into opaque bytes", () => {
+    for (const type of unsafe) {
+      expect(safeBlobType(type)).toBe("application/octet-stream");
+      expect(isInlineImageType(type)).toBe(false);
+    }
+  });
+});
+
+describe("attachments.objectUrl", () => {
+  const originalCreate = URL.createObjectURL;
+  let created: Blob[];
+
+  beforeEach(() => {
+    setToken("session-token");
+    created = [];
+    URL.createObjectURL = vi.fn((blob: Blob) => {
+      created.push(blob);
+      return "blob:test";
+    }) as typeof URL.createObjectURL;
+  });
+  afterEach(() => {
+    setToken(null);
+    URL.createObjectURL = originalCreate;
+    vi.unstubAllGlobals();
+  });
+
+  function serve(body: string, type: string) {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: () => Promise.resolve(new Blob([body], { type })),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("fetches with the bearer token", async () => {
+    const fetchMock = serve("x", "image/png");
+
+    await expect(attachments.objectUrl("att-1")).resolves.toBe("blob:test");
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/api/attachments/att-1");
+    expect(init.headers.Authorization).toBe("Bearer session-token");
+  });
+
+  it("keeps a raster image's type so it can be shown inline", async () => {
+    serve("png-bytes", "image/png");
+
+    await attachments.objectUrl("att-1");
+
+    expect(created[0].type).toBe("image/png");
+  });
+
+  it("never hands out an SVG or HTML blob, even if an old server sends one", async () => {
+    for (const type of ["image/svg+xml", "text/html; charset=utf-8", "application/atom+xml"]) {
+      created = [];
+      serve("<svg onload=alert(1)>", type);
+
+      await attachments.objectUrl("att-1");
+
+      expect(created[0].type).toBe("application/octet-stream");
+      // Same bytes, only the type changed (jsdom's Blob has no text()).
+      expect(created[0].size).toBe("<svg onload=alert(1)>".length);
+    }
   });
 });

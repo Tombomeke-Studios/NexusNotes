@@ -165,6 +165,13 @@ is an attachment. Combined with the fact that downloads need an `Authorization`
 header, an uploaded HTML or SVG file cannot execute script with the API's origin,
 which closes the stored-XSS path between members of a shared vault.
 
+The desktop client does not rely on the server for this. It loads attachment bytes
+into a blob URL, and a blob URL belongs to the app's own origin, where the session
+tokens live; opened in a tab, an SVG or HTML blob would run its script there. The
+client therefore rebuilds every attachment blob with its own type: the five raster
+image types are kept and everything else becomes `application/octet-stream`, which a
+browser only ever downloads.
+
 ## Vault Sharing and Authorization
 
 Vaults can be shared with other users as viewer (read) or editor (read/write);

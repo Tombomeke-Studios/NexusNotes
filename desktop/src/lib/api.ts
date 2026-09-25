@@ -361,6 +361,28 @@ export interface Attachment {
   created_at: string;
 }
 
+/** Raster image types an attachment may be displayed (and blob-URL'd) as. */
+const INLINE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp"]);
+
+function baseMediaType(type: string): string {
+  return type.split(";")[0].trim().toLowerCase();
+}
+
+/** True when an attachment of this type can be shown inline as an image. */
+export function isInlineImageType(type: string): boolean {
+  return INLINE_IMAGE_TYPES.has(baseMediaType(type));
+}
+
+/**
+ * The type an attachment's blob is rebuilt with: raster images keep theirs,
+ * everything else becomes application/octet-stream. A blob URL runs in the
+ * app's origin, so an SVG or HTML blob opened in a tab could read the session
+ * tokens; an opaque blob is only ever downloaded.
+ */
+export function safeBlobType(type: string): string {
+  return isInlineImageType(type) ? baseMediaType(type) : "application/octet-stream";
+}
+
 /** Note attachments backed by object storage (#153). */
 export const attachments = {
   list: (noteId: string) => request<Attachment[]>(`/api/notes/${noteId}/attachments`),
@@ -380,14 +402,19 @@ export const attachments = {
     return res.json();
   },
   remove: (id: string) => request<void>(`/api/attachments/${id}`, { method: "DELETE" }),
-  /** Fetches the bytes with auth and returns an object URL (caller revokes it). */
+  /**
+   * Fetches the bytes with auth and returns an object URL (caller revokes it).
+   * The blob is rebuilt with safeBlobType rather than the server's type, so the
+   * URL can never be an active document, even against an older server.
+   */
   async objectUrl(id: string): Promise<string> {
     const token = getToken();
     const res = await fetch(`${API_BASE}/api/attachments/${id}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) throw new ApiError(res.status, "Failed to load attachment");
-    return URL.createObjectURL(await res.blob());
+    const bytes = await res.blob();
+    return URL.createObjectURL(new Blob([bytes], { type: safeBlobType(bytes.type) }));
   },
 };
 

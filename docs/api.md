@@ -591,16 +591,82 @@ The password hash is never serialised.
 | vault_id | string | Parent vault |
 | path | string | Folder path (forward slashes) |
 | title | string | Note title |
-| content | string | Raw markdown |
-| checksum | string | SHA-256 of content |
+| content | string | Raw markdown (the encrypted payload in e2ee vaults) |
+| checksum | string | SHA-256 of the content (of the plaintext, client-computed, in e2ee vaults) |
 | created_at | string | ISO 8601 |
 | updated_at | string | ISO 8601 |
 
 ### Vault
-| Field | Type |
-|---|---|
-| id | string |
-| user_id | string |
-| name | string |
-| created_at | string |
-| updated_at | string |
+| Field | Type | Description |
+|---|---|---|
+| id | string | UUID |
+| user_id | string | Owner |
+| name | string | Vault name |
+| encryption | string | `none` or `e2ee`; fixed at creation |
+| encryption_meta | object | Opaque client key material; e2ee vaults only, omitted otherwise |
+| created_at | string | ISO 8601 |
+| updated_at | string | ISO 8601 |
+| role | string | Caller's role (`owner`/`editor`/`viewer`); set by `GET /api/vaults` and `GET /api/vaults/:id`, omitted elsewhere |
+
+### NoteVersion
+| Field | Type | Description |
+|---|---|---|
+| id | string | UUID |
+| note_id | string | Note the version belongs to |
+| content | string | Note content at that save |
+| checksum | string | Checksum of that content |
+| device_id | string | Device that made the save |
+| created_at | string | ISO 8601 |
+
+### BacklinkNote
+| Field | Type | Description |
+|---|---|---|
+| id | string | Linking note |
+| vault_id | string | Its vault |
+| path | string | Its folder path |
+| title | string | Its title |
+| updated_at | string | ISO 8601 |
+
+### Device
+| Field | Type | Description |
+|---|---|---|
+| id | string | Client-chosen stable device id |
+| user_id | string | Owning user |
+| name | string | Human-readable name sent on connect |
+| platform | string | Platform sent on connect |
+| last_seen | string | ISO 8601, refreshed on every WebSocket connect |
+| created_at | string | ISO 8601 |
+
+### VaultMember
+| Field | Type | Description |
+|---|---|---|
+| vault_id | string | Shared vault |
+| user_id | string | Member |
+| email | string | Member's email |
+| display_name | string | Member's display name |
+| role | string | `viewer` or `editor` |
+| invited_by | string | Inviting user; omitted when unknown |
+| accepted_at | string | ISO 8601; omitted when not accepted |
+| created_at | string | ISO 8601 |
+
+### LinkedFile
+| Field | Type | Description |
+|---|---|---|
+| id | string | UUID |
+| vault_id | string | Vault the link lives in |
+| display_name | string | Label shown in the UI |
+| source_type | string | `url`, `local_path` or `github_path` |
+| source_ref | string | The URL, path or GitHub reference |
+| read_only | boolean | Always `true`: the original is never modified |
+| created_at | string | ISO 8601 |
+
+### Attachment
+| Field | Type | Description |
+|---|---|---|
+| id | string | UUID |
+| vault_id | string | Vault of the note |
+| note_id | string | Note the file is attached to |
+| filename | string | Original file name |
+| mime_type | string | Stored content type |
+| size_bytes | number | File size |
+| created_at | string | ISO 8601 |

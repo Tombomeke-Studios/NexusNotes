@@ -15,7 +15,15 @@ const DefaultWSTicketTTL = 30 * time.Second
 
 // defaultMaxWSTickets caps the number of live (unredeemed, unexpired)
 // tickets so a flood of ticket requests cannot grow memory without bound.
+// With the per-user cap below it is only a backstop: reaching it takes
+// thousands of distinct accounts.
 const defaultMaxWSTickets = 10000
+
+// defaultMaxWSTicketsPerUser caps one user's live tickets so a single
+// account cannot fill the global store and lock everyone else out of sync.
+// A well-behaved client holds one ticket at a time (it fetches right before
+// dialling); a few extra cover several devices reconnecting at once.
+const defaultMaxWSTicketsPerUser = 5
 
 // ErrTooManyWSTickets is returned when the live-ticket cap is reached.
 var ErrTooManyWSTickets = errors.New("too many outstanding websocket tickets")
@@ -34,8 +42,10 @@ type wsTicket struct {
 type WSTicketStore struct {
 	mu         sync.Mutex
 	tickets    map[string]wsTicket
+	byUser     map[string][]string // user id → live tickets, oldest first
 	ttl        time.Duration
 	maxTickets int
+	maxPerUser int
 	now        func() time.Time
 }
 
@@ -43,8 +53,10 @@ type WSTicketStore struct {
 func NewWSTicketStore(ttl time.Duration) *WSTicketStore {
 	return &WSTicketStore{
 		tickets:    make(map[string]wsTicket),
+		byUser:     make(map[string][]string),
 		ttl:        ttl,
 		maxTickets: defaultMaxWSTickets,
+		maxPerUser: defaultMaxWSTicketsPerUser,
 		now:        time.Now,
 	}
 }
@@ -53,7 +65,12 @@ func NewWSTicketStore(ttl time.Duration) *WSTicketStore {
 func (s *WSTicketStore) TTL() time.Duration { return s.ttl }
 
 // Issue mints a fresh ticket bound to userID. Expired tickets are swept
-// first; ErrTooManyWSTickets is returned when the live cap is still reached.
+// first. When the user already holds the per-user maximum, their oldest
+// ticket is evicted instead of refusing: a client only ever redeems its
+// newest ticket, so eviction never breaks a well-behaved client, whereas
+// refusing would let abandoned fetches (quick reconnects, a reload) lock the
+// user out of sync until those tickets expire. ErrTooManyWSTickets is
+// returned only when the global backstop cap is reached.
 func (s *WSTicketStore) Issue(userID string) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
@@ -66,10 +83,19 @@ func (s *WSTicketStore) Issue(userID string) (string, error) {
 
 	now := s.now()
 	s.sweep(now)
+
+	owned := s.byUser[userID]
+	for len(owned) >= s.maxPerUser && len(owned) > 0 {
+		delete(s.tickets, owned[0])
+		owned = owned[1:]
+	}
+	s.byUser[userID] = owned
+
 	if len(s.tickets) >= s.maxTickets {
 		return "", ErrTooManyWSTickets
 	}
 	s.tickets[ticket] = wsTicket{userID: userID, expiresAt: now.Add(s.ttl)}
+	s.byUser[userID] = append(owned, ticket)
 	return ticket, nil
 }
 
@@ -88,6 +114,7 @@ func (s *WSTicketStore) Consume(ticket string) (string, bool) {
 		return "", false
 	}
 	delete(s.tickets, ticket)
+	s.forget(t.userID, ticket)
 	if !s.now().Before(t.expiresAt) {
 		return "", false
 	}
@@ -99,8 +126,25 @@ func (s *WSTicketStore) sweep(now time.Time) {
 	for k, t := range s.tickets {
 		if !now.Before(t.expiresAt) {
 			delete(s.tickets, k)
+			s.forget(t.userID, k)
 		}
 	}
+}
+
+// forget removes ticket from its owner's index. Callers must hold s.mu.
+func (s *WSTicketStore) forget(userID, ticket string) {
+	owned := s.byUser[userID]
+	for i, tk := range owned {
+		if tk == ticket {
+			owned = append(owned[:i], owned[i+1:]...)
+			break
+		}
+	}
+	if len(owned) == 0 {
+		delete(s.byUser, userID)
+		return
+	}
+	s.byUser[userID] = owned
 }
 
 // size reports the number of stored tickets (tests only).

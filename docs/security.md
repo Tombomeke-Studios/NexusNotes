@@ -148,8 +148,12 @@ authenticated `POST /api/ws/ticket` endpoint and dials `/ws?ticket=...`.
   whether or not it succeeds, so a ticket that ends up in a log is worthless.
   The legacy `?token=<jwt>` parameter is rejected.
 - Tickets are held in memory only (single-instance deployment model); expired
-  tickets are swept on every issue and the number outstanding is capped, so
-  ticket requests cannot grow memory without bound.
+  tickets are swept on every issue, so ticket requests cannot grow memory
+  without bound. Each user holds at most 5 live tickets: a sixth request
+  evicts that user's oldest one, so a single account can never fill the store
+  and lock other users out of sync, while a client that abandoned earlier
+  fetches is never refused. A global cap on outstanding tickets remains as a
+  backstop (`503` once reached).
 - The handshake's `Origin` must be the server's own origin or one on the same
   allowlist the CORS middleware uses; anything else gets `403` before the
   ticket is even looked at. This blocks cross-site WebSocket hijacking by a

@@ -1,3 +1,6 @@
+# Also bundled into the packaged desktop app. Every port is published on
+# 127.0.0.1 only: these services use fixed development credentials (and Redis
+# none at all), so they must never be reachable from the network (#260).
 services:
   postgres:
     image: postgres:16-alpine
@@ -10,7 +13,7 @@ services:
       - POSTGRES_PASSWORD=nexus_dev
       - POSTGRES_DB=nexus_notes
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_notes"]
       interval: 5s
@@ -21,7 +24,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -37,8 +40,8 @@ services:
     user: root
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     environment:
       - MINIO_ROOT_USER=nexus_minio
       - MINIO_ROOT_PASSWORD=nexus_minio_dev
@@ -46,7 +49,7 @@ services:
   meilisearch:
     image: getmeili/meilisearch:v1.11
     ports:
-      - "7700:7700"
+      - "127.0.0.1:7700:7700"
     volumes:
       - meili_dev_data:/meili_data
     environment:

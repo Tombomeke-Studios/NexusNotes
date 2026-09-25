@@ -500,24 +500,13 @@ Connect: `ws://localhost:8080/ws?ticket=<ticket>&device_id=<uuid>&device_name=<n
 Clients that send no `Origin` header (non-browser clients) are authenticated by
 the ticket alone.
 
-**Authentication:** `token` is the same 1-hour access JWT that REST calls send
-as `Authorization: Bearer`; a missing or invalid token is refused with `401`
-before the upgrade. `device_id` (plus the optional `device_name` and
-`platform`) registers the connection as a device — see [Devices](#devices).
-The channel is push-only: the server ignores anything the client sends.
-
 ### Server → Client Messages
 
 ```json
 { "type": "note:created", "payload": { ...Note } }
 { "type": "note:updated", "payload": { ...Note } }
 { "type": "note:deleted", "payload": { "note_id": "..." } }
-{ "type": "device:revoked", "payload": {} }
 ```
-
-Note events go to the vault owner and every member. `device:revoked` goes only
-to the connections of a device that was just revoked, right before the server
-closes them.
 
 ---
 

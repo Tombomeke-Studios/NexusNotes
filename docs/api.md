@@ -251,7 +251,7 @@ Response (409): `ConflictInfo` on checksum mismatch:
 
 ### DELETE /api/vaults/:vaultId/notes/:noteId
 
-Response (204). Write access required.
+Response (204)
 
 ### GET /api/notes/:noteId/versions
 

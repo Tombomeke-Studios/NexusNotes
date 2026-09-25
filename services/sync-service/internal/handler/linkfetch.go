@@ -2,6 +2,8 @@ package handler
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/netip"
@@ -9,12 +11,22 @@ import (
 	"time"
 )
 
-// linkedFetchTimeout bounds a whole proxied fetch, redirects included.
-const linkedFetchTimeout = 15 * time.Second
+const (
+	// maxLinkedContentBytes caps the size of a proxied URL fetch.
+	maxLinkedContentBytes = 5 << 20 // 5 MiB
+	// maxLinkedRedirects caps how many redirects a proxied fetch follows.
+	maxLinkedRedirects = 3
+	// linkedFetchTimeout bounds a whole proxied fetch, redirects included.
+	linkedFetchTimeout = 15 * time.Second
+)
 
-// errBlockedDestination is returned when a linked-file fetch would connect to
-// a non-public address (loopback, private, link-local, ...).
-var errBlockedDestination = errors.New("destination address is not publicly routable")
+var (
+	// errBlockedDestination is returned when a linked-file fetch would connect
+	// to a non-public address (loopback, private, link-local, ...).
+	errBlockedDestination = errors.New("destination address is not publicly routable")
+	errTooManyRedirects   = fmt.Errorf("stopped after %d redirects", maxLinkedRedirects)
+	errSourceTooLarge     = fmt.Errorf("source exceeds %d bytes", maxLinkedContentBytes)
+)
 
 // nonPublicPrefixes are ranges that netip's predicates do not already cover
 // but that must never be reachable from the linked-file proxy.
@@ -96,5 +108,27 @@ func newGuardedClient(allow func(netip.AddrPort) bool) *http.Client {
 	return &http.Client{
 		Timeout:   linkedFetchTimeout,
 		Transport: transport,
+		CheckRedirect: func(_ *http.Request, via []*http.Request) error {
+			if len(via) > maxLinkedRedirects {
+				return errTooManyRedirects
+			}
+			return nil
+		},
 	}
+}
+
+// readLinkedBody reads a proxied response body, refusing sources larger than
+// maxLinkedContentBytes instead of silently returning a truncated copy.
+func readLinkedBody(resp *http.Response) ([]byte, error) {
+	if resp.ContentLength > maxLinkedContentBytes {
+		return nil, errSourceTooLarge
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxLinkedContentBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxLinkedContentBytes {
+		return nil, errSourceTooLarge
+	}
+	return body, nil
 }

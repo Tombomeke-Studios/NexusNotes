@@ -201,3 +201,22 @@ func TestSearch_sendsEscapedFilter(t *testing.T) {
 		t.Errorf("filter sent to Meilisearch:\ngot  %s\nwant %s", sent.Filter, want)
 	}
 }
+
+func TestValidDate(t *testing.T) {
+	cases := map[string]bool{
+		"2024-01-31":                true,
+		"2024-01-31T10:20:30Z":      true,
+		"2024-01-31T10:20:30+02:00": true,
+		"2024-01-31T10:20:30.5Z":    true,
+		"2024-13-01":                false,
+		"2024-1-1":                  false,
+		"yesterday":                 false,
+		`2024-01-01" OR "`:          false,
+		"":                          false,
+	}
+	for in, want := range cases {
+		if got := ValidDate(in); got != want {
+			t.Errorf("ValidDate(%q) = %v, want %v", in, got, want)
+		}
+	}
+}

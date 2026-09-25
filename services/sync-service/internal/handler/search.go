@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/search"
@@ -27,6 +29,18 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	if vaultID == "" {
 		http.Error(w, `{"error":"vault parameter is required"}`, http.StatusBadRequest)
 		return
+	}
+	// Every parameter below ends up in the search filter expression; reject
+	// anything that is not the expected shape before it gets that far.
+	if _, err := uuid.Parse(vaultID); err != nil {
+		writeError(w, http.StatusBadRequest, "vault must be a vault id")
+		return
+	}
+	for _, name := range []string{"date_from", "date_to"} {
+		if v := q.Get(name); v != "" && !search.ValidDate(v) {
+			writeError(w, http.StatusBadRequest, name+" must be a date (YYYY-MM-DD) or an RFC 3339 timestamp")
+			return
+		}
 	}
 
 	// Verify caller may read the vault (owner or member).

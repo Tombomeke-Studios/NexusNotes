@@ -460,13 +460,16 @@ ranked, with highlighted snippets). This is the endpoint the desktop app uses.
 
 | Param | Required | Description |
 |---|---|---|
-| `vault` | Yes | Vault ID to search in |
+| `vault` | Yes | Vault ID (UUID) to search in |
 | `q` | No | Search query string |
 | `tag` | No | Filter by tag (exact match) |
-| `date_from` | No | ISO 8601 date — notes updated on or after |
-| `date_to` | No | ISO 8601 date — notes updated on or before |
+| `date_from` | No | `YYYY-MM-DD` or RFC 3339 timestamp — notes updated on or after |
+| `date_to` | No | `YYYY-MM-DD` or RFC 3339 timestamp — notes updated on or before |
 | `limit` | No | Max results (default 20, max 100) |
 | `offset` | No | Pagination offset (default 0) |
+
+Returns `400` when `vault` is missing or not a UUID, or when a date bound is
+not in one of the accepted formats; `404` when the caller cannot read the vault.
 
 **Response (200):**
 

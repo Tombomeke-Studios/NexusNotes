@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // SearchParams holds the validated query parameters for a search request.
@@ -155,4 +156,14 @@ var filterEscaper = strings.NewReplacer(`\`, `\\`, `"`, `\"`)
 // Meilisearch filter, so it can never end its string early.
 func escapeFilterValue(s string) string {
 	return filterEscaper.Replace(s)
+}
+
+// ValidDate reports whether s is an accepted search date bound: a calendar
+// date (YYYY-MM-DD) or an RFC 3339 timestamp.
+func ValidDate(s string) bool {
+	if _, err := time.Parse(time.DateOnly, s); err == nil {
+		return true
+	}
+	_, err := time.Parse(time.RFC3339, s)
+	return err == nil
 }

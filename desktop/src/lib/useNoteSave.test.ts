@@ -243,7 +243,7 @@ describe("useNoteSave — edits while a save is in flight (#263)", () => {
     update.mockReturnValueOnce(put.promise);
     const { hook } = setup();
 
-    let saving!: Promise<void>;
+    let saving!: Promise<unknown>;
     act(() => {
       saving = hook.result.current.saveNote("first");
     });
@@ -267,7 +267,7 @@ describe("useNoteSave — edits while a save is in flight (#263)", () => {
     update.mockReturnValueOnce(put.promise).mockResolvedValueOnce(savedNote("c2"));
     const { hook } = setup();
 
-    let saving!: Promise<void>;
+    let saving!: Promise<unknown>;
     act(() => {
       saving = hook.result.current.saveNote("first");
     });
@@ -291,12 +291,12 @@ describe("useNoteSave — edits while a save is in flight (#263)", () => {
     update.mockReturnValueOnce(put.promise).mockResolvedValueOnce(savedNote("c2"));
     const { hook } = setup();
 
-    let first!: Promise<void>;
+    let first!: Promise<unknown>;
     act(() => {
       first = hook.result.current.saveNote("first");
     });
     act(() => hook.result.current.liveChange("first and more"));
-    let second!: Promise<void>;
+    let second!: Promise<unknown>;
     act(() => {
       second = hook.result.current.saveNote("first and more");
     });
@@ -316,7 +316,7 @@ describe("useNoteSave — edits while a save is in flight (#263)", () => {
     update.mockReturnValueOnce(put.promise);
     const { hook } = setup();
 
-    let saving!: Promise<void>;
+    let saving!: Promise<unknown>;
     act(() => {
       saving = hook.result.current.saveNote("body");
     });
@@ -344,8 +344,8 @@ describe("useNoteSave — serialised saves", () => {
     update.mockReturnValueOnce(first.promise).mockResolvedValueOnce(savedNote("c2"));
     const { hook } = setup();
 
-    let a!: Promise<void>;
-    let b!: Promise<void>;
+    let a!: Promise<unknown>;
+    let b!: Promise<unknown>;
     act(() => {
       a = hook.result.current.saveNote("one");
     });
@@ -376,7 +376,7 @@ describe("useNoteSave — serialised saves", () => {
     update.mockReturnValueOnce(first.promise).mockResolvedValueOnce(savedNote("c2"));
     const { hook } = setup();
 
-    let done!: Promise<void>;
+    let done!: Promise<unknown>;
     act(() => {
       done = hook.result.current.saveNote("a");
     });
@@ -891,6 +891,86 @@ describe("useNoteSave — unknown vault encryption fails closed", () => {
 
     expect(update).toHaveBeenCalledTimes(1);
     for (const call of update.mock.calls) expect(call[3]).not.toContain("top secret");
+  });
+});
+
+describe("useNoteSave — save outcome (#283)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  it("reports success once the latest text is on the server", async () => {
+    update.mockResolvedValueOnce(savedNote("c1"));
+    const { hook } = setup();
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveNote("done");
+    });
+
+    expect(outcome).toEqual({ ok: true });
+  });
+
+  it("reports a network failure with its reason", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { hook } = setup();
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveNote("offline");
+    });
+
+    expect(outcome).toMatchObject({ ok: false, error: { noteId: "n1", kind: "network" } });
+  });
+
+  it("reports a conflict", async () => {
+    update.mockRejectedValueOnce(new ApiError(409, "Request failed"));
+    const { hook } = setup();
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveNote("mine");
+    });
+
+    expect(outcome).toMatchObject({ ok: false, error: { kind: "conflict" } });
+  });
+
+  it("reports the outcome of the whole queue, not just the first save", async () => {
+    const first = deferred<Note>();
+    update.mockReturnValueOnce(first.promise).mockRejectedValueOnce(new ApiError(500, "boom"));
+    const { hook } = setup();
+
+    let a!: Promise<unknown>;
+    let b!: Promise<unknown>;
+    act(() => {
+      a = hook.result.current.saveNote("one");
+    });
+    await flush();
+    act(() => {
+      hook.result.current.liveChange("one two");
+      b = hook.result.current.saveNote("one two");
+    });
+    let outcomes: unknown[] = [];
+    await act(async () => {
+      first.resolve(savedNote("c1"));
+      outcomes = await Promise.all([a, b]);
+    });
+
+    // The first PUT succeeded, but the newest text never reached the server.
+    expect(outcomes[0]).toMatchObject({ ok: false, error: { kind: "failed" } });
+    expect(outcomes[1]).toMatchObject({ ok: false, error: { kind: "failed" } });
+  });
+
+  it("reports success when there is no open note to save", async () => {
+    const { hook } = setup();
+    act(() => hook.result.current.setActiveNote(null));
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveNote("x");
+    });
+
+    expect(outcome).toEqual({ ok: true });
   });
 });
 

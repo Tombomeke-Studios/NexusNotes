@@ -30,6 +30,9 @@ export interface SaveError {
   message: string;
 }
 
+/** Whether the open note's latest text reached the server; why not, if it didn't. */
+export type SaveOutcome = { ok: true } | { ok: false; error: SaveError };
+
 /** Gateway errors are what a reverse proxy returns while the service restarts. */
 const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
@@ -148,6 +151,10 @@ export function useNoteSave(deps: NoteSaveDeps) {
     if (!list.includes(checksum)) list.push(checksum);
     ownChecksums.current.set(id, list.slice(-OWN_CHECKSUM_HISTORY));
   };
+  /** Edit version of the newest text the server confirmed, per note. */
+  const savedVersions = useRef(new Map<string, number>());
+  /** Why the note's most recent save failed; cleared by a successful save. */
+  const lastErrors = useRef(new Map<string, SaveError>());
 
   const versionOf = (id: string) => versions.current.get(id) ?? 0;
   const isActive = (id: string) => depsRef.current.activeNoteRef.current?.id === id;
@@ -173,6 +180,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
     const d = depsRef.current;
     transitions.current.set(note.id, { from: base, to: updated.checksum });
     rememberOwn(note.id, updated.checksum);
+    savedVersions.current.set(note.id, version);
+    lastErrors.current.delete(note.id);
     failures.current.delete(note.id);
     clearErrorFor(note.id);
     const saved = { ...updated, content };
@@ -200,7 +209,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const fail = (req: SaveRequest, kind: SaveErrorKind, err: unknown) => {
     const id = req.note.id;
     const d = depsRef.current;
-    setSaveError({ noteId: id, kind, message: MESSAGES[kind](err) });
+    const error: SaveError = { noteId: id, kind, message: MESSAGES[kind](err) };
+    lastErrors.current.set(id, error);
+    setSaveError(error);
     if (kind === "conflict") {
       cancelTimer(id);
       if (isActive(id)) d.setSaveStatus("conflict");
@@ -350,16 +361,31 @@ export function useNoteSave(deps: NoteSaveDeps) {
     requested.current.clear();
     transitions.current.clear();
     failures.current.clear();
+    savedVersions.current.clear();
+    lastErrors.current.clear();
     setSaveError(null);
   }, [sessionKey]);
 
-  /** Saves the open note with the given text; resolves once its save queue is empty. */
-  const saveNote = useCallback(async (content: string) => {
+  /**
+   * Saves the open note with the given text. Resolves once the note's save
+   * queue is empty, reporting whether its newest text reached the server.
+   */
+  const saveNote = useCallback(async (content: string): Promise<SaveOutcome> => {
     const d = depsRef.current;
     const current = d.activeNoteRef.current;
-    if (!current) return;
+    if (!current) return { ok: true };
     d.setEditorContent(content);
     await enqueue(current, content);
+    const id = current.id;
+    if (savedVersions.current.get(id) === versionOf(id)) return { ok: true };
+    return {
+      ok: false,
+      error: lastErrors.current.get(id) ?? {
+        noteId: id,
+        kind: "failed",
+        message: "Your latest changes haven't been saved yet.",
+      },
+    };
     // The helpers only touch refs and the stable deps ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -401,6 +427,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
       queued.current.delete(id);
       lastRequests.current.delete(id);
       failures.current.delete(id);
+      lastErrors.current.delete(id);
       clearDraft(id);
       clearErrorFor(id);
     }
@@ -443,7 +470,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
     if (incoming.checksum === baseChecksum(current)) return true;
     if (ownChecksums.current.get(incoming.id)?.includes(incoming.checksum)) return true;
     cancelTimer(incoming.id);
-    setSaveError({ noteId: incoming.id, kind: "conflict", message: MESSAGES.conflict(null) });
+    const error: SaveError = { noteId: incoming.id, kind: "conflict", message: MESSAGES.conflict(null) };
+    lastErrors.current.set(incoming.id, error);
+    setSaveError(error);
     d.setSaveStatus("conflict");
     return false;
     // baseChecksum and cancelTimer only read refs.

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -23,8 +24,10 @@ type LinkedFileHandler struct {
 	client    *http.Client
 }
 
-func NewLinkedFileHandler(repo *repository.LinkedFileRepo, vaultRepo *repository.VaultRepo) *LinkedFileHandler {
-	return &LinkedFileHandler{repo: repo, vaultRepo: vaultRepo, client: &http.Client{Timeout: 15 * time.Second}}
+// NewLinkedFileHandler builds the handler. The URL proxy only connects to
+// public addresses unless allowPrivate is set (see newLinkedFileClient).
+func NewLinkedFileHandler(repo *repository.LinkedFileRepo, vaultRepo *repository.VaultRepo, allowPrivate bool) *LinkedFileHandler {
+	return &LinkedFileHandler{repo: repo, vaultRepo: vaultRepo, client: newLinkedFileClient(allowPrivate)}
 }
 
 // validLinkedSourceType reports whether s is an accepted linked-file source type.
@@ -159,6 +162,10 @@ func (h *LinkedFileHandler) Content(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := h.client.Do(req)
 	if err != nil {
+		if errors.Is(err, errBlockedDestination) {
+			writeError(w, http.StatusUnprocessableEntity, "this URL points to a private or local network address, which the server does not fetch")
+			return
+		}
 		writeError(w, http.StatusBadGateway, "failed to fetch source")
 		return
 	}

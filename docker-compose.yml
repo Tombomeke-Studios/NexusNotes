@@ -41,6 +41,8 @@ services:
       # separated. Empty = desktop app + local dev defaults; the web UI on
       # :3000 is proxied same-origin and needs no entry.
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
+      # Let the linked-file URL proxy fetch private/LAN addresses (off by default).
+      - LINKED_FILES_ALLOW_PRIVATE=${LINKED_FILES_ALLOW_PRIVATE:-false}
     depends_on:
       postgres:
         condition: service_healthy

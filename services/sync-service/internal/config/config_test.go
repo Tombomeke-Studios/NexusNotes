@@ -146,3 +146,37 @@ func TestLoad_BindAddrOfOnlySeparatorsMeansAllInterfaces(t *testing.T) {
 		t.Fatalf("ListenAddrs() = %v, want %v", got, want)
 	}
 }
+
+func TestLoad_LinkedFilesAllowPrivate(t *testing.T) {
+	cases := []struct {
+		value   string
+		want    bool
+		wantErr bool
+	}{
+		{value: "", want: false}, // unset: private addresses stay blocked
+		{value: "false", want: false},
+		{value: "true", want: true},
+		{value: "1", want: true},
+		{value: "yes please", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.value, func(t *testing.T) {
+			setRequired(t)
+			t.Setenv("LINKED_FILES_ALLOW_PRIVATE", tc.value)
+
+			cfg, err := Load()
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("Load() accepted LINKED_FILES_ALLOW_PRIVATE=%q", tc.value)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load(): %v", err)
+			}
+			if cfg.LinkedFilesAllowPrivate != tc.want {
+				t.Fatalf("LinkedFilesAllowPrivate = %v, want %v", cfg.LinkedFilesAllowPrivate, tc.want)
+			}
+		})
+	}
+}

@@ -367,8 +367,13 @@ Removes a link (and its annotations) → `204`; `404` when the link does not exi
 ### GET /api/links/:linkId/content
 
 Fetches the current content of a `url` link `{ content, content_type, fetched_at }`
-(capped at 5 MiB). Returns `422` for non-URL links, `400` when `source_ref` is not an
-`http(s)` URL, `502` when the source can't be reached or answers with an error. Read access required.
+(capped at 5 MiB). Read access required. Errors:
+
+- `422` for non-URL links, and when the URL (or any redirect it follows)
+  resolves to a loopback, private, link-local or otherwise non-public address.
+  Self-hosters can lift the address check with `LINKED_FILES_ALLOW_PRIVATE=true`.
+- `400` when `source_ref` is not an `http(s)` URL.
+- `502` when the source can't be reached or answers with an error.
 
 ### GET /api/links/:linkId/annotation
 

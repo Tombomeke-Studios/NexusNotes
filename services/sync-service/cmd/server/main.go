@@ -197,7 +197,9 @@ func main() {
 	})
 
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:1420", "http://localhost:5173", "tauri://localhost"},
+		// tauri://localhost is the packaged app's origin on macOS/Linux;
+		// http://tauri.localhost is the equivalent on Windows (WebView2).
+		AllowedOrigins:   []string{"http://localhost:1420", "http://localhost:5173", "tauri://localhost", "http://tauri.localhost"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,

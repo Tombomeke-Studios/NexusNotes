@@ -11,6 +11,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - The desktop app warns when its version and the server's major.minor differ.
 - A persistent banner (and a waiting screen on start-up) when the server cannot be reached.
 
+- The packaged app starts its backend on a background supervisor: it waits for Docker
+  Desktop, retries until Postgres/Redis are healthy, reuses a backend that is already
+  running, and restarts the bundled one if it exits.
+
 ### Fixed
 - The app no longer signs you out when the server is merely unreachable at start-up; your
   session is kept and restored as soon as the server answers.

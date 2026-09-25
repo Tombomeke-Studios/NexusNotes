@@ -109,6 +109,24 @@ Open `http://localhost:1420` in your browser.
 4. Click **+** next to "Notes" to create your first note
 5. Start writing markdown — preview updates live in split view
 
+### Packaged app (.exe)
+
+The installed desktop app is self-sufficient: it starts Postgres and Redis through
+`docker compose` and runs a bundled copy of the sync service, so **Docker Desktop
+is the only prerequisite**. A supervisor thread keeps this going in the background
+and never blocks the window:
+
+- It waits for the Docker engine (launching Docker Desktop right before the app is fine)
+  and retries until Postgres and Redis report healthy.
+- A backend that is already healthy on `:8080` (for example one started by
+  `dev-app.sh`) is reused instead of starting a second one.
+- If the bundled backend exits it is restarted with a capped backoff (1s → 30s).
+- Until the server answers, the app shows a "Waiting for the server…" screen and keeps
+  your session; it picks up automatically once `/health` responds.
+
+Backend output is written to the app's stderr with a `[backend]` prefix. To watch it,
+start the .exe from a terminal.
+
 ### Stopping
 
 ```bash

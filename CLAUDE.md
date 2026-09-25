@@ -224,3 +224,5 @@ is the migrations directory.
 - All timestamps are UTC, stored as `TIMESTAMPTZ` in PostgreSQL.
 - Note content is stored as raw markdown text in PostgreSQL, not as files on disk.
 - Vault paths use forward slashes regardless of client OS.
+- The packaged app owns its backend: `src-tauri/src/lib.rs` runs `supervise_backend` on a background thread (waits for Docker, reuses a healthy :8080 backend, restarts the sidecar with backoff). Never block Tauri's `setup` on Docker or the backend.
+- The frontend must not treat a network failure as "signed out": only an `ApiError` from the server clears the session (`isNetworkError` in `api.ts`).

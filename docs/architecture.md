@@ -93,6 +93,19 @@ serialises writers (it does not block other notes' links from pointing at this n
 waiting writer gives up after a few seconds instead of piling up, and the whole update runs
 on the transaction's own connection so queued requests can never starve it of one.
 
+#### Desktop save pipeline
+
+The desktop client (`desktop/src/lib/useNoteSave.ts`) sends these PUTs one at
+a time per note. Every edit bumps a per-note version; a save that completes
+after newer edits only adopts the returned checksum, so the note stays
+unsaved, its local draft is kept and a follow-up save goes out. Saves that
+queue up behind an in-flight one coalesce into a single PUT of the latest
+text, based on the checksum the previous save returned. A 409 puts the note
+in a "conflict" state that keeps the local text untouched (the merge UI is
+tracked in #225); an unreachable server (or a 502/503/504) is retried with
+exponential backoff capped at 30 seconds; any other failure is reported in
+the status bar and retried on the next edit.
+
 ### Search indexing
 
 1. Note created or updated in Sync Service

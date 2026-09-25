@@ -1,14 +1,67 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { notes as notesApi } from "./api";
+import { notes as notesApi, ApiError } from "./api";
 import { saveDraft, clearDraft } from "./drafts";
 import type { Note } from "./types";
 
-export type SaveStatus = "saved" | "saving" | "unsaved" | "idle";
+/**
+ * Save state of the open note. "conflict" means the server rejected the save
+ * because the note changed elsewhere (409); the local text is kept, unsaved.
+ */
+export type SaveStatus = "saved" | "saving" | "unsaved" | "conflict" | "idle";
+
+/** True while the open note holds text the server doesn't have yet. */
+export function isDirtyStatus(status: SaveStatus): boolean {
+  return status === "unsaved" || status === "saving" || status === "conflict";
+}
+
+/**
+ * - conflict: the note changed elsewhere since it was loaded (409)
+ * - network: the server was unreachable; retried automatically
+ * - failed: anything else (encryption, server error); retried on the next edit
+ */
+export type SaveErrorKind = "conflict" | "network" | "failed";
+
+export interface SaveError {
+  noteId: string;
+  kind: SaveErrorKind;
+  message: string;
+}
+
+/** Gateway errors are what a reverse proxy returns while the service restarts. */
+const TRANSIENT_STATUSES = new Set([502, 503, 504]);
+
+export function classifySaveError(err: unknown): SaveErrorKind {
+  if (err instanceof ApiError) {
+    if (err.status === 409) return "conflict";
+    return TRANSIENT_STATUSES.has(err.status) ? "network" : "failed";
+  }
+  // fetch() rejects with a TypeError when the request never got a response.
+  return err instanceof TypeError ? "network" : "failed";
+}
+
+export const BASE_RETRY_DELAY_MS = 1000;
+export const MAX_RETRY_DELAY_MS = 30_000;
+/** Delay before re-saving edits that landed while an earlier save was in flight. */
+export const FOLLOW_UP_DELAY_MS = 1000;
+
+/** Exponential backoff for the n-th consecutive network failure (0-based), capped. */
+export function retryDelay(attempt: number): number {
+  return Math.min(BASE_RETRY_DELAY_MS * 2 ** attempt, MAX_RETRY_DELAY_MS);
+}
+
+const MESSAGES: Record<SaveErrorKind, (err: unknown) => string> = {
+  conflict: () =>
+    "This note was changed elsewhere since you opened it. Your text is kept here but has not been saved.",
+  network: () => "Can't reach the server. Your changes are kept and saving is retried automatically.",
+  failed: (err) => `Couldn't save this note: ${err instanceof Error ? err.message : String(err)}`,
+};
 
 export interface NoteSaveDeps {
   /** The note open in the editor; the caller refreshes it on every render. */
   activeNoteRef: MutableRefObject<Note | null>;
+  /** The editor's latest text for the open note; the caller refreshes it on every render. */
+  editorContentRef: MutableRefObject<string>;
   setActiveNote: Dispatch<SetStateAction<Note | null>>;
   setNoteList: Dispatch<SetStateAction<Note[]>>;
   setEditorContent: (content: string) => void;
@@ -20,67 +73,266 @@ export interface NoteSaveDeps {
   encryptOutgoing: (vaultId: string, plaintext: string) => Promise<{ content: string; checksum?: string }>;
   /** False when plaintext must never touch disk (e2ee vaults), so no local draft is kept. */
   keepsDrafts: (vaultId: string) => boolean;
+  /** While true (close-confirmation dialog open) background saves wait. */
+  paused?: boolean;
+}
+
+interface SaveRequest {
+  /** Snapshot of the note when the save was requested (title, path, checksum). */
+  note: Note;
+  content: string;
+  /** The note's edit version the content corresponds to. */
+  version: number;
 }
 
 /**
- * Saving the note open in the editor: the PUT to the sync service, the save
- * status it drives and the local draft mirror of unsaved edits. Both returned
- * callbacks are stable; they always read the latest deps.
+ * Saving the note open in the editor (#263).
+ *
+ * - Every live edit bumps a per-note version. A save that completes after
+ *   newer edits only adopts the server's checksum: the note stays unsaved,
+ *   its draft is kept and a follow-up save is scheduled.
+ * - Saves are serialised per note; requests queued behind an in-flight save
+ *   coalesce into one PUT of the latest text, based on the checksum the
+ *   previous save returned.
+ * - A 409 turns into a "conflict" that keeps the local text; network errors
+ *   retry with capped exponential backoff; other errors report a message.
+ *
+ * All returned callbacks are stable; they always read the latest deps.
  */
 export function useNoteSave(deps: NoteSaveDeps) {
   const depsRef = useRef(deps);
   depsRef.current = deps;
 
-  const saveNote = useCallback(async (content: string) => {
-    const { activeNoteRef, setActiveNote, setNoteList, setEditorContent, setSaveStatus, onSynced, encryptOutgoing } =
-      depsRef.current;
-    const current = activeNoteRef.current;
-    if (!current) return;
-    setEditorContent(content);
-    setSaveStatus("saving");
+  const [saveError, setSaveError] = useState<SaveError | null>(null);
+
+  const versions = useRef(new Map<string, number>());
+  /** Version of the most recent save requested per note (queued or sent). */
+  const requested = useRef(new Map<string, number>());
+  /** The next save to send per note, waiting for the in-flight one. */
+  const queued = useRef(new Map<string, SaveRequest>());
+  const workers = useRef(new Map<string, Promise<void>>());
+  /** Last checksum change made by our own save, per note: from → to. */
+  const transitions = useRef(new Map<string, { from: string; to: string }>());
+  const failures = useRef(new Map<string, number>());
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  const versionOf = (id: string) => versions.current.get(id) ?? 0;
+  const isActive = (id: string) => depsRef.current.activeNoteRef.current?.id === id;
+
+  const cancelTimer = (id: string) => {
+    const t = timers.current.get(id);
+    if (t !== undefined) clearTimeout(t);
+    timers.current.delete(id);
+  };
+
+  const clearErrorFor = (id: string) => setSaveError((e) => (e?.noteId === id ? null : e));
+
+  // The open note's React state may not have caught up with a save that just
+  // finished; a snapshot still on the checksum it replaced uses the new one.
+  const baseChecksum = (note: Note) => {
+    const t = transitions.current.get(note.id);
+    return t && t.from === note.checksum ? t.to : note.checksum;
+  };
+
+  const succeed = (req: SaveRequest, updated: Note, base: string) => {
+    const { note, content, version } = req;
+    const d = depsRef.current;
+    transitions.current.set(note.id, { from: base, to: updated.checksum });
+    failures.current.delete(note.id);
+    clearErrorFor(note.id);
+    const saved = { ...updated, content };
+    if (versionOf(note.id) === version) {
+      cancelTimer(note.id);
+      clearDraft(note.id);
+      d.setNoteList((prev) => prev.map((n) => (n.id === saved.id ? saved : n)));
+      // Only refresh the open note / status if we haven't since navigated away
+      // (e.g. a save flushed on blur while clicking a preview link).
+      d.setActiveNote((prev) => (prev && prev.id === saved.id ? saved : prev));
+      if (isActive(note.id)) d.setSaveStatus("saved");
+    } else {
+      // Newer edits exist: adopt the server's checksum and timestamps but keep
+      // the local title, the "unsaved" status and the draft.
+      const merge = (n: Note) => ({ ...saved, title: n.title });
+      d.setNoteList((prev) => prev.map((n) => (n.id === saved.id ? merge(n) : n)));
+      d.setActiveNote((prev) => (prev && prev.id === saved.id ? merge(prev) : prev));
+      scheduleFollowUp(note.id);
+    }
+    d.onSynced();
+  };
+
+  const fail = (req: SaveRequest, kind: SaveErrorKind, err: unknown) => {
+    const id = req.note.id;
+    const d = depsRef.current;
+    setSaveError({ noteId: id, kind, message: MESSAGES[kind](err) });
+    if (kind === "conflict") {
+      cancelTimer(id);
+      if (isActive(id)) d.setSaveStatus("conflict");
+      return;
+    }
+    // A save queued behind this one is about to run and acts as the retry.
+    if (queued.current.has(id)) return;
+    if (isActive(id)) d.setSaveStatus((s) => (s === "conflict" ? s : "unsaved"));
+    if (kind === "network") {
+      const attempt = failures.current.get(id) ?? 0;
+      failures.current.set(id, attempt + 1);
+      schedule(id, retryDelay(attempt), req);
+    }
+  };
+
+  const attempt = async (req: SaveRequest) => {
+    const { note, content, version } = req;
+    const d = depsRef.current;
+    if (isActive(note.id) && versionOf(note.id) === version) {
+      d.setSaveStatus((s) => (s === "conflict" ? s : "saving"));
+    }
+    let payload: string;
+    let checksum: string | undefined;
     try {
       // For e2ee vaults only ciphertext + the plaintext checksum go out; the
       // server echoes the ciphertext back, so state keeps the local plaintext.
-      const { content: payload, checksum } = await encryptOutgoing(current.vault_id, content);
-      const updated = await notesApi.update(
-        current.id,
-        current.title,
-        current.path,
-        payload,
-        current.checksum,
-        checksum,
-      );
-      if ("checksum" in updated) {
-        const note = { ...(updated as Note), content };
-        clearDraft(note.id);
-        setNoteList((prev) => prev.map((n) => (n.id === note.id ? note : n)));
-        // Only refresh the open note / status if we haven't since navigated away
-        // (e.g. a save flushed on blur while clicking a preview link).
-        setActiveNote((prev) => (prev && prev.id === note.id ? note : prev));
-        if (activeNoteRef.current?.id === note.id) {
-          setSaveStatus("saved");
-        }
-        onSynced();
-      }
-    } catch {
-      setSaveStatus("unsaved");
+      ({ content: payload, checksum } = await d.encryptOutgoing(note.vault_id, content));
+    } catch (err) {
+      fail(req, "failed", err);
+      return;
     }
+    const base = baseChecksum(note);
+    let updated: Awaited<ReturnType<typeof notesApi.update>>;
+    try {
+      updated = await notesApi.update(note.id, note.title, note.path, payload, base, checksum);
+    } catch (err) {
+      fail(req, classifySaveError(err), err);
+      return;
+    }
+    if (updated && "checksum" in updated) succeed(req, updated as Note, base);
+  };
+
+  /** Runs the note's queued saves one at a time; resolves once the queue is empty. */
+  const drain = (id: string): Promise<void> => {
+    let worker = workers.current.get(id);
+    if (!worker) {
+      worker = (async () => {
+        try {
+          for (let req = queued.current.get(id); req; req = queued.current.get(id)) {
+            queued.current.delete(id);
+            try {
+              await attempt(req);
+            } catch (err) {
+              // Callers (autosave timers, close handlers) never see a rejection.
+              fail(req, "failed", err);
+            }
+          }
+        } finally {
+          // Runs synchronously after the empty-queue check, so a request
+          // enqueued afterwards always starts a new worker.
+          workers.current.delete(id);
+        }
+      })();
+      workers.current.set(id, worker);
+    }
+    return worker;
+  };
+
+  const enqueue = (note: Note, content: string): Promise<void> => {
+    const version = versionOf(note.id);
+    requested.current.set(note.id, version);
+    cancelTimer(note.id);
+    queued.current.set(note.id, { note, content, version });
+    if (isActive(note.id)) depsRef.current.setSaveStatus((s) => (s === "conflict" ? s : "saving"));
+    return drain(note.id);
+  };
+
+  /**
+   * Arms a background save for the note: a network retry (`retry` given) or a
+   * follow-up for edits that no save has requested yet. The open note always
+   * saves its latest text; a note the user has left saves the failed request.
+   */
+  const schedule = (id: string, delay: number, retry?: SaveRequest) => {
+    cancelTimer(id);
+    timers.current.set(
+      id,
+      setTimeout(() => {
+        timers.current.delete(id);
+        const d = depsRef.current;
+        if (d.paused) {
+          schedule(id, delay, retry);
+          return;
+        }
+        const active = d.activeNoteRef.current;
+        if (active?.id === id) {
+          const unrequested = versionOf(id) > (requested.current.get(id) ?? -1);
+          if (retry || unrequested) void enqueue(active, d.editorContentRef.current);
+        } else if (retry) {
+          void enqueue(retry.note, retry.content);
+        }
+      }, delay),
+    );
+  };
+
+  const scheduleFollowUp = (id: string) => {
+    if (versionOf(id) > (requested.current.get(id) ?? -1) && !timers.current.has(id)) {
+      schedule(id, FOLLOW_UP_DELAY_MS);
+    }
+  };
+
+  // Nothing may fire after sign-out / unmount.
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      for (const t of pending.values()) clearTimeout(t);
+      pending.clear();
+    };
+  }, []);
+
+  /** Saves the open note with the given text; resolves once its save queue is empty. */
+  const saveNote = useCallback(async (content: string) => {
+    const d = depsRef.current;
+    const current = d.activeNoteRef.current;
+    if (!current) return;
+    d.setEditorContent(content);
+    await enqueue(current, content);
+    // The helpers only touch refs and the stable deps ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Marks the open note as edited (e.g. a rename) without new editor text. */
+  const markDirty = useCallback(() => {
+    const d = depsRef.current;
+    const current = d.activeNoteRef.current;
+    if (current) versions.current.set(current.id, versionOf(current.id) + 1);
+    d.setSaveStatus((s) => (s === "conflict" ? s : "unsaved"));
   }, []);
 
   // Live editor edits mark the note dirty immediately (so the tab dot / status
   // show unsaved before the debounced autosave runs).
   const liveChange = useCallback((content: string) => {
-    const { activeNoteRef, setEditorContent, setSaveStatus, keepsDrafts } = depsRef.current;
-    setEditorContent(content);
-    setSaveStatus((s) => (s === "unsaved" ? s : "unsaved"));
+    const d = depsRef.current;
+    d.setEditorContent(content);
+    markDirty();
     // Mirror to a local draft so nothing is lost if the app closes before the
     // debounced server save runs — except for e2ee vaults, where plaintext
     // must never touch disk (localStorage included).
-    const current = activeNoteRef.current;
-    if (current && keepsDrafts(current.vault_id)) {
+    const current = d.activeNoteRef.current;
+    if (current && d.keepsDrafts(current.vault_id)) {
       saveDraft(current.id, content);
     }
+  }, [markDirty]);
+
+  /**
+   * Drops the open note's unsaved changes ("Close without saving"): no draft,
+   * no pending retry or queued save, status back to saved.
+   */
+  const discard = useCallback(() => {
+    const d = depsRef.current;
+    const id = d.activeNoteRef.current?.id;
+    if (id) {
+      cancelTimer(id);
+      queued.current.delete(id);
+      failures.current.delete(id);
+      clearDraft(id);
+      clearErrorFor(id);
+    }
+    d.setSaveStatus("saved");
   }, []);
 
-  return { saveNote, liveChange };
+  return { saveNote, liveChange, markDirty, discard, saveError };
 }

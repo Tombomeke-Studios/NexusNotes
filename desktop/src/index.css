@@ -307,6 +307,16 @@ input:focus, textarea:focus {
 .status-indicator--saved .status-dot { background: var(--success); animation: popIn 0.35s var(--easing-spring); }
 .status-indicator--saving .status-dot { background: var(--warning); animation: pulse 1.1s ease infinite; }
 .status-indicator--unsaved .status-dot { background: var(--error); }
+.status-indicator--conflict { color: var(--error); }
+.status-indicator--conflict .status-dot { background: var(--error); animation: pulse 1.6s ease infinite; }
+
+.status-indicator-hint {
+  color: var(--warning);
+}
+
+.status-indicator--conflict .status-indicator-hint {
+  color: inherit;
+}
 
 .status-stat {
   padding: 0 4px;

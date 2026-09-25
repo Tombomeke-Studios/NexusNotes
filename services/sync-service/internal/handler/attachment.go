@@ -137,6 +137,11 @@ func (h *AttachmentHandler) List(w http.ResponseWriter, r *http.Request) {
 	if atts == nil {
 		atts = []model.Attachment{}
 	}
+	// Report the type the file is actually served as, so rows stored before the
+	// allowlist (e.g. image/svg+xml) are not advertised as displayable images.
+	for i := range atts {
+		atts[i].MimeType = servedType(atts[i].MimeType)
+	}
 	writeJSON(w, http.StatusOK, atts)
 }
 

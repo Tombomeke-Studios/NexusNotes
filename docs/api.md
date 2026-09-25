@@ -254,17 +254,26 @@ Attachments are stored in S3-compatible object storage (MinIO); endpoints return
 
 Multipart upload (field `file`, max 25 MiB; anything larger is cut off with `413`) → the created `Attachment`. Write access required.
 
-The client-declared `Content-Type` is not trusted. The stored `mime_type` is decided from the file's bytes: a real PNG/JPEG/GIF/WebP/BMP is stored as that type whatever was declared, an image claim the bytes do not back up becomes `application/octet-stream`, and HTML/XML/JavaScript types are stored as `application/octet-stream`. Other declared types are kept.
+The client-declared `Content-Type` is not trusted. The stored `mime_type` is always one of this allowlist:
+
+| Stored type | When |
+|---|---|
+| `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/bmp` | The file's bytes are that image format, whatever was declared |
+| `application/pdf`, `application/zip` | The file's bytes are that format, whatever was declared |
+| `text/plain`, `text/markdown`, `text/csv` | Declared by the client (plain text has no magic bytes to check) |
+| `application/octet-stream` | Everything else |
+
+So an image, PDF or ZIP claim the bytes do not back up, and every other type (SVG, HTML, XML and every `+xml` type, JavaScript, AVIF, JSON, ...), is stored as `application/octet-stream`. Parameters such as `charset` are dropped.
 
 ### GET /api/notes/:noteId/attachments
 
-Lists a note's attachments (`Attachment[]`). Read access required.
+Lists a note's attachments (`Attachment[]`). Read access required. Each `mime_type` is the type the file is served as (see below), so an attachment stored before the allowlist with a type outside it is reported as `application/octet-stream`.
 
 ### GET /api/attachments/:id
 
 Streams the file bytes (read access). Authenticated, so inline images are loaded by the client as a blob URL rather than a bare `<img src>`.
 
-Every response carries `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; sandbox`. Raster images (PNG/JPEG/GIF/WebP/BMP) are sent `inline`; everything else, SVG included, is sent as `Content-Disposition: attachment`, and active types are always served as `application/octet-stream`.
+The `Content-Type` is the stored type if it is on the allowlist above and `application/octet-stream` otherwise, which also covers attachments stored before the allowlist existed (for example an SVG). Every response carries `X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; sandbox`. Only the five raster image types are sent `Content-Disposition: inline`; everything else is sent as `attachment`.
 
 ### DELETE /api/attachments/:id
 

@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,9 @@ RUN go mod download
 COPY . .
 # Release version reported by /health (repo-root VERSION file, passed by compose).
 ARG VERSION=dev
-RUN CGO_ENABLED=0 GOOS=linux go build \n    -ldflags "-X github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/buildinfo.Version=${VERSION}" \n    -o /sync-service ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags "-X github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/buildinfo.Version=${VERSION}" \
+    -o /sync-service ./cmd/server
 
 FROM alpine:3.20
 

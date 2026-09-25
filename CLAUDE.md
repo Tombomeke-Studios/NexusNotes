@@ -237,7 +237,7 @@ it is what it exists for:
 - PostgreSQL is the primary data store; Redis for caching and WebSocket session state.
 - MinIO provides S3-compatible attachment storage — accessed via standard AWS SDK.
 - Checksums are SHA-256, computed server-side — never trust client-provided checksums.
-- WebSocket connections are authenticated via JWT token in query parameter.
+- WebSocket connections are authenticated with a short-lived, single-use ticket from `POST /api/ws/ticket` (never the JWT in the URL), and the Origin must be on the same allowlist as CORS.
 - All timestamps are UTC, stored as `TIMESTAMPTZ` in PostgreSQL.
 - Note content is stored as raw markdown text in PostgreSQL, not as files on disk.
 - Vault paths use forward slashes regardless of client OS.

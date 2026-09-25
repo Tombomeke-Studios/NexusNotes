@@ -8,7 +8,8 @@
   Argon2id on the next successful login
 - Login performs a dummy Argon2id verification when the email is unknown, so
   response timing does not reveal whether an account exists
-- JWT tokens with HS256 signing, 24-hour expiry
+- JWT access tokens with HS256 signing, 1-hour expiry, renewed through rotating
+  refresh tokens (see [Sessions and Token Rotation](#sessions-and-token-rotation))
 - Token passed via `Authorization: Bearer <token>` header
 - WebSocket auth via a short-lived, single-use ticket — the access token never
   appears in a URL (see [WebSocket Authentication](#websocket-authentication))
@@ -30,8 +31,9 @@
 
 ### Rate limiting
 
-- `POST /api/auth/login` and `POST /api/auth/register` are rate limited per
-  client IP with an in-memory token bucket (`internal/middleware/ratelimit.go`)
+- `POST /api/auth/register`, `login`, `refresh`, `verify-email`,
+  `forgot-password` and `reset-password` are rate limited per connecting
+  address with an in-memory token bucket (`internal/middleware/ratelimit.go`)
 - Defaults: 10 requests/minute with a burst of 10; configurable via
   `AUTH_RATE_LIMIT_PER_MIN` and `AUTH_RATE_LIMIT_BURST`
 - Exceeding the limit returns `429` with a `Retry-After` header (seconds)

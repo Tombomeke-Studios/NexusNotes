@@ -33,6 +33,10 @@ func TestOriginAllowed(t *testing.T) {
 		{"listed tauri origin", "tauri://localhost", "localhost:8080", true},
 		{"listed windows tauri origin", "http://tauri.localhost", "localhost:8080", true},
 		{"same origin (proxied web build)", "https://notes.example.com", "notes.example.com", true},
+		{"same origin on a non-default port (compose web UI on :3000)", "http://localhost:3000", "localhost:3000", true},
+		// A proxy that forwards Host without its port (nginx $host) breaks
+		// same-origin matching; desktop/nginx.conf must forward $http_host.
+		{"proxy dropped the port from Host", "http://localhost:3000", "localhost", false},
 		{"foreign site", "https://evil.example", "localhost:8080", false},
 		{"lookalike of a listed origin", "http://localhost:1420.evil.example", "localhost:8080", false},
 		{"different port is a different origin", "http://localhost:9999", "localhost:8080", false},

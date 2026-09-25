@@ -270,6 +270,7 @@ cd desktop && npm test
 | [API](docs/api.md) | REST endpoints, WebSocket messages |
 | [Deployment](docs/deployment.md) | Docker, environment setup |
 | [Security](docs/security.md) | Auth, encryption, known gaps |
+| [Security policy](SECURITY.md) | How to report a vulnerability privately; supported versions |
 | [Encryption](docs/encryption.md) | E2EE design, key hierarchy, threat model |
 | [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol |
 

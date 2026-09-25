@@ -243,3 +243,4 @@ it is what it exists for:
 - Vault paths use forward slashes regardless of client OS.
 - The packaged app owns its backend: `src-tauri/src/lib.rs` runs `supervise_backend` on a background thread (waits for Docker, reuses a healthy :8080 backend, restarts the sidecar with backoff). Never block Tauri's `setup` on Docker or the backend. The sidecar gets a per-install JWT secret (`jwt-secret` in the app's local data dir, `load_or_create_secret`) — never hardcode one.
 - The frontend must not treat an unreachable or failing server as "signed out": only an explicit rejection (401/403, or 404 = account gone) clears the session — see `restoreFailureAction` in `src/lib/session.ts`.
+- Never spread a byte array into a function call (`String.fromCharCode(...bytes)`): it throws `RangeError` from ~150 KB. Use `bytesToBase64` / `base64ToBytes` from `desktop/src/lib/crypto.ts`.

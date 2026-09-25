@@ -29,11 +29,33 @@ export interface WrappedKey {
   data: string;
 }
 
-const toB64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
-const fromB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+/**
+ * Bytes per String.fromCharCode call. Spreading a whole buffer into one call
+ * overflows the engine's argument limit from ~150 KB (#275), so the binary
+ * string is built in slices; the base64 output is identical to a one-shot
+ * encode, so the stored ciphertext format is unchanged.
+ */
+const B64_CHUNK = 0x8000;
+
+/** Standard padded base64 (RFC 4648) of a byte array of any size. */
+export function bytesToBase64(bytes: Uint8Array): string {
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += B64_CHUNK) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, i + B64_CHUNK)));
+  }
+  return btoa(parts.join(""));
+}
+
+/** Inverse of bytesToBase64; throws on malformed input. */
+export function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 export function generateSalt(): string {
-  return toB64(crypto.getRandomValues(new Uint8Array(16)));
+  return bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
 }
 
 export function generateVaultKey(): Uint8Array {
@@ -42,7 +64,7 @@ export function generateVaultKey(): Uint8Array {
 
 /** Derives the 256-bit Master Key from the vault passphrase. CPU-heavy by design. */
 export async function deriveMasterKey(passphrase: string, params: KdfParams): Promise<Uint8Array> {
-  return argon2id(new TextEncoder().encode(passphrase), fromB64(params.salt), {
+  return argon2id(new TextEncoder().encode(passphrase), base64ToBytes(params.salt), {
     m: params.m,
     t: params.t,
     p: params.p,
@@ -70,26 +92,26 @@ async function aesDecrypt(iv: Uint8Array, data: Uint8Array, rawKey: Uint8Array):
 /** Wraps (encrypts) the Vault Key under the Master Key or recovery key. */
 export async function wrapKey(vaultKey: Uint8Array, wrappingKey: Uint8Array): Promise<WrappedKey> {
   const { iv, data } = await aesEncrypt(vaultKey, wrappingKey);
-  return { iv: toB64(iv), data: toB64(data) };
+  return { iv: bytesToBase64(iv), data: bytesToBase64(data) };
 }
 
 /** Unwraps the Vault Key; throws when the wrapping key is wrong (GCM tag mismatch). */
 export async function unwrapKey(wrapped: WrappedKey, wrappingKey: Uint8Array): Promise<Uint8Array> {
-  return aesDecrypt(fromB64(wrapped.iv), fromB64(wrapped.data), wrappingKey);
+  return aesDecrypt(base64ToBytes(wrapped.iv), base64ToBytes(wrapped.data), wrappingKey);
 }
 
 /** Encrypts note content; the payload is "base64(iv):base64(ciphertext+tag)". */
 export async function encryptNote(plaintext: string, vaultKey: Uint8Array): Promise<string> {
   const { iv, data } = await aesEncrypt(new TextEncoder().encode(plaintext), vaultKey);
-  return `${toB64(iv)}:${toB64(data)}`;
+  return `${bytesToBase64(iv)}:${bytesToBase64(data)}`;
 }
 
 /** Decrypts a note payload; throws on tampering or a wrong key. */
 export async function decryptNote(payload: string, vaultKey: Uint8Array): Promise<string> {
   const sep = payload.indexOf(":");
   if (sep < 0) throw new Error("malformed encrypted payload");
-  const iv = fromB64(payload.slice(0, sep));
-  const data = fromB64(payload.slice(sep + 1));
+  const iv = base64ToBytes(payload.slice(0, sep));
+  const data = base64ToBytes(payload.slice(sep + 1));
   return new TextDecoder().decode(await aesDecrypt(iv, data, vaultKey));
 }
 

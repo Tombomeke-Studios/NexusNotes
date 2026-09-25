@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 type fakeRefreshStore struct {
 	rows   map[string]*repository.RefreshToken // hash -> row
 	nextID int
+	getErr error // when set, GetByHash fails with it (simulates a database outage)
 }
 
 func newFakeRefreshStore() *fakeRefreshStore {
@@ -27,6 +29,9 @@ func (f *fakeRefreshStore) Create(_ context.Context, userID, deviceID, hash stri
 }
 
 func (f *fakeRefreshStore) GetByHash(_ context.Context, hash string) (*repository.RefreshToken, error) {
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
 	row, ok := f.rows[hash]
 	if !ok {
 		return nil, repository.ErrRefreshTokenNotFound
@@ -151,4 +156,20 @@ func TestLogout_DeletesTheToken(t *testing.T) {
 	}
 	// Unknown tokens are a silent no-op.
 	s.Logout(ctx, "never-issued")
+}
+
+// A store failure is not a rejected token: the caller must be able to tell
+// them apart, or a database outage would sign every client out.
+func TestRefresh_StoreFailureIsNotReportedAsInvalidToken(t *testing.T) {
+	store := newFakeRefreshStore()
+	store.getErr = errors.New("connection refused")
+	svc := newRefreshAuthService(store)
+
+	_, _, err := svc.Refresh(context.Background(), "any-token", "device")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if errors.Is(err, ErrInvalidRefreshToken) {
+		t.Fatalf("a store failure must not be reported as an invalid token, got %v", err)
+	}
 }

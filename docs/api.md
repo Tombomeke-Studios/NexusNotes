@@ -499,6 +499,23 @@ major.minor differs (see [Versioning](deployment.md#versioning)).
 
 ---
 
+## Metrics
+
+### GET /metrics
+
+Prometheus scrape endpoint (text exposition format). It takes **no
+authentication** and is meant for the internal network only: in the production
+compose stack the sync service publishes no port and the web front end's proxy
+forwards only `/api/`, `/ws` and `/health`, so Prometheus can scrape it inside
+the stack while it stays unreachable from outside. If you expose the sync
+service's port directly, block `/metrics` at your reverse proxy.
+
+It reports request count and latency per normalised route, the live WebSocket
+connection gauge, note create/update/delete counters and Go runtime metrics
+(see [architecture.md](architecture.md#observability)).
+
+---
+
 ## Admin
 
 ### GET /api/admin/stats

@@ -391,7 +391,11 @@ Returns `503 Service Unavailable` if Meilisearch is unreachable.
 
 ### GET /health
 
-Response (200): `{"status":"ok"}`
+Response (200): `{"status":"ok","version":"0.5.0"}`
+
+`version` is the NexusNotes release the server was built from (`dev` for a plain
+local `go build`). Clients compare it with their own version and warn when the
+major.minor differs (see [Versioning](deployment.md#versioning)).
 
 ---
 

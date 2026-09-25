@@ -1,6 +1,6 @@
 [package]
 name = "nexusnotes"
-version = "0.1.0"
+version = "0.5.0"
 description = "A markdown-first note-taking platform"
 authors = ["Tombomeke Studios"]
 edition = "2021"

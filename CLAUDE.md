@@ -158,6 +158,7 @@ is the migrations directory.
 | `internal/service/` | Business logic (sync, conflict detection, versioning) |
 | `internal/middleware/` | Auth, logging, CORS middleware |
 | `internal/ws/` | WebSocket hub and client management |
+| `internal/buildinfo/` | Build version (`-ldflags`-injected, `dev` locally) and the `/health` handler that reports it |
 | `internal/mail/` | SMTP mailer with a log-only fallback for transactional auth emails |
 | `migrations/` | SQL migration files |
 
@@ -196,6 +197,7 @@ is the migrations directory.
 | `src/lib/export.ts` | Note export (#152): front-matter strip, standalone HTML via the preview's markdown pipeline, vault zip, print-to-PDF |
 | `src/lib/zip.ts` | Dependency-free store-only ZIP writer (CRC32) used by the client-side vault export |
 | `src/lib/welcome.ts` | Sample notes seeded into a new account's first vault (onboarding) |
+| `src/lib/version.ts` | App version (`APP_VERSION`, from package.json) and `assessHealth`: classifies the server as ok / unreachable / version-mismatch from `/health` |
 | `src-tauri/capabilities/` | Tauri v2 permission capabilities (window controls) |
 
 ### Infrastructure
@@ -203,6 +205,8 @@ is the migrations directory.
 |---|---|
 | `scripts/dev-web.sh` / `scripts/dev-app.sh` | One-command dev startup (infra + backend + web/native UI); share `scripts/_stack.sh` |
 | `.devcontainer/` | Dev container: Go + Node + Postgres/Redis sharing the dev container's network (`NEXUS_DEVCONTAINER=1` makes `_stack.sh` skip host Docker) |
+| `VERSION` | Single source of truth for the release version (pre-1.0 semver); `scripts/set-version.sh` syncs it into package.json, tauri.conf.json, Cargo.toml + lockfiles |
+| `CHANGELOG.md` | Release notes per version |
 | `docker-compose.yml` | Production stack (all services) |
 | `docker-compose.dev.yml` | Development stack with hot reload |
 | `.github/workflows/validate.yml` | CI pipeline: lint, test, build |

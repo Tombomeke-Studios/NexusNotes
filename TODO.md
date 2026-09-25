@@ -7,6 +7,18 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## `feature/backend-daemon-versioning` - Everyday-use backend + release versioning
+
+> The installed .exe is only a client; the backend used to exist only while `dev-app.sh`
+> ran. Make it a resident Docker service, tell the user clearly when it is unreachable,
+> and version the product (pre-1.0) so app/server drift is detected.
+
+- [x] Introduce product versioning (v0.5.0) with app/server compatibility check (#254)
+- [ ] Run the dev backend as an auto-restarting Docker service for everyday use (#252)
+- [ ] Show a clear, persistent message when the app cannot reach the server (#253)
+
+---
+
 ## `feature/desktop-redesign` - Workspace redesign (NexusNotes Redesign.dc.html)
 
 > Full desktop UI overhaul implementing the approved Claude Design mockup

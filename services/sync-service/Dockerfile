@@ -6,7 +6,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /sync-service ./cmd/server
+# Release version reported by /health (repo-root VERSION file, passed by compose).
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build \n    -ldflags "-X github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/buildinfo.Version=${VERSION}" \n    -o /sync-service ./cmd/server
 
 FROM alpine:3.20
 

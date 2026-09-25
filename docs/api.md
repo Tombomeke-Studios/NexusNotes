@@ -255,7 +255,9 @@ Response (204)
 
 ### GET /api/notes/:noteId/versions
 
-List version history. Returns `NoteVersion[]` (newest first).
+List version history. Returns `NoteVersion[]` (newest first). Read access to
+the note's vault required: `404` when the note does not exist, `403` without
+access.
 
 ### GET /api/notes/:noteId/backlinks
 

@@ -177,8 +177,9 @@ bump is always compatible. `1.0.0` marks the first stable release.
 - `./scripts/set-version.sh 0.6.0` updates it and syncs `package.json`,
   `tauri.conf.json`, `Cargo.toml` and the lockfiles; a Vitest test fails if they drift.
 - The backend gets the version at build time (the Dockerfile's `VERSION` build arg,
-  fed from `NEXUS_VERSION`; `scripts/start-backend.sh` exports it for you) and reports
-  it in `GET /health`.
+  fed from `NEXUS_VERSION`) or, for the packaged app, by `scripts/build-sidecar.js`,
+  and reports it in `GET /health`. Local `go build`s report `dev`, which the app treats
+  as compatible.
 - The desktop app compares its own version with the server's and shows a banner
   when major.minor differs, so an old `.exe` never fails silently against a newer server.
 - Release notes live in [CHANGELOG.md](../CHANGELOG.md). Tag releases `vX.Y.Z` on `main`

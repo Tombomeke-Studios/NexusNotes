@@ -41,15 +41,24 @@ kill_pid() {
 }
 
 start_stack() {
-  log "Starting Docker infra (Postgres + Redis)…"
-  docker compose -f "$ROOT/docker-compose.dev.yml" up -d postgres redis
+  if [ "${NEXUS_DEVCONTAINER:-}" = "1" ]; then
+    # Postgres/Redis are sibling containers of the dev container (see .devcontainer/).
+    log "Waiting for Postgres…"
+    for _ in $(seq 1 30); do
+      (exec 3<>/dev/tcp/localhost/5432) 2>/dev/null && break
+      sleep 1
+    done
+  else
+    log "Starting Docker infra (Postgres + Redis)…"
+    docker compose -f "$ROOT/docker-compose.dev.yml" up -d postgres redis
 
-  log "Waiting for Postgres…"
-  for _ in $(seq 1 30); do
-    status="$(docker inspect --format '{{.State.Health.Status}}' nexusnotes-postgres-1 2>/dev/null || echo starting)"
-    [ "$status" = "healthy" ] && break
-    sleep 1
-  done
+    log "Waiting for Postgres…"
+    for _ in $(seq 1 30); do
+      status="$(docker inspect --format '{{.State.Health.Status}}' nexusnotes-postgres-1 2>/dev/null || echo starting)"
+      [ "$status" = "healthy" ] && break
+      sleep 1
+    done
+  fi
 
   log "Applying database migrations…"
   ( cd "$ROOT/services/sync-service" && go run cmd/migrate/main.go )

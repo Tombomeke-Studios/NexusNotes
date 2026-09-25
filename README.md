@@ -35,6 +35,19 @@ docker compose down -v    # stop + wipe database
 
 ## Local Development
 
+### Dev container (recommended for a reproducible setup)
+
+Open the repo in VS Code and choose **Reopen in Container** (needs Docker Desktop
+and the Dev Containers extension). It provides Go 1.25, Node 20, Postgres and
+Redis, so no machine-specific toolchain is needed. Then run `./scripts/dev-web.sh`
+inside the container and open http://localhost:1420. The native Tauri window and
+the Windows `.exe` cannot be built in the container — do that on the host (below).
+
+**Windows host, native app:** use the **MSVC** Rust toolchain
+(`rustup default stable-x86_64-pc-windows-msvc`) with the Visual Studio C++ build
+tools. The GNU toolchain (e.g. Rust from Chocolatey) fails with
+`dlltool.exe: program not found`.
+
 NexusNotes ships as a **native desktop app** (Tauri v2). All three pieces below
 must be running; the backend and infra are the same whichever way you view the
 UI.

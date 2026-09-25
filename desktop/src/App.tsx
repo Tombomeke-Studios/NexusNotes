@@ -24,7 +24,8 @@ import { Logo } from "./components/Logo";
 import { CreateVaultDialog } from "./components/Encryption/CreateVaultDialog";
 import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
 import { UnlockVaultDialog } from "./components/Encryption/UnlockVaultDialog";
-import { vaults as vaultsApi, notes as notesApi, stars as starsApi, getToken, auth, isNetworkError } from "./lib/api";
+import { vaults as vaultsApi, notes as notesApi, stars as starsApi, getToken, auth } from "./lib/api";
+import { restoreFailureAction } from "./lib/session";
 import {
   setupVaultEncryption,
   unlockVaultKey,
@@ -238,12 +239,13 @@ export default function App() {
         setServerDown(false);
         loadVaults();
       } catch (err) {
-        if (isNetworkError(err)) {
+        if (restoreFailureAction(err) === "wait") {
           setServerDown(true);
           setLoading(false);
           return;
         }
         auth.logout();
+        setServerDown(false);
       }
     }
     setLoading(false);

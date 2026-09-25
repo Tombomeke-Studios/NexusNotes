@@ -14,7 +14,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > and version the product (pre-1.0) so app/server drift is detected.
 
 - [x] Introduce product versioning (v0.5.0) with app/server compatibility check (#254)
-- [ ] Run the dev backend as an auto-restarting Docker service for everyday use (#252)
+- [x] Make the packaged app start and supervise its backend reliably (wait for Docker, retry, reuse) (#252)
 - [x] Show a clear, persistent message when the app cannot reach the server (#253)
 
 ---

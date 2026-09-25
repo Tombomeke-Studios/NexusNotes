@@ -1,0 +1,28 @@
+services:
+  dev:
+    image: mcr.microsoft.com/devcontainers/base:bookworm
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/NexusNotes:cached
+      # Host node_modules would carry Windows native binaries; keep Linux ones separate.
+      - desktop_node_modules:/workspaces/NexusNotes/desktop/node_modules
+
+  # Infra shares the dev container's network namespace so scripts/_stack.sh's
+  # localhost URLs work unchanged.
+  postgres:
+    image: postgres:16-alpine
+    network_mode: service:dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=nexus
+      - POSTGRES_PASSWORD=nexus_dev
+      - POSTGRES_DB=nexus_notes
+
+  redis:
+    image: redis:7-alpine
+    network_mode: service:dev
+
+volumes:
+  desktop_node_modules:
+  postgres_data:

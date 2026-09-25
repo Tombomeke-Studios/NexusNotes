@@ -40,6 +40,15 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## `feature/devcontainer` - Reproducible dev environment
+
+> A dev container so setup no longer depends on the machine (toolchain drift caused a
+> Windows `dlltool` build failure on a second machine).
+
+- [x] Add a dev container (Go, Node, Postgres, Redis) that runs `dev-web.sh` out of the box (#250)
+
+---
+
 ## `feature/graph-view` - Graph view (2D and 3D interactive knowledge map) (#216)
 
 > Notes are rendered as nodes, wiki-links as directed edges. The graph view is one of

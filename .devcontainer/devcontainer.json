@@ -1,0 +1,19 @@
+{
+  "name": "NexusNotes",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspaces/NexusNotes",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.25" },
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "containerEnv": { "NEXUS_DEVCONTAINER": "1" },
+  "forwardPorts": [1420, 8080, 5432, 6379],
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/NexusNotes && sudo chown vscode:vscode desktop/node_modules && cd desktop && npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": ["golang.go", "dbaeumer.vscode-eslint", "vitest.explorer"]
+    }
+  }
+}

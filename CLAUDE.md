@@ -202,6 +202,7 @@ is the migrations directory.
 | Path | Contents |
 |---|---|
 | `scripts/dev-web.sh` / `scripts/dev-app.sh` | One-command dev startup (infra + backend + web/native UI); share `scripts/_stack.sh` |
+| `.devcontainer/` | Dev container: Go + Node + Postgres/Redis sharing the dev container's network (`NEXUS_DEVCONTAINER=1` makes `_stack.sh` skip host Docker) |
 | `docker-compose.yml` | Production stack (all services) |
 | `docker-compose.dev.yml` | Development stack with hot reload |
 | `.github/workflows/validate.yml` | CI pipeline: lint, test, build |

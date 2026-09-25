@@ -31,7 +31,7 @@ const (
 type RefreshStore interface {
 	Create(ctx context.Context, userID, deviceID, tokenHash string, expiresAt time.Time) error
 	GetByHash(ctx context.Context, tokenHash string) (*repository.RefreshToken, error)
-	MarkUsed(ctx context.Context, id string) error
+	Rotate(ctx context.Context, oldID, userID, deviceID, newHash string, expiresAt time.Time) error
 	Delete(ctx context.Context, id string) error
 	DeleteByUserDevice(ctx context.Context, userID, deviceID string) error
 }
@@ -46,16 +46,24 @@ func hashRefreshToken(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// newRefreshTokenValue returns a fresh random refresh token (256 bits).
+func newRefreshTokenValue() (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate refresh token: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
 // IssueRefreshToken mints and stores a new refresh token for a device chain.
 func (s *AuthService) IssueRefreshToken(ctx context.Context, userID, deviceID string) (string, error) {
 	if s.refreshStore == nil {
 		return "", errors.New("refresh store not configured")
 	}
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", fmt.Errorf("generate refresh token: %w", err)
+	token, err := newRefreshTokenValue()
+	if err != nil {
+		return "", err
 	}
-	token := base64.RawURLEncoding.EncodeToString(raw)
 	expiry := time.Now().UTC().Add(refreshTokenTTL)
 	if err := s.refreshStore.Create(ctx, userID, deviceID, hashRefreshToken(token), expiry); err != nil {
 		return "", err
@@ -94,16 +102,25 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken, deviceID string
 		return "", "", ErrInvalidRefreshToken
 	}
 
-	if err := s.refreshStore.MarkUsed(ctx, stored.ID); err != nil {
-		return "", "", fmt.Errorf("rotate refresh token: %w", err)
-	}
 	accessToken, err = s.generateToken(stored.UserID)
 	if err != nil {
 		return "", "", err
 	}
-	newRefreshToken, err = s.IssueRefreshToken(ctx, stored.UserID, stored.DeviceID)
+	newRefreshToken, err = newRefreshTokenValue()
 	if err != nil {
 		return "", "", err
+	}
+	expiry := time.Now().UTC().Add(refreshTokenTTL)
+	err = s.refreshStore.Rotate(ctx, stored.ID, stored.UserID, stored.DeviceID, hashRefreshToken(newRefreshToken), expiry)
+	if errors.Is(err, repository.ErrRefreshTokenReused) {
+		// Lost a race with another rotation of the same token: treat it as reuse.
+		slog.Warn("refresh token reused during rotation; revoking device chain",
+			"user_id", stored.UserID, "device_id", stored.DeviceID)
+		_ = s.refreshStore.DeleteByUserDevice(ctx, stored.UserID, stored.DeviceID)
+		return "", "", ErrInvalidRefreshToken
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("rotate refresh token: %w", err)
 	}
 	return accessToken, newRefreshToken, nil
 }

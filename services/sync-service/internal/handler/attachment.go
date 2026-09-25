@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -55,7 +56,15 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Cap what is read at all (the file plus multipart framing) so an oversized
+	// upload is cut off instead of being streamed to a temp file first.
+	r.Body = http.MaxBytesReader(w, r.Body, maxAttachmentBytes+(1<<20))
 	if err := r.ParseMultipartForm(maxAttachmentBytes); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "file exceeds the 25 MiB limit")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid upload")
 		return
 	}
@@ -71,10 +80,14 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contentType := header.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
+	// The declared type is untrusted: decide the stored type from the bytes.
+	head := make([]byte, 512)
+	n, _ := io.ReadFull(file, head)
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid upload")
+		return
 	}
+	contentType := resolveUploadType(header.Header.Get("Content-Type"), head[:n])
 	// Key namespaces objects by vault; the random id avoids collisions and
 	// keeps the original filename out of the storage path.
 	key := fmt.Sprintf("%s/%s%s", note.VaultID, uuid.New().String(), filepath.Ext(header.Filename))
@@ -152,7 +165,7 @@ func (h *AttachmentHandler) Download(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = obj.Close() }()
 
-	w.Header().Set("Content-Type", att.MimeType)
+	setAttachmentHeaders(w.Header(), att.MimeType, att.Filename)
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	_, _ = io.Copy(w, obj)
 }

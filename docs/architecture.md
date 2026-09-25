@@ -88,7 +88,10 @@ sequenceDiagram
 The comparison and the write happen in one database transaction that holds a row lock on
 the note. Two devices saving at the same moment with the same previous checksum therefore
 queue up: the first wins, and the second sees the new checksum and receives the `409`
-instead of silently overwriting the first device's edit.
+instead of silently overwriting the first device's edit. The lock is the weakest one that
+serialises writers (it does not block other notes' links from pointing at this note), a
+waiting writer gives up after a few seconds instead of piling up, and the whole update runs
+on the transaction's own connection so queued requests can never starve it of one.
 
 ### Search indexing
 

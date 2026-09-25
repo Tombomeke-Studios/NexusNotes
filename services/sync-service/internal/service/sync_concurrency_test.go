@@ -21,6 +21,12 @@ import (
 // points at a throwaway schema with all migrations applied, so the test never
 // touches real data. Skipped when no database is configured (plain `go test`).
 func newIsolatedDB(t *testing.T) *pgxpool.Pool {
+	return newIsolatedDBWithConns(t, 16)
+}
+
+// newIsolatedDBWithConns is newIsolatedDB with an explicit pool size, used to
+// prove the update path cannot starve itself of connections.
+func newIsolatedDBWithConns(t *testing.T, maxConns int32) *pgxpool.Pool {
 	t.Helper()
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
@@ -49,7 +55,7 @@ func newIsolatedDB(t *testing.T) *pgxpool.Pool {
 		t.Fatalf("parse config: %v", err)
 	}
 	cfg.ConnConfig.RuntimeParams["search_path"] = schema + ",public"
-	cfg.MaxConns = 16
+	cfg.MaxConns = maxConns
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		admin.Close()
@@ -79,7 +85,7 @@ func newTestSync(pool *pgxpool.Pool) *SyncService {
 	)
 }
 
-func seedNote(t *testing.T, pool *pgxpool.Pool, svc *SyncService, content string) *model.Note {
+func seedVault(t *testing.T, pool *pgxpool.Pool) string {
 	t.Helper()
 	ctx := context.Background()
 	now := time.Now().UTC()
@@ -94,11 +100,21 @@ func seedNote(t *testing.T, pool *pgxpool.Pool, svc *SyncService, content string
 	if err := repository.NewVaultRepo(pool).Create(ctx, vault); err != nil {
 		t.Fatalf("create vault: %v", err)
 	}
-	note, err := svc.CreateNote(ctx, vault.ID, "Note", "note.md", content, "device-a", "")
+	return vault.ID
+}
+
+func seedNoteIn(t *testing.T, svc *SyncService, vaultID, title, content string) *model.Note {
+	t.Helper()
+	note, err := svc.CreateNote(context.Background(), vaultID, title, title+".md", content, "device-a", "")
 	if err != nil {
-		t.Fatalf("create note: %v", err)
+		t.Fatalf("create note %s: %v", title, err)
 	}
 	return note
+}
+
+func seedNote(t *testing.T, pool *pgxpool.Pool, svc *SyncService, content string) *model.Note {
+	t.Helper()
+	return seedNoteIn(t, svc, seedVault(t, pool), "Note", content)
 }
 
 func TestUpdateNote_RejectsStalePrevChecksum(t *testing.T) {
@@ -178,5 +194,82 @@ func TestUpdateNote_ConcurrentSavesWithSamePrevChecksumOnlyOneWins(t *testing.T)
 	}
 	if len(versions) != 2 { // the initial version plus the single winning edit
 		t.Fatalf("expected 2 versions (initial + winner), got %d", len(versions))
+	}
+}
+
+func TestUpdateNote_UnknownNoteIsNotFound(t *testing.T) {
+	pool := newIsolatedDB(t)
+	svc := newTestSync(pool)
+	_, _, err := svc.UpdateNote(context.Background(), NoteUpdate{
+		NoteID: uuid.New().String(), Content: "x", Title: "x", Path: "x.md", PrevChecksum: "whatever",
+	})
+	if !errors.Is(err, ErrNoteNotFound) {
+		t.Fatalf("expected ErrNoteNotFound for a missing (or concurrently deleted) note, got %v", err)
+	}
+}
+
+// Two notes that link to each other, saved at the same moment, must not
+// deadlock: resolving a link's target takes a key-share lock on the other note,
+// which a full FOR UPDATE row lock would conflict with.
+func TestUpdateNote_MutuallyLinkedNotesSavedConcurrentlyDoNotDeadlock(t *testing.T) {
+	pool := newIsolatedDB(t)
+	svc := newTestSync(pool)
+	vaultID := seedVault(t, pool)
+	a := seedNoteIn(t, svc, vaultID, "A", "see [[B]]")
+	b := seedNoteIn(t, svc, vaultID, "B", "see [[A]]")
+
+	for round := 0; round < 25; round++ {
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		next := make([]*model.Note, 2)
+		for i, n := range []*model.Note{a, b} {
+			wg.Add(1)
+			go func(i int, n *model.Note) {
+				defer wg.Done()
+				other := map[int]string{0: "B", 1: "A"}[i]
+				next[i], _, errs[i] = svc.UpdateNote(context.Background(), NoteUpdate{
+					NoteID: n.ID, Content: fmt.Sprintf("see [[%s]] round %d", other, round),
+					Title: n.Title, Path: n.Path, PrevChecksum: n.Checksum, DeviceID: "d",
+				})
+			}(i, n)
+		}
+		wg.Wait()
+		for i, err := range errs {
+			if err != nil {
+				t.Fatalf("round %d: save of note %d failed: %v", round, i, err)
+			}
+		}
+		a, b = next[0], next[1]
+	}
+}
+
+// With a tiny pool, saves queued on the row lock must not hold every
+// connection while the lock holder waits for one (a self-inflicted hang).
+func TestUpdateNote_SmallPoolDoesNotStarve(t *testing.T) {
+	pool := newIsolatedDBWithConns(t, 2)
+	svc := newTestSync(pool)
+	note := seedNote(t, pool, svc, "original")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var wg sync.WaitGroup
+	errs := make(chan error, 4)
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, _, err := svc.UpdateNote(ctx, NoteUpdate{
+				NoteID: note.ID, Content: fmt.Sprintf("w%d", i), Title: "Note", Path: "note.md",
+				PrevChecksum: note.Checksum, DeviceID: "d",
+			})
+			if err != nil && !errors.Is(err, ErrConflict) {
+				errs <- err
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatalf("save failed instead of winning or conflicting (pool starvation?): %v", err)
 	}
 }

@@ -224,6 +224,12 @@ cost of server-side file tree functionality.
 - Use the Web Crypto API (`crypto.subtle`) for AES-256-GCM, SHA-256 and
   randomness — native and fast. **Argon2id is not part of Web Crypto**; use the
   audited, dependency-free `@noble/hashes` implementation for key derivation.
+- All base64 conversion goes through `bytesToBase64` / `base64ToBytes` in
+  `src/lib/crypto.ts`, which build the binary string in 32 KiB slices.
+  Spreading a whole buffer into one `String.fromCharCode(...)` call exceeds the
+  JS engine's argument limit from roughly 150 KB, which made long encrypted
+  notes unsaveable (#275). The output is standard padded base64, so the stored
+  payload format is the same at every note size.
 - Never transmit the Master Key to the server and never write it to disk.
 - Hold the Vault Key in memory for the session duration; clear it on lock or logout.
 - Provide a "Lock vault" button that clears the Vault Key from memory and requires

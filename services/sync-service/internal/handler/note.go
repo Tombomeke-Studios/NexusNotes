@@ -188,6 +188,15 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The note must live in the vault named by the path; otherwise the delete
+	// would be a silent no-op in the database yet still drop the note from the
+	// search index and broadcast a deletion for it.
+	note, err := h.syncService.GetNote(r.Context(), noteID)
+	if err != nil || note.VaultID != vaultID {
+		writeError(w, http.StatusNotFound, "note not found")
+		return
+	}
+
 	if err := h.syncService.DeleteNote(r.Context(), noteID, vaultID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete note")
 		return

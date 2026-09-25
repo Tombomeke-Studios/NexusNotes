@@ -255,8 +255,15 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 
 	user, err := h.userRepo.GetByID(r.Context(), userID)
-	if err != nil {
+	if errors.Is(err, repository.ErrUserNotFound) {
+		// The account is gone: clients treat this as "sign out".
 		writeError(w, http.StatusNotFound, "user not found")
+		return
+	}
+	if err != nil {
+		// Anything else (e.g. the database is down) must not look like a
+		// rejected session, or clients would sign the user out.
+		writeError(w, http.StatusInternalServerError, "failed to load user")
 		return
 	}
 

@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom/vitest";
-// @ts-expect-error -- @types/node is not a dependency; this file only runs under vitest (Node)
 import { webcrypto } from "node:crypto";
 
 // jsdom has no crypto.subtle; the E2EE crypto core needs real WebCrypto.

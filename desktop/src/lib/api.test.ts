@@ -122,6 +122,31 @@ describe("access token refresh on 401 (#49)", () => {
     window.removeEventListener("nexus:logout", logoutListener);
   });
 
+  it("keeps the session when the refresh cannot run (server unreachable or failing)", async () => {
+    for (const refreshResult of ["network", 500] as const) {
+      setToken("stale-token");
+      localStorage.setItem("nexus_refresh", "refresh-1");
+      const fetchMock = vi.fn().mockImplementation((url: string) => {
+        if (String(url).includes("/api/auth/refresh")) {
+          if (refreshResult === "network") return Promise.reject(new TypeError("Failed to fetch"));
+          return Promise.resolve({ ok: false, status: 500, statusText: "s", json: () => Promise.resolve({ error: "db down" }) });
+        }
+        return Promise.resolve({ ok: false, status: 401, statusText: "s", json: () => Promise.resolve({ error: "expired" }) });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const logoutListener = vi.fn();
+      window.addEventListener("nexus:logout", logoutListener);
+
+      const err = await notes.list("v1").catch((e) => e);
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).status).toBe(503);
+      expect(logoutListener).not.toHaveBeenCalled();
+      expect(getToken()).toBe("stale-token");
+      expect(localStorage.getItem("nexus_refresh")).toBe("refresh-1");
+      window.removeEventListener("nexus:logout", logoutListener);
+    }
+  });
+
   it("logs out when the refresh itself is rejected", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) => {
       const isRefresh = String(url).includes("/api/auth/refresh");

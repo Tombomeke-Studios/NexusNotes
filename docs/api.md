@@ -63,6 +63,12 @@ Errors: `401` when the token is rejected (unknown, expired, reused, other device
 
 Invalidates the presented refresh token (`{refresh_token}`); the token itself is the credential. Always `204`.
 
+### GET /api/auth/me
+
+Requires `Authorization: Bearer <token>`. Returns the authenticated user as a
+`User` (see [Models](#user)); the desktop app calls it on startup to restore
+the signed-in session. `404` when the account behind the token no longer exists.
+
 ### GET /api/auth/export
 
 Requires `Authorization: Bearer <token>`. Streams a zip containing all data
@@ -459,6 +465,18 @@ major.minor differs (see [Versioning](deployment.md#versioning)).
 ---
 
 ## Models
+
+### User
+| Field | Type | Description |
+|---|---|---|
+| id | string | UUID |
+| email | string | Sign-in address |
+| display_name | string | Name shown in the UI |
+| email_verified | boolean | Whether the address has been confirmed |
+| created_at | string | ISO 8601 |
+| updated_at | string | ISO 8601 |
+
+The password hash is never serialised.
 
 ### Note
 | Field | Type | Description |

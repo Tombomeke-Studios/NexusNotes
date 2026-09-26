@@ -190,6 +190,7 @@ it is what it exists for:
 | `src/components/Editor/` | Markdown editor with live preview |
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
 | `src/components/RightPanel/` | Right panel: outline, backlinks, note info |
+| `src/components/Search/Snippet.tsx` + `src/lib/snippet.ts` | Renders search snippets as text with `<em>` highlights (snippets are raw note text; never render them as HTML) |
 | `src/components/CommandPalette.tsx` | Unified palette: quick-open notes + `>` command mode |
 | `src/components/Encryption/` | E2EE vault UI: encryption opt-in (EncryptionSetup), new-vault dialog, one-time recovery-code dialog, unlock dialog |
 | `src/lib/api.ts` | API client for sync service |

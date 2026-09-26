@@ -493,6 +493,10 @@ not in one of the accepted formats; `404` when the caller cannot read the vault.
 ]
 ```
 
+`snippet` is plain note text in which only `<em>` / `</em>` mark the match. It can contain any
+markup the note contains, so clients must render it as text (the desktop app does this in
+`components/Search/Snippet.tsx`), never as HTML. The same applies to the snippets below.
+
 When Meilisearch is not configured, unreachable or returns an error, the
 endpoint does **not** fail: it falls back to the database search behind
 `GET /api/vaults/:vaultId/search` (using `q`, or `tag` as a plain search term

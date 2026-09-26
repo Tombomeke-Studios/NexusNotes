@@ -7,18 +7,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
-## `feature/backend-daemon-versioning` - Everyday-use backend + release versioning
-
-> The installed .exe is only a client; the backend used to exist only while `dev-app.sh`
-> ran. Make it a resident Docker service, tell the user clearly when it is unreachable,
-> and version the product (pre-1.0) so app/server drift is detected.
-
-- [x] Introduce product versioning (v0.5.0) with app/server compatibility check (#254)
-- [x] Make the packaged app start and supervise its backend reliably (wait for Docker, retry, reuse) (#252)
-- [x] Show a clear, persistent message when the app cannot reach the server (#253)
-
----
-
 ## `feature/desktop-redesign` - Workspace redesign (NexusNotes Redesign.dc.html)
 
 > Full desktop UI overhaul implementing the approved Claude Design mockup
@@ -37,30 +25,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add vault switcher menu and note context menu (#102)
 - [x] Add settings modal with appearance, sync, and shortcuts tabs (#103)
 - [x] Convert graph view to a workspace tab with redesigned styling (#104)
-
----
-
-## `fix/security-audit` - TOP PRIORITY: verified audit findings
-
-> Found by the skill-assisted audit and re-verified in the code. Fix these before any new feature
-> work; each is a small, separate branch/PR (`priority:high`).
-
-- [x] Fix lost update when two saves race on the same note (#256)
-- [x] Limit request body sizes on all JSON endpoints (#257)
-- [ ] WebSocket: validate the Origin and stop passing the JWT in the URL (#258)
-- [x] Harden attachment downloads against stored XSS (#259)
-- [ ] Packaged app: replace the hardcoded JWT secret and database password (#260)
-- [ ] Add LICENSE, SECURITY.md and CONTRIBUTING.md (#261)
-- [ ] docs/api.md: document /api/auth/me and /metrics, merge the duplicate Search sections (#262)
-- [ ] Desktop: a save finishing must not mark newer edits as saved, and save errors need handling (#263)
-
-Found during review of the fixes above:
-
-- [ ] E2EE: encrypting notes larger than ~150 KB throws RangeError (#275)
-- [ ] Closing after a failed save loses unsaved text in encrypted vaults (#283)
-- [ ] Check vault access on note version history and note delete (PR #281)
-- [ ] Escape search filter values and validate search parameters (PR #282)
-- [ ] Restrict linked-file URL fetches to public addresses (PR #284)
 
 ---
 
@@ -105,7 +69,7 @@ Found during review of the fixes above:
 - [ ] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths
 - [ ] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed
 - [ ] E2E: replace `waitForTimeout` waits with real signals
-- [ ] Settings: show the app and server versions instead of a hard-coded string
+- [x] Settings: show the app and server versions instead of a hard-coded string (PR #255)
 - [ ] Remark plugins: replace `push(...expand())` spreads with loops (overflow on pathological text nodes)
 - [ ] Attachment download chip: delay `revokeObjectURL` so WebKit downloads are not cancelled; verify in the packaged app
 - [ ] Two windows refreshing at once trip refresh-token reuse detection; add a cross-window lock or a short grace period
@@ -805,6 +769,29 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `fix/security-audit` - Verified audit findings (PRs #270-#287)
+
+- [x] Atomic note update: row lock without deadlocks or pool starvation, 404/503 mapping (#256, PR #271)
+- [x] Request body caps on every JSON endpoint (#257, PR #270)
+- [x] WebSocket single-use tickets, Origin allowlist shared with CORS, per-user ticket cap (#258, PR #273)
+- [x] Attachments stored and served from a passive-type allowlist, forced blob types, download chip (#259, PR #272)
+- [x] Packaged app: per-install JWT secret, loopback-only backend and dev compose ports (#260, PR #278)
+- [x] LICENSE (PolyForm Shield 1.0.0), SECURITY.md, CONTRIBUTING.md; private vulnerability reporting enabled (#261, PR #276)
+- [x] API reference covers every route (#262, PR #274)
+- [x] Desktop save pipeline: edit versions, per-note serialisation, conflict state, fail-closed e2ee, retries (#263, PR #280)
+- [x] E2EE base64 in chunks so large notes encrypt (#275, PR #279)
+- [x] Close and sign-out never drop unconfirmed text silently (#283, PR #286)
+- [x] Access checks on note version history and note delete (PR #287, formerly #281)
+- [x] Search filter escaping and parameter validation (PR #282)
+- [x] Linked-file fetches restricted to public addresses (PR #284)
+- [x] Search snippets rendered as text, not HTML (PR #285)
+
+### `feature/backend-daemon-versioning` - Everyday-use backend + versioning (PR #255)
+
+- [x] Supervised packaged backend: waits for Docker, retries, reuses a healthy backend, restarts with backoff (#252)
+- [x] Connection banner and waiting screen; the session survives an unreachable or failing server (#253)
+- [x] Release versioning from v0.5.0: VERSION file, set-version script, /health version, mismatch warning (#254)
 
 ### `feature/attachments` - Note attachments (PR #214)
 

@@ -195,6 +195,8 @@ it is what it exists for:
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
 | `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror |
+| `src/lib/useCloseGuard.ts` | Closing a tab/window with unsaved text: waits for the save result, keeps the dialog open with the reason on failure (#283) |
+| `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing) |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |

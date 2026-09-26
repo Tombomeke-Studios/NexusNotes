@@ -659,10 +659,25 @@ input:focus, textarea:focus {
   margin-bottom: 18px;
 }
 
+.confirm-detail {
+  display: block;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(243, 139, 168, 0.08);
+  color: var(--error);
+  font-size: 12px;
+}
+
 .confirm-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.confirm-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .confirm-btn {

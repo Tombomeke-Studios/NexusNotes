@@ -289,3 +289,10 @@ feature/<topic>  →  dev  →  staging  →  main (production)
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor workflow and
 [CLAUDE.md](CLAUDE.md) for the full rules.
+
+## License
+
+NexusNotes is **source-available** under the [PolyForm Shield License 1.0.0](LICENSE).
+In short: you may use, modify and share it (personally or inside a company), but you may
+not use it to offer a product that competes with NexusNotes, whether sold or free. The
+[LICENSE](LICENSE) text is what counts; this summary is not legal advice.

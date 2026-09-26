@@ -894,6 +894,58 @@ describe("useNoteSave — unknown vault encryption fails closed", () => {
   });
 });
 
+describe("useNoteSave — unconfirmed text in notes that are no longer open (#283)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  /** n1's save fails while offline, then the user switches to n2. */
+  async function failThenSwitch(hook: ReturnType<typeof setup>["hook"]) {
+    act(() => hook.result.current.liveChange("NEW text"));
+    await act(() => hook.result.current.saveNote("NEW text"));
+    act(() => hook.result.current.openNote(makeNote({ id: "n2", content: "other", checksum: "d0" })));
+  }
+
+  it("knows a note left behind still holds unconfirmed text", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { hook } = setup({ keepsDrafts: () => false });
+    expect(hook.result.current.hasUnconfirmed()).toBe(false);
+
+    await failThenSwitch(hook);
+
+    expect(hook.result.current.hasUnconfirmed()).toBe(true);
+  });
+
+  it("saveAll resends every note's unconfirmed text and reports the failure", async () => {
+    update.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { hook } = setup({ keepsDrafts: () => false });
+    await failThenSwitch(hook);
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveAll(false);
+    });
+
+    expect(update).toHaveBeenLastCalledWith("n1", "Note", "", "NEW text", "c0", undefined);
+    expect(outcome).toMatchObject({ ok: false, error: { noteId: "n1", kind: "network" } });
+    expect(hook.result.current.hasUnconfirmed()).toBe(true);
+  });
+
+  it("saveAll succeeds once every note's text is confirmed", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue(savedNote("c1"));
+    const { hook } = setup({ keepsDrafts: () => false });
+    await failThenSwitch(hook);
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveAll(false);
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    expect(hook.result.current.hasUnconfirmed()).toBe(false);
+  });
+});
+
 describe("useNoteSave — save outcome (#283)", () => {
   beforeEach(() => {
     vi.useFakeTimers();

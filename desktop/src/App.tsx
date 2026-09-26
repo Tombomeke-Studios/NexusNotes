@@ -199,6 +199,8 @@ export default function App() {
 
   const {
     saveNote: handleSaveNote,
+    saveAll: saveAllNotes,
+    hasUnconfirmed,
     liveChange: handleLiveChange,
     markDirty,
     discard: discardUnsaved,
@@ -490,12 +492,25 @@ export default function App() {
     downloadFile(`${safeFilename(vault.name)}.zip`, "application/zip", vaultToZip(noteListRef.current));
   }, []);
 
-  const handleSignOut = useCallback(() => {
+  const signOutNow = useCallback(() => {
     auth.logout();
     setUser(null);
     vaultKeySession.clear();
     syncClient.disconnect();
   }, []);
+
+  // Text the server doesn't have yet, in the open note or any note left
+  // behind (in-memory e2ee text has no draft to fall back on).
+  const hasUnsavedWork = useCallback(
+    () => isDirtyStatus(saveStatusRef.current) || hasUnconfirmed(),
+    [hasUnconfirmed],
+  );
+
+  // Signing out drops all unsaved text, so it asks first (same dialog as close).
+  const handleSignOut = useCallback(() => {
+    if (hasUnsavedWork()) setClosePrompt({ kind: "signout" });
+    else signOutNow();
+  }, [hasUnsavedWork, signOutNow]);
 
   // Optimistic star toggle; reverts when the server call fails (#151).
   const handleToggleStar = useCallback(async (noteId: string) => {
@@ -999,14 +1014,16 @@ export default function App() {
     }
   }, []);
 
-  // Finish a confirmed close: the whole window, or just the note tab.
+  // Finish a confirmed close: the note tab, the session, or the whole window.
   const finishClose = useCallback(async (prompt: ClosePrompt) => {
     if (prompt.kind === "tab") {
       closeTabRef.current(prompt.key);
+    } else if (prompt.kind === "signout") {
+      signOutNow();
     } else {
       await closeWindowNow();
     }
-  }, [closeWindowNow]);
+  }, [closeWindowNow, signOutNow]);
 
   // Nothing closes over unsaved text until the server confirmed the save; a
   // failed save keeps the dialog open with the reason (#283). "Close without
@@ -1015,7 +1032,12 @@ export default function App() {
   const closeGuard = useCloseGuard({
     prompt: closePrompt,
     setPrompt: setClosePrompt,
-    save: () => handleSaveNote(editorContentRef.current),
+    // Tabs only concern the open note; window close and sign-out also save
+    // the unconfirmed text of notes the user has left.
+    save: () =>
+      closePrompt?.kind === "tab"
+        ? handleSaveNote(editorContentRef.current)
+        : saveAllNotes(isDirtyStatus(saveStatusRef.current)),
     discard: discardUnsaved,
     finishClose,
   });
@@ -1026,7 +1048,7 @@ export default function App() {
   // Save / Don't save / Cancel dialog (like Word).
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirtyStatus(saveStatusRef.current)) {
+      if (hasUnsavedWork()) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -1043,7 +1065,9 @@ export default function App() {
           // routes through requestClose() + destroy() and does not come here.
           // Save first and close once it's confirmed; a failed or still-pending
           // save opens the close dialog with the reason instead of closing.
-          if (isDirtyStatus(saveStatusRef.current)) {
+          // Notes the user has left count too: their failed save would
+          // otherwise vanish with the window.
+          if (hasUnsavedWork()) {
             event.preventDefault();
             await saveThenClose({ kind: "window" });
           }
@@ -1055,17 +1079,18 @@ export default function App() {
       window.removeEventListener("beforeunload", onBeforeUnload);
       unlisten?.();
     };
-  }, [saveThenClose]);
+  }, [saveThenClose, hasUnsavedWork]);
 
   // The visible window close button routes through here (a real React click) so
-  // the unsaved-changes dialog renders reliably; a clean note closes at once.
+  // the unsaved-changes dialog renders reliably; with nothing unsaved in any
+  // note it closes at once.
   const requestClose = useCallback(() => {
-    if (isDirtyStatus(saveStatusRef.current)) {
+    if (hasUnsavedWork()) {
       setClosePrompt({ kind: "window" });
     } else {
       closeWindowNow();
     }
-  }, [closeWindowNow]);
+  }, [closeWindowNow, hasUnsavedWork]);
 
   // Closing a note tab warns (like Visual Studio) when that note is unsaved.
   const requestCloseTab = useCallback((key: string) => {
@@ -1479,7 +1504,11 @@ export default function App() {
 
       {closePrompt && (
         <CloseConfirmDialog
-          noteTitle={activeNote ? activeNote.title : null}
+          noteTitle={
+            (closeGuard.error && noteList.find((n) => n.id === closeGuard.error?.noteId)?.title) ??
+            activeNote?.title ??
+            null
+          }
           kind={closePrompt.kind}
           saving={closeGuard.saving}
           error={closeGuard.error}

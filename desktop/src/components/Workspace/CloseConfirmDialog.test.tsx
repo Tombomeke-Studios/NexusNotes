@@ -62,6 +62,16 @@ describe("CloseConfirmDialog", () => {
     expect(screen.getByText("Couldn't save this note: vault is locked")).toBeInTheDocument();
   });
 
+  it("asks before signing out with unsaved changes", () => {
+    const h = renderDialog({ kind: "signout" });
+
+    expect(screen.getByText(/before signing out/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save & sign out" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign out without saving" }));
+    expect(h.onSave).toHaveBeenCalledTimes(1);
+    expect(h.onDiscard).toHaveBeenCalledTimes(1);
+  });
+
   it("warns that closing without saving discards the text", () => {
     renderDialog({ error: error("network") });
     expect(screen.getByRole("alertdialog")).toHaveTextContent(/closing without saving discards/i);

@@ -63,7 +63,6 @@ single request. Attachment uploads are capped separately at 25 MiB.
 
 | Gap | Severity | Plan |
 |---|---|---|
-| No refresh token rotation | Medium | Add in Phase 2 |
 | No HTTPS in dev Docker stack | Low | Add Nginx with TLS for production compose |
 | Passwords: no complexity beyond length | Low | Consider zxcvbn integration |
 

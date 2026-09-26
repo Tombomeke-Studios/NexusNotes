@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { notes as notesApi, ApiError } from "./api";
 import { saveDraft, clearDraft } from "./drafts";
 import type { Note } from "./types";
@@ -39,6 +41,19 @@ export function classifySaveError(err: unknown): SaveErrorKind {
   // fetch() rejects with a TypeError when the request never got a response.
   return err instanceof TypeError ? "network" : "failed";
 }
+
+/**
+ * The checksum the server will store for an upload: the client's plaintext
+ * checksum for e2ee vaults, otherwise SHA-256 of the sent content (mirrors
+ * resolveChecksum in the sync service). Synchronous so it is known before
+ * the request goes out.
+ */
+function expectedChecksum(payload: string, clientChecksum: string | undefined): string {
+  return clientChecksum ?? bytesToHex(sha256(utf8ToBytes(payload)));
+}
+
+/** How many of its own recent checksums the hook remembers per note. */
+const OWN_CHECKSUM_HISTORY = 20;
 
 export const BASE_RETRY_DELAY_MS = 1000;
 export const MAX_RETRY_DELAY_MS = 30_000;
@@ -125,6 +140,14 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const generation = useRef(0);
   /** The newest save requested per note, kept until the server confirms it. */
   const lastRequests = useRef(new Map<string, SaveRequest>());
+  /** Checksums of content this client sent recently, per note: recognises our own echoes. */
+  const ownChecksums = useRef(new Map<string, string[]>());
+
+  const rememberOwn = (id: string, checksum: string) => {
+    const list = ownChecksums.current.get(id) ?? [];
+    if (!list.includes(checksum)) list.push(checksum);
+    ownChecksums.current.set(id, list.slice(-OWN_CHECKSUM_HISTORY));
+  };
 
   const versionOf = (id: string) => versions.current.get(id) ?? 0;
   const isActive = (id: string) => depsRef.current.activeNoteRef.current?.id === id;
@@ -148,6 +171,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     const { note, content, version } = req;
     const d = depsRef.current;
     transitions.current.set(note.id, { from: base, to: updated.checksum });
+    rememberOwn(note.id, updated.checksum);
     failures.current.delete(note.id);
     clearErrorFor(note.id);
     const saved = { ...updated, content };
@@ -210,6 +234,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
     }
     if (stale()) return;
     const base = baseChecksum(note);
+    // Before sending: the server pushes note:updated before it answers the PUT.
+    rememberOwn(note.id, expectedChecksum(payload, checksum));
     let updated: Awaited<ReturnType<typeof notesApi.update>>;
     try {
       updated = await notesApi.update(note.id, note.title, note.path, payload, base, checksum);
@@ -317,6 +343,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     timers.current.clear();
     queued.current.clear();
     lastRequests.current.clear();
+    ownChecksums.current.clear();
     versions.current.clear();
     requested.current.clear();
     transitions.current.clear();
@@ -387,5 +414,25 @@ export function useNoteSave(deps: NoteSaveDeps) {
     [],
   );
 
-  return { saveNote, liveChange, markDirty, discard, unsavedContent, saveError };
+  /**
+   * Decides whether a pushed note:updated may be merged into the open note
+   * while it holds unsaved text. Yes when it is the echo of one of our own
+   * saves or matches the version the local text is based on. Otherwise
+   * another device changed the note: it switches to "conflict" and the
+   * caller must keep the local text and base checksum, so the next save gets
+   * a 409 instead of silently overwriting that edit.
+   */
+  const acceptRemoteUpdate = useCallback((incoming: Note): boolean => {
+    const d = depsRef.current;
+    const current = d.activeNoteRef.current;
+    if (!current || current.id !== incoming.id) return true;
+    if (incoming.checksum === baseChecksum(current)) return true;
+    if (ownChecksums.current.get(incoming.id)?.includes(incoming.checksum)) return true;
+    cancelTimer(incoming.id);
+    setSaveError({ noteId: incoming.id, kind: "conflict", message: MESSAGES.conflict(null) });
+    d.setSaveStatus("conflict");
+    return false;
+  }, []);
+
+  return { saveNote, liveChange, markDirty, discard, unsavedContent, acceptRemoteUpdate, saveError };
 }

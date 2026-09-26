@@ -202,6 +202,7 @@ export default function App() {
     markDirty,
     discard: discardUnsaved,
     unsavedContent,
+    acceptRemoteUpdate,
     saveError,
   } = useNoteSave({
     activeNoteRef,
@@ -297,6 +298,11 @@ export default function App() {
             const dirty =
               current?.id === incoming.id &&
               isDirtyStatus(saveStatusRef.current);
+            // Only our own save's echo may be merged into unsaved text.
+            // Another device's edit turns the note into a conflict instead:
+            // keep the local text and base checksum untouched, so the next
+            // save gets a 409 rather than silently overwriting their edit.
+            if (dirty && !acceptRemoteUpdate(incoming)) return;
             const note = dirty
               ? { ...incoming, title: current!.title, content: editorContentRef.current }
               : incoming;
@@ -325,7 +331,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncoming]);
+  }, [user, decryptIncoming, acceptRemoteUpdate]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);

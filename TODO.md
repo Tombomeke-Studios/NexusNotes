@@ -64,6 +64,10 @@ Found during review of the fixes above:
 - [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash)
 - [ ] Migrate the packaged app's database password without losing data (#277)
 - [ ] Dev scripts: random JWT secret and localhost-only binding, like the packaged app
+- [ ] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces)
+- [ ] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces
+- [ ] Linked-file fetches: limit concurrent fetches; decide whether `::ffff:0:0/96` counts as private
+- [ ] DB-backed tests for `RefreshRepo.Rotate` (rollback, double rotate, concurrent rotate)
 
 ---
 
@@ -91,6 +95,8 @@ Found during review of the fixes above:
 - [ ] E2E: replace `waitForTimeout` waits with real signals
 - [ ] Settings: show the app and server versions instead of a hard-coded string
 - [ ] Remark plugins: replace `push(...expand())` spreads with loops (overflow on pathological text nodes)
+- [ ] Attachment download chip: delay `revokeObjectURL` so WebKit downloads are not cancelled; verify in the packaged app
+- [ ] Two windows refreshing at once trip refresh-token reuse detection; add a cross-window lock or a short grace period
 
 ---
 

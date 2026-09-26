@@ -12,6 +12,7 @@ import {
 } from "./useNoteSave";
 import { loadDraft, saveDraft } from "./drafts";
 import { encryptNoteForVault, setupVaultEncryption, vaultKeySession } from "./vaultKeys";
+import { plaintextChecksum } from "./crypto";
 import type { Note } from "./types";
 
 vi.mock("./api", async (importOriginal) => {
@@ -592,6 +593,116 @@ describe("useNoteSave — reopening a note whose save failed", () => {
     act(() => hook.result.current.discard());
 
     expect(hook.result.current.unsavedContent("n1")).toBeNull();
+  });
+});
+
+describe("useNoteSave — pushed updates while the note has unsaved text", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  // The server broadcasts note:updated to every client, the saving one
+  // included, and before it answers the PUT: our own echo can arrive first.
+  it("accepts the echo of its own save that arrives before the PUT answer", async () => {
+    const put = deferred<Note>();
+    update.mockReturnValueOnce(put.promise);
+    const { hook } = setup();
+
+    act(() => {
+      void hook.result.current.saveNote("mine");
+    });
+    await flush();
+    act(() => hook.result.current.liveChange("mine, more"));
+    const echo = savedNote(await plaintextChecksum("mine"), { content: "mine" });
+
+    let accepted!: boolean;
+    act(() => {
+      accepted = hook.result.current.acceptRemoteUpdate(echo);
+    });
+
+    expect(accepted).toBe(true);
+    expect(hook.result.current.saveStatus).toBe("unsaved");
+  });
+
+  it("accepts the echo of an e2ee save by its client checksum", async () => {
+    const put = deferred<Note>();
+    update.mockReturnValueOnce(put.promise);
+    const { hook } = setup({
+      encryptOutgoing: async () => ({ content: "ciphertext", checksum: "plain-sha" }),
+      keepsDrafts: () => false,
+    });
+
+    act(() => {
+      void hook.result.current.saveNote("secret");
+    });
+    await flush();
+    act(() => hook.result.current.liveChange("secret, more"));
+
+    expect(hook.result.current.acceptRemoteUpdate(savedNote("plain-sha"))).toBe(true);
+  });
+
+  it("accepts a late echo of an earlier save", async () => {
+    update.mockResolvedValueOnce(savedNote("c1")).mockResolvedValueOnce(savedNote("c2"));
+    const { hook } = setup();
+
+    await act(() => hook.result.current.saveNote("one"));
+    await act(() => hook.result.current.saveNote("one two"));
+    act(() => hook.result.current.liveChange("one two three"));
+
+    expect(hook.result.current.acceptRemoteUpdate(savedNote("c1"))).toBe(true);
+  });
+
+  it("accepts an update that matches what the note is based on", () => {
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("typing"));
+
+    expect(hook.result.current.acceptRemoteUpdate(savedNote("c0"))).toBe(true);
+  });
+
+  it("turns another device's edit into a conflict and keeps the local text", async () => {
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("my unsaved text"));
+
+    let accepted!: boolean;
+    act(() => {
+      accepted = hook.result.current.acceptRemoteUpdate(savedNote("theirs", { content: "their text" }));
+    });
+
+    expect(accepted).toBe(false);
+    expect(hook.result.current.saveStatus).toBe("conflict");
+    expect(hook.result.current.saveError).toMatchObject({ noteId: "n1", kind: "conflict" });
+    expect(hook.result.current.editorContent).toBe("my unsaved text");
+    expect(loadDraft("n1")).toBe("my unsaved text");
+  });
+
+  it("does not let the next save silently overwrite the other device's edit", async () => {
+    update.mockRejectedValueOnce(new ApiError(409, "Request failed"));
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("my unsaved text"));
+    act(() => {
+      hook.result.current.acceptRemoteUpdate(savedNote("theirs"));
+    });
+
+    await act(() => hook.result.current.saveNote("my unsaved text"));
+
+    // Still based on the version this text was written against, so the
+    // server reports the conflict instead of accepting an overwrite.
+    expect(prevChecksumOfCall(0)).toBe("c0");
+    expect(hook.result.current.saveStatus).toBe("conflict");
+  });
+
+  it("cancels a pending retry once the note turned out to be in conflict", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("text"));
+    await act(() => hook.result.current.saveNote("text"));
+
+    act(() => {
+      hook.result.current.acceptRemoteUpdate(savedNote("theirs"));
+    });
+    await advance(60_000);
+
+    expect(update).toHaveBeenCalledTimes(1);
   });
 });
 

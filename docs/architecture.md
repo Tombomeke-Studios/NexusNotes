@@ -106,6 +106,16 @@ tracked in #225); an unreachable server (or a 502/503/504) is retried with
 exponential backoff capped at 30 seconds; any other failure is reported in
 the status bar and retried on the next edit.
 
+A retry resends the failed request's text unless the user typed since, and
+reopening a note shows any text the server hasn't confirmed (e2ee notes have
+no local draft). The server pushes `note:updated` to every client, the saving
+one included, before it answers the PUT. The client therefore remembers the
+checksums of its own recent uploads: a push matching one of them (or the
+version the local text is based on) is merged, while any other push for a
+note with unsaved text marks it as a conflict and leaves the local text and
+base checksum untouched. Signing out drops every queued save, retry and
+in-flight result.
+
 ### Search indexing
 
 1. Note created or updated in Sync Service

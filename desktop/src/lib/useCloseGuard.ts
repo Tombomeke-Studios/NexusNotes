@@ -2,8 +2,8 @@ import { useCallback, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { SaveError, SaveOutcome } from "./useNoteSave";
 
-/** What the user is closing: the whole window or one note tab. */
-export type ClosePrompt = { kind: "window" } | { kind: "tab"; key: string };
+/** What the user is leaving: the whole window, one note tab, or the session. */
+export type ClosePrompt = { kind: "window" } | { kind: "tab"; key: string } | { kind: "signout" };
 
 export interface CloseGuardDeps {
   /** The open close-confirmation dialog, if any; owned by the caller. */

@@ -328,6 +328,19 @@ export function useNoteSave(deps: NoteSaveDeps) {
     );
   };
 
+  /** Whether the note's newest text is confirmed by the server; why not, if it isn't. */
+  const outcomeOf = (id: string): SaveOutcome => {
+    if (savedVersions.current.get(id) === versionOf(id) && !lastRequests.current.has(id)) return { ok: true };
+    return {
+      ok: false,
+      error: lastErrors.current.get(id) ?? {
+        noteId: id,
+        kind: "failed",
+        message: "Your latest changes haven't been saved yet.",
+      },
+    };
+  };
+
   const scheduleFollowUp = (id: string) => {
     if (versionOf(id) > (requested.current.get(id) ?? -1) && !timers.current.has(id)) {
       schedule(id, FOLLOW_UP_DELAY_MS);
@@ -376,19 +389,33 @@ export function useNoteSave(deps: NoteSaveDeps) {
     if (!current) return { ok: true };
     d.setEditorContent(content);
     await enqueue(current, content);
-    const id = current.id;
-    if (savedVersions.current.get(id) === versionOf(id)) return { ok: true };
-    return {
-      ok: false,
-      error: lastErrors.current.get(id) ?? {
-        noteId: id,
-        kind: "failed",
-        message: "Your latest changes haven't been saved yet.",
-      },
-    };
+    return outcomeOf(current.id);
     // The helpers only touch refs and the stable deps ref.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Saves everything the server doesn't have yet: the open note's latest
+   * text (when `includeOpenNote`) and the unconfirmed text of every note the
+   * user has left. Reports the first failure; closing the window or signing
+   * out must not lose any of it (in-memory e2ee text has no draft).
+   */
+  const saveAll = useCallback(async (includeOpenNote: boolean): Promise<SaveOutcome> => {
+    const d = depsRef.current;
+    const open = d.activeNoteRef.current;
+    const outcomes: SaveOutcome[] = [];
+    if (open && includeOpenNote) outcomes.push(await saveNote(d.editorContentRef.current));
+    for (const [id, req] of [...lastRequests.current]) {
+      if (id === open?.id) continue;
+      await enqueue(req.note, req.content);
+      outcomes.push(outcomeOf(id));
+    }
+    return outcomes.find((o) => !o.ok) ?? { ok: true };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveNote]);
+
+  /** True while any note holds text that a save was requested for but the server hasn't confirmed. */
+  const hasUnconfirmed = useCallback(() => lastRequests.current.size > 0, []);
 
   /** Marks the open note as edited (e.g. a rename) without new editor text. */
   const markDirty = useCallback(() => {
@@ -479,5 +506,15 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { saveNote, liveChange, markDirty, discard, localCopy, acceptRemoteUpdate, saveError };
+  return {
+    saveNote,
+    saveAll,
+    hasUnconfirmed,
+    liveChange,
+    markDirty,
+    discard,
+    localCopy,
+    acceptRemoteUpdate,
+    saveError,
+  };
 }

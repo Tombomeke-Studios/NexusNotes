@@ -2,7 +2,11 @@ import type { SaveError, SaveErrorKind } from "../../lib/useNoteSave";
 
 interface CloseConfirmDialogProps {
   /** Title of the note with unsaved changes; null when unknown. */
-  noteTitle: string | null;
+  /**
+   * Titles of every note with unsaved text (the open one and any note left
+   * behind); in the error form, the note whose save failed.
+   */
+  noteTitles: string[];
   kind: "window" | "tab" | "signout";
   /** A save is in flight: every choice is locked until it settles. */
   saving: boolean;
@@ -19,6 +23,14 @@ const FAILURE_TEXT: Record<SaveErrorKind, (name: string) => string> = {
   failed: (name) => `${name} couldn't be saved.`,
 };
 
+/** `"A"`, `"A" and "B"`, `"A", "B" and "C"`, or `N notes` beyond three. */
+function describeNotes(titles: string[]): string {
+  if (titles.length === 0) return "This note";
+  if (titles.length > 3) return `${titles.length} notes`;
+  const quoted = titles.map((t) => `"${t || "Untitled"}"`);
+  return quoted.length === 1 ? quoted[0] : `${quoted.slice(0, -1).join(", ")} and ${quoted[quoted.length - 1]}`;
+}
+
 const LABELS = {
   window: { when: " before closing", save: "Save & close", discard: "Close without saving" },
   tab: { when: "", save: "Save & close", discard: "Close without saving" },
@@ -31,7 +43,7 @@ const LABELS = {
  * is never lost without an explicit "Close without saving".
  */
 export function CloseConfirmDialog({
-  noteTitle,
+  noteTitles,
   kind,
   saving,
   error,
@@ -39,7 +51,8 @@ export function CloseConfirmDialog({
   onDiscard,
   onSave,
 }: CloseConfirmDialogProps) {
-  const name = noteTitle !== null ? `"${noteTitle || "Untitled"}"` : "This note";
+  const name = describeNotes(noteTitles);
+  const plural = noteTitles.length > 1;
 
   return (
     <div className="confirm-overlay" onClick={saving ? undefined : onCancel}>
@@ -63,8 +76,9 @@ export function CloseConfirmDialog({
             </>
           ) : (
             <>
-              {name} has changes that haven&rsquo;t been saved. What would you like to do
-              {LABELS[kind].when}?
+              {name} {plural ? "have" : "has"} changes that haven&rsquo;t been saved. What would
+              you like to do{LABELS[kind].when}? &ldquo;{LABELS[kind].discard}&rdquo; loses these
+              changes.
             </>
           )}
         </div>

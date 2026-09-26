@@ -914,6 +914,7 @@ describe("useNoteSave — unconfirmed text in notes that are no longer open (#28
     await failThenSwitch(hook);
 
     expect(hook.result.current.hasUnconfirmed()).toBe(true);
+    expect(hook.result.current.unconfirmedNoteIds()).toEqual(["n1"]);
   });
 
   it("saveAll resends every note's unconfirmed text and reports the failure", async () => {

@@ -417,6 +417,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
   /** True while any note holds text that a save was requested for but the server hasn't confirmed. */
   const hasUnconfirmed = useCallback(() => lastRequests.current.size > 0, []);
 
+  /** Ids of the notes holding such unconfirmed text (for naming them before a close). */
+  const unconfirmedNoteIds = useCallback(() => [...lastRequests.current.keys()], []);
+
   /** Marks the open note as edited (e.g. a rename) without new editor text. */
   const markDirty = useCallback(() => {
     const d = depsRef.current;
@@ -510,6 +513,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     saveNote,
     saveAll,
     hasUnconfirmed,
+    unconfirmedNoteIds,
     liveChange,
     markDirty,
     discard,

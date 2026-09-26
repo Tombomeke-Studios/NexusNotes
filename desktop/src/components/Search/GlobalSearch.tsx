@@ -3,6 +3,7 @@ import { search as searchApi } from "../../lib/api";
 import { searchDecryptedNotes } from "../../lib/clientSearch";
 import type { Note, SearchHit } from "../../lib/types";
 import "./GlobalSearch.css";
+import { Snippet } from "./Snippet";
 
 interface GlobalSearchProps {
   vaultId: string;
@@ -120,10 +121,7 @@ export function GlobalSearch({ vaultId, clientNotes, onSelect, onClose }: Global
                 )}
               </div>
               {hit.snippet && (
-                <div
-                  className="global-search-snippet"
-                  dangerouslySetInnerHTML={{ __html: hit.snippet }}
-                />
+                <Snippet className="global-search-snippet" text={hit.snippet} />
               )}
               {hit.tags && hit.tags.length > 0 && (
                 <div className="global-search-tags">

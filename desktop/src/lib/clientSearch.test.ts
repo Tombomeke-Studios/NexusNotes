@@ -25,12 +25,14 @@ describe("searchDecryptedNotes", () => {
     expect(hits.map((h) => h.id)).toEqual(["n2", "n1", "n3"]);
   });
 
-  it("builds an HTML-escaped snippet with the match emphasised", () => {
+  it("builds a plain-text snippet with the match between <em> markers", () => {
+    // Snippets are text, not HTML: markup in a note stays literal and is
+    // rendered safely by components/Search/Snippet (see its tests).
     const dangerous = [note("n1", "XSS", 'before <img src=x onerror=alert(1)> milk after')];
     const [hit] = searchDecryptedNotes(dangerous, "milk", "");
     expect(hit.snippet).toContain("<em>milk</em>");
-    expect(hit.snippet).not.toContain("<img");
-    expect(hit.snippet).toContain("&lt;img");
+    expect(hit.snippet).toContain("<img src=x onerror=alert(1)");
+    expect(hit.snippet).not.toContain("&lt;");
   });
 
   it("filters by tag, with or without the # prefix", () => {

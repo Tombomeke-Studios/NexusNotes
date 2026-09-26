@@ -9,10 +9,11 @@ import { extractTags } from "./tags";
  * plaintext never has to be copied into a second structure.
  */
 
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-/** Snippet around the first match, HTML-escaped with the hit wrapped in <em>. */
+/**
+ * Snippet around the first match, as plain text with the hit wrapped in
+ * <em>…</em> markers (the same format as server snippets; rendered as text by
+ * components/Search/Snippet, never as HTML).
+ */
 function buildSnippet(content: string, q: string): string | undefined {
   const idx = content.toLowerCase().indexOf(q);
   if (idx < 0) return undefined;
@@ -23,7 +24,7 @@ function buildSnippet(content: string, q: string): string | undefined {
     .slice(idx + q.length, idx + q.length + 80)
     .replace(/[#>*`[\]]/g, "")
     .replace(/\s+/g, " ");
-  return `${start > 0 ? "…" : ""}${escapeHtml(before)}<em>${escapeHtml(match)}</em>${escapeHtml(after)}`.trim();
+  return `${start > 0 ? "…" : ""}${before}<em>${match}</em>${after}`.trim();
 }
 
 /**

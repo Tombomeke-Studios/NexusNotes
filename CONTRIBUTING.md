@@ -94,3 +94,10 @@ For setting up a local stack (dev container, `./scripts/dev-web.sh`,
 - API changes go in [docs/api.md](docs/api.md), security-relevant changes in
   [docs/security.md](docs/security.md), and deployment changes in
   [docs/deployment.md](docs/deployment.md).
+
+## Licensing of contributions
+
+NexusNotes is licensed under the [PolyForm Shield License 1.0.0](LICENSE). By opening a
+pull request you agree that your contribution is licensed under the same terms, and that
+Tombomeke Studios may also offer it under other terms (for example in a future paid
+edition).

@@ -201,6 +201,7 @@ export default function App() {
     liveChange: handleLiveChange,
     markDirty,
     discard: discardUnsaved,
+    unsavedContent,
     saveError,
   } = useNoteSave({
     activeNoteRef,
@@ -847,8 +848,10 @@ export default function App() {
     const note = await decryptIncoming(await notesApi.get(noteId));
     // Restore any unsaved local draft (e.g. after an abrupt close) so work isn't
     // lost; it will re-save on the next autosave. E2ee vaults never write
-    // plaintext drafts to disk, so there is nothing to restore for them.
-    const draft = isE2eeVault(vaultOf(note.vault_id)) ? null : loadDraft(noteId);
+    // plaintext drafts to disk; for them (and as a fallback) the text of a
+    // save that hasn't reached the server yet is still in memory.
+    const draft =
+      (isE2eeVault(vaultOf(note.vault_id)) ? null : loadDraft(noteId)) ?? unsavedContent(noteId);
     if (draft !== null && draft !== note.content) {
       setActiveNote({ ...note, content: draft });
       setEditorContent(draft);
@@ -859,7 +862,7 @@ export default function App() {
       setSaveStatus("saved");
     }
     setCursor({ line: 1, col: 1 });
-  }, [decryptIncoming, vaultOf, flushPendingSave]);
+  }, [decryptIncoming, vaultOf, flushPendingSave, unsavedContent]);
 
   // Keyboard navigation of the file tree: Up/Down move a single-note highlight
   // through the visible order, Enter opens it. Ignored while typing, in the

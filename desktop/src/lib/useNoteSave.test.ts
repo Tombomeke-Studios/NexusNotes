@@ -80,7 +80,27 @@ function useHarness(initial: Note, opts: HarnessOptions, onSynced: () => void) {
     setSessionKey(null);
     setActiveNote(null);
   };
-  return { ...save, saveStatus, activeNote, noteList, editorContent, setActiveNote, setPaused, signOut };
+  /**
+   * What App's handleSelectNote does: show the server copy, or the local
+   * unsaved text when there is one.
+   */
+  const openNote = (note: Note, local: string | null = null) => {
+    const text = local ?? note.content;
+    setActiveNote(note);
+    setEditorContent(text);
+    setSaveStatus(text === note.content ? "saved" : "unsaved");
+  };
+  return {
+    ...save,
+    saveStatus,
+    activeNote,
+    noteList,
+    editorContent,
+    setActiveNote,
+    setPaused,
+    signOut,
+    openNote,
+  };
 }
 
 /** A promise whose settlement the test controls (an in-flight PUT). */
@@ -518,6 +538,60 @@ describe("useNoteSave — network failures", () => {
     await advance(60_000);
 
     expect(update).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useNoteSave — reopening a note whose save failed", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  /** Type, fail to save while offline, then switch to another note. */
+  async function failThenLeave(hook: ReturnType<typeof setup>["hook"]) {
+    act(() => hook.result.current.liveChange("NEW text"));
+    await act(() => hook.result.current.saveNote("NEW text"));
+    act(() => hook.result.current.openNote(makeNote({ id: "n2", content: "other" })));
+  }
+
+  // e2ee notes keep no draft, so the hook's memory is the only copy of the text.
+  it("hands back the unsaved text so reopening the note shows it", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce(savedNote("c1"));
+    const { hook } = setup({ keepsDrafts: () => false });
+    await failThenLeave(hook);
+
+    const local = hook.result.current.unsavedContent("n1");
+    expect(local).toBe("NEW text");
+    act(() => hook.result.current.openNote(makeNote(), local));
+    expect(hook.result.current.editorContent).toBe("NEW text");
+    expect(hook.result.current.saveStatus).toBe("unsaved");
+
+    await advance(retryDelay(0));
+    expect(update.mock.calls.map((c) => c[3])).toEqual(["NEW text", "NEW text"]);
+    expect(hook.result.current.saveStatus).toBe("saved");
+    expect(hook.result.current.unsavedContent("n1")).toBeNull();
+  });
+
+  it("retries with the failed request's text, never with a reloaded server copy", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce(savedNote("c1"));
+    const { hook } = setup({ keepsDrafts: () => false });
+    await failThenLeave(hook);
+
+    // Reopened without the local text: the editor holds the server copy.
+    act(() => hook.result.current.openNote(makeNote()));
+    await advance(retryDelay(0));
+
+    expect(update.mock.calls.map((c) => c[3])).toEqual(["NEW text", "NEW text"]);
+  });
+
+  it("has no unsaved text for a note whose changes were discarded", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { hook } = setup({ keepsDrafts: () => false });
+
+    act(() => hook.result.current.liveChange("NEW text"));
+    await act(() => hook.result.current.saveNote("NEW text"));
+    act(() => hook.result.current.discard());
+
+    expect(hook.result.current.unsavedContent("n1")).toBeNull();
   });
 });
 

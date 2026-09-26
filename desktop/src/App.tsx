@@ -49,6 +49,8 @@ import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
+import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
+import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
 import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
@@ -89,7 +91,7 @@ export default function App() {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   // Bumped nonce asks the editor to insert text at the cursor (#155).
   const [insertRequest, setInsertRequest] = useState<{ text: string; nonce: number } | null>(null);
-  const [closePrompt, setClosePrompt] = useState<{ kind: "window" } | { kind: "tab"; key: string } | null>(null);
+  const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null);
   const [starredIds, setStarredIds] = useState<string[]>([]);
   const starredIdsRef = useRef(starredIds);
   starredIdsRef.current = starredIds;
@@ -986,6 +988,39 @@ export default function App() {
     }, 0);
   }, [markDirty]);
 
+  // destroy() closes the window unconditionally (bypassing onCloseRequested), so
+  // the app always actually closes once the user has confirmed.
+  const closeWindowNow = useCallback(async () => {
+    if (isTauriWindow) {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().destroy();
+    } else {
+      window.close();
+    }
+  }, []);
+
+  // Finish a confirmed close: the whole window, or just the note tab.
+  const finishClose = useCallback(async (prompt: ClosePrompt) => {
+    if (prompt.kind === "tab") {
+      closeTabRef.current(prompt.key);
+    } else {
+      await closeWindowNow();
+    }
+  }, [closeWindowNow]);
+
+  // Nothing closes over unsaved text until the server confirmed the save; a
+  // failed save keeps the dialog open with the reason (#283). "Close without
+  // saving" truly discards: the local draft and any pending retry are dropped
+  // so the note reverts to its saved version and a later close doesn't re-prompt.
+  const closeGuard = useCloseGuard({
+    prompt: closePrompt,
+    setPrompt: setClosePrompt,
+    save: () => handleSaveNote(editorContentRef.current),
+    discard: discardUnsaved,
+    finishClose,
+  });
+  const { saveThenClose } = closeGuard;
+
   // Warn before losing unsaved work on close. In the browser, the native
   // beforeunload prompt; in the native app, intercept the close and show our own
   // Save / Don't save / Cancel dialog (like Word).
@@ -1005,13 +1040,12 @@ export default function App() {
         const win = getCurrentWindow();
         unlisten = await win.onCloseRequested(async (event) => {
           // Fires for OS-level close (Alt+F4 / taskbar); the visible close button
-          // routes through requestClose() + destroy() and does not come here. A
-          // React dialog can't be shown reliably from this native callback, so
-          // save-and-close to avoid losing work or trapping the window.
+          // routes through requestClose() + destroy() and does not come here.
+          // Save first and close once it's confirmed; a failed or still-pending
+          // save opens the close dialog with the reason instead of closing.
           if (isDirtyStatus(saveStatusRef.current)) {
             event.preventDefault();
-            await handleSaveNoteRef.current(editorContentRef.current);
-            await win.destroy();
+            await saveThenClose({ kind: "window" });
           }
         });
       })().catch(() => {});
@@ -1021,43 +1055,7 @@ export default function App() {
       window.removeEventListener("beforeunload", onBeforeUnload);
       unlisten?.();
     };
-  }, []);
-
-  // destroy() closes the window unconditionally (bypassing onCloseRequested), so
-  // the app always actually closes once the user has confirmed.
-  const closeWindowNow = useCallback(async () => {
-    if (isTauriWindow) {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      await getCurrentWindow().destroy();
-    } else {
-      window.close();
-    }
-  }, []);
-
-  // Finish a confirmed close: the whole window, or just the note tab.
-  const finishClose = useCallback(async (prompt: { kind: "window" } | { kind: "tab"; key: string }) => {
-    setClosePrompt(null);
-    if (prompt.kind === "tab") {
-      closeTabRef.current(prompt.key);
-    } else {
-      await closeWindowNow();
-    }
-  }, [closeWindowNow]);
-
-  const handleSaveAndClose = useCallback(async () => {
-    if (!closePrompt) return;
-    await handleSaveNote(editorContentRef.current);
-    await finishClose(closePrompt);
-  }, [closePrompt, handleSaveNote, finishClose]);
-
-  const handleDiscardAndClose = useCallback(async () => {
-    if (!closePrompt) return;
-    // Truly discard: drop the local draft and any pending retry so the note
-    // reverts to its saved version, and mark clean so a following
-    // window-close doesn't re-prompt.
-    discardUnsaved();
-    await finishClose(closePrompt);
-  }, [closePrompt, finishClose, discardUnsaved]);
+  }, [saveThenClose]);
 
   // The visible window close button routes through here (a real React click) so
   // the unsaved-changes dialog renders reliably; a clean note closes at once.
@@ -1480,27 +1478,15 @@ export default function App() {
       )}
 
       {closePrompt && (
-        <div className="confirm-overlay" onClick={() => setClosePrompt(null)}>
-          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="confirm-title">Unsaved changes</div>
-            <div className="confirm-body">
-              {activeNote ? `"${activeNote.title || "Untitled"}"` : "This note"} has changes that
-              haven&rsquo;t been saved. What would you like to do
-              {closePrompt.kind === "window" ? " before closing" : ""}?
-            </div>
-            <div className="confirm-actions">
-              <button className="confirm-btn" onClick={() => setClosePrompt(null)}>
-                Cancel
-              </button>
-              <button className="confirm-btn confirm-btn--danger" onClick={handleDiscardAndClose}>
-                Close without saving
-              </button>
-              <button className="confirm-btn confirm-btn--primary" onClick={handleSaveAndClose}>
-                Save &amp; close
-              </button>
-            </div>
-          </div>
-        </div>
+        <CloseConfirmDialog
+          noteTitle={activeNote ? activeNote.title : null}
+          kind={closePrompt.kind}
+          saving={closeGuard.saving}
+          error={closeGuard.error}
+          onCancel={closeGuard.cancel}
+          onDiscard={closeGuard.discardAndClose}
+          onSave={closeGuard.saveAndClose}
+        />
       )}
 
       {ctxMenu && (

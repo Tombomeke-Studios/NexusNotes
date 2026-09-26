@@ -116,6 +116,12 @@ note with unsaved text marks it as a conflict and leaves the local text and
 base checksum untouched. Signing out drops every queued save, retry and
 in-flight result.
 
+Closing a tab or the window with unsaved text (the close button, or an
+OS-level close in the native app) never closes until the server has
+confirmed the save. If the save fails, the close dialog stays open, explains
+why (offline, conflict or another error) and offers retry, keep editing, or
+an explicit close without saving.
+
 ### Search indexing
 
 1. Note created or updated in Sync Service

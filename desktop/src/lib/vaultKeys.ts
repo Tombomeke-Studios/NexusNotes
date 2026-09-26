@@ -148,15 +148,30 @@ function requireKey(vault: VaultLike): Uint8Array {
 }
 
 /**
+ * Thrown when note content would be uploaded for a vault whose encryption
+ * state isn't known (e.g. the vault list was cleared by sign-out).
+ */
+export class UnknownVaultEncryptionError extends Error {
+  constructor(public vaultId: string | null) {
+    super("the vault's encryption state is unknown, so the note was not sent");
+    this.name = "UnknownVaultEncryptionError";
+  }
+}
+
+/**
  * Prepares note content for upload. Standard vaults pass through unchanged;
  * e2ee vaults get ciphertext plus the plaintext SHA-256 the server stores
- * verbatim for conflict detection (it can never recompute it).
+ * verbatim for conflict detection (it can never recompute it). Fails closed:
+ * content only ever leaves in plain text for a vault known to be unencrypted.
  */
 export async function encryptNoteForVault(
-  vault: VaultLike,
+  vault: VaultLike | null | undefined,
   plaintext: string,
 ): Promise<{ content: string; checksum?: string }> {
-  if (!isE2eeVault(vault)) return { content: plaintext };
+  if (!vault || (vault.encryption !== "none" && vault.encryption !== "e2ee")) {
+    throw new UnknownVaultEncryptionError(vault?.id ?? null);
+  }
+  if (vault.encryption === "none") return { content: plaintext };
   const key = requireKey(vault);
   return {
     content: await encryptNote(plaintext, key),

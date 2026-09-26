@@ -10,6 +10,7 @@ import {
   encryptNoteForVault,
   decryptNoteForVault,
   VaultLockedError,
+  UnknownVaultEncryptionError,
   type EncryptionMeta,
 } from "./vaultKeys";
 
@@ -108,6 +109,15 @@ describe("note-level helpers against a vault", () => {
     expect(content).toMatch(/^[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$/);
     expect(checksum).toMatch(/^[0-9a-f]{64}$/);
     expect(await decryptNoteForVault(e2eeVault, content)).toBe("# secret");
+  });
+
+  it("fails closed when the vault or its encryption state is unknown", async () => {
+    // e.g. after sign-out emptied the vault list: never treat that as a plain vault.
+    await expect(encryptNoteForVault(undefined, "# secret")).rejects.toBeInstanceOf(UnknownVaultEncryptionError);
+    await expect(encryptNoteForVault(null, "# secret")).rejects.toBeInstanceOf(UnknownVaultEncryptionError);
+    await expect(encryptNoteForVault({ id: "vx" }, "# secret")).rejects.toBeInstanceOf(
+      UnknownVaultEncryptionError,
+    );
   });
 
   it("a locked e2ee vault throws VaultLockedError both ways", async () => {

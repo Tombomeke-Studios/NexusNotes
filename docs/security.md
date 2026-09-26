@@ -116,6 +116,10 @@ Vaults can opt in to zero-knowledge E2EE at creation time (full design in
 - Plaintext never touches disk on the client: e2ee vaults skip the
   localStorage draft mirror, and search runs client-side over in-memory
   decrypted notes (the server index only carries title/path).
+- Uploads fail closed: note content is only sent unencrypted for a vault the
+  client knows to be unencrypted. A vault missing from the client's list
+  (e.g. a save retry firing after sign-out cleared it) is refused rather
+  than treated as a plain vault.
 
 ## Device Management
 

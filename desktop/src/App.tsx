@@ -189,9 +189,10 @@ export default function App() {
     }
   }, [vaultOf]);
 
+  // Fails closed: a vault that isn't in the list (e.g. after sign-out) is
+  // never treated as unencrypted, so e2ee plaintext can't leave the client.
   const encryptOutgoing = useCallback(
-    (vaultId: string, plaintext: string) =>
-      encryptNoteForVault(vaultOf(vaultId) ?? { id: vaultId }, plaintext),
+    (vaultId: string, plaintext: string) => encryptNoteForVault(vaultOf(vaultId), plaintext),
     [vaultOf],
   );
 

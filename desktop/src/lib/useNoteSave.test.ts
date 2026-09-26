@@ -10,7 +10,7 @@ import {
   MAX_RETRY_DELAY_MS,
   type SaveStatus,
 } from "./useNoteSave";
-import { loadDraft, saveDraft } from "./drafts";
+import { loadDraft, loadDraftBase, saveDraft } from "./drafts";
 import { encryptNoteForVault, setupVaultEncryption, vaultKeySession } from "./vaultKeys";
 import { plaintextChecksum } from "./crypto";
 import type { Note } from "./types";
@@ -83,13 +83,12 @@ function useHarness(initial: Note, opts: HarnessOptions, onSynced: () => void) {
   };
   /**
    * What App's handleSelectNote does: show the server copy, or the local
-   * unsaved text when there is one.
+   * unsaved text on top of the version it was written against.
    */
-  const openNote = (note: Note, local: string | null = null) => {
-    const text = local ?? note.content;
-    setActiveNote(note);
-    setEditorContent(text);
-    setSaveStatus(text === note.content ? "saved" : "unsaved");
+  const openNote = (note: Note, local: { content: string; checksum: string } | null = null) => {
+    setActiveNote(local ? { ...note, content: local.content, checksum: local.checksum } : note);
+    setEditorContent(local?.content ?? note.content);
+    setSaveStatus(local ? "unsaved" : "saved");
   };
   return {
     ...save,
@@ -560,8 +559,8 @@ describe("useNoteSave — reopening a note whose save failed", () => {
     const { hook } = setup({ keepsDrafts: () => false });
     await failThenLeave(hook);
 
-    const local = hook.result.current.unsavedContent("n1");
-    expect(local).toBe("NEW text");
+    const local = hook.result.current.localCopy(makeNote());
+    expect(local).toEqual({ content: "NEW text", checksum: "c0" });
     act(() => hook.result.current.openNote(makeNote(), local));
     expect(hook.result.current.editorContent).toBe("NEW text");
     expect(hook.result.current.saveStatus).toBe("unsaved");
@@ -569,7 +568,53 @@ describe("useNoteSave — reopening a note whose save failed", () => {
     await advance(retryDelay(0));
     expect(update.mock.calls.map((c) => c[3])).toEqual(["NEW text", "NEW text"]);
     expect(hook.result.current.saveStatus).toBe("saved");
-    expect(hook.result.current.unsavedContent("n1")).toBeNull();
+    expect(hook.result.current.localCopy(makeNote())).toBeNull();
+  });
+
+  // Reopening loads the newest server copy; the unsaved text must stay on the
+  // version it was written against, or saving it would silently overwrite
+  // whatever another device saved in between.
+  it("keeps unsaved in-memory text on the version it was written against", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const { hook } = setup({ keepsDrafts: () => false });
+    await failThenLeave(hook);
+
+    const theirs = makeNote({ checksum: "theirs", content: "their text" });
+    expect(hook.result.current.localCopy(theirs)).toEqual({ content: "NEW text", checksum: "c0" });
+  });
+
+  it("restores a draft on its own base, so a changed server copy gets a conflict", async () => {
+    update.mockRejectedValueOnce(new ApiError(409, "Request failed"));
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("draft text"));
+    act(() => hook.result.current.openNote(makeNote({ id: "n2", content: "other" })));
+
+    const theirs = makeNote({ checksum: "theirs", content: "their text" });
+    const local = hook.result.current.localCopy(theirs);
+    expect(local).toEqual({ content: "draft text", checksum: "c0" });
+    act(() => hook.result.current.openNote(theirs, local));
+    await act(() => hook.result.current.saveNote("draft text"));
+
+    expect(prevChecksumOfCall(0)).toBe("c0");
+    expect(hook.result.current.saveStatus).toBe("conflict");
+  });
+
+  it("moves a draft's base along when an older save of it goes through", async () => {
+    const put = deferred<Note>();
+    update.mockReturnValueOnce(put.promise);
+    const { hook } = setup();
+
+    let saving!: Promise<unknown>;
+    act(() => {
+      saving = hook.result.current.saveNote("a");
+    });
+    act(() => hook.result.current.liveChange("ab"));
+    await act(async () => {
+      put.resolve(savedNote("c1"));
+      await saving;
+    });
+
+    expect(loadDraftBase("n1")).toBe("c1");
   });
 
   it("retries with the failed request's text, never with a reloaded server copy", async () => {
@@ -592,7 +637,7 @@ describe("useNoteSave — reopening a note whose save failed", () => {
     await act(() => hook.result.current.saveNote("NEW text"));
     act(() => hook.result.current.discard());
 
-    expect(hook.result.current.unsavedContent("n1")).toBeNull();
+    expect(hook.result.current.localCopy(makeNote())).toBeNull();
   });
 });
 

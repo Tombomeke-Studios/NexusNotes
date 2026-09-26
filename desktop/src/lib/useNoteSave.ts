@@ -75,6 +75,12 @@ export interface NoteSaveDeps {
   keepsDrafts: (vaultId: string) => boolean;
   /** While true (close-confirmation dialog open) background saves wait. */
   paused?: boolean;
+  /**
+   * Identifies the signed-in session (the user id; null when signed out).
+   * When it changes, every queued save, retry and in-flight result is
+   * dropped, so nothing is sent or applied across a sign-out.
+   */
+  sessionKey?: string | null;
 }
 
 interface SaveRequest {
@@ -115,6 +121,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const transitions = useRef(new Map<string, { from: string; to: string }>());
   const failures = useRef(new Map<string, number>());
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  /** Bumped on sign-out: results of requests from an earlier session are ignored. */
+  const generation = useRef(0);
 
   const versionOf = (id: string) => versions.current.get(id) ?? 0;
   const isActive = (id: string) => depsRef.current.activeNoteRef.current?.id === id;
@@ -182,6 +190,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const attempt = async (req: SaveRequest) => {
     const { note, content, version } = req;
     const d = depsRef.current;
+    const gen = generation.current;
+    const stale = () => gen !== generation.current;
     if (isActive(note.id) && versionOf(note.id) === version) {
       d.setSaveStatus((s) => (s === "conflict" ? s : "saving"));
     }
@@ -192,17 +202,19 @@ export function useNoteSave(deps: NoteSaveDeps) {
       // server echoes the ciphertext back, so state keeps the local plaintext.
       ({ content: payload, checksum } = await d.encryptOutgoing(note.vault_id, content));
     } catch (err) {
-      fail(req, "failed", err);
+      if (!stale()) fail(req, "failed", err);
       return;
     }
+    if (stale()) return;
     const base = baseChecksum(note);
     let updated: Awaited<ReturnType<typeof notesApi.update>>;
     try {
       updated = await notesApi.update(note.id, note.title, note.path, payload, base, checksum);
     } catch (err) {
-      fail(req, classifySaveError(err), err);
+      if (!stale()) fail(req, classifySaveError(err), err);
       return;
     }
+    if (stale()) return;
     if (updated && "checksum" in updated) succeed(req, updated as Note, base);
   };
 
@@ -274,7 +286,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     }
   };
 
-  // Nothing may fire after sign-out / unmount.
+  // Nothing may fire after unmount.
   useEffect(() => {
     const pending = timers.current;
     return () => {
@@ -282,6 +294,25 @@ export function useNoteSave(deps: NoteSaveDeps) {
       pending.clear();
     };
   }, []);
+
+  // App stays mounted across sign-out (it renders the auth screen instead),
+  // so a session change drops the whole pipeline: no retry or queued save
+  // may go out under the next session, and in-flight results are ignored.
+  const sessionKey = deps.sessionKey ?? null;
+  const lastSession = useRef(sessionKey);
+  useEffect(() => {
+    if (lastSession.current === sessionKey) return;
+    lastSession.current = sessionKey;
+    generation.current += 1;
+    for (const t of timers.current.values()) clearTimeout(t);
+    timers.current.clear();
+    queued.current.clear();
+    versions.current.clear();
+    requested.current.clear();
+    transitions.current.clear();
+    failures.current.clear();
+    setSaveError(null);
+  }, [sessionKey]);
 
   /** Saves the open note with the given text; resolves once its save queue is empty. */
   const saveNote = useCallback(async (content: string) => {

@@ -215,6 +215,8 @@ export default function App() {
     // Background saves (retries) must not persist text the user may be about
     // to discard in the close-confirmation dialog.
     paused: closePrompt !== null,
+    // Every sign-out path ends with user === null; that drops pending saves.
+    sessionKey: user?.id ?? null,
   });
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;

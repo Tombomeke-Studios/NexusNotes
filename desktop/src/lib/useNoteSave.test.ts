@@ -57,6 +57,7 @@ function useHarness(initial: Note, opts: HarnessOptions, onSynced: () => void) {
   const [editorContent, setEditorContent] = useState(initial.content);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [paused, setPaused] = useState(false);
+  const [sessionKey, setSessionKey] = useState<string | null>("user-1");
   const activeNoteRef = useRef(activeNote);
   activeNoteRef.current = activeNote;
   const editorContentRef = useRef(editorContent);
@@ -72,8 +73,14 @@ function useHarness(initial: Note, opts: HarnessOptions, onSynced: () => void) {
     encryptOutgoing: opts.encryptOutgoing ?? (async (_vaultId, plaintext) => ({ content: plaintext })),
     keepsDrafts: opts.keepsDrafts ?? (() => true),
     paused,
+    sessionKey,
   });
-  return { ...save, saveStatus, activeNote, noteList, editorContent, setActiveNote, setPaused };
+  /** What App's sign-out does: the user (and with it the open note) goes away. */
+  const signOut = () => {
+    setSessionKey(null);
+    setActiveNote(null);
+  };
+  return { ...save, saveStatus, activeNote, noteList, editorContent, setActiveNote, setPaused, signOut };
 }
 
 /** A promise whose settlement the test controls (an in-flight PUT). */
@@ -502,12 +509,76 @@ describe("useNoteSave — network failures", () => {
     expect(loadDraft("n1")).toBeNull();
   });
 
-  it("stops retrying once the hook unmounts (sign-out)", async () => {
+  it("stops retrying once the hook unmounts", async () => {
     update.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     const { hook } = setup();
 
     await act(() => hook.result.current.saveNote("text"));
     hook.unmount();
+    await advance(60_000);
+
+    expect(update).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useNoteSave — sign-out", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  // App stays mounted across sign-out (it renders <Auth/>), so unmount
+  // cleanup alone never runs; the session change must drop everything.
+  it("drops a pending retry, so nothing goes out with the next user's session", async () => {
+    update.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { hook } = setup();
+
+    await act(() => hook.result.current.saveNote("text"));
+    act(() => hook.result.current.signOut());
+    await advance(60_000);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.saveError).toBeNull();
+  });
+
+  it("ignores the result of a save that was in flight at sign-out", async () => {
+    const put = deferred<Note>();
+    update.mockReturnValueOnce(put.promise);
+    const { hook } = setup();
+
+    let saving!: Promise<unknown>;
+    act(() => {
+      saving = hook.result.current.saveNote("text");
+    });
+    await flush();
+    act(() => hook.result.current.signOut());
+    await act(async () => {
+      put.reject(new TypeError("Failed to fetch"));
+      await saving;
+    });
+    await advance(60_000);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.saveError).toBeNull();
+  });
+
+  it("does not send a save that was queued behind an in-flight one", async () => {
+    const put = deferred<Note>();
+    update.mockReturnValueOnce(put.promise);
+    const { hook } = setup();
+
+    let first!: Promise<unknown>;
+    act(() => {
+      first = hook.result.current.saveNote("one");
+    });
+    await flush();
+    act(() => {
+      void hook.result.current.saveNote("one two");
+    });
+    act(() => hook.result.current.signOut());
+    await act(async () => {
+      put.resolve(savedNote("c1"));
+      await first;
+    });
     await advance(60_000);
 
     expect(update).toHaveBeenCalledTimes(1);

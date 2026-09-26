@@ -11,6 +11,7 @@ import {
   type SaveStatus,
 } from "./useNoteSave";
 import { loadDraft, saveDraft } from "./drafts";
+import { encryptNoteForVault, setupVaultEncryption, vaultKeySession } from "./vaultKeys";
 import type { Note } from "./types";
 
 vi.mock("./api", async (importOriginal) => {
@@ -546,6 +547,49 @@ describe("useNoteSave — other failures", () => {
     expect(update).toHaveBeenCalledTimes(1);
     expect(hook.result.current.saveStatus).toBe("unsaved");
     expect(hook.result.current.saveError?.message).toContain("internal error");
+  });
+});
+
+describe("useNoteSave — unknown vault encryption fails closed", () => {
+  type VaultInfo = { id: string; encryption: "none" | "e2ee" };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vaultKeySession.clear();
+  });
+
+  /** App's encryptOutgoing: look the vault up, then prepare the upload. */
+  const uploadVia = (vaults: Map<string, VaultInfo>) => (vaultId: string, plaintext: string) =>
+    encryptNoteForVault(vaults.get(vaultId), plaintext);
+
+  it("never sends a request when the note's vault is not known", async () => {
+    const { hook } = setup({ encryptOutgoing: uploadVia(new Map()), keepsDrafts: () => false });
+
+    await act(() => hook.result.current.saveNote("secret"));
+    await advance(60_000);
+
+    expect(update).not.toHaveBeenCalled();
+    expect(hook.result.current.saveStatus).toBe("unsaved");
+    expect(hook.result.current.saveError).toMatchObject({ kind: "failed" });
+  });
+
+  it("a retry left over after the vault list is emptied never sends e2ee text in plain", async () => {
+    const { vaultKey } = await setupVaultEncryption("a-good-passphrase", { m: 64, t: 1, p: 1 });
+    vaultKeySession.set("v1", vaultKey);
+    const vaults = new Map<string, VaultInfo>([["v1", { id: "v1", encryption: "e2ee" }]]);
+    update.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { hook } = setup({ encryptOutgoing: uploadVia(vaults), keepsDrafts: () => false });
+
+    await act(() => hook.result.current.saveNote("top secret"));
+    expect(update).toHaveBeenCalledTimes(1);
+
+    // What nexus:logout does: the vault list empties and the keys are forgotten.
+    vaults.clear();
+    vaultKeySession.clear();
+    await advance(60_000);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    for (const call of update.mock.calls) expect(call[3]).not.toContain("top secret");
   });
 });
 

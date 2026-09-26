@@ -42,6 +42,14 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] docs/api.md: document /api/auth/me and /metrics, merge the duplicate Search sections (#262)
 - [ ] Desktop: a save finishing must not mark newer edits as saved, and save errors need handling (#263)
 
+Found during review of the fixes above:
+
+- [ ] E2EE: encrypting notes larger than ~150 KB throws RangeError (#275)
+- [ ] Closing after a failed save loses unsaved text in encrypted vaults (#283)
+- [ ] Check vault access on note version history and note delete (PR #281)
+- [ ] Escape search filter values and validate search parameters (PR #282)
+- [ ] Restrict linked-file URL fetches to public addresses (PR #284)
+
 ---
 
 ## `fix/production-hardening` - Production hardening (#264)
@@ -54,6 +62,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] CI: build both Dockerfiles so an unbuildable image is caught
 - [ ] Graceful shutdown: drain the WebSocket hub, per-route write deadlines
 - [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash)
+- [ ] Migrate the packaged app's database password without losing data (#277)
+- [ ] Dev scripts: random JWT secret and localhost-only binding, like the packaged app
 
 ---
 
@@ -67,6 +77,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit
 - [ ] Rate limiter: periodic purge and trusted-proxy client IP
 - [ ] Distinguish not-found from database errors in handlers
+- [ ] Search fallback: honour `tag` when `q` is set and do not return unfiltered notes when both are empty
+- [ ] Vault update/delete: answer 404 when no row matched instead of 200/204
+- [ ] Test the `/api/auth/me` failure path (500 vs 404)
 
 ---
 
@@ -77,6 +90,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed
 - [ ] E2E: replace `waitForTimeout` waits with real signals
 - [ ] Settings: show the app and server versions instead of a hard-coded string
+- [ ] Remark plugins: replace `push(...expand())` spreads with loops (overflow on pathological text nodes)
 
 ---
 

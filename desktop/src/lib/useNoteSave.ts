@@ -123,6 +123,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   /** Bumped on sign-out: results of requests from an earlier session are ignored. */
   const generation = useRef(0);
+  /** The newest save requested per note, kept until the server confirms it. */
+  const lastRequests = useRef(new Map<string, SaveRequest>());
 
   const versionOf = (id: string) => versions.current.get(id) ?? 0;
   const isActive = (id: string) => depsRef.current.activeNoteRef.current?.id === id;
@@ -149,6 +151,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     failures.current.delete(note.id);
     clearErrorFor(note.id);
     const saved = { ...updated, content };
+    if (lastRequests.current.get(note.id)?.version === version) lastRequests.current.delete(note.id);
     if (versionOf(note.id) === version) {
       cancelTimer(note.id);
       clearDraft(note.id);
@@ -248,15 +251,19 @@ export function useNoteSave(deps: NoteSaveDeps) {
     const version = versionOf(note.id);
     requested.current.set(note.id, version);
     cancelTimer(note.id);
-    queued.current.set(note.id, { note, content, version });
+    const req = { note, content, version };
+    queued.current.set(note.id, req);
+    lastRequests.current.set(note.id, req);
     if (isActive(note.id)) depsRef.current.setSaveStatus((s) => (s === "conflict" ? s : "saving"));
     return drain(note.id);
   };
 
   /**
    * Arms a background save for the note: a network retry (`retry` given) or a
-   * follow-up for edits that no save has requested yet. The open note always
-   * saves its latest text; a note the user has left saves the failed request.
+   * follow-up for edits that no save has requested yet. A retry resends the
+   * failed request's text unless the user has typed since; only then does it
+   * take the editor's newer text. (After the note was reopened the editor may
+   * hold the server copy, and e2ee notes have no draft to restore from.)
    */
   const schedule = (id: string, delay: number, retry?: SaveRequest) => {
     cancelTimer(id);
@@ -270,7 +277,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
           return;
         }
         const active = d.activeNoteRef.current;
-        if (active?.id === id) {
+        if (retry && versionOf(id) === retry.version) {
+          void enqueue(retry.note, retry.content);
+        } else if (active?.id === id) {
           const unrequested = versionOf(id) > (requested.current.get(id) ?? -1);
           if (retry || unrequested) void enqueue(active, d.editorContentRef.current);
         } else if (retry) {
@@ -307,6 +316,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     for (const t of timers.current.values()) clearTimeout(t);
     timers.current.clear();
     queued.current.clear();
+    lastRequests.current.clear();
     versions.current.clear();
     requested.current.clear();
     transitions.current.clear();
@@ -358,6 +368,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     if (id) {
       cancelTimer(id);
       queued.current.delete(id);
+      lastRequests.current.delete(id);
       failures.current.delete(id);
       clearDraft(id);
       clearErrorFor(id);
@@ -365,5 +376,16 @@ export function useNoteSave(deps: NoteSaveDeps) {
     d.setSaveStatus("saved");
   }, []);
 
-  return { saveNote, liveChange, markDirty, discard, saveError };
+  /**
+   * The note's newest text that a save was requested for but the server
+   * hasn't confirmed (failed, queued or in flight), or null. Reopening the
+   * note shows this instead of the server copy, since e2ee notes have no
+   * draft on disk to restore from.
+   */
+  const unsavedContent = useCallback(
+    (noteId: string): string | null => lastRequests.current.get(noteId)?.content ?? null,
+    [],
+  );
+
+  return { saveNote, liveChange, markDirty, discard, unsavedContent, saveError };
 }

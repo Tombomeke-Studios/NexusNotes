@@ -201,6 +201,7 @@ export default function App() {
     saveNote: handleSaveNote,
     saveAll: saveAllNotes,
     hasUnconfirmed,
+    unconfirmedNoteIds,
     liveChange: handleLiveChange,
     markDirty,
     discard: discardUnsaved,
@@ -1504,11 +1505,19 @@ export default function App() {
 
       {closePrompt && (
         <CloseConfirmDialog
-          noteTitle={
-            (closeGuard.error && noteList.find((n) => n.id === closeGuard.error?.noteId)?.title) ??
-            activeNote?.title ??
-            null
-          }
+          noteTitles={(() => {
+            // The failed note in the error form; otherwise every note whose
+            // text "without saving" would drop (a tab concerns only its note).
+            const ids = closeGuard.error
+              ? [closeGuard.error.noteId]
+              : [
+                  ...(activeNote && isDirtyStatus(saveStatus) ? [activeNote.id] : []),
+                  ...(closePrompt.kind === "tab" ? [] : unconfirmedNoteIds()),
+                ];
+            return [...new Set(ids)].map(
+              (id) => noteList.find((n) => n.id === id)?.title ?? (activeNote?.id === id ? activeNote.title : ""),
+            );
+          })()}
           kind={closePrompt.kind}
           saving={closeGuard.saving}
           error={closeGuard.error}

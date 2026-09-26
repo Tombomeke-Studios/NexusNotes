@@ -6,7 +6,7 @@ import type { SaveError } from "../../lib/useNoteSave";
 function renderDialog(props: Partial<Parameters<typeof CloseConfirmDialog>[0]> = {}) {
   const handlers = { onCancel: vi.fn(), onDiscard: vi.fn(), onSave: vi.fn() };
   render(
-    <CloseConfirmDialog noteTitle="Plans" kind="window" saving={false} error={null} {...handlers} {...props} />,
+    <CloseConfirmDialog noteTitles={["Plans"]} kind="window" saving={false} error={null} {...handlers} {...props} />,
   );
   return handlers;
 }
@@ -70,6 +70,23 @@ describe("CloseConfirmDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign out without saving" }));
     expect(h.onSave).toHaveBeenCalledTimes(1);
     expect(h.onDiscard).toHaveBeenCalledTimes(1);
+  });
+
+  // The unsaved text may sit in notes other than the open one (e.g. e2ee
+  // text whose save failed before a note switch): name them all.
+  it("names every note with unsaved text, up to three", () => {
+    renderDialog({ noteTitles: ["Plans", "Diary", ""] });
+    expect(screen.getByText(/"Plans", "Diary" and "Untitled" have changes that haven.t been saved/)).toBeInTheDocument();
+  });
+
+  it("counts the notes when there are more than three", () => {
+    renderDialog({ noteTitles: ["A", "B", "C", "D"] });
+    expect(screen.getByText(/4 notes have changes that haven.t been saved/)).toBeInTheDocument();
+  });
+
+  it("says that choosing without saving loses those changes", () => {
+    renderDialog({ kind: "signout", noteTitles: ["A", "B"] });
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(/Sign out without saving.{0,3} loses these changes/);
   });
 
   it("warns that closing without saving discards the text", () => {

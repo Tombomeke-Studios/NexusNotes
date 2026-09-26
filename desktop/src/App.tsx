@@ -48,7 +48,6 @@ import { drainLegacyPins } from "./lib/stars";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
-import { loadDraft } from "./lib/drafts";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
@@ -201,7 +200,7 @@ export default function App() {
     liveChange: handleLiveChange,
     markDirty,
     discard: discardUnsaved,
-    unsavedContent,
+    localCopy,
     acceptRemoteUpdate,
     saveError,
   } = useNoteSave({
@@ -852,15 +851,15 @@ export default function App() {
     );
     setActiveTabKey(noteId);
     const note = await decryptIncoming(await notesApi.get(noteId));
-    // Restore any unsaved local draft (e.g. after an abrupt close) so work isn't
-    // lost; it will re-save on the next autosave. E2ee vaults never write
-    // plaintext drafts to disk; for them (and as a fallback) the text of a
-    // save that hasn't reached the server yet is still in memory.
-    const draft =
-      (isE2eeVault(vaultOf(note.vault_id)) ? null : loadDraft(noteId)) ?? unsavedContent(noteId);
-    if (draft !== null && draft !== note.content) {
-      setActiveNote({ ...note, content: draft });
-      setEditorContent(draft);
+    // Restore unsaved local text (a draft after an abrupt close, or for e2ee
+    // vaults the in-memory text of a save the server hasn't confirmed) so work
+    // isn't lost. It opens on the version it was written against, not on this
+    // fresh server copy, so saving it gets a 409 if another device changed the
+    // note in between instead of silently overwriting that edit.
+    const local = localCopy(note);
+    if (local) {
+      setActiveNote({ ...note, content: local.content, checksum: local.checksum });
+      setEditorContent(local.content);
       setSaveStatus("unsaved");
     } else {
       setActiveNote(note);
@@ -868,7 +867,7 @@ export default function App() {
       setSaveStatus("saved");
     }
     setCursor({ line: 1, col: 1 });
-  }, [decryptIncoming, vaultOf, flushPendingSave, unsavedContent]);
+  }, [decryptIncoming, flushPendingSave, localCopy]);
 
   // Keyboard navigation of the file tree: Up/Down move a single-note highlight
   // through the visible order, Enter opens it. Ignored while typing, in the

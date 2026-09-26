@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { saveDraft, loadDraft, clearDraft } from "./drafts";
+import { saveDraft, loadDraft, clearDraft, loadDraftBase, rebaseDraft } from "./drafts";
 
 describe("drafts", () => {
   beforeEach(() => localStorage.clear());
@@ -21,5 +21,20 @@ describe("drafts", () => {
     expect(loadDraft("n1")).toBe("ab");
     clearDraft("n1");
     expect(loadDraft("n1")).toBeNull();
+  });
+
+  it("remembers the checksum a draft was written against", () => {
+    saveDraft("n1", "a", "c0");
+    expect(loadDraftBase("n1")).toBe("c0");
+    clearDraft("n1");
+    expect(loadDraftBase("n1")).toBeNull();
+  });
+
+  it("moves the base forward only from the checksum it was on", () => {
+    saveDraft("n1", "a", "c0");
+    rebaseDraft("n1", "cX", "c1");
+    expect(loadDraftBase("n1")).toBe("c0");
+    rebaseDraft("n1", "c0", "c1");
+    expect(loadDraftBase("n1")).toBe("c1");
   });
 });

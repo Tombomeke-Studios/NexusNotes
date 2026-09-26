@@ -3,7 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { notes as notesApi, ApiError } from "./api";
-import { saveDraft, clearDraft } from "./drafts";
+import { saveDraft, loadDraft, loadDraftBase, rebaseDraft, clearDraft } from "./drafts";
 import type { Note } from "./types";
 
 /**
@@ -162,10 +162,11 @@ export function useNoteSave(deps: NoteSaveDeps) {
 
   // The open note's React state may not have caught up with a save that just
   // finished; a snapshot still on the checksum it replaced uses the new one.
-  const baseChecksum = (note: Note) => {
-    const t = transitions.current.get(note.id);
-    return t && t.from === note.checksum ? t.to : note.checksum;
+  const resolveBase = (noteId: string, checksum: string) => {
+    const t = transitions.current.get(noteId);
+    return t && t.from === checksum ? t.to : checksum;
   };
+  const baseChecksum = (note: Note) => resolveBase(note.id, note.checksum);
 
   const succeed = (req: SaveRequest, updated: Note, base: string) => {
     const { note, content, version } = req;
@@ -190,6 +191,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
       const merge = (n: Note) => ({ ...saved, title: n.title });
       d.setNoteList((prev) => prev.map((n) => (n.id === saved.id ? merge(n) : n)));
       d.setActiveNote((prev) => (prev && prev.id === saved.id ? merge(prev) : prev));
+      rebaseDraft(note.id, base, updated.checksum);
       scheduleFollowUp(note.id);
     }
     d.onSynced();
@@ -381,8 +383,10 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // must never touch disk (localStorage included).
     const current = d.activeNoteRef.current;
     if (current && d.keepsDrafts(current.vault_id)) {
-      saveDraft(current.id, content);
+      saveDraft(current.id, content, baseChecksum(current));
     }
+    // baseChecksum only reads refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markDirty]);
 
   /**
@@ -404,15 +408,25 @@ export function useNoteSave(deps: NoteSaveDeps) {
   }, []);
 
   /**
-   * The note's newest text that a save was requested for but the server
-   * hasn't confirmed (failed, queued or in flight), or null. Reopening the
-   * note shows this instead of the server copy, since e2ee notes have no
-   * draft on disk to restore from.
+   * Local text of a note that the server doesn't have yet, for reopening it:
+   * the draft (standard vaults) or else the text of a save the server hasn't
+   * confirmed (failed, queued or in flight; e2ee notes keep no draft). Comes
+   * with the checksum it was written against. The caller must open the text
+   * on that version, not on the freshly loaded server copy, so saving it
+   * gets a 409 if another device changed the note in between.
    */
-  const unsavedContent = useCallback(
-    (noteId: string): string | null => lastRequests.current.get(noteId)?.content ?? null,
-    [],
-  );
+  const localCopy = useCallback((note: Note): { content: string; checksum: string } | null => {
+    const draft = depsRef.current.keepsDrafts(note.vault_id) ? loadDraft(note.id) : null;
+    if (draft !== null) {
+      if (draft === note.content) return null;
+      // A legacy draft without a stored base falls back to the server copy.
+      return { content: draft, checksum: resolveBase(note.id, loadDraftBase(note.id) ?? note.checksum) };
+    }
+    const req = lastRequests.current.get(note.id);
+    if (!req || req.content === note.content) return null;
+    return { content: req.content, checksum: baseChecksum(req.note) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * Decides whether a pushed note:updated may be merged into the open note
@@ -432,7 +446,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
     setSaveError({ noteId: incoming.id, kind: "conflict", message: MESSAGES.conflict(null) });
     d.setSaveStatus("conflict");
     return false;
+    // baseChecksum and cancelTimer only read refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { saveNote, liveChange, markDirty, discard, unsavedContent, acceptRemoteUpdate, saveError };
+  return { saveNote, liveChange, markDirty, discard, localCopy, acceptRemoteUpdate, saveError };
 }

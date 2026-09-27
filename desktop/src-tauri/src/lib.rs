@@ -181,9 +181,10 @@ fn backend_healthy(port: u16) -> bool {
     http_get_local(port, "/health").is_some_and(|r| is_healthy_response(&r))
 }
 
-/// True once MinIO answers its liveness endpoint.
+/// True once MinIO reports it can serve requests (the readiness endpoint;
+/// liveness can answer before a fresh instance serves bucket calls).
 fn object_storage_ready(port: u16) -> bool {
-    http_get_local(port, "/minio/health/live").is_some_and(|r| is_ok_status(&r))
+    http_get_local(port, "/minio/health/ready").is_some_and(|r| is_ok_status(&r))
 }
 
 /// Polls `check` every `interval` until it passes (true) or `timeout` elapses (false).
@@ -255,16 +256,15 @@ fn container_healthy(container: &str, timeout: Duration) -> bool {
     false
 }
 
-/// Starts (or reuses) the Postgres/Redis/MinIO containers via `docker compose`,
+/// Starts (or reuses) the Postgres/Redis containers via `docker compose`,
 /// pinned to the same project name the dev scripts use so both share one
-/// set of containers. Returns true once Postgres and Redis report healthy;
-/// MinIO gets a bounded wait because the backend checks object storage only
-/// once at startup, but its absence only disables attachments.
+/// set of containers, then MinIO on its own (see `start_object_storage`).
+/// Returns true once Postgres and Redis report healthy.
 fn start_docker_infra(compose_path: &std::path::Path) -> bool {
     let started = docker()
         .args(["compose", "-p", "nexusnotes", "-f"])
         .arg(compose_path)
-        .args(["up", "-d", "postgres", "redis", "minio"])
+        .args(["up", "-d", "postgres", "redis"])
         .status();
 
     match started {
@@ -281,16 +281,35 @@ fn start_docker_infra(compose_path: &std::path::Path) -> bool {
 
     let databases = container_healthy("nexusnotes-postgres-1", Duration::from_secs(60))
         && container_healthy("nexusnotes-redis-1", Duration::from_secs(30));
-    if databases
-        && !wait_for(MINIO_READY_TIMEOUT, Duration::from_millis(500), || {
-            object_storage_ready(MINIO_PORT)
-        })
-    {
-        eprintln!(
-            "[backend] MinIO is not answering; attachments stay disabled until the backend restarts"
-        );
+    if databases {
+        start_object_storage(compose_path);
     }
     databases
+}
+
+/// Starts MinIO in its own `docker compose` call so that a failure (its port
+/// taken by another program, an image that cannot be pulled) can never keep
+/// the databases or the backend from starting: without MinIO only attachments
+/// are unavailable. Waits a bounded time because the backend checks object
+/// storage once at startup.
+fn start_object_storage(compose_path: &std::path::Path) {
+    let started = docker()
+        .args(["compose", "-p", "nexusnotes", "-f"])
+        .arg(compose_path)
+        .args(["up", "-d", "minio"])
+        .status()
+        .is_ok_and(|status| status.success());
+    if !started {
+        eprintln!("[backend] MinIO could not be started; attachments are unavailable");
+        return;
+    }
+    if !wait_for(MINIO_READY_TIMEOUT, Duration::from_millis(500), || {
+        object_storage_ready(MINIO_PORT)
+    }) {
+        eprintln!(
+            "[backend] MinIO is not ready; attachments stay unavailable until the app restarts"
+        );
+    }
 }
 
 /// Keeps the backend available for as long as the app runs, without ever blocking

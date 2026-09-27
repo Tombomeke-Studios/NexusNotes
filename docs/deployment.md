@@ -124,9 +124,10 @@ service, so **Docker Desktop is the only prerequisite**. A supervisor thread kee
 and never blocks the window:
 
 - It waits for the Docker engine (launching Docker Desktop right before the app is fine)
-  and retries until Postgres and Redis report healthy. It then waits up to 30 seconds for
-  MinIO, because the backend checks object storage only once at startup; if MinIO never
-  answers, the app still runs, only without attachments until the backend restarts.
+  and retries until Postgres and Redis report healthy. MinIO is then started on its own
+  and given up to 30 seconds to become ready, because the backend checks object storage only
+  once at startup. If MinIO cannot start (for example its port 9000 is taken) or never
+  becomes ready, the app still runs, only without attachments until the app restarts.
 - Attachments are stored in the `minio_dev_data` Docker volume, so they survive container
   recreation and Docker Desktop restarts.
 - A backend that is already healthy on `:8080` (for example one started by

@@ -19,7 +19,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ### Fixed
 - Attachments now work in the packaged app and with the dev scripts: MinIO is started with
   the databases, the backend waits for it and receives its settings, and uploaded files live
-  in a Docker volume instead of the container filesystem.
+  in a Docker volume instead of the container filesystem. Files uploaded to the dev MinIO
+  before this change lived in the container and are not carried over. MinIO is optional:
+  if it cannot start, everything else still works.
 - Attachments are refused in end-to-end encrypted vaults (server and app) until attachment
   files are encrypted on the client; previously they were stored unencrypted.
 - The app no longer signs you out when the server is merely unreachable at start-up; your

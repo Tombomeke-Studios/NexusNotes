@@ -21,6 +21,17 @@ const DATABASE_URL: &str = "postgres://nexus:nexus_dev@localhost:5432/nexus_note
 /// File in the app's local data dir holding this install's JWT signing secret.
 const JWT_SECRET_FILE: &str = "jwt-secret";
 
+/// Object storage for attachments: the MinIO service of the bundled dev compose
+/// file, bound to localhost only. The credentials are the compose file's fixed
+/// dev values, like the database password (see #277).
+const MINIO_PORT: u16 = 9000;
+const MINIO_ACCESS_KEY: &str = "nexus_minio";
+const MINIO_SECRET_KEY: &str = "nexus_minio_dev";
+const MINIO_BUCKET: &str = "attachments";
+
+/// How long startup waits for MinIO before running the backend without attachments.
+const MINIO_READY_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Bytes of CSPRNG output per secret; hex-encoded to twice as many characters.
 const SECRET_BYTES: usize = 32;
 
@@ -142,26 +153,66 @@ fn backoff(attempt: u32) -> Duration {
     Duration::from_secs((1u64 << attempt.min(5)).min(30))
 }
 
+/// True when an HTTP response starts with a 200 status line.
+fn is_ok_status(response: &str) -> bool {
+    response.starts_with("HTTP/1.1 200")
+}
+
 /// True for a 200 answer from the backend's `/health` endpoint.
 fn is_healthy_response(response: &str) -> bool {
-    response.starts_with("HTTP/1.1 200") && response.contains("\"status\":\"ok\"")
+    is_ok_status(response) && response.contains("\"status\":\"ok\"")
+}
+
+/// Plain HTTP GET on localhost; None when nothing answers in time.
+fn http_get_local(port: u16, path: &str) -> Option<String> {
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_secs(1)).ok()?;
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+    let request = format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+    stream.write_all(request.as_bytes()).ok()?;
+    let mut response = String::new();
+    let _ = stream.read_to_string(&mut response);
+    Some(response)
 }
 
 /// Asks `/health` on localhost; a plain TCP listener that is not our backend does not count.
 fn backend_healthy(port: u16) -> bool {
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let Ok(mut stream) = TcpStream::connect_timeout(&addr, Duration::from_secs(1)) else {
-        return false;
-    };
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
-    let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
-    let request = b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
-    if stream.write_all(request).is_err() {
-        return false;
+    http_get_local(port, "/health").is_some_and(|r| is_healthy_response(&r))
+}
+
+/// True once MinIO answers its liveness endpoint.
+fn object_storage_ready(port: u16) -> bool {
+    http_get_local(port, "/minio/health/live").is_some_and(|r| is_ok_status(&r))
+}
+
+/// Polls `check` every `interval` until it passes (true) or `timeout` elapses (false).
+fn wait_for(timeout: Duration, interval: Duration, mut check: impl FnMut() -> bool) -> bool {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if check() {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(interval);
     }
-    let mut response = String::new();
-    let _ = stream.read_to_string(&mut response);
-    is_healthy_response(&response)
+}
+
+/// Environment for the bundled sync-service sidecar.
+fn sidecar_env(jwt_secret: &str, bind_addrs: &str) -> Vec<(&'static str, String)> {
+    vec![
+        ("DATABASE_URL", DATABASE_URL.to_string()),
+        ("REDIS_URL", "redis://localhost:6379".to_string()),
+        ("JWT_SECRET", jwt_secret.to_string()),
+        ("BIND_ADDR", bind_addrs.to_string()),
+        ("PORT", BACKEND_PORT.to_string()),
+        ("MINIO_ENDPOINT", format!("localhost:{MINIO_PORT}")),
+        ("MINIO_ACCESS_KEY", MINIO_ACCESS_KEY.to_string()),
+        ("MINIO_SECRET_KEY", MINIO_SECRET_KEY.to_string()),
+        ("MINIO_BUCKET", MINIO_BUCKET.to_string()),
+    ]
 }
 
 /// `docker` invocation that never flashes a console window (this is a GUI app).
@@ -204,14 +255,16 @@ fn container_healthy(container: &str, timeout: Duration) -> bool {
     false
 }
 
-/// Starts (or reuses) the Postgres/Redis containers via `docker compose`,
+/// Starts (or reuses) the Postgres/Redis/MinIO containers via `docker compose`,
 /// pinned to the same project name the dev scripts use so both share one
-/// set of containers. Returns true once both report healthy.
+/// set of containers. Returns true once Postgres and Redis report healthy;
+/// MinIO gets a bounded wait because the backend checks object storage only
+/// once at startup, but its absence only disables attachments.
 fn start_docker_infra(compose_path: &std::path::Path) -> bool {
     let started = docker()
         .args(["compose", "-p", "nexusnotes", "-f"])
         .arg(compose_path)
-        .args(["up", "-d", "postgres", "redis"])
+        .args(["up", "-d", "postgres", "redis", "minio"])
         .status();
 
     match started {
@@ -226,8 +279,18 @@ fn start_docker_infra(compose_path: &std::path::Path) -> bool {
         }
     }
 
-    container_healthy("nexusnotes-postgres-1", Duration::from_secs(60))
-        && container_healthy("nexusnotes-redis-1", Duration::from_secs(30))
+    let databases = container_healthy("nexusnotes-postgres-1", Duration::from_secs(60))
+        && container_healthy("nexusnotes-redis-1", Duration::from_secs(30));
+    if databases
+        && !wait_for(MINIO_READY_TIMEOUT, Duration::from_millis(500), || {
+            object_storage_ready(MINIO_PORT)
+        })
+    {
+        eprintln!(
+            "[backend] MinIO is not answering; attachments stay disabled until the backend restarts"
+        );
+    }
+    databases
 }
 
 /// Keeps the backend available for as long as the app runs, without ever blocking
@@ -277,13 +340,7 @@ fn supervise_backend(app: tauri::AppHandle) {
 
         let spawned = app.shell().sidecar("sync-service").map(|cmd| {
             cmd.current_dir(&resource_dir)
-                .envs([
-                    ("DATABASE_URL", DATABASE_URL),
-                    ("REDIS_URL", "redis://localhost:6379"),
-                    ("JWT_SECRET", jwt_secret.as_str()),
-                    ("BIND_ADDR", bind_addrs),
-                    ("PORT", &BACKEND_PORT.to_string()),
-                ])
+                .envs(sidecar_env(&jwt_secret, bind_addrs))
                 .spawn()
         });
         let (mut events, child) = match spawned {
@@ -348,7 +405,10 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             if let RunEvent::ExitRequested { .. } = event {
-                app_handle.state::<Shutdown>().0.store(true, Ordering::SeqCst);
+                app_handle
+                    .state::<Shutdown>()
+                    .0
+                    .store(true, Ordering::SeqCst);
                 if let Some(child) = app_handle.state::<Backend>().0.lock().unwrap().take() {
                     let _ = child.kill();
                 }
@@ -359,6 +419,49 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sidecar_env_configures_object_storage() {
+        let env = sidecar_env("s3cret", "127.0.0.1");
+        let get = |k: &str| {
+            env.iter()
+                .find(|(key, _)| *key == k)
+                .map(|(_, v)| v.as_str())
+        };
+        assert_eq!(get("MINIO_ENDPOINT"), Some("localhost:9000"));
+        assert_eq!(get("MINIO_ACCESS_KEY"), Some("nexus_minio"));
+        assert_eq!(get("MINIO_SECRET_KEY"), Some("nexus_minio_dev"));
+        assert_eq!(get("MINIO_BUCKET"), Some("attachments"));
+        assert_eq!(get("JWT_SECRET"), Some("s3cret"));
+        assert_eq!(get("BIND_ADDR"), Some("127.0.0.1"));
+        assert_eq!(get("PORT"), Some("8080"));
+    }
+
+    #[test]
+    fn ok_status_needs_http_200() {
+        assert!(is_ok_status("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"));
+        assert!(!is_ok_status("HTTP/1.1 503 Service Unavailable\r\n\r\n"));
+        assert!(!is_ok_status(""));
+    }
+
+    #[test]
+    fn wait_for_returns_as_soon_as_the_check_passes() {
+        let mut calls = 0;
+        assert!(wait_for(
+            Duration::from_secs(5),
+            Duration::from_millis(1),
+            || {
+                calls += 1;
+                calls == 3
+            }
+        ));
+        assert_eq!(calls, 3);
+        assert!(!wait_for(
+            Duration::from_millis(20),
+            Duration::from_millis(1),
+            || false
+        ));
+    }
 
     #[test]
     fn backoff_doubles_then_caps_at_thirty_seconds() {
@@ -378,7 +481,9 @@ mod tests {
         assert!(!is_healthy_response(
             "HTTP/1.1 503 Service Unavailable\r\n\r\n{\"status\":\"ok\"}"
         ));
-        assert!(!is_healthy_response("HTTP/1.1 200 OK\r\n\r\n<html>some other server</html>"));
+        assert!(!is_healthy_response(
+            "HTTP/1.1 200 OK\r\n\r\n<html>some other server</html>"
+        ));
         assert!(!is_healthy_response(""));
     }
 

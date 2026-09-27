@@ -200,6 +200,7 @@ it is what it exists for:
 | `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing) |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
+| `src/lib/motion-tokens.ts` | Shared motion tokens: springs (`snappy`/`smooth`/`bounce`), 120-320 ms durations, exit = 65% of entry, overlay enter/exit presets (mirrored by the `--duration-*`/`--easing-*` CSS tokens) |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
 | `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |

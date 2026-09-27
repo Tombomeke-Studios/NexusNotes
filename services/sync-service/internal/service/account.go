@@ -30,6 +30,11 @@ type sessionCloser interface {
 	DisconnectUser(userID string)
 }
 
+// vaultFileRemover deletes a vault's attachment files from object storage.
+type vaultFileRemover interface {
+	RemoveVaultFiles(ctx context.Context, vaultIDs ...string)
+}
+
 // AccountService handles account-level lifecycle operations: GDPR erasure and
 // data-portability export.
 type AccountService struct {
@@ -38,6 +43,12 @@ type AccountService struct {
 	notes  accountNoteStore
 	search searchCleaner
 	hub    sessionCloser
+	files  vaultFileRemover // nil when attachments are disabled
+}
+
+// SetFileCleanup lets account deletion also erase attachment files (#290).
+func (s *AccountService) SetFileCleanup(files vaultFileRemover) {
+	s.files = files
 }
 
 func NewAccountService(users accountUserStore, vaults accountVaultStore, notes accountNoteStore, search searchCleaner, hub sessionCloser) *AccountService {
@@ -47,8 +58,9 @@ func NewAccountService(users accountUserStore, vaults accountVaultStore, notes a
 // DeleteAccount permanently erases the user and everything they own. The
 // password is re-verified so a stolen session token alone cannot destroy an
 // account. PostgreSQL cascades take care of vaults, notes, versions, links,
-// tags and devices; the search index and live WebSocket sessions are external
-// and cleaned up explicitly.
+// tags, devices and attachment rows; the search index, attachment files in
+// object storage and live WebSocket sessions are external and cleaned up
+// explicitly.
 func (s *AccountService) DeleteAccount(ctx context.Context, userID, password string) error {
 	user, err := s.users.GetByID(ctx, userID)
 	if err != nil {
@@ -79,6 +91,9 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID, password str
 			vaultIDs[i] = v.ID
 		}
 		s.search.DeleteVaultNotes(vaultIDs)
+		if s.files != nil {
+			s.files.RemoveVaultFiles(ctx, vaultIDs...)
+		}
 	}
 	s.hub.DisconnectUser(userID)
 

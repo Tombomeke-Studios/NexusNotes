@@ -149,13 +149,19 @@ func (r *VaultRepo) Update(ctx context.Context, vault *model.Vault) error {
 	return nil
 }
 
+// Delete removes a vault owned by userID; ErrVaultNotFound when nothing
+// matched (unknown vault or not the owner), so callers never act on a
+// delete that did not happen.
 func (r *VaultRepo) Delete(ctx context.Context, id, userID string) error {
-	_, err := r.pool.Exec(ctx,
+	tag, err := r.pool.Exec(ctx,
 		`DELETE FROM vaults WHERE id = $1 AND user_id = $2`,
 		id, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("delete vault: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrVaultNotFound
 	}
 	return nil
 }

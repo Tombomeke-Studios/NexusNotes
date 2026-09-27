@@ -184,8 +184,8 @@ caller does not own changes nothing.
 
 ### DELETE /api/vaults/:id
 
-Owner only; deletes the vault with all its notes. Response (204). A request for
-a vault the caller does not own changes nothing.
+Owner only; deletes the vault with all its notes and their attachment files. Response (204);
+`404` when the vault does not exist or the caller does not own it (nothing is changed).
 
 ---
 

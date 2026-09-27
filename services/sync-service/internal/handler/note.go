@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -17,6 +18,18 @@ type NoteHandler struct {
 	vaultRepo   *repository.VaultRepo
 	memberRepo  *repository.VaultMemberRepo
 	hub         *ws.Hub
+	files       noteFileCleaner // nil when attachments are disabled
+}
+
+// noteFileCleaner finds and deletes a note's attachment files in object storage.
+type noteFileCleaner interface {
+	NoteFiles(ctx context.Context, noteID string) []string
+	RemoveFiles(ctx context.Context, keys []string)
+}
+
+// SetFileCleanup makes note deletion also erase its attachment files (#290).
+func (h *NoteHandler) SetFileCleanup(files noteFileCleaner) {
+	h.files = files
 }
 
 func NewNoteHandler(syncService *service.SyncService, vaultRepo *repository.VaultRepo, memberRepo *repository.VaultMemberRepo, hub *ws.Hub) *NoteHandler {
@@ -206,9 +219,17 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect the attachment keys first: the rows cascade away with the note.
+	var fileKeys []string
+	if h.files != nil {
+		fileKeys = h.files.NoteFiles(r.Context(), noteID)
+	}
 	if err := h.syncService.DeleteNote(r.Context(), noteID, vaultID); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete note")
 		return
+	}
+	if h.files != nil {
+		h.files.RemoveFiles(r.Context(), fileKeys)
 	}
 
 	payload, _ := json.Marshal(map[string]string{"note_id": noteID})

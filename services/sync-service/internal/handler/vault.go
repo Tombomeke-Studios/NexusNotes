@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -20,6 +21,17 @@ type VaultHandler struct {
 	// requireVerified gates vault creation on a confirmed email (#47); only
 	// active when SMTP is configured, so mail-less self-hosts are unaffected.
 	requireVerified bool
+	files           vaultFileRemover // nil when attachments are disabled
+}
+
+// vaultFileRemover deletes a vault's attachment files from object storage.
+type vaultFileRemover interface {
+	RemoveVaultFiles(ctx context.Context, vaultIDs ...string)
+}
+
+// SetFileCleanup makes vault deletion also erase its attachment files (#290).
+func (h *VaultHandler) SetFileCleanup(files vaultFileRemover) {
+	h.files = files
 }
 
 func NewVaultHandler(vaultRepo *repository.VaultRepo, userRepo *repository.UserRepo, memberRepo *repository.VaultMemberRepo, requireVerified bool) *VaultHandler {
@@ -194,8 +206,16 @@ func (h *VaultHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 
 	if err := h.vaultRepo.Delete(r.Context(), vaultID, userID); err != nil {
+		if errors.Is(err, repository.ErrVaultNotFound) {
+			writeError(w, http.StatusNotFound, "vault not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "failed to delete vault")
 		return
+	}
+	// Only after the row is really gone: a non-owner's request never gets here.
+	if h.files != nil {
+		h.files.RemoveVaultFiles(r.Context(), vaultID)
 	}
 
 	w.WriteHeader(http.StatusNoContent)

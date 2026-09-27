@@ -604,3 +604,8 @@
   box-shadow: var(--shadow-popover);
   z-index: 5;
 }
+
+.editor-uploading--notice {
+  color: var(--warning);
+  border-color: var(--warning);
+}

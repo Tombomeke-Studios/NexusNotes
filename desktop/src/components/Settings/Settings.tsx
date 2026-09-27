@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import type { WorkspacePrefs } from "../../lib/prefs";
 import type { Vault } from "../../lib/types";
 import { auth, devices as devicesApi, ApiError } from "../../lib/api";
@@ -7,12 +8,16 @@ import { relativeTimeLabel } from "../../lib/stats";
 import { APP_VERSION, formatVersionLabel } from "../../lib/version";
 import { useServerStatus } from "../../lib/useServerStatus";
 import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
+import type { MotionPreference } from "../../lib/motion";
+import { spring } from "../../lib/motion-tokens";
 import "./Settings.css";
 
 type SettingsTab = "appearance" | "sync" | "shortcuts" | "account";
 
 interface SettingsProps {
   prefs: WorkspacePrefs;
+  /** Whether the OS asks for reduced motion (what the "System" choice resolves to). */
+  osReducedMotion: boolean;
   lastSyncLabel: string | null;
   /** The vault whose settings-relevant state (encryption) is shown. */
   activeVault: Vault | null;
@@ -48,8 +53,50 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
+const MOTION_OPTIONS: Array<{ value: MotionPreference; label: string }> = [
+  { value: "system", label: "System" },
+  { value: "reduce", label: "Reduced" },
+  { value: "full", label: "Full" },
+];
+
+/** Segmented choice with a pill that glides to the selected option. */
+function Segmented<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="settings-seg" role="radiogroup" aria-label={label}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={o.value}
+            role="radio"
+            aria-checked={on}
+            className={`settings-seg-btn${on ? " settings-seg-btn--on" : ""}`}
+            onClick={() => onChange(o.value)}
+          >
+            {on && <motion.span layoutId={`seg-pill-${id}`} className="settings-seg-pill" transition={spring.snappy} />}
+            <span className="settings-seg-label">{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Settings({
   prefs,
+  osReducedMotion,
   lastSyncLabel,
   activeVault,
   onChangePassphrase,
@@ -189,12 +236,21 @@ export function Settings({
                 </div>
                 <div className="settings-row">
                   <div>
-                    <div className="settings-row-label">Reduce motion</div>
-                    <div className="settings-row-sub">Minimize animations across the app</div>
+                    <div className="settings-row-label">Motion</div>
+                    <div className="settings-row-sub">
+                      {prefs.motion === "system"
+                        ? `Follows your system: ${osReducedMotion ? "reduced motion" : "full motion"}`
+                        : prefs.motion === "reduce"
+                          ? "Animations are turned off"
+                          : "Full animations, even if your system asks for less"}
+                    </div>
                   </div>
-                  <Toggle
-                    on={prefs.reduceMotion}
-                    onToggle={() => onUpdatePrefs({ reduceMotion: !prefs.reduceMotion })}
+                  <Segmented
+                    id="motion"
+                    label="Motion"
+                    value={prefs.motion}
+                    options={MOTION_OPTIONS}
+                    onChange={(motion) => onUpdatePrefs({ motion })}
                   />
                 </div>
                 <div className="settings-row">

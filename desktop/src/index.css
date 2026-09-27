@@ -108,14 +108,24 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 
 textarea::placeholder, input::placeholder { color: var(--text-faint); }
 
-/* Reduce motion: opt-in via the in-app Settings toggle (data-rm on the
-   workspace root), matching the design. We deliberately do NOT gate on the
-   OS prefers-reduced-motion here, since that silently disabled the animated
-   logo and all motion on systems with reduced motion enabled. */
-[data-rm="1"], [data-rm="1"] * {
+/* Reduce motion. lib/motion.ts resolves the OS prefers-reduced-motion query
+   and the in-app Motion setting (System / Reduced / Full) into ONE value and
+   sets data-rm on <html>; framer-motion follows the same switch. There is
+   deliberately no bare @media (prefers-reduced-motion) rule here: "Full" must
+   be able to override the OS (Windows reports reduced motion whenever its own
+   animations are off). Infinite loops stop after one (instant) iteration. */
+[data-rm="1"], [data-rm="1"] *, [data-rm="1"] *::before, [data-rm="1"] *::after {
   transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
   animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
 }
+
+/* Pointer-following layers on the auth screen stay put. */
+[data-rm="1"] .auth-aurora { transform: none; }
+[data-rm="1"] .auth-cursor-glow { display: none; }
 
 /* --- Animations --- */
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

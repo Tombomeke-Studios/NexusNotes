@@ -54,8 +54,8 @@ start_stack() {
       sleep 1
     done
   else
-    log "Starting Docker infra (Postgres + Redis + MinIO)…"
-    docker compose -f "$ROOT/docker-compose.dev.yml" up -d postgres redis minio
+    log "Starting Docker infra (Postgres + Redis)…"
+    docker compose -f "$ROOT/docker-compose.dev.yml" up -d postgres redis
 
     log "Waiting for Postgres…"
     for _ in $(seq 1 30); do
@@ -64,13 +64,18 @@ start_stack() {
       sleep 1
     done
 
-    # The backend checks object storage once at startup, so wait for MinIO
-    # (bounded: without it only attachments are unavailable).
-    log "Waiting for MinIO…"
-    for _ in $(seq 1 30); do
-      curl -sf "http://localhost:9000/minio/health/live" >/dev/null 2>&1 && break
-      sleep 1
-    done
+    # MinIO is optional and started on its own: if its port is taken or the
+    # image cannot be pulled, only attachments are unavailable. The backend
+    # checks object storage once at startup, so wait (bounded) for it.
+    log "Starting MinIO (attachments)…"
+    if docker compose -f "$ROOT/docker-compose.dev.yml" up -d minio; then
+      for _ in $(seq 1 30); do
+        curl -sf "http://localhost:9000/minio/health/ready" >/dev/null 2>&1 && break
+        sleep 1
+      done
+    else
+      log "MinIO could not start; attachments are unavailable this session."
+    fi
   fi
 
   log "Applying database migrations…"

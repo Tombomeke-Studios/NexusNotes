@@ -43,9 +43,10 @@ services:
     restart: unless-stopped
     volumes:
       - minio_dev_data:/data
+    # Only the S3 API is published; the web console (:9001) is not needed and
+    # would be one more local surface guarded by the fixed dev credentials.
     ports:
       - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
     environment:
       - MINIO_ROOT_USER=nexus_minio
       - MINIO_ROOT_PASSWORD=nexus_minio_dev

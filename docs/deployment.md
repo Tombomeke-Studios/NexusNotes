@@ -118,13 +118,17 @@ Open `http://localhost:1420` in your browser.
 
 ### Packaged app (.exe)
 
-The installed desktop app is self-sufficient: it starts Postgres and Redis through
-`docker compose` and runs a bundled copy of the sync service, so **Docker Desktop
-is the only prerequisite**. A supervisor thread keeps this going in the background
+The installed desktop app is self-sufficient: it starts Postgres, Redis and MinIO
+(attachment storage) through `docker compose` and runs a bundled copy of the sync
+service, so **Docker Desktop is the only prerequisite**. A supervisor thread keeps this going in the background
 and never blocks the window:
 
 - It waits for the Docker engine (launching Docker Desktop right before the app is fine)
-  and retries until Postgres and Redis report healthy.
+  and retries until Postgres and Redis report healthy. It then waits up to 30 seconds for
+  MinIO, because the backend checks object storage only once at startup; if MinIO never
+  answers, the app still runs, only without attachments until the backend restarts.
+- Attachments are stored in the `minio_dev_data` Docker volume, so they survive container
+  recreation and Docker Desktop restarts.
 - A backend that is already healthy on `:8080` (for example one started by
   `dev-app.sh`) is reused instead of starting a second one.
 - If the bundled backend exits it is restarted with a capped backoff (1s → 30s).

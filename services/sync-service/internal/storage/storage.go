@@ -69,6 +69,21 @@ func (s *Store) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	return obj, nil
 }
 
+// DeletePrefix removes every object whose key starts with prefix. An empty
+// prefix is refused: it would match the whole bucket.
+func (s *Store) DeletePrefix(ctx context.Context, prefix string) error {
+	if prefix == "" {
+		return fmt.Errorf("delete prefix: refusing an empty prefix")
+	}
+	objects := s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{Prefix: prefix, Recursive: true})
+	for rerr := range s.client.RemoveObjects(ctx, s.bucket, objects, minio.RemoveObjectsOptions{}) {
+		if rerr.Err != nil {
+			return fmt.Errorf("delete object %s: %w", rerr.ObjectName, rerr.Err)
+		}
+	}
+	return nil
+}
+
 // Delete removes an object; a missing key is not an error.
 func (s *Store) Delete(ctx context.Context, key string) error {
 	if err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{}); err != nil {

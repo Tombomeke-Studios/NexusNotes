@@ -198,7 +198,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Setup
 
-- [ ] Install `framer-motion` as the primary animation library (#293)
+- [x] Install `framer-motion` as the primary animation library (#293)
 - [ ] Add `AnimatePresence` with `mode="popLayout"` at the router level for page transitions
 - [ ] Add a `prefers-reduced-motion` media query check; disable all animations when the preference is set (#295)
 - [ ] Create `src/lib/motion-tokens.ts` with shared spring configurations (`snappy`, `smooth`, `bounce`) used consistently across the codebase (#294)

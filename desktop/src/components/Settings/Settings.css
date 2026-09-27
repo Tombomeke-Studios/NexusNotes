@@ -217,6 +217,45 @@
   left: 18px;
 }
 
+/* Segmented choice (e.g. Motion: System / Reduced / Full). The selected pill is
+   one shared element that glides between options (framer-motion layoutId). */
+.settings-seg {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2.5px;
+  gap: 2px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-inner);
+  border-radius: 8px;
+}
+
+.settings-seg-btn {
+  position: relative;
+  padding: 4px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.settings-seg-btn:hover,
+.settings-seg-btn--on {
+  color: var(--text-primary);
+}
+
+.settings-seg-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-raised), var(--surface-highlight);
+}
+
+.settings-seg-label {
+  position: relative;
+}
+
 .settings-sync-card {
   display: flex;
   align-items: center;

@@ -11,12 +11,28 @@ describe("prefs", () => {
   });
 
   it("round-trips saved preferences", () => {
-    savePrefs({ fontSize: 16, reduceMotion: true, leftOpen: false });
+    savePrefs({ fontSize: 16, motion: "reduce", leftOpen: false });
     const prefs = loadPrefs();
     expect(prefs.fontSize).toBe(16);
-    expect(prefs.reduceMotion).toBe(true);
+    expect(prefs.motion).toBe("reduce");
     expect(prefs.leftOpen).toBe(false);
     expect(prefs.showStatusBar).toBe(DEFAULT_PREFS.showStatusBar);
+  });
+
+  it("defaults motion to following the system setting", () => {
+    expect(loadPrefs().motion).toBe("system");
+  });
+
+  it("migrates the legacy reduceMotion boolean to the motion setting", () => {
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ reduceMotion: true }));
+    expect(loadPrefs().motion).toBe("reduce");
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ reduceMotion: false }));
+    expect(loadPrefs().motion).toBe("system");
+  });
+
+  it("ignores an unknown motion value", () => {
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ motion: "wild" }));
+    expect(loadPrefs().motion).toBe("system");
   });
 
   it("merges partial saves without dropping earlier keys", () => {

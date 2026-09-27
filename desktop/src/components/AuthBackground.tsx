@@ -7,8 +7,11 @@ import { useEffect, useRef } from "react";
  * cursor (nearer/bigger nodes move more), and nodes near the pointer are drawn
  * toward it and link to it, so it feels interactive without being loud.
  * Pure canvas; sits behind the card and never intercepts input.
+ *
+ * With `still` (reduced motion) it paints a single static frame and does not
+ * run the animation loop or follow the pointer.
  */
-export function AuthBackground() {
+export function AuthBackground({ still = false }: { still?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -69,6 +72,7 @@ export function AuthBackground() {
       smoothX = width / 2;
       smoothY = height / 2;
       seed();
+      if (still) step();
     };
 
     const step = () => {
@@ -151,7 +155,7 @@ export function AuthBackground() {
         ctx.fill();
       }
 
-      raf = requestAnimationFrame(step);
+      if (!still) raf = requestAnimationFrame(step);
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -167,10 +171,12 @@ export function AuthBackground() {
     };
 
     resize();
-    step();
+    if (!still) step();
     window.addEventListener("resize", resize);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerleave", onPointerLeave);
+    if (!still) {
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerleave", onPointerLeave);
+    }
 
     return () => {
       cancelAnimationFrame(raf);
@@ -178,7 +184,7 @@ export function AuthBackground() {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerleave", onPointerLeave);
     };
-  }, []);
+  }, [still]);
 
   return <canvas ref={canvasRef} className="auth-constellation" aria-hidden="true" />;
 }

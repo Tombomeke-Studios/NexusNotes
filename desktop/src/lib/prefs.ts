@@ -1,11 +1,13 @@
 import { DEFAULT_DAILY_TEMPLATE } from "./templates";
+import { MOTION_PREFERENCES, type MotionPreference } from "./motion";
 
 export type ViewMode = "edit" | "split" | "preview";
 export type RightTab = "outline" | "links" | "graph" | "info";
 
 export interface WorkspacePrefs {
   fontSize: number;
-  reduceMotion: boolean;
+  /** Reduced motion: follow the OS, always reduce, or keep full motion (lib/motion.ts). */
+  motion: MotionPreference;
   showStatusBar: boolean;
   viewMode: ViewMode;
   leftOpen: boolean;
@@ -22,7 +24,7 @@ export const PREFS_STORAGE_KEY = "nexus_workspace_prefs";
 
 export const DEFAULT_PREFS: WorkspacePrefs = {
   fontSize: 14,
-  reduceMotion: false,
+  motion: "system",
   showStatusBar: true,
   viewMode: "split",
   leftOpen: true,
@@ -48,7 +50,7 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function sanitize(raw: Partial<WorkspacePrefs>): WorkspacePrefs {
+function sanitize(raw: Partial<WorkspacePrefs> & { reduceMotion?: unknown }): WorkspacePrefs {
   const prefs = { ...DEFAULT_PREFS };
   for (const key of ["fontSize", "leftWidth", "rightWidth", "splitPct"] as const) {
     const v = raw[key];
@@ -57,9 +59,15 @@ function sanitize(raw: Partial<WorkspacePrefs>): WorkspacePrefs {
       prefs[key] = clamp(v, min, max);
     }
   }
-  for (const key of ["reduceMotion", "showStatusBar", "leftOpen", "rightOpen"] as const) {
+  for (const key of ["showStatusBar", "leftOpen", "rightOpen"] as const) {
     const v = raw[key];
     if (typeof v === "boolean") prefs[key] = v;
+  }
+  if (MOTION_PREFERENCES.includes(raw.motion as MotionPreference)) {
+    prefs.motion = raw.motion as MotionPreference;
+  } else if (raw.reduceMotion === true) {
+    // Legacy boolean toggle from before the OS preference was honoured.
+    prefs.motion = "reduce";
   }
   if (VIEW_MODES.includes(raw.viewMode as ViewMode)) prefs.viewMode = raw.viewMode as ViewMode;
   if (RIGHT_TABS.includes(raw.rightTab as RightTab)) prefs.rightTab = raw.rightTab as RightTab;

@@ -60,6 +60,7 @@ import type { ViewMode } from "./lib/prefs";
 import type { RailView } from "./components/Workspace/Rail";
 import { relativeTimeLabel } from "./lib/stats";
 import { isTauriWindow } from "./lib/platform";
+import { useReducedMotion } from "./lib/motion";
 import { currentAuthAction, clearAuthActionUrl } from "./lib/authAction";
 import type { User, Vault, Note } from "./lib/types";
 import { attachmentBlockReason } from "./lib/attachmentPolicy";
@@ -125,6 +126,9 @@ export default function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null);
   const [prefs, setPrefs] = useState(() => loadPrefs());
+  // Single source of truth for reduced motion (OS + in-app setting); applied to
+  // <html> so it also covers the auth screen and portalled overlays.
+  const { reduced: reducedMotion, osReduced: osReducedMotion } = useReducedMotion(prefs.motion);
   const [dragging, setDragging] = useState<{ type: "left" | "right"; startX: number; startW: number } | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
   const [cursor, setCursor] = useState({ line: 1, col: 1 });
@@ -1210,7 +1214,7 @@ export default function App() {
   }
 
   if (!user) {
-    return <Auth onAuth={handleAuth} />;
+    return <Auth onAuth={handleAuth} reducedMotion={reducedMotion} />;
   }
 
   const tree = buildTree(filteredNoteList, { keepNoteOrder: true, emptyFolders });
@@ -1237,7 +1241,6 @@ export default function App() {
   return (
     <div
       className="workspace"
-      data-rm={prefs.reduceMotion ? "1" : "0"}
       onContextMenu={(e) => {
         // A note item (or other child) that opened its own menu will have
         // called preventDefault; only open the workspace menu otherwise.
@@ -1495,6 +1498,7 @@ export default function App() {
       {showSettings && (
         <Settings
           prefs={prefs}
+          osReducedMotion={osReducedMotion}
           lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
           activeVault={activeVault ?? null}
           onChangePassphrase={handleChangePassphrase}

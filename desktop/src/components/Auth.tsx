@@ -10,9 +10,11 @@ import type { User } from "../lib/types";
 
 interface AuthProps {
   onAuth: (user: User) => void;
+  /** Reduced motion is on (lib/motion.ts): keep the background still. */
+  reducedMotion?: boolean;
 }
 
-export function Auth({ onAuth }: AuthProps) {
+export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [forgot, setForgot] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
@@ -88,7 +90,7 @@ export function Auth({ onAuth }: AuthProps) {
   return (
     <div className="auth-container" onPointerMove={handlePointerMove}>
       <div className="auth-aurora" aria-hidden="true" />
-      <AuthBackground />
+      <AuthBackground still={reducedMotion} />
       <div className="auth-cursor-glow" ref={glowRef} aria-hidden="true" />
       <ConnectionBanner />
       <div className="auth-titlebar" data-tauri-drag-region>

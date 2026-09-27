@@ -200,7 +200,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Install `framer-motion` as the primary animation library (#293)
 - [ ] Add `AnimatePresence` with `mode="popLayout"` at the router level for page transitions
-- [ ] Add a `prefers-reduced-motion` media query check; disable all animations when the preference is set (#295)
+- [x] Add a `prefers-reduced-motion` media query check; disable all animations when the preference is set (#295)
 - [x] Create `src/lib/motion-tokens.ts` with shared spring configurations (`snappy`, `smooth`, `bounce`) used consistently across the codebase (#294)
 
 ### Page and view transitions
@@ -276,7 +276,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Style `::selection` to match the vault accent colour (#298)
 - [ ] Style the scrollbar to be thin, rounded, and accent-coloured (#299)
 - [ ] Implement dark/light mode by swapping CSS variables with a 200ms transition
-- [ ] Write tests for animation token exports and reduced-motion conditional logic (#296)
+- [x] Write tests for animation token exports and reduced-motion conditional logic (#296)
 
 ---
 

@@ -16,6 +16,11 @@ export REDIS_URL="redis://localhost:6379"
 export JWT_SECRET="dev-secret"
 export PORT="8080"
 export VITE_API_URL="http://localhost:8080"
+# Object storage for attachments (MinIO from docker-compose.dev.yml).
+export MINIO_ENDPOINT="localhost:9000"
+export MINIO_ACCESS_KEY="nexus_minio"
+export MINIO_SECRET_KEY="nexus_minio_dev"
+export MINIO_BUCKET="attachments"
 
 log() { printf '\033[36m▶ %s\033[0m\n' "$1"; }
 
@@ -49,13 +54,21 @@ start_stack() {
       sleep 1
     done
   else
-    log "Starting Docker infra (Postgres + Redis)…"
-    docker compose -f "$ROOT/docker-compose.dev.yml" up -d postgres redis
+    log "Starting Docker infra (Postgres + Redis + MinIO)…"
+    docker compose -f "$ROOT/docker-compose.dev.yml" up -d postgres redis minio
 
     log "Waiting for Postgres…"
     for _ in $(seq 1 30); do
       status="$(docker inspect --format '{{.State.Health.Status}}' nexusnotes-postgres-1 2>/dev/null || echo starting)"
       [ "$status" = "healthy" ] && break
+      sleep 1
+    done
+
+    # The backend checks object storage once at startup, so wait for MinIO
+    # (bounded: without it only attachments are unavailable).
+    log "Waiting for MinIO…"
+    for _ in $(seq 1 30); do
+      curl -sf "http://localhost:9000/minio/health/live" >/dev/null 2>&1 && break
       sleep 1
     done
   fi

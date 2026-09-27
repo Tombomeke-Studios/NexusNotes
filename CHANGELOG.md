@@ -17,6 +17,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- Attachments now work in the packaged app and with the dev scripts: MinIO is started with
+  the databases, the backend waits for it and receives its settings, and uploaded files live
+  in a Docker volume instead of the container filesystem.
 - The app no longer signs you out when the server is merely unreachable at start-up; your
   session is kept and restored as soon as the server answers.
 

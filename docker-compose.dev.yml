@@ -39,6 +39,10 @@ services:
     # volume driver here; root avoids that without changing behaviour.
     user: root
     command: server /data --console-address ":9001"
+    # Attachments must survive container recreation and come back with Docker Desktop.
+    restart: unless-stopped
+    volumes:
+      - minio_dev_data:/data
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
@@ -63,4 +67,5 @@ services:
 
 volumes:
   postgres_dev_data:
+  minio_dev_data:
   meili_dev_data:

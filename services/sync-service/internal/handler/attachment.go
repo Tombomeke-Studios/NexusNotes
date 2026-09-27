@@ -26,6 +26,13 @@ type noteGetter interface {
 
 var _ noteGetter = (*service.SyncService)(nil)
 
+// vaultGetter looks up a vault (*repository.VaultRepo in production).
+type vaultGetter interface {
+	GetByID(ctx context.Context, id string) (*model.Vault, error)
+}
+
+var _ vaultGetter = (*repository.VaultRepo)(nil)
+
 // AttachmentHandler manages note attachments backed by object storage (#153).
 // Note lookup and access checks go through narrow interfaces so the request
 // handling can be unit tested without a database.
@@ -33,11 +40,12 @@ type AttachmentHandler struct {
 	store       *storage.Store
 	attachRepo  *repository.AttachmentRepo
 	vaultRepo   vaultRoles
+	vaults      vaultGetter
 	syncService noteGetter
 }
 
 func NewAttachmentHandler(store *storage.Store, attachRepo *repository.AttachmentRepo, vaultRepo *repository.VaultRepo, syncService *service.SyncService) *AttachmentHandler {
-	return &AttachmentHandler{store: store, attachRepo: attachRepo, vaultRepo: vaultRepo, syncService: syncService}
+	return &AttachmentHandler{store: store, attachRepo: attachRepo, vaultRepo: vaultRepo, vaults: vaultRepo, syncService: syncService}
 }
 
 func (h *AttachmentHandler) enabled(w http.ResponseWriter) bool {
@@ -63,6 +71,18 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	if !canWrite(r.Context(), h.vaultRepo, note.VaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+	// Attachment files are stored as uploaded; until they are encrypted on the
+	// client (#238), an end-to-end encrypted vault must not receive plaintext
+	// files. Refused before the body is read.
+	vault, err := h.vaults.GetByID(r.Context(), note.VaultID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load vault")
+		return
+	}
+	if vault.Encryption == model.VaultEncryptionE2EE {
+		writeError(w, http.StatusUnprocessableEntity, "attachments are not available in end-to-end encrypted vaults yet")
 		return
 	}
 

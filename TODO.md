@@ -82,7 +82,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > Measured on the running UI: `--text-muted` 3.36:1, `--text-faint` 2.46:1, `--text-ghost` 1.80:1 on the base
 > surface (4.5:1 needed) and a 1.71:1 focus ring (3:1 needed). Overlaps #217 / #236.
 
-- [ ] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity
+- [ ] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
 - [ ] Markdown syntax highlighting in the editor source pane
 - [ ] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel
@@ -198,10 +198,10 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Setup
 
-- [ ] Install `framer-motion` as the primary animation library
+- [ ] Install `framer-motion` as the primary animation library (#293)
 - [ ] Add `AnimatePresence` with `mode="popLayout"` at the router level for page transitions
-- [ ] Add a `prefers-reduced-motion` media query check; disable all animations when the preference is set
-- [ ] Create `src/lib/motion-tokens.ts` with shared spring configurations (`snappy`, `smooth`, `bounce`) used consistently across the codebase
+- [ ] Add a `prefers-reduced-motion` media query check; disable all animations when the preference is set (#295)
+- [ ] Create `src/lib/motion-tokens.ts` with shared spring configurations (`snappy`, `smooth`, `bounce`) used consistently across the codebase (#294)
 
 ### Page and view transitions
 
@@ -209,18 +209,19 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Animate note open with a right-to-left slide combined with an opacity fade-in
 - [ ] Animate note switch with a crossfade between the outgoing and incoming note
 - [ ] Animate graph panel open with a scale-up combined with a blur-to-clear effect
-- [ ] Animate command palette open with a backdrop blur and a downward spring drop
+- [ ] Animate command palette open with a backdrop blur and a downward spring drop (#301)
 - [ ] Animate the settings panel as a right-side sheet overlay
-- [ ] Animate modal dialogs with a scale from 0.95 to 1.0 plus opacity on open, reversed on close
-- [ ] Animate the authentication screen by staggering the logo and form elements on mount
+- [ ] Animate modal dialogs with a scale from 0.95 to 1.0 plus opacity on open, reversed on close (#300)
+- [ ] Animate the authentication screen by staggering the logo and form elements on mount (#303)
+- [ ] Animate context menus and popovers with one shared enter/exit motion (#302)
 
 ### Sidebar and file tree
 
-- [ ] Animate folder expand and collapse with smooth height transitions using Framer Motion `layout`
+- [ ] Animate folder expand and collapse with smooth height transitions using Framer Motion `layout` (#312)
 - [ ] Animate new notes appearing in the file tree with a slide-down fade-in
 - [ ] Animate note deletion by sliding the item out and collapsing its height before DOM removal
-- [ ] Implement a sliding background on sidebar item hover using a `::before` CSS pseudo-element
-- [ ] Animate the active note indicator (left border) sliding to the new position on note switch
+- [ ] Implement a sliding background on sidebar item hover using a `::before` CSS pseudo-element (#310)
+- [ ] Animate the active note indicator (left border) sliding to the new position on note switch (#311)
 - [ ] Animate drag-and-drop reordering with Framer Motion `layout` so items shift smoothly
 
 ### Editor
@@ -259,23 +260,23 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Micro-interactions
 
-- [ ] Lift buttons by 1px on hover and deepen the shadow (CSS transition)
-- [ ] Push buttons down by 1px on press
-- [ ] Animate toggle switch thumbs with spring physics
+- [ ] Lift buttons by 1px on hover and deepen the shadow (CSS transition) (#304)
+- [ ] Push buttons down by 1px on press (#305)
+- [ ] Animate toggle switch thumbs with spring physics (#306)
 - [ ] Draw in custom checkbox checkmarks on check with a path animation
-- [ ] Lift tag pills on hover with a shadow; trigger a brief scale bounce on click
-- [ ] Animate the star button fill with a pop effect
-- [ ] Wobble the vault lock icon briefly on lock and unlock events
+- [ ] Lift tag pills on hover with a shadow; trigger a brief scale bounce on click (#307)
+- [ ] Animate the star button fill with a pop effect (#308)
+- [ ] Wobble the vault lock icon briefly on lock and unlock events (#309)
 - [ ] Animate the encrypted vault icon with a key-turn effect when the passphrase is entered
 
 ### CSS design system additions
 
-- [ ] Define CSS custom properties: `--transition-snappy`, `--transition-smooth`, `--easing-spring`
+- [ ] Define CSS custom properties: `--transition-snappy`, `--transition-smooth`, `--easing-spring` (#297)
 - [ ] Structure CSS using `@layer` with layers: `reset`, `tokens`, `base`, `components`, `utilities`, `animations`
-- [ ] Style `::selection` to match the vault accent colour
-- [ ] Style the scrollbar to be thin, rounded, and accent-coloured
+- [ ] Style `::selection` to match the vault accent colour (#298)
+- [ ] Style the scrollbar to be thin, rounded, and accent-coloured (#299)
 - [ ] Implement dark/light mode by swapping CSS variables with a 200ms transition
-- [ ] Write tests for animation token exports and reduced-motion conditional logic
+- [ ] Write tests for animation token exports and reduced-motion conditional logic (#296)
 
 ---
 

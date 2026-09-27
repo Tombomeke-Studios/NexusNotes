@@ -88,8 +88,10 @@ that feature ships.
 
 - **Erasure (Art. 17):** `DELETE /api/auth/account` (password re-confirmed)
   removes the user row; database cascades erase vaults, notes, versions,
-  links, tags and devices. Search-index entries are deleted by vault filter
-  and live WebSocket sessions are closed. Available self-service in the
+  links, tags, devices and attachment records. Attachment files are removed
+  from object storage, search-index entries are deleted by vault filter and
+  live WebSocket sessions are closed. Deleting a single vault or note also
+  removes its attachment files. Available self-service in the
   desktop Settings → Account tab.
 - **Portability (Art. 20):** `GET /api/auth/export` streams all vaults as
   markdown in a zip plus `account.json`, also self-service in Settings.

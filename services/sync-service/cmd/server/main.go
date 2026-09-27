@@ -119,6 +119,15 @@ func main() {
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, memberRepo, hub)
 	memberHandler := handler.NewMemberHandler(vaultRepo, memberRepo, userRepo)
 	attachHandler := handler.NewAttachmentHandler(attachStore, repository.NewAttachmentRepo(pool), vaultRepo, syncService)
+	// Deleting an account, vault or note also erases its attachment files (#290).
+	// Wired only when object storage is up: a nil *storage.Store inside the
+	// interface would not be nil.
+	if attachStore != nil {
+		files := service.NewFileCleanup(attachStore, repository.NewAttachmentRepo(pool))
+		accountService.SetFileCleanup(files)
+		vaultHandler.SetFileCleanup(files)
+		noteHandler.SetFileCleanup(files)
+	}
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)

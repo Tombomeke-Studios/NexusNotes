@@ -131,3 +131,33 @@ func TestDeleteAccount_NoVaultsSkipsSearchCleanup(t *testing.T) {
 		t.Fatalf("search cleanup called with %v for a user without vaults", search.vaultIDs)
 	}
 }
+
+type fakeVaultFileRemover struct{ vaultIDs []string }
+
+func (f *fakeVaultFileRemover) RemoveVaultFiles(_ context.Context, vaultIDs ...string) {
+	f.vaultIDs = append(f.vaultIDs, vaultIDs...)
+}
+
+func TestDeleteAccount_RemovesTheOwnedVaultsFiles(t *testing.T) {
+	s, _, _, _, _ := accountFixture(t)
+	files := &fakeVaultFileRemover{}
+	s.SetFileCleanup(files)
+
+	if err := s.DeleteAccount(context.Background(), "u1", "correct-password"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files.vaultIDs) != 2 || files.vaultIDs[0] != "v1" || files.vaultIDs[1] != "v2" {
+		t.Fatalf("file cleanup vaults = %v, want [v1 v2]", files.vaultIDs)
+	}
+}
+
+func TestDeleteAccount_WrongPasswordRemovesNoFiles(t *testing.T) {
+	s, _, _, _, _ := accountFixture(t)
+	files := &fakeVaultFileRemover{}
+	s.SetFileCleanup(files)
+
+	_ = s.DeleteAccount(context.Background(), "u1", "wrong-password")
+	if len(files.vaultIDs) != 0 {
+		t.Fatalf("files removed on a failed password check: %v", files.vaultIDs)
+	}
+}

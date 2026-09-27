@@ -58,7 +58,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Rate limiter: periodic purge and trusted-proxy client IP
 - [ ] Distinguish not-found from database errors in handlers
 - [ ] Search fallback: honour `tag` when `q` is set and do not return unfiltered notes when both are empty
-- [ ] Vault update/delete: answer 404 when no row matched instead of 200/204
+- [ ] Vault update: answer 404 when no row matched instead of 200 (delete done in #290)
 - [ ] Test the `/api/auth/me` failure path (500 vs 404)
 
 ---
@@ -801,7 +801,7 @@ Lower priority items not focused on the desktop application.
 - [ ] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
 - [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
 - [ ] Implement account deletion confirmation email with a 7-day grace-period cancellation link
-- [ ] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
+- [x] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
 
 ---
 

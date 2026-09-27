@@ -22,7 +22,7 @@ import { remarkTags } from "../../lib/remarkTags";
 import { remarkImageEmbeds } from "../../lib/remarkImageEmbeds";
 import { remarkCallouts } from "../../lib/remarkCallouts";
 import { wikiUrlTransform } from "../../lib/markdownUrls";
-import { attachments as attachmentsApi, type Attachment } from "../../lib/api";
+import { attachments as attachmentsApi, ApiError, type Attachment } from "../../lib/api";
 import { AttachmentImage } from "./AttachmentImage";
 import "./Editor.css";
 
@@ -63,6 +63,8 @@ interface EditorProps {
   paused?: boolean;
   /** Bump the nonce to insert text at the cursor (template insertion, #155). */
   insertRequest?: { text: string; nonce: number } | null;
+  /** Non-null when files cannot be attached in this vault; shown instead of uploading. */
+  attachmentBlockReason?: string | null;
 }
 
 export function Editor({
@@ -83,6 +85,7 @@ export function Editor({
   onNavigateToNote,
   paused = false,
   insertRequest = null,
+  attachmentBlockReason = null,
 }: EditorProps) {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -91,6 +94,15 @@ export function Editor({
   // The current note's attachments, for resolving ![[image]] embeds (#153).
   const [attachmentList, setAttachmentList] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Why the last drop/paste could not be attached (blocked vault or a failed upload).
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const blockReasonRef = useRef(attachmentBlockReason);
+  blockReasonRef.current = attachmentBlockReason;
+  useEffect(() => {
+    if (!uploadNotice) return;
+    const t = setTimeout(() => setUploadNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [uploadNotice]);
   const contentRowRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -154,6 +166,10 @@ export function Editor({
   const uploadFiles = useCallback(async (files: File[]) => {
     const current = noteRef.current;
     if (!current || files.length === 0) return;
+    if (blockReasonRef.current) {
+      setUploadNotice(blockReasonRef.current);
+      return;
+    }
     setUploading(true);
     try {
       for (const file of files) {
@@ -173,8 +189,11 @@ export function Editor({
             el.focus();
             el.setSelectionRange(caret, caret);
           });
-        } catch {
-          /* skip a file that failed to upload */
+        } catch (err) {
+          // Keep going with the other files, but say why this one was skipped.
+          setUploadNotice(
+            err instanceof ApiError ? `${file.name}: ${err.message}` : `${file.name} could not be uploaded.`,
+          );
         }
       }
     } finally {
@@ -493,6 +512,11 @@ export function Editor({
         )}
         {uploading && (
           <div className="editor-uploading">Uploading…</div>
+        )}
+        {!uploading && uploadNotice && (
+          <div className="editor-uploading editor-uploading--notice" role="status">
+            {uploadNotice}
+          </div>
         )}
         {mode === "split" && (
           <div

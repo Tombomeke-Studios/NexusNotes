@@ -62,6 +62,7 @@ import { relativeTimeLabel } from "./lib/stats";
 import { isTauriWindow } from "./lib/platform";
 import { currentAuthAction, clearAuthActionUrl } from "./lib/authAction";
 import type { User, Vault, Note } from "./lib/types";
+import { attachmentBlockReason } from "./lib/attachmentPolicy";
 
 const VIEW_CYCLE: ViewMode[] = ["edit", "split", "preview"];
 
@@ -1441,6 +1442,7 @@ export default function App() {
               onNavigateToNote={handleSelectNote}
               paused={closePrompt !== null}
               insertRequest={insertRequest}
+              attachmentBlockReason={attachmentBlockReason(activeVault)}
             />
           )}
         </div>

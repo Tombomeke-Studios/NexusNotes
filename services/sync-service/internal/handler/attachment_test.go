@@ -27,6 +27,13 @@ func (f fakeRoles) AccessRole(context.Context, string, string) (string, error) {
 	return f.role, nil
 }
 
+// fakeVaults reports every vault with the same encryption mode.
+type fakeVaults struct{ encryption string }
+
+func (f fakeVaults) GetByID(_ context.Context, id string) (*model.Vault, error) {
+	return &model.Vault{ID: id, Encryption: f.encryption}, nil
+}
+
 // newUploadTestHandler builds a handler whose note lookup and write check pass
 // without a database. The object store is never reached on the paths tested
 // here, so an unconnected one is enough to count as "configured".
@@ -35,6 +42,7 @@ func newUploadTestHandler() *AttachmentHandler {
 		store:       &storage.Store{},
 		syncService: fakeNotes{},
 		vaultRepo:   fakeRoles{role: model.VaultRoleOwner},
+		vaults:      fakeVaults{encryption: model.VaultEncryptionNone},
 	}
 }
 
@@ -123,5 +131,24 @@ func TestUpload_BodyUnderTheCapIsParsedNormally(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400 (body: %s)", rec.Code, rec.Body.String())
+	}
+}
+
+// Attachments are not encrypted yet (#238), so an end-to-end encrypted vault
+// must refuse them rather than store plaintext files on the server — and do so
+// before reading the upload.
+func TestUpload_RefusedForAnEndToEndEncryptedVault(t *testing.T) {
+	h := newUploadTestHandler()
+	h.vaults = fakeVaults{encryption: model.VaultEncryptionE2EE}
+	req, body := uploadRequest(t, "file", 1<<20)
+	rec := httptest.NewRecorder()
+
+	h.Upload(rec, req)
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 for an e2ee vault", rec.Code)
+	}
+	if n := body.n.Load(); n > 0 {
+		t.Fatalf("the handler read %d bytes of a refused upload", n)
 	}
 }

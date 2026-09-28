@@ -8,7 +8,6 @@
   justify-content: center;
   padding-top: 15vh;
   z-index: 100;
-  animation: fadeIn 0.14s ease;
 }
 
 .global-search {
@@ -19,7 +18,6 @@
   max-width: calc(100vw - 48px);
   box-shadow: var(--shadow-modal), var(--surface-highlight), 0 0 0 0.5px rgba(203, 166, 247, 0.12);
   overflow: hidden;
-  animation: palIn 0.2s var(--easing-spring);
 }
 
 .global-search-header {

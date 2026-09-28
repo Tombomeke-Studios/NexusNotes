@@ -202,6 +202,7 @@ it is what it exists for:
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/motion.ts` | Reduced motion, single source of truth: resolves the OS `prefers-reduced-motion` + the Motion setting (System/Reduced/Full) and applies it to CSS (`data-rm` on `<html>`) and framer-motion (`skipAnimations`) |
 | `src/lib/motion-tokens.ts` | Shared motion tokens: springs (`snappy`/`smooth`/`bounce`), 120-320 ms durations, exit = 65% of entry, overlay enter/exit presets (mirrored by the `--duration-*`/`--easing-*` CSS tokens) |
+| `src/components/motion/OverlayMotion.tsx` | Enter/exit wrapper for anything floating above the workspace: applies an `overlayMotion` preset and stops catching the pointer while it animates out (render it under `AnimatePresence` with a key) |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
 | `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |

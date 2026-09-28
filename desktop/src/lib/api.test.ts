@@ -306,3 +306,23 @@ describe("attachments.objectUrl", () => {
     }
   });
 });
+
+describe("ApiError details", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("keeps the response body, so a 409 carries the server's version of the note", async () => {
+    setToken("t");
+    mockFetch(409, {
+      note_id: "n1",
+      server_content: "their text",
+      server_checksum: "c9",
+      client_content: "my text",
+      client_checksum: "c8",
+    });
+    const err = await notes.update("n1", "T", "", "my text", "c0").catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(409);
+    expect((err as ApiError).details).toMatchObject({ server_content: "their text", server_checksum: "c9" });
+    setToken(null);
+  });
+});

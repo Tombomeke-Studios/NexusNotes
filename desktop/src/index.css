@@ -794,3 +794,22 @@ input:focus, textarea:focus {
   box-shadow: none;
   transition-duration: 60ms;
 }
+
+/* Auth screen entrance (#303): the card rises, the logo pops, then the rest of
+   its contents follow in a short cascade (~40 ms apart) so the form reads top
+   to bottom as it arrives. The form element itself stays put; its fields
+   animate, so nothing moves twice. */
+.auth-card > :where(:not(.auth-logo):not(form)),
+.auth-form > * {
+  animation: riseIn var(--duration-slow) var(--easing-spring) backwards;
+}
+.auth-card > :nth-child(2) { animation-delay: 170ms; }
+.auth-card > :nth-child(3) { animation-delay: 210ms; }
+.auth-form > :nth-child(1) { animation-delay: 250ms; }
+.auth-form > :nth-child(2) { animation-delay: 290ms; }
+.auth-form > :nth-child(3) { animation-delay: 330ms; }
+.auth-form > :nth-child(4) { animation-delay: 370ms; }
+.auth-form > :nth-child(5) { animation-delay: 410ms; }
+.auth-card > :nth-child(5) { animation-delay: 450ms; }
+.auth-card > :nth-child(6) { animation-delay: 490ms; }
+.auth-card > :nth-child(7) { animation-delay: 530ms; }

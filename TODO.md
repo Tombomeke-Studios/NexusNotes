@@ -212,7 +212,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Animate command palette open with a backdrop blur and a downward spring drop (#301)
 - [ ] Animate the settings panel as a right-side sheet overlay
 - [x] Animate modal dialogs with a scale from 0.95 to 1.0 plus opacity on open, reversed on close (#300)
-- [ ] Animate the authentication screen by staggering the logo and form elements on mount (#303)
+- [x] Animate the authentication screen by staggering the logo and form elements on mount (#303)
 - [x] Animate context menus and popovers with one shared enter/exit motion (#302)
 
 ### Sidebar and file tree

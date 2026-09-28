@@ -220,7 +220,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Animate folder expand and collapse with smooth height transitions using Framer Motion `layout` (#312)
 - [ ] Animate new notes appearing in the file tree with a slide-down fade-in
 - [ ] Animate note deletion by sliding the item out and collapsing its height before DOM removal
-- [ ] Implement a sliding background on sidebar item hover using a `::before` CSS pseudo-element (#310)
+- [x] Implement a sliding background on sidebar item hover using a `::before` CSS pseudo-element (#310)
 - [ ] Animate the active note indicator (left border) sliding to the new position on note switch (#311)
 - [ ] Animate drag-and-drop reordering with Framer Motion `layout` so items shift smoothly
 

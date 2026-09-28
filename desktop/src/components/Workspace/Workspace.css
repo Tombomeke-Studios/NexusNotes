@@ -862,7 +862,6 @@
   padding-top: 14vh;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(3px);
-  animation: fadeIn 0.15s ease;
 }
 
 .tpl-picker {
@@ -875,7 +874,6 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow-modal), var(--surface-highlight);
-  animation: riseIn 0.2s var(--easing-spring);
   overflow: hidden;
 }
 

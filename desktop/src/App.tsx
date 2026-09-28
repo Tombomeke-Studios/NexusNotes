@@ -1496,43 +1496,49 @@ export default function App() {
         />
       )}
 
-      {showSettings && (
-        <Settings
-          prefs={prefs}
-          osReducedMotion={osReducedMotion}
-          lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
-          activeVault={activeVault ?? null}
-          onChangePassphrase={handleChangePassphrase}
-          onExportVault={handleExportVault}
-          onUpdatePrefs={updatePrefs}
-          onSignOut={handleSignOut}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showSettings && (
+          <Settings
+            key="settings"
+            prefs={prefs}
+            osReducedMotion={osReducedMotion}
+            lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
+            activeVault={activeVault ?? null}
+            onChangePassphrase={handleChangePassphrase}
+            onExportVault={handleExportVault}
+            onUpdatePrefs={updatePrefs}
+            onSignOut={handleSignOut}
+            onClose={() => setShowSettings(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {closePrompt && (
-        <CloseConfirmDialog
-          noteTitles={(() => {
-            // The failed note in the error form; otherwise every note whose
-            // text "without saving" would drop (a tab concerns only its note).
-            const ids = closeGuard.error
-              ? [closeGuard.error.noteId]
-              : [
-                  ...(activeNote && isDirtyStatus(saveStatus) ? [activeNote.id] : []),
-                  ...(closePrompt.kind === "tab" ? [] : unconfirmedNoteIds()),
-                ];
-            return [...new Set(ids)].map(
-              (id) => noteList.find((n) => n.id === id)?.title ?? (activeNote?.id === id ? activeNote.title : ""),
-            );
-          })()}
-          kind={closePrompt.kind}
-          saving={closeGuard.saving}
-          error={closeGuard.error}
-          onCancel={closeGuard.cancel}
-          onDiscard={closeGuard.discardAndClose}
-          onSave={closeGuard.saveAndClose}
-        />
-      )}
+      <AnimatePresence>
+        {closePrompt && (
+          <CloseConfirmDialog
+            key="close-confirm"
+            noteTitles={(() => {
+              // The failed note in the error form; otherwise every note whose
+              // text "without saving" would drop (a tab concerns only its note).
+              const ids = closeGuard.error
+                ? [closeGuard.error.noteId]
+                : [
+                    ...(activeNote && isDirtyStatus(saveStatus) ? [activeNote.id] : []),
+                    ...(closePrompt.kind === "tab" ? [] : unconfirmedNoteIds()),
+                  ];
+              return [...new Set(ids)].map(
+                (id) => noteList.find((n) => n.id === id)?.title ?? (activeNote?.id === id ? activeNote.title : ""),
+              );
+            })()}
+            kind={closePrompt.kind}
+            saving={closeGuard.saving}
+            error={closeGuard.error}
+            onCancel={closeGuard.cancel}
+            onDiscard={closeGuard.discardAndClose}
+            onSave={closeGuard.saveAndClose}
+          />
+        )}
+      </AnimatePresence>
 
       {ctxMenu && (
         <ContextMenu
@@ -1618,75 +1624,95 @@ export default function App() {
         />
       )}
 
-      {showNewVault && (
-        <CreateVaultDialog
-          onCreate={handleCreateVault}
-          onClose={() => setShowNewVault(false)}
-        />
-      )}
-
-      {recoveryCode && (
-        <RecoveryCodeDialog code={recoveryCode} onDone={() => setRecoveryCode(null)} />
-      )}
-
-      {unlockVaultId && (
-        <UnlockVaultDialog
-          vaultName={vaultList.find((v) => v.id === unlockVaultId)?.name ?? "Vault"}
-          onUnlock={handleUnlockVault}
-          onRecover={handleRecoverVault}
-          onCancel={() => setUnlockVaultId(null)}
-        />
-      )}
-
-      {showTemplatePicker && (
-        <TemplatePicker
-          templates={listTemplates(noteList)}
-          onPick={handlePickTemplate}
-          onClose={() => setShowTemplatePicker(false)}
-        />
-      )}
-
-      {renameTag && (
-        <RenameTagDialog
-          tag={renameTag}
-          affectedCount={noteList.filter((n) => contentHasTag(extractTags(n.content), renameTag)).length}
-          onRename={handleRenameTag}
-          onClose={() => setRenameTag(null)}
-        />
-      )}
-
-      {shareVaultId && user && (() => {
-        const v = vaultList.find((x) => x.id === shareVaultId);
-        if (!v) return null;
-        return (
-          <SharingDialog
-            vault={v}
-            currentUserId={user.id}
-            isOwner={(v.role ?? "owner") === "owner"}
-            onClose={() => setShareVaultId(null)}
-            onLeft={() => {
-              setShareVaultId(null);
-              setVaultList((prev) => prev.filter((x) => x.id !== v.id));
-              if (activeVaultId === v.id) {
-                const next = vaultListRef.current.find((x) => x.id !== v.id);
-                if (next) handleSelectVault(next.id);
-              }
-            }}
+      <AnimatePresence>
+        {showNewVault && (
+          <CreateVaultDialog
+            key="new-vault"
+            onCreate={handleCreateVault}
+            onClose={() => setShowNewVault(false)}
           />
-        );
-      })()}
+        )}
+      </AnimatePresence>
 
-      {linksVaultId && (() => {
-        const v = vaultList.find((x) => x.id === linksVaultId);
-        if (!v) return null;
-        return (
-          <LinkedFilesDialog
-            vault={v}
-            canWrite={(v.role ?? "owner") !== "viewer"}
-            onClose={() => setLinksVaultId(null)}
+      <AnimatePresence>
+        {recoveryCode && (
+          <RecoveryCodeDialog key="recovery-code" code={recoveryCode} onDone={() => setRecoveryCode(null)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {unlockVaultId && (
+          <UnlockVaultDialog
+            key="unlock-vault"
+            vaultName={vaultList.find((v) => v.id === unlockVaultId)?.name ?? "Vault"}
+            onUnlock={handleUnlockVault}
+            onRecover={handleRecoverVault}
+            onCancel={() => setUnlockVaultId(null)}
           />
-        );
-      })()}
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showTemplatePicker && (
+          <TemplatePicker
+            key="template-picker"
+            templates={listTemplates(noteList)}
+            onPick={handlePickTemplate}
+            onClose={() => setShowTemplatePicker(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {renameTag && (
+          <RenameTagDialog
+            key="rename-tag"
+            tag={renameTag}
+            affectedCount={noteList.filter((n) => contentHasTag(extractTags(n.content), renameTag)).length}
+            onRename={handleRenameTag}
+            onClose={() => setRenameTag(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {shareVaultId && user && (() => {
+          const v = vaultList.find((x) => x.id === shareVaultId);
+          if (!v) return null;
+          return (
+            <SharingDialog
+              key="sharing"
+              vault={v}
+              currentUserId={user.id}
+              isOwner={(v.role ?? "owner") === "owner"}
+              onClose={() => setShareVaultId(null)}
+              onLeft={() => {
+                setShareVaultId(null);
+                setVaultList((prev) => prev.filter((x) => x.id !== v.id));
+                if (activeVaultId === v.id) {
+                  const next = vaultListRef.current.find((x) => x.id !== v.id);
+                  if (next) handleSelectVault(next.id);
+                }
+              }}
+            />
+          );
+        })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {linksVaultId && (() => {
+          const v = vaultList.find((x) => x.id === linksVaultId);
+          if (!v) return null;
+          return (
+            <LinkedFilesDialog
+              key="linked-files"
+              vault={v}
+              canWrite={(v.role ?? "owner") !== "viewer"}
+              onClose={() => setLinksVaultId(null)}
+            />
+          );
+        })()}
+      </AnimatePresence>
 
       {showCalendar && (
         <DailyCalendar

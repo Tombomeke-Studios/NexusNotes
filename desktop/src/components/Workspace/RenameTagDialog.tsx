@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { normalizeTag } from "../../lib/tagRename";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface RenameTagDialogProps {
   tag: string;
@@ -23,8 +24,9 @@ export function RenameTagDialog({ tag, affectedCount, onRename, onClose }: Renam
   };
 
   return (
-    <div className="confirm-overlay" onClick={onClose}>
-      <div
+    <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={onClose}>
+      <OverlayMotion
+        preset="dialog"
         className="confirm-dialog"
         role="dialog"
         aria-label={`Rename #${tag}`}
@@ -57,7 +59,7 @@ export function RenameTagDialog({ tag, affectedCount, onRename, onClose }: Renam
             Rename
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

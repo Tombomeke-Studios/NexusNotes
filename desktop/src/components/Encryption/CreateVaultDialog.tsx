@@ -2,6 +2,7 @@ import { useState } from "react";
 import { EncryptionSetup } from "./EncryptionSetup";
 import { passphraseError } from "../../lib/passphrase";
 import "./Encryption.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface CreateVaultDialogProps {
   onCreate: (name: string, passphrase?: string) => void;
@@ -26,8 +27,9 @@ export function CreateVaultDialog({ onCreate, onClose }: CreateVaultDialogProps)
   };
 
   return (
-    <div className="confirm-overlay" onClick={onClose}>
-      <div
+    <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={onClose}>
+      <OverlayMotion
+        preset="dialog"
         className="confirm-dialog"
         role="dialog"
         aria-label="New vault"
@@ -64,7 +66,7 @@ export function CreateVaultDialog({ onCreate, onClose }: CreateVaultDialogProps)
             Create vault
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

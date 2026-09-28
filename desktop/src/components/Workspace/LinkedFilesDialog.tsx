@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { links as linksApi, type LinkedFile, type LinkedContent } from "../../lib/api";
 import type { Vault } from "../../lib/types";
 import "./LinkedFilesDialog.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface LinkedFilesDialogProps {
   vault: Vault;
@@ -71,8 +72,9 @@ export function LinkedFilesDialog({ vault, canWrite, onClose }: LinkedFilesDialo
   };
 
   return (
-    <div className="confirm-overlay" onClick={onClose}>
-      <div
+    <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={onClose}>
+      <OverlayMotion
+        preset="dialog"
         className="confirm-dialog links-dialog"
         role="dialog"
         aria-label={`Linked files in ${vault.name}`}
@@ -141,8 +143,8 @@ export function LinkedFilesDialog({ vault, canWrite, onClose }: LinkedFilesDialo
             </div>
           </>
         )}
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }
 

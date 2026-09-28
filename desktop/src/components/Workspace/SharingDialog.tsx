@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { members as membersApi } from "../../lib/api";
 import type { Vault, VaultMember } from "../../lib/types";
 import "./SharingDialog.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface SharingDialogProps {
   vault: Vault;
@@ -76,8 +77,8 @@ export function SharingDialog({ vault, currentUserId, isOwner, onClose, onLeft }
   };
 
   return (
-    <div className="confirm-overlay" onClick={onClose}>
-      <div className="confirm-dialog share-dialog" role="dialog" aria-label={`Share ${vault.name}`} onClick={(e) => e.stopPropagation()}>
+    <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={onClose}>
+      <OverlayMotion preset="dialog" className="confirm-dialog share-dialog" role="dialog" aria-label={`Share ${vault.name}`} onClick={(e) => e.stopPropagation()}>
         <div className="confirm-title">Share &ldquo;{vault.name}&rdquo;</div>
 
         {isOwner && (
@@ -146,7 +147,7 @@ export function SharingDialog({ vault, currentUserId, isOwner, onClose, onLeft }
             Done
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

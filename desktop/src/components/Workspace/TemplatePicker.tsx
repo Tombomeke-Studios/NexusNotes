@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Note } from "../../lib/types";
 import { TEMPLATES_FOLDER } from "../../lib/templates";
 import "./Workspace.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface TemplatePickerProps {
   templates: Note[];
@@ -38,8 +39,8 @@ export function TemplatePicker({ templates, onPick, onClose }: TemplatePickerPro
   }, [templates, selected, onPick, onClose]);
 
   return (
-    <div className="tpl-overlay" onClick={onClose}>
-      <div className="tpl-picker" role="dialog" aria-label="Insert template" onClick={(e) => e.stopPropagation()}>
+    <OverlayMotion preset="backdrop" className="tpl-overlay" onClick={onClose}>
+      <OverlayMotion preset="palette" className="tpl-picker" role="dialog" aria-label="Insert template" onClick={(e) => e.stopPropagation()}>
         <div className="tpl-picker-head">Insert template</div>
         {templates.length === 0 ? (
           <div className="tpl-picker-empty">
@@ -64,7 +65,7 @@ export function TemplatePicker({ templates, onPick, onClose }: TemplatePickerPro
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

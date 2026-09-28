@@ -7,7 +7,6 @@
   align-items: center;
   justify-content: center;
   z-index: 100;
-  animation: fadeIn 0.15s ease;
 }
 
 .settings-modal {
@@ -19,7 +18,6 @@
   box-shadow: var(--shadow-modal), var(--surface-highlight);
   display: flex;
   overflow: hidden;
-  animation: palIn 0.22s var(--easing-spring);
 }
 
 .settings-nav {

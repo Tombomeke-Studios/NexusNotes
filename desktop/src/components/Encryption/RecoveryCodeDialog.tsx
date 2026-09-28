@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./Encryption.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface RecoveryCodeDialogProps {
   code: string;
@@ -27,8 +28,8 @@ export function RecoveryCodeDialog({ code, onDone }: RecoveryCodeDialogProps) {
   };
 
   return (
-    <div className="confirm-overlay">
-      <div className="confirm-dialog enc-recovery" role="dialog" aria-label="Save your recovery code">
+    <OverlayMotion preset="backdrop" className="confirm-overlay">
+      <OverlayMotion preset="dialog" className="confirm-dialog enc-recovery" role="dialog" aria-label="Save your recovery code">
         <div className="confirm-title">Save your recovery code</div>
         <div className="confirm-body">
           This code is the <strong>only</strong> way back into this vault if
@@ -48,7 +49,7 @@ export function RecoveryCodeDialog({ code, onDone }: RecoveryCodeDialogProps) {
             Continue
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

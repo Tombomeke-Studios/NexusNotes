@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { passphraseError } from "../../lib/passphrase";
 import "./Encryption.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface UnlockVaultDialogProps {
   vaultName: string;
@@ -58,8 +59,9 @@ export function UnlockVaultDialog({ vaultName, onUnlock, onRecover, onCancel }: 
   };
 
   return (
-    <div className="confirm-overlay" onClick={onCancel}>
-      <div
+    <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={onCancel}>
+      <OverlayMotion
+        preset="dialog"
         className="confirm-dialog"
         role="dialog"
         aria-label={`Unlock ${vaultName}`}
@@ -162,7 +164,7 @@ export function UnlockVaultDialog({ vaultName, onUnlock, onRecover, onCancel }: 
             {busy ? "Unlocking..." : mode === "passphrase" ? "Unlock" : "Recover vault"}
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

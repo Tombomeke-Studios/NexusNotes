@@ -75,13 +75,36 @@ func (s *Store) DeletePrefix(ctx context.Context, prefix string) error {
 	if prefix == "" {
 		return fmt.Errorf("delete prefix: refusing an empty prefix")
 	}
-	objects := s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{Prefix: prefix, Recursive: true})
-	for rerr := range s.client.RemoveObjects(ctx, s.bucket, objects, minio.RemoveObjectsOptions{}) {
-		if rerr.Err != nil {
-			return fmt.Errorf("delete object %s: %w", rerr.ObjectName, rerr.Err)
+	// Listing errors arrive as entries with Err set; keep them out of the
+	// removal stream (they carry no key) and report the first one.
+	listed := s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{Prefix: prefix, Recursive: true})
+	toRemove := make(chan minio.ObjectInfo)
+	var listErr error
+	go func() {
+		defer close(toRemove)
+		for obj := range listed {
+			if obj.Err != nil {
+				if listErr == nil {
+					listErr = obj.Err
+				}
+				continue
+			}
+			toRemove <- obj
+		}
+	}()
+	// Drain every result, even after a failure: stopping early would leave
+	// minio-go's forwarding goroutine blocked on a send.
+	var removeErr error
+	for rerr := range s.client.RemoveObjects(ctx, s.bucket, toRemove, minio.RemoveObjectsOptions{}) {
+		if rerr.Err != nil && removeErr == nil {
+			removeErr = fmt.Errorf("delete object %s: %w", rerr.ObjectName, rerr.Err)
 		}
 	}
-	return nil
+	// toRemove was closed before RemoveObjects finished, so listErr is settled.
+	if listErr != nil {
+		return fmt.Errorf("list objects under %s: %w", prefix, listErr)
+	}
+	return removeErr
 }
 
 // Delete removes an object; a missing key is not an error.

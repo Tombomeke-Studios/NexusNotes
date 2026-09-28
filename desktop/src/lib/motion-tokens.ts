@@ -82,6 +82,31 @@ export function springSettleTime(s: SpringConfig): number {
   return Math.round(lastOutside * 1000) / 1000;
 }
 
+/**
+ * Samples a spring 0 -> 1 step at `steps + 1` evenly spaced points over
+ * `seconds`, ending exactly at 1: the stops of a CSS `linear()` easing that
+ * reproduces the spring in plain CSS (see --easing-bounce in index.css).
+ */
+export function sampleSpring(s: SpringConfig, seconds: number, steps: number): number[] {
+  const dt = 1 / 4000;
+  let x = 0;
+  let v = 0;
+  let t = 0;
+  const points: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const target = (seconds * i) / steps;
+    while (t < target - 1e-9) {
+      const a = (-s.stiffness * (x - 1) - s.damping * v) / s.mass;
+      v += a * dt;
+      x += v * dt;
+      t += dt;
+    }
+    points.push(Math.round(x * 1000) / 1000);
+  }
+  points[points.length - 1] = 1;
+  return points;
+}
+
 type EnterTransition =
   | (SpringConfig & { opacity?: { duration: number; ease: CubicBezier } })
   | { duration: number; ease: CubicBezier };

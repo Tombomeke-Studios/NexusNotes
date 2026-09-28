@@ -271,7 +271,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### CSS design system additions
 
-- [ ] Define CSS custom properties: `--transition-snappy`, `--transition-smooth`, `--easing-spring` (#297)
+- [x] Define CSS custom properties: `--transition-snappy`, `--transition-smooth`, `--easing-spring` (#297)
 - [ ] Structure CSS using `@layer` with layers: `reset`, `tokens`, `base`, `components`, `utilities`, `animations`
 - [ ] Style `::selection` to match the vault accent colour (#298)
 - [ ] Style the scrollbar to be thin, rounded, and accent-coloured (#299)

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { buildCalendarCells, toIsoDate } from "../../lib/daily";
 import "./Workspace.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -37,8 +38,8 @@ export function DailyCalendar({ noteTitles, onPickDay, onOpenToday, onClose }: D
   };
 
   return (
-    <div className="calendar-overlay" onClick={onClose}>
-      <div className="calendar-pop" onClick={(e) => e.stopPropagation()}>
+    <OverlayMotion preset="backdrop" className="calendar-overlay" onClick={onClose}>
+      <OverlayMotion preset="popover" className="calendar-pop" onClick={(e) => e.stopPropagation()}>
         <div className="calendar-head">
           <button className="calendar-nav" onClick={prev} title="Previous month">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
@@ -77,7 +78,7 @@ export function DailyCalendar({ noteTitles, onPickDay, onOpenToday, onClose }: D
         <button className="calendar-today-btn" onClick={onOpenToday}>
           Open today&rsquo;s note
         </button>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

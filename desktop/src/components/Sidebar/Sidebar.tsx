@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
@@ -6,6 +7,7 @@ import { ROOT_FOLDER } from "../../lib/noteFilter";
 import { buildTagTree } from "../../lib/tagTree";
 import { ContextMenu } from "../Workspace/ContextMenu";
 import { TagTree } from "./TagTree";
+import { OverlayMotion } from "../motion/OverlayMotion";
 import "./Sidebar.css";
 
 /** Drag-and-drop context threaded through the tree so notes can be moved. */
@@ -322,158 +324,162 @@ export function Sidebar({
         </div>
       </div>
 
-      {showVaults && (
-        <div className="sidebar-vault-list">
-          {vaults.map((v) => (
-            <div key={v.id} className={`sidebar-vault-row${v.id === activeVaultId ? " active" : ""}`}>
-              <button
-                className="sidebar-vault-item"
-                onClick={() => {
-                  onSelectVault(v.id);
-                  setShowVaults(false);
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                  <path d="M2 4l6-2 6 2v8l-6 2-6-2V4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                  <path d="M8 2v12M2 4l6 2 6-2" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-                </svg>
-                <span>{v.name}</span>
-                {v.role && v.role !== "owner" && (
-                  <span className="sidebar-vault-role" title={`Shared with you (${v.role})`}>{v.role}</span>
-                )}
-                {v.encryption === "e2ee" && (
-                  <svg className="sidebar-vault-lock" width="11" height="11" viewBox="0 0 16 16" fill="none" aria-label="Encrypted vault">
-                    <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.6" />
+      <AnimatePresence>
+        {showVaults && (
+          <OverlayMotion key="vaults" preset="popover" className="sidebar-vault-list">
+            {vaults.map((v) => (
+              <div key={v.id} className={`sidebar-vault-row${v.id === activeVaultId ? " active" : ""}`}>
+                <button
+                  className="sidebar-vault-item"
+                  onClick={() => {
+                    onSelectVault(v.id);
+                    setShowVaults(false);
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 4l6-2 6 2v8l-6 2-6-2V4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                    <path d="M8 2v12M2 4l6 2 6-2" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                   </svg>
-                )}
-                {v.id === activeVaultId && (
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="sidebar-vault-check">
-                    <path d="M2.5 6.5L5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <span>{v.name}</span>
+                  {v.role && v.role !== "owner" && (
+                    <span className="sidebar-vault-role" title={`Shared with you (${v.role})`}>{v.role}</span>
+                  )}
+                  {v.encryption === "e2ee" && (
+                    <svg className="sidebar-vault-lock" width="11" height="11" viewBox="0 0 16 16" fill="none" aria-label="Encrypted vault">
+                      <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+                      <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.6" />
+                    </svg>
+                  )}
+                  {v.id === activeVaultId && (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="sidebar-vault-check">
+                      <path d="M2.5 6.5L5 9l4.5-5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  className="sidebar-vault-share"
+                  title="Linked files"
+                  onClick={() => {
+                    setShowVaults(false);
+                    onOpenLinks(v.id);
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                    <path d="M6.5 9.5l3-3M7 4.5l.8-.8a2.4 2.4 0 013.5 3.4l-.9.9M9 11.5l-.8.8a2.4 2.4 0 01-3.5-3.4l.9-.9"
+                      stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                   </svg>
-                )}
-              </button>
-              <button
-                className="sidebar-vault-share"
-                title="Linked files"
-                onClick={() => {
-                  setShowVaults(false);
-                  onOpenLinks(v.id);
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                  <path d="M6.5 9.5l3-3M7 4.5l.8-.8a2.4 2.4 0 013.5 3.4l-.9.9M9 11.5l-.8.8a2.4 2.4 0 01-3.5-3.4l.9-.9"
-                    stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                </svg>
-              </button>
-              <button
-                className="sidebar-vault-share"
-                title={v.role && v.role !== "owner" ? "Sharing & members" : "Share vault"}
-                onClick={() => {
-                  setShowVaults(false);
-                  onShareVault(v.id);
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                  <circle cx="4" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-                  <circle cx="12" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-                  <circle cx="12" cy="12" r="1.8" stroke="currentColor" strokeWidth="1.3" />
-                  <path d="M5.6 7.1l4.8-2.2M5.6 8.9l4.8 2.2" stroke="currentColor" strokeWidth="1.3" />
-                </svg>
-              </button>
-            </div>
-          ))}
-          <button
-            className="sidebar-vault-item sidebar-vault-item--new"
-            onClick={() => {
-              setShowVaults(false);
-              onRequestNewVault();
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            New vault
-          </button>
-          <div className="sidebar-vault-sep" />
-          <button className="sidebar-vault-item sidebar-vault-item--signout" onClick={onSignOut}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Sign out
-          </button>
-        </div>
-      )}
+                </button>
+                <button
+                  className="sidebar-vault-share"
+                  title={v.role && v.role !== "owner" ? "Sharing & members" : "Share vault"}
+                  onClick={() => {
+                    setShowVaults(false);
+                    onShareVault(v.id);
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                    <circle cx="4" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+                    <circle cx="12" cy="4" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+                    <circle cx="12" cy="12" r="1.8" stroke="currentColor" strokeWidth="1.3" />
+                    <path d="M5.6 7.1l4.8-2.2M5.6 8.9l4.8 2.2" stroke="currentColor" strokeWidth="1.3" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+            <button
+              className="sidebar-vault-item sidebar-vault-item--new"
+              onClick={() => {
+                setShowVaults(false);
+                onRequestNewVault();
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              New vault
+            </button>
+            <div className="sidebar-vault-sep" />
+            <button className="sidebar-vault-item sidebar-vault-item--signout" onClick={onSignOut}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M6 14H3.5A1.5 1.5 0 012 12.5v-9A1.5 1.5 0 013.5 2H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <path d="M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Sign out
+            </button>
+          </OverlayMotion>
+        )}
+      </AnimatePresence>
 
-      {showFilter && (
-        <>
-          <div className="sidebar-filter-overlay" onClick={() => setShowFilter(false)} />
-          <div className="sidebar-filter-pop">
-            <div className="sidebar-filter-pop-head">
-              <span>Filter notes</span>
-              <button
-                className={`sidebar-filter-clear${hasFilter ? " sidebar-filter-clear--active" : ""}`}
-                onClick={onClearFilters}
-              >
-                Clear all
-              </button>
-            </div>
-            <div className="sidebar-filter-label">Sort by</div>
-            <div className="sidebar-filter-sort">
-              <button
-                className={sortBy === "updated" ? "active" : ""}
-                onClick={() => onSetSort("updated")}
-              >
-                Last updated
-              </button>
-              <button
-                className={sortBy === "title" ? "active" : ""}
-                onClick={() => onSetSort("title")}
-              >
-                A to Z
-              </button>
-            </div>
-            <div className="sidebar-filter-label">Folder</div>
-            <div className="sidebar-chip-row">
-              <button
-                className={`sidebar-chip${!filterFolder ? " sidebar-chip--active" : ""}`}
-                onClick={() => onSetFolder(null)}
-              >
-                All
-              </button>
-              <button
-                className={`sidebar-chip${filterFolder === ROOT_FOLDER ? " sidebar-chip--active" : ""}`}
-                onClick={() => onSetFolder(ROOT_FOLDER)}
-              >
-                Root
-              </button>
-              {folders.map((f) => (
+      <AnimatePresence>
+        {showFilter && (
+          <Fragment key="filter">
+            <OverlayMotion preset="backdrop" className="sidebar-filter-overlay" onClick={() => setShowFilter(false)} />
+            <OverlayMotion preset="popover" className="sidebar-filter-pop">
+              <div className="sidebar-filter-pop-head">
+                <span>Filter notes</span>
                 <button
-                  key={f}
-                  className={`sidebar-chip${filterFolder === f ? " sidebar-chip--active" : ""}`}
-                  onClick={() => onSetFolder(f)}
+                  className={`sidebar-filter-clear${hasFilter ? " sidebar-filter-clear--active" : ""}`}
+                  onClick={onClearFilters}
                 >
-                  {f}
+                  Clear all
                 </button>
-              ))}
-            </div>
-            <div className="sidebar-filter-label">Tags &middot; match any</div>
-            <div className="sidebar-chip-row">
-              {tagCounts.map(({ tag, count }) => (
+              </div>
+              <div className="sidebar-filter-label">Sort by</div>
+              <div className="sidebar-filter-sort">
                 <button
-                  key={tag}
-                  className={`sidebar-chip${filterTags.includes(tag) ? " sidebar-chip--active" : ""}`}
-                  onClick={() => onToggleTag(tag)}
+                  className={sortBy === "updated" ? "active" : ""}
+                  onClick={() => onSetSort("updated")}
                 >
-                  #{tag}
-                  <span className="sidebar-chip-count">{count}</span>
+                  Last updated
                 </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+                <button
+                  className={sortBy === "title" ? "active" : ""}
+                  onClick={() => onSetSort("title")}
+                >
+                  A to Z
+                </button>
+              </div>
+              <div className="sidebar-filter-label">Folder</div>
+              <div className="sidebar-chip-row">
+                <button
+                  className={`sidebar-chip${!filterFolder ? " sidebar-chip--active" : ""}`}
+                  onClick={() => onSetFolder(null)}
+                >
+                  All
+                </button>
+                <button
+                  className={`sidebar-chip${filterFolder === ROOT_FOLDER ? " sidebar-chip--active" : ""}`}
+                  onClick={() => onSetFolder(ROOT_FOLDER)}
+                >
+                  Root
+                </button>
+                {folders.map((f) => (
+                  <button
+                    key={f}
+                    className={`sidebar-chip${filterFolder === f ? " sidebar-chip--active" : ""}`}
+                    onClick={() => onSetFolder(f)}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+              <div className="sidebar-filter-label">Tags &middot; match any</div>
+              <div className="sidebar-chip-row">
+                {tagCounts.map(({ tag, count }) => (
+                  <button
+                    key={tag}
+                    className={`sidebar-chip${filterTags.includes(tag) ? " sidebar-chip--active" : ""}`}
+                    onClick={() => onToggleTag(tag)}
+                  >
+                    #{tag}
+                    <span className="sidebar-chip-count">{count}</span>
+                  </button>
+                ))}
+              </div>
+            </OverlayMotion>
+          </Fragment>
+        )}
+      </AnimatePresence>
 
       {hasFilter && (
         <div className="sidebar-filter-banner">

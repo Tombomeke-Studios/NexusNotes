@@ -107,7 +107,7 @@
   background: var(--bg-base);
   border: 1px solid var(--border-inner);
   border-radius: 9px;
-  animation: calIn 0.16s var(--easing-spring);
+  transform-origin: top left;
 }
 
 .sidebar-vault-item {
@@ -216,7 +216,7 @@
   box-shadow: var(--shadow-popover), var(--surface-highlight);
   padding: 13px;
   z-index: 96;
-  animation: calIn 0.16s var(--easing-spring);
+  transform-origin: top left;
 }
 
 .sidebar-filter-pop-head {

@@ -806,3 +806,22 @@
   85% { rotate: 3deg; }
   100% { rotate: 0deg; }
 }
+
+/* Starred note (#308): the star pops in on the bounce spring and flashes
+   filled for a moment before settling back to its outline. */
+.tree-pin {
+  animation: starPop var(--duration-bounce) var(--easing-bounce) backwards;
+}
+.tree-pin path {
+  fill: currentColor;
+  fill-opacity: 0;
+  animation: starFill 700ms ease-out backwards;
+}
+@keyframes starPop {
+  from { transform: scale(0.3) rotate(-30deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes starFill {
+  from { fill-opacity: 0.9; }
+  to { fill-opacity: 0; }
+}

@@ -405,6 +405,9 @@
   gap: 6px;
   border-radius: 6px;
   transition: background 0.13s ease, color 0.13s ease;
+  /* Room for the hover layer (::before) and the active indicator. */
+  position: relative;
+  isolation: isolate;
   white-space: nowrap;
   overflow: hidden;
   /* Don't let Ctrl/Shift multi-select clicks start a native text selection. */
@@ -412,10 +415,33 @@
   -webkit-user-select: none;
 }
 
-.tree-item:hover {
+/* Hover (#310): a background layer slides in from the left instead of the
+   whole row switching colour at once. */
+.tree-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
   background: var(--bg-overlay);
+  opacity: 0;
+  transform: translateX(-6px) scaleX(0.97);
+  transform-origin: left center;
+  transition: opacity var(--transition-snappy), transform var(--transition-snappy);
+}
+.tree-item:hover::before {
+  opacity: 1;
+  transform: none;
+}
+.tree-item:hover {
   color: var(--text-primary);
 }
+/* The active and selected rows keep their own tint on hover. */
+.tree-note.active:hover::before,
+.tree-item--selected:hover::before {
+  opacity: 0;
+}
+
 
 .tree-item-name {
   overflow: hidden;

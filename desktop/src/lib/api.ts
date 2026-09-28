@@ -104,7 +104,7 @@ async function request<T>(
       window.dispatchEvent(new CustomEvent("nexus:logout"));
     }
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new ApiError(res.status, body.error || "Request failed");
+    throw new ApiError(res.status, body.error || "Request failed", body);
   }
 
   if (res.status === 204) {
@@ -118,6 +118,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** The parsed response body, e.g. the server's version of a note on a 409 conflict. */
+    public details?: unknown,
   ) {
     super(message);
     this.name = "ApiError";

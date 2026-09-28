@@ -1540,89 +1540,95 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {ctxMenu && (
-        <ContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          onClose={() => setCtxMenu(null)}
-          items={[
-            { key: "open", label: "Open", onClick: () => handleSelectNote(ctxMenu.noteId) },
-            { key: "duplicate", label: "Duplicate", onClick: () => handleDuplicateNote(ctxMenu.noteId) },
-            {
-              key: "star",
-              label: starredSet.has(ctxMenu.noteId) ? "Remove star" : "Star",
-              onClick: () => handleToggleStar(ctxMenu.noteId),
-            },
-            {
-              key: "export-md",
-              label: "Export as Markdown",
-              onClick: () => {
-                const n = noteList.find((x) => x.id === ctxMenu.noteId);
-                if (n) downloadFile(`${safeFilename(n.title)}.md`, "text/markdown", stripFrontmatter(n.content));
+      <AnimatePresence>
+        {ctxMenu && (
+          <ContextMenu
+            key="ctx-menu"
+            x={ctxMenu.x}
+            y={ctxMenu.y}
+            onClose={() => setCtxMenu(null)}
+            items={[
+              { key: "open", label: "Open", onClick: () => handleSelectNote(ctxMenu.noteId) },
+              { key: "duplicate", label: "Duplicate", onClick: () => handleDuplicateNote(ctxMenu.noteId) },
+              {
+                key: "star",
+                label: starredSet.has(ctxMenu.noteId) ? "Remove star" : "Star",
+                onClick: () => handleToggleStar(ctxMenu.noteId),
               },
-            },
-            {
-              key: "export-html",
-              label: "Export as HTML",
-              onClick: () => {
-                const n = noteList.find((x) => x.id === ctxMenu.noteId);
-                if (n) downloadFile(`${safeFilename(n.title)}.html`, "text/html", noteToHtmlDocument(n));
+              {
+                key: "export-md",
+                label: "Export as Markdown",
+                onClick: () => {
+                  const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                  if (n) downloadFile(`${safeFilename(n.title)}.md`, "text/markdown", stripFrontmatter(n.content));
+                },
               },
-            },
-            {
-              key: "export-pdf",
-              label: "Export as PDF…",
-              onClick: () => {
-                const n = noteList.find((x) => x.id === ctxMenu.noteId);
-                if (n) printNote(n);
+              {
+                key: "export-html",
+                label: "Export as HTML",
+                onClick: () => {
+                  const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                  if (n) downloadFile(`${safeFilename(n.title)}.html`, "text/html", noteToHtmlDocument(n));
+                },
               },
-            },
-            {
-              key: "wikilink",
-              label: "Copy wikilink",
-              onClick: () => {
-                const n = noteList.find((x) => x.id === ctxMenu.noteId);
-                if (n) navigator.clipboard?.writeText(`[[${n.title}]]`).catch(() => {});
+              {
+                key: "export-pdf",
+                label: "Export as PDF…",
+                onClick: () => {
+                  const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                  if (n) printNote(n);
+                },
               },
-            },
-            {
-              key: "delete",
-              label:
-                selectedIds.has(ctxMenu.noteId) && selectedIds.size > 1
-                  ? `Delete ${selectedIds.size} notes`
-                  : "Delete note",
-              danger: true,
-              onClick: () => handleDeleteNote(ctxMenu.noteId),
-            },
-          ]}
-        />
-      )}
+              {
+                key: "wikilink",
+                label: "Copy wikilink",
+                onClick: () => {
+                  const n = noteList.find((x) => x.id === ctxMenu.noteId);
+                  if (n) navigator.clipboard?.writeText(`[[${n.title}]]`).catch(() => {});
+                },
+              },
+              {
+                key: "delete",
+                label:
+                  selectedIds.has(ctxMenu.noteId) && selectedIds.size > 1
+                    ? `Delete ${selectedIds.size} notes`
+                    : "Delete note",
+                danger: true,
+                onClick: () => handleDeleteNote(ctxMenu.noteId),
+              },
+            ]}
+          />
+        )}
+      </AnimatePresence>
 
-      {workspaceMenu && (
-        <ContextMenu
-          x={workspaceMenu.x}
-          y={workspaceMenu.y}
-          onClose={() => setWorkspaceMenu(null)}
-          items={[
-            { key: "new-note", label: "New note", onClick: handleCreateNote },
-            { key: "new-folder", label: "New folder", onClick: requestNewFolder },
-            {
-              key: "daily",
-              label: "Open today's daily note",
-              onClick: () => handleOpenDaily(toIsoDate(new Date())),
-            },
-            { key: "palette", label: "Search notes and commands", onClick: () => setPaletteQuery("") },
-            {
-              key: "refresh",
-              label: "Refresh",
-              onClick: () => {
-                loadVaults();
-                if (activeVaultId) loadNotes(activeVaultId);
+      <AnimatePresence>
+        {workspaceMenu && (
+          <ContextMenu
+            key="workspace-menu"
+            x={workspaceMenu.x}
+            y={workspaceMenu.y}
+            onClose={() => setWorkspaceMenu(null)}
+            items={[
+              { key: "new-note", label: "New note", onClick: handleCreateNote },
+              { key: "new-folder", label: "New folder", onClick: requestNewFolder },
+              {
+                key: "daily",
+                label: "Open today's daily note",
+                onClick: () => handleOpenDaily(toIsoDate(new Date())),
               },
-            },
-          ]}
-        />
-      )}
+              { key: "palette", label: "Search notes and commands", onClick: () => setPaletteQuery("") },
+              {
+                key: "refresh",
+                label: "Refresh",
+                onClick: () => {
+                  loadVaults();
+                  if (activeVaultId) loadNotes(activeVaultId);
+                },
+              },
+            ]}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showNewVault && (
@@ -1714,14 +1720,17 @@ export default function App() {
         })()}
       </AnimatePresence>
 
-      {showCalendar && (
-        <DailyCalendar
-          noteTitles={new Set(noteList.map((n) => n.title))}
-          onPickDay={handleOpenDaily}
-          onOpenToday={() => handleOpenDaily(toIsoDate(new Date()))}
-          onClose={() => setShowCalendar(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showCalendar && (
+          <DailyCalendar
+            key="calendar"
+            noteTitles={new Set(noteList.map((n) => n.title))}
+            onPickDay={handleOpenDaily}
+            onOpenToday={() => handleOpenDaily(toIsoDate(new Date()))}
+            onClose={() => setShowCalendar(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showGlobalSearch && activeVaultId && (

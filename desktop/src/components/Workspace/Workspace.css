@@ -683,7 +683,8 @@
   border-radius: 10px;
   box-shadow: var(--shadow-popover), var(--surface-highlight);
   padding: 4px;
-  animation: calIn 0.13s var(--easing-spring);
+  /* Grows from where it was opened (framer-motion owns enter/exit). */
+  transform-origin: top left;
 }
 
 .ctx-item {
@@ -728,7 +729,8 @@
   border-radius: 12px;
   box-shadow: var(--shadow-popover), var(--surface-highlight);
   padding: 12px;
-  animation: calIn 0.18s var(--easing-spring);
+  /* Grows from where it was opened (framer-motion owns enter/exit). */
+  transform-origin: top left;
 }
 
 .calendar-head {

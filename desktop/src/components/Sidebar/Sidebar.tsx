@@ -7,6 +7,7 @@ import { ROOT_FOLDER } from "../../lib/noteFilter";
 import { buildTagTree } from "../../lib/tagTree";
 import { ContextMenu } from "../Workspace/ContextMenu";
 import { TagTree } from "./TagTree";
+import { VaultLockIcon } from "./VaultLockIcon";
 import { OverlayMotion } from "../motion/OverlayMotion";
 import "./Sidebar.css";
 
@@ -54,6 +55,8 @@ const FileIcon = () => (
 
 interface SidebarProps {
   view: "files" | "search";
+  /** The active vault is end-to-end encrypted and its key is not unlocked. */
+  activeVaultLocked?: boolean;
   vaults: Vault[];
   activeVaultId: string | null;
   tree: TreeNode[];
@@ -105,6 +108,7 @@ interface SidebarProps {
 
 export function Sidebar({
   view,
+  activeVaultLocked = false,
   vaults,
   activeVaultId,
   tree,
@@ -280,12 +284,7 @@ export function Sidebar({
     <div className="sidebar">
       <div className="sidebar-head">
         <button className="sidebar-vault-btn" onClick={() => setShowVaults((v) => !v)}>
-          {activeVault?.encryption === "e2ee" && (
-            <svg className="sidebar-vault-lock" width="11" height="11" viewBox="0 0 16 16" fill="none" aria-label="Encrypted vault">
-              <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.6" />
-            </svg>
-          )}
+          {activeVault?.encryption === "e2ee" && <VaultLockIcon locked={activeVaultLocked} />}
           <span className="sidebar-vault-name">{activeVault?.name ?? "Vault"}</span>
           <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
             <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

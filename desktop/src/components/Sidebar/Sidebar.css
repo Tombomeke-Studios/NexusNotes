@@ -792,3 +792,17 @@
   color: var(--accent);
   background: var(--bg-overlay);
 }
+
+/* Vault lock (#309): a short wobble whenever the vault locks or unlocks. */
+.sidebar-vault-lock--wobble {
+  transform-origin: 50% 70%;
+  animation: lockWobble 480ms var(--easing-spring);
+}
+@keyframes lockWobble {
+  0% { rotate: 0deg; }
+  20% { rotate: -14deg; }
+  45% { rotate: 10deg; }
+  65% { rotate: -6deg; }
+  85% { rotate: 3deg; }
+  100% { rotate: 0deg; }
+}

@@ -1299,6 +1299,7 @@ export default function App() {
           <div className="panel-left-inner" style={{ width: prefs.leftWidth }}>
             <Sidebar
               view={railView}
+              activeVaultLocked={activeVaultLocked}
               vaults={vaultList}
               activeVaultId={activeVaultId}
               tree={tree}

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { spring } from "../../lib/motion-tokens";
 import { createPortal } from "react-dom";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
@@ -785,6 +786,10 @@ function TreeItem({
         }
       }}
     >
+      {/* One shared indicator that glides to the newly opened note (#311). */}
+      {node.noteId && node.noteId === activeNoteId && (
+        <motion.span layoutId="tree-active-indicator" className="tree-active-indicator" transition={spring.snappy} />
+      )}
       <FileIcon />
       <span className="tree-item-name">{node.name}</span>
       {node.noteId && node.noteId === unsavedNoteId && (

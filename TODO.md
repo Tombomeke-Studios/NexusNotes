@@ -221,7 +221,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Animate new notes appearing in the file tree with a slide-down fade-in
 - [ ] Animate note deletion by sliding the item out and collapsing its height before DOM removal
 - [x] Implement a sliding background on sidebar item hover using a `::before` CSS pseudo-element (#310)
-- [ ] Animate the active note indicator (left border) sliding to the new position on note switch (#311)
+- [x] Animate the active note indicator (left border) sliding to the new position on note switch (#311)
 - [ ] Animate drag-and-drop reordering with Framer Motion `layout` so items shift smoothly
 
 ### Editor

@@ -454,6 +454,10 @@
   background: var(--accent);
 }
 
+/* Folder contents fold open/shut (#312); clip while the height animates. */
+.tree-folder-children {
+  overflow: hidden;
+}
 
 .tree-item-name {
   overflow: hidden;

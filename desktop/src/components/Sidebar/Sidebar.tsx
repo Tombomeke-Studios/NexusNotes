@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { spring } from "../../lib/motion-tokens";
+import { duration, ease, exitDuration, spring } from "../../lib/motion-tokens";
 import { createPortal } from "react-dom";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
@@ -735,21 +735,34 @@ function TreeItem({
           <span className="tree-item-name">{node.name}</span>
           <span className="tree-folder-count">{countNotes(node)}</span>
         </button>
-        {expanded &&
-          node.children?.map((child) => (
-            <TreeItem
-              key={child.path + child.name}
-              node={child}
-              activeNoteId={activeNoteId}
-              selectedIds={selectedIds}
-              starredIds={starredIds}
-              unsavedNoteId={unsavedNoteId}
-              onNoteClick={onNoteClick}
-              onNoteContextMenu={onNoteContextMenu}
-              dnd={dnd}
-              depth={depth + 1}
-            />
-          ))}
+        {/* Children fold open and shut instead of popping in and out (#312);
+            initial={false} keeps first paint and restored state instant. */}
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              key="children"
+              className="tree-folder-children"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1, transition: { duration: duration.base, ease: ease.out } }}
+              exit={{ height: 0, opacity: 0, transition: { duration: exitDuration(duration.base), ease: ease.in } }}
+            >
+              {node.children?.map((child) => (
+                <TreeItem
+                  key={child.path + child.name}
+                  node={child}
+                  activeNoteId={activeNoteId}
+                  selectedIds={selectedIds}
+                  starredIds={starredIds}
+                  unsavedNoteId={unsavedNoteId}
+                  onNoteClick={onNoteClick}
+                  onNoteContextMenu={onNoteContextMenu}
+                  dnd={dnd}
+                  depth={depth + 1}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

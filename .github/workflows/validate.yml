@@ -62,10 +62,21 @@ jobs:
           version: latest
           working-directory: services/sync-service
 
+      # Object-storage integration tests (e.g. prefix deletion) run against a
+      # real MinIO; they skip themselves when MINIO_TEST_ENDPOINT is unset.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio --user root -p 9000:9000             -e MINIO_ROOT_USER=nexus_minio -e MINIO_ROOT_PASSWORD=nexus_minio_dev             bitnamilegacy/minio:latest server /data
+          for i in $(seq 1 20); do curl -sf http://localhost:9000/minio/health/ready && break; sleep 2; done
+          curl -sf http://localhost:9000/minio/health/ready || { echo "MinIO never became ready"; docker logs minio; exit 1; }
+
       - name: Run tests
         working-directory: services/sync-service
         env:
           DATABASE_URL: postgres://nexus:nexus_test@localhost:5432/nexus_test?sslmode=disable
+          MINIO_TEST_ENDPOINT: localhost:9000
+          MINIO_TEST_ACCESS_KEY: nexus_minio
+          MINIO_TEST_SECRET_KEY: nexus_minio_dev
         run: go test -race -coverprofile=coverage.out ./...
 
       - name: Build

@@ -265,7 +265,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Animate toggle switch thumbs with spring physics (#306)
 - [ ] Draw in custom checkbox checkmarks on check with a path animation
 - [x] Lift tag pills on hover with a shadow; trigger a brief scale bounce on click (#307)
-- [ ] Animate the star button fill with a pop effect (#308)
+- [x] Animate the star button fill with a pop effect (#308)
 - [x] Wobble the vault lock icon briefly on lock and unlock events (#309)
 - [ ] Animate the encrypted vault icon with a key-turn effect when the passphrase is entered
 

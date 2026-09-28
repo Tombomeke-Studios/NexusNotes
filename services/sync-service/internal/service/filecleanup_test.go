@@ -13,9 +13,11 @@ type fakeObjectRemover struct {
 	deleted  []string
 	prefixes []string
 	failKey  string
+	ctxErrs  []error // ctx.Err() seen by each call
 }
 
-func (f *fakeObjectRemover) Delete(_ context.Context, key string) error {
+func (f *fakeObjectRemover) Delete(ctx context.Context, key string) error {
+	f.ctxErrs = append(f.ctxErrs, ctx.Err())
 	if key == f.failKey {
 		return errors.New("storage down")
 	}
@@ -23,7 +25,8 @@ func (f *fakeObjectRemover) Delete(_ context.Context, key string) error {
 	return nil
 }
 
-func (f *fakeObjectRemover) DeletePrefix(_ context.Context, prefix string) error {
+func (f *fakeObjectRemover) DeletePrefix(ctx context.Context, prefix string) error {
+	f.ctxErrs = append(f.ctxErrs, ctx.Err())
 	f.prefixes = append(f.prefixes, prefix)
 	return nil
 }
@@ -89,4 +92,25 @@ func TestFileCleanup_NilIsANoOp(t *testing.T) {
 	}
 	c.RemoveFiles(context.Background(), []string{"k"})
 	c.RemoveVaultFiles(context.Background(), "v1")
+}
+
+// The files are removed after the database delete already succeeded; a client
+// that disconnects at that moment must not leave the files behind.
+func TestFileCleanup_SurvivesACancelledRequestContext(t *testing.T) {
+	store := &fakeObjectRemover{}
+	c := NewFileCleanup(store, &fakeNoteAttachments{})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	c.RemoveFiles(ctx, []string{"v1/a.png"})
+	c.RemoveVaultFiles(ctx, "v1")
+
+	if len(store.ctxErrs) != 2 {
+		t.Fatalf("store calls = %d, want 2", len(store.ctxErrs))
+	}
+	for i, err := range store.ctxErrs {
+		if err != nil {
+			t.Fatalf("call %d ran with a cancelled context: %v", i, err)
+		}
+	}
 }

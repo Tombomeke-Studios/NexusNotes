@@ -59,6 +59,9 @@
   --shadow-popover: 0 16px 48px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
   --shadow-modal: 0 32px 90px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.35);
   --surface-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  /* Hover lift for buttons: neutral, and an accent glow for primary ones. */
+  --shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lift-accent: 0 8px 22px rgba(203, 166, 247, 0.3);
 
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
   --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -110,10 +113,10 @@ body {
    brightens on hover. */
 ::-webkit-scrollbar { width: 10px; height: 10px; cursor: default; }
 ::-webkit-scrollbar-track { background: transparent; cursor: default; }
+::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 999px;
-::-webkit-scrollbar-corner { background: transparent; }
   border: 3px solid transparent;
   background-clip: padding-box;
   cursor: default;
@@ -615,7 +618,7 @@ input:focus, textarea:focus {
   box-shadow: 0 10px 26px rgba(203, 166, 247, 0.3);
 }
 
-.auth-button:active { transform: translateY(0) scale(0.99); }
+.auth-button:active { transform: translateY(1px); }
 .auth-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .auth-toggle {
@@ -749,4 +752,47 @@ input:focus, textarea:focus {
   background: rgba(243, 139, 168, 0.14);
   border-color: var(--error);
   color: var(--error);
+}
+
+/* ---------- Micro-interactions ----------
+   Shared feedback so every control answers the pointer the same way. All of it
+   collapses to instant under reduced motion (data-rm, above). */
+
+/* Filled buttons lift 1px with a deeper shadow on hover (#304) and settle 1px
+   below rest on press (#305). */
+:is(.confirm-btn, .settings-export-btn, .settings-danger-btn, .calendar-today-btn):not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+}
+:is(.confirm-btn--primary, .firstrun-button):not(:disabled):hover {
+  box-shadow: var(--shadow-lift-accent);
+}
+:is(.auth-button, .firstrun-button, .confirm-btn, .settings-export-btn, .settings-danger-btn, .calendar-today-btn):not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: none;
+  transition-duration: 60ms;
+}
+
+/* Icon buttons press in instead of lifting (they sit flush in toolbars). */
+:is(.topbar-btn, .rail-btn, .sidebar-action-btn, .header-btn, .status-mode-btn, .editor-mode-toggle button):not(:disabled):active {
+  transform: scale(0.9);
+  transition-duration: 60ms;
+}
+
+/* Tag pills lift on hover and spring back with a small bounce after a click
+   (#307): the press squeezes them, release overshoots on --easing-bounce. */
+:is(.preview-tag, .info-tag, .global-search-tag) {
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--duration-bounce) var(--easing-bounce);
+}
+:is(.preview-tag, .info-tag, .global-search-tag):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(203, 166, 247, 0.18);
+}
+:is(.preview-tag, .info-tag, .global-search-tag):active {
+  transform: scale(0.9);
+  box-shadow: none;
+  transition-duration: 60ms;
 }

@@ -825,7 +825,7 @@
   color: var(--accent);
   font-size: 12px;
   font-weight: 500;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), transform var(--transition-snappy), box-shadow var(--transition-snappy);
 }
 
 .calendar-today-btn:hover {

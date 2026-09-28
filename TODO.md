@@ -273,8 +273,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Define CSS custom properties: `--transition-snappy`, `--transition-smooth`, `--easing-spring` (#297)
 - [ ] Structure CSS using `@layer` with layers: `reset`, `tokens`, `base`, `components`, `utilities`, `animations`
-- [ ] Style `::selection` to match the vault accent colour (#298)
-- [ ] Style the scrollbar to be thin, rounded, and accent-coloured (#299)
+- [x] Style `::selection` to match the vault accent colour (#298)
+- [x] Style the scrollbar to be thin, rounded, and accent-coloured (#299)
 - [ ] Implement dark/light mode by swapping CSS variables with a 200ms transition
 - [x] Write tests for animation token exports and reduced-motion conditional logic (#296)
 

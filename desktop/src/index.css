@@ -32,6 +32,10 @@
   --accent-border: rgba(203, 166, 247, 0.25);
   --accent-bg: rgba(203, 166, 247, 0.08);
   --accent-bg-strong: rgba(203, 166, 247, 0.12);
+  /* Text selection and scrollbars wear the accent too. */
+  --selection-bg: rgba(203, 166, 247, 0.32);
+  --scrollbar-thumb: rgba(203, 166, 247, 0.16);
+  --scrollbar-thumb-hover: rgba(203, 166, 247, 0.42);
 
   --blue: #89b4fa;
   --pink: #f5c2e7;
@@ -102,21 +106,25 @@ body {
 
 /* cursor: default keeps the arrow over the bar even inside the editor
    textarea, whose I-beam cursor otherwise extends across its scrollbar. */
-::-webkit-scrollbar { width: 12px; height: 12px; cursor: default; }
+/* Thin, rounded and accent-tinted: a 10px hit area around a 4px pill that
+   brightens on hover. */
+::-webkit-scrollbar { width: 10px; height: 10px; cursor: default; }
 ::-webkit-scrollbar-track { background: transparent; cursor: default; }
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-surface);
-  border-radius: 6px;
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+::-webkit-scrollbar-corner { background: transparent; }
   border: 3px solid transparent;
   background-clip: padding-box;
   cursor: default;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(203, 166, 247, 0.35);
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-hover);
   background-clip: padding-box;
 }
 
-::selection { background: rgba(203, 166, 247, 0.28); }
+::selection { background: var(--selection-bg); color: var(--text-primary); }
 
 /* Keyboard navigation: visible focus ring on everything interactive, in the
    solid accent (8:1 against the base surface; a focus indicator needs 3:1).

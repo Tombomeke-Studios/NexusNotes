@@ -315,7 +315,7 @@ Attachments are stored in S3-compatible object storage (MinIO); endpoints return
 
 ### POST /api/notes/:noteId/attachments
 
-Multipart upload (field `file`, max 25 MiB; anything larger is cut off with `413`) → the created `Attachment`. Write access required.
+Multipart upload (field `file`, max 25 MiB; anything larger is cut off with `413`) → the created `Attachment`. Write access required. `422` for a note in an end-to-end encrypted vault: attachment files are not encrypted yet, so these vaults do not accept them (the request body is not read).
 
 The client-declared `Content-Type` is not trusted. The stored `mime_type` is always one of this allowlist:
 

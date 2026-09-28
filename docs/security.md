@@ -91,7 +91,10 @@ that feature ships.
   links, tags, devices and attachment records. Attachment files are removed
   from object storage, search-index entries are deleted by vault filter and
   live WebSocket sessions are closed. Deleting a single vault or note also
-  removes its attachment files. Available self-service in the
+  removes its attachment files. File removal is best effort: it needs object
+  storage to have been reachable when the server started, and a storage error
+  is logged rather than retried, so files can remain (as can files of data
+  deleted before this existed); a sweeper for such orphans is tracked in #316. Available self-service in the
   desktop Settings → Account tab.
 - **Portability (Art. 20):** `GET /api/auth/export` streams all vaults as
   markdown in a zip plus `account.json`, also self-service in Settings.

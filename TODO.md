@@ -43,6 +43,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces)
 - [ ] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces
 - [ ] Linked-file fetches: limit concurrent fetches; decide whether `::ffff:0:0/96` counts as private
+- [ ] Sweep orphaned attachment files from object storage (#316)
 - [ ] DB-backed tests for `RefreshRepo.Rotate` (rollback, double rotate, concurrent rotate)
 
 ---

@@ -19,9 +19,12 @@
 
   --text-primary: #cdd6f4;
   --text-secondary: #a6adc8;
-  --text-muted: #6c7086;
-  --text-faint: #585b70;
-  --text-ghost: #45475a;
+  /* Contrast on --bg-base (WCAG AA needs 4.5:1 for text): muted 5.8:1 and
+     faint 5.1:1 (4.6:1 on popovers) carry real text; ghost (3.4:1) is only
+     for decorative glyphs such as separators, never for words. */
+  --text-muted: #9399b2;
+  --text-faint: #898ea7;
+  --text-ghost: #6c7086;
 
   --accent: #cba6f7;
   --accent-hover: #b4befe;
@@ -115,10 +118,11 @@ body {
 
 ::selection { background: rgba(203, 166, 247, 0.28); }
 
-/* Keyboard navigation: visible focus ring on everything interactive. Inputs
-   keep their own border+glow focus treatment instead. */
+/* Keyboard navigation: visible focus ring on everything interactive, in the
+   solid accent (8:1 against the base surface; a focus indicator needs 3:1).
+   Inputs keep their own border+glow focus treatment instead. */
 :focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 input:focus-visible, textarea:focus-visible { outline: none; }

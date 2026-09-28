@@ -82,7 +82,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > Measured on the running UI: `--text-muted` 3.36:1, `--text-faint` 2.46:1, `--text-ghost` 1.80:1 on the base
 > surface (4.5:1 needed) and a 1.71:1 focus ring (3:1 needed). Overlaps #217 / #236.
 
-- [ ] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
+- [x] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
 - [ ] Markdown syntax highlighting in the editor source pane
 - [ ] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel

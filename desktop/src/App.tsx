@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Sidebar } from "./components/Sidebar";
 import { Editor } from "./components/Editor";
 import { GlobalSearch } from "./components/Search";
@@ -1696,24 +1697,30 @@ export default function App() {
         />
       )}
 
-      {showGlobalSearch && activeVaultId && (
-        <GlobalSearch
-          vaultId={activeVaultId}
-          clientNotes={isE2eeVault(activeVault) ? noteList : null}
-          onSelect={handleSelectNote}
-          onClose={() => setShowGlobalSearch(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showGlobalSearch && activeVaultId && (
+          <GlobalSearch
+            key="global-search"
+            vaultId={activeVaultId}
+            clientNotes={isE2eeVault(activeVault) ? noteList : null}
+            onSelect={handleSelectNote}
+            onClose={() => setShowGlobalSearch(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {paletteQuery !== null && (
-        <CommandPalette
-          notes={noteList}
-          commands={commands}
-          initialQuery={paletteQuery}
-          onSelectNote={handleSelectNote}
-          onClose={() => setPaletteQuery(null)}
-        />
-      )}
+      <AnimatePresence>
+        {paletteQuery !== null && (
+          <CommandPalette
+            key="palette"
+            notes={noteList}
+            commands={commands}
+            initialQuery={paletteQuery}
+            onSelectNote={handleSelectNote}
+            onClose={() => setPaletteQuery(null)}
+          />
+        )}
+      </AnimatePresence>
 
     </div>
   );

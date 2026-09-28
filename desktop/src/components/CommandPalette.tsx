@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import type { Note } from "../lib/types";
 import { buildPaletteGroups, isCommandQuery } from "../lib/palette";
 import type { PaletteCommand, PaletteItem } from "../lib/palette";
+import { OverlayMotion } from "./motion/OverlayMotion";
 import "./CommandPalette.css";
 
 interface CommandPaletteProps {
@@ -78,8 +79,8 @@ export function CommandPalette({
   let flatIndex = -1;
 
   return (
-    <div className="palette-overlay" onClick={onClose}>
-      <div className="palette" onClick={(e) => e.stopPropagation()}>
+    <OverlayMotion preset="backdrop" className="palette-overlay" onClick={onClose}>
+      <OverlayMotion preset="palette" className="palette" onClick={(e) => e.stopPropagation()}>
         <div className="palette-head">
           <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
             <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />
@@ -139,7 +140,7 @@ export function CommandPalette({
             <span className="palette-foot-kbd">&gt;</span> commands
           </span>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

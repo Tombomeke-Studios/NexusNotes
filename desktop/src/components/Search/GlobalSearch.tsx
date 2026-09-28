@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { search as searchApi } from "../../lib/api";
 import { searchDecryptedNotes } from "../../lib/clientSearch";
 import type { Note, SearchHit } from "../../lib/types";
+import { OverlayMotion } from "../motion/OverlayMotion";
 import "./GlobalSearch.css";
 import { Snippet } from "./Snippet";
 
@@ -81,8 +82,8 @@ export function GlobalSearch({ vaultId, clientNotes, onSelect, onClose }: Global
   };
 
   return (
-    <div className="global-search-overlay" onClick={onClose}>
-      <div className="global-search" onClick={(e) => e.stopPropagation()}>
+    <OverlayMotion preset="backdrop" className="global-search-overlay" onClick={onClose}>
+      <OverlayMotion preset="palette" className="global-search" onClick={(e) => e.stopPropagation()}>
         <div className="global-search-header">
           <input
             ref={inputRef}
@@ -133,7 +134,7 @@ export function GlobalSearch({ vaultId, clientNotes, onSelect, onClose }: Global
             </button>
           ))}
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

@@ -6,7 +6,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
 )
 
 // fakeFileCleanup records which attachment files a handler asked to remove.
@@ -78,5 +80,43 @@ func TestNoteDelete_RemovesTheNotesFilesOnlyAfterASuccessfulDelete(t *testing.T)
 	}
 	if !reflect.DeepEqual(files.keys, []string{"v/a.png", "v/b.pdf"}) {
 		t.Fatalf("removed keys = %v", files.keys)
+	}
+}
+
+// recordingStore stands in for object storage and records what was deleted.
+type recordingStore struct{ deleted []string }
+
+func (r *recordingStore) Delete(_ context.Context, key string) error {
+	r.deleted = append(r.deleted, key)
+	return nil
+}
+
+func (r *recordingStore) DeletePrefix(context.Context, string) error { return nil }
+
+// With the real cleanup and a real attachment row: the note's storage keys
+// must be read before the delete, because the attachment rows cascade away
+// with the note.
+func TestNoteDelete_ReadsTheFileKeysBeforeTheRowsCascadeAway(t *testing.T) {
+	f := newNoteAccessFixture(t)
+	ctx := context.Background()
+	attachRepo := repository.NewAttachmentRepo(f.pool)
+	att := &model.Attachment{
+		NoteID: f.note.ID, VaultID: f.ownerVault, Filename: "a.png",
+		MimeType: "image/png", SizeBytes: 1, StoragePath: f.ownerVault + "/a.png",
+	}
+	if err := attachRepo.Create(ctx, att); err != nil {
+		t.Fatalf("seed attachment: %v", err)
+	}
+	store := &recordingStore{}
+	f.h.SetFileCleanup(service.NewFileCleanup(store, attachRepo))
+
+	rec := call(f.h.Delete, http.MethodDelete, f.owner, map[string]string{
+		"vaultId": f.ownerVault, "noteId": f.note.ID,
+	})
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("owner delete status = %d, want 204", rec.Code)
+	}
+	if !reflect.DeepEqual(store.deleted, []string{f.ownerVault + "/a.png"}) {
+		t.Fatalf("deleted objects = %v, want the seeded attachment's key", store.deleted)
 	}
 }

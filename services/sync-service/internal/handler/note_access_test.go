@@ -73,6 +73,7 @@ func newIsolatedDB(t *testing.T) *pgxpool.Pool {
 // noteAccessFixture is two users, each owning one vault, plus a viewer who is
 // a member of the first user's vault, and one note in that vault.
 type noteAccessFixture struct {
+	pool                      *pgxpool.Pool
 	h                         *NoteHandler
 	svc                       *service.SyncService
 	owner, outsider, viewer   string
@@ -117,6 +118,7 @@ func newNoteAccessFixture(t *testing.T) *noteAccessFixture {
 	)
 
 	f := &noteAccessFixture{
+		pool:     pool,
 		h:        NewNoteHandler(svc, vaultRepo, memberRepo, ws.NewHub()),
 		svc:      svc,
 		owner:    seedUser(t, pool),

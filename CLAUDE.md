@@ -215,6 +215,7 @@ it is what it exists for:
 | `src/lib/remarkCallouts.ts` | remark plugin: `> [!NOTE]` blockquotes → styled callout blocks in the preview (#223) |
 | `src/lib/tagTree.ts` | Builds the nested tag tree (grouped on `/`) for the sidebar tag panel |
 | `src/lib/tagRename.ts` | Renames a tag across note content (inline + front-matter, cascades to nested children) |
+| `src/lib/diff.ts` | Line diff (Myers) between two versions of a note, side-by-side rows and a merge draft with conflict markers (#225) |
 | `src/components/Workspace/SharingDialog.tsx` | Vault sharing panel: invite by email, per-member roles, leave (#55) |
 | `src/components/Workspace/LinkedFilesDialog.tsx` | Linked files panel: link a URL, read-only viewer, per-user annotations (#60-64) |
 | `src/lib/templates.ts` | Note templates: Templates-folder discovery, {{date}}/{{time}}/{{title}} substitution, default daily template |

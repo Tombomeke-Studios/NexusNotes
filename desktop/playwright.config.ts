@@ -12,6 +12,10 @@ export default defineConfig({
   ],
   use: {
     baseURL: "http://localhost:1420",
+    // The app follows the OS reduced-motion setting (lib/motion.ts): emulating
+    // it makes overlays open and close instantly, so tests never race an
+    // enter/exit animation.
+    reducedMotion: "reduce",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

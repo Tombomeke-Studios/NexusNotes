@@ -11,6 +11,15 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - The desktop app warns when its version and the server's major.minor differ.
 - Settings shows the app version and the server version (was a hard-coded "0.1.0").
 - A persistent banner (and a waiting screen on start-up) when the server cannot be reached.
+- Motion throughout the desktop app: the command palette drops in on a spring, dialogs
+  scale in and out, menus and popovers grow from where they open, the sign-in card
+  cascades in, buttons lift and press, tag pills bounce, toggles spring, starred notes pop,
+  the vault lock wobbles, and the file tree slides its hover, glides the active-note marker
+  and folds folders. A Motion setting (System / Reduced / Full) follows Windows by default.
+
+### Changed
+- Muted text and the keyboard focus ring meet WCAG AA contrast; text selection and
+  scrollbars use the accent colour.
 
 - The packaged app starts its backend on a background supervisor: it waits for Docker
   Desktop, retries until Postgres/Redis are healthy, reuses a backend that is already

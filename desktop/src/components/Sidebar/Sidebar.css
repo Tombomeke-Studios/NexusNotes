@@ -442,6 +442,18 @@
   opacity: 0;
 }
 
+/* Active note (#311): a 2px accent bar shared across rows (framer-motion
+   layoutId), so switching notes slides it to the new row. */
+.tree-active-indicator {
+  position: absolute;
+  left: 0;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
 
 .tree-item-name {
   overflow: hidden;

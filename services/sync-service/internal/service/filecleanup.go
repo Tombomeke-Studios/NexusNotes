@@ -4,9 +4,20 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
+
+// cleanupTimeout bounds the storage calls of one cleanup.
+const cleanupTimeout = 30 * time.Second
+
+// detached keeps the caller's values (request id for logs) but not its
+// cancellation: the database rows are already gone when files are removed, so
+// a client disconnecting at that moment must not leave the files behind.
+func detached(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+}
 
 type objectRemover interface {
 	Delete(ctx context.Context, key string) error
@@ -50,9 +61,11 @@ func (c *FileCleanup) NoteFiles(ctx context.Context, noteID string) []string {
 
 // RemoveFiles deletes the given objects, continuing past individual failures.
 func (c *FileCleanup) RemoveFiles(ctx context.Context, keys []string) {
-	if c == nil {
+	if c == nil || len(keys) == 0 {
 		return
 	}
+	ctx, cancel := detached(ctx)
+	defer cancel()
 	for _, key := range keys {
 		if err := c.store.Delete(ctx, key); err != nil {
 			slog.Warn("delete attachment file", "key", key, "error", err)
@@ -67,6 +80,8 @@ func (c *FileCleanup) RemoveVaultFiles(ctx context.Context, vaultIDs ...string) 
 	if c == nil {
 		return
 	}
+	ctx, cancel := detached(ctx)
+	defer cancel()
 	for _, id := range vaultIDs {
 		id = strings.TrimSpace(id)
 		if id == "" || strings.Contains(id, "/") {

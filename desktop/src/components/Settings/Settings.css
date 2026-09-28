@@ -209,12 +209,24 @@
   height: 17px;
   border-radius: 50%;
   background: var(--text-primary);
-  transition: left 0.18s var(--easing-spring);
+  /* Spring physics (#306): the knob moves on transform (never layout) with the
+     sampled bounce spring, and squeezes slightly while pressed. */
+  transition: transform var(--duration-bounce) var(--easing-bounce);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .settings-toggle--on .settings-toggle-knob {
-  left: 18px;
+  transform: translateX(15.5px);
+}
+
+.settings-toggle:active .settings-toggle-knob {
+  transform: scaleX(1.15);
+  transform-origin: left center;
+}
+
+.settings-toggle--on:active .settings-toggle-knob {
+  transform: translateX(15.5px) scaleX(1.15);
+  transform-origin: right center;
 }
 
 /* Segmented choice (e.g. Motion: System / Reduced / Full). The selected pill is

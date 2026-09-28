@@ -262,7 +262,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Lift buttons by 1px on hover and deepen the shadow (CSS transition) (#304)
 - [x] Push buttons down by 1px on press (#305)
-- [ ] Animate toggle switch thumbs with spring physics (#306)
+- [x] Animate toggle switch thumbs with spring physics (#306)
 - [ ] Draw in custom checkbox checkmarks on check with a path animation
 - [x] Lift tag pills on hover with a shadow; trigger a brief scale bounce on click (#307)
 - [ ] Animate the star button fill with a pop effect (#308)

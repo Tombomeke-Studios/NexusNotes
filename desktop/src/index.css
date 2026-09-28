@@ -673,7 +673,6 @@ input:focus, textarea:focus {
   justify-content: center;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(3px);
-  animation: fadeIn 0.15s ease;
 }
 
 .confirm-dialog {
@@ -684,7 +683,6 @@ input:focus, textarea:focus {
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow-modal), var(--surface-highlight);
-  animation: riseIn 0.2s var(--easing-spring);
 }
 
 .confirm-title {

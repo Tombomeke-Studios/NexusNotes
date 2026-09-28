@@ -11,6 +11,7 @@ import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
 import type { MotionPreference } from "../../lib/motion";
 import { spring } from "../../lib/motion-tokens";
 import "./Settings.css";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 type SettingsTab = "appearance" | "sync" | "shortcuts" | "account";
 
@@ -182,8 +183,8 @@ export function Settings({
   }, [onClose]);
 
   return (
-    <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+    <OverlayMotion preset="backdrop" className="settings-overlay" onClick={onClose}>
+      <OverlayMotion preset="dialog" className="settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="settings-nav">
           <div className="settings-nav-title">Settings</div>
           {(["appearance", "sync", "shortcuts", "account"] as SettingsTab[]).map((t) => (
@@ -466,7 +467,7 @@ export function Settings({
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

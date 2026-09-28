@@ -1,4 +1,5 @@
 import type { SaveError, SaveErrorKind } from "../../lib/useNoteSave";
+import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface CloseConfirmDialogProps {
   /** Title of the note with unsaved changes; null when unknown. */
@@ -55,8 +56,9 @@ export function CloseConfirmDialog({
   const plural = noteTitles.length > 1;
 
   return (
-    <div className="confirm-overlay" onClick={saving ? undefined : onCancel}>
-      <div
+    <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={saving ? undefined : onCancel}>
+      <OverlayMotion
+        preset="dialog"
         className="confirm-dialog"
         role="alertdialog"
         aria-modal="true"
@@ -93,7 +95,7 @@ export function CloseConfirmDialog({
             {saving ? "Saving…" : error ? "Retry" : LABELS[kind].save}
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayMotion>
+    </OverlayMotion>
   );
 }

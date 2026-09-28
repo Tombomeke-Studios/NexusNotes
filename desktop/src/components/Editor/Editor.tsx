@@ -98,11 +98,13 @@ export function Editor({
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const blockReasonRef = useRef(attachmentBlockReason);
   blockReasonRef.current = attachmentBlockReason;
+  // The notice is hidden while further files upload, so its 4s only start
+  // counting once the upload batch has finished.
   useEffect(() => {
-    if (!uploadNotice) return;
+    if (!uploadNotice || uploading) return;
     const t = setTimeout(() => setUploadNotice(null), 4000);
     return () => clearTimeout(t);
-  }, [uploadNotice]);
+  }, [uploadNotice, uploading]);
   const contentRowRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();

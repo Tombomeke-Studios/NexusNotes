@@ -56,10 +56,27 @@
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
   --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.25s ease;
+  /* Motion tokens. They mirror src/lib/motion-tokens.ts so CSS transitions and
+     framer-motion springs share one rhythm: 120-320 ms, exits ~65% of entries. */
+  --duration-fast: 140ms;
+  --duration-base: 200ms;
+  --duration-slow: 280ms;
+  --duration-exit: 130ms;
+  /* Decelerating curve with no overshoot: the default for UI state changes. */
   --easing-spring: cubic-bezier(0.22, 1, 0.36, 1);
-  --transition-slow: 0.4s var(--easing-spring);
+  /* Accelerating curve for things leaving the screen. */
+  --easing-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* The "bounce" spring from motion-tokens.ts (stiffness 800, damping 28)
+     sampled into linear(); it overshoots ~16%, so pair it with
+     --duration-bounce, the time the spring needs to settle. */
+  --duration-bounce: 320ms;
+  --easing-bounce: linear(0, 0.065, 0.219, 0.415, 0.623, 0.807, 0.956, 1.066, 1.132, 1.162, 1.164, 1.146, 1.117, 1.082, 1.049, 1.021, 0.999, 0.984, 0.975, 0.972, 0.974, 0.978, 0.983, 0.989, 1);
+
+  --transition-snappy: var(--duration-fast) var(--easing-spring);
+  --transition-smooth: var(--duration-slow) var(--easing-spring);
+  --transition-fast: var(--transition-snappy);
+  --transition-normal: var(--duration-base) var(--easing-spring);
+  --transition-slow: var(--transition-smooth);
 }
 
 * {

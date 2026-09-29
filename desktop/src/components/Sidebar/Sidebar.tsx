@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { duration, ease, exitDuration, spring } from "../../lib/motion-tokens";
+import { foldMotion, spring } from "../../lib/motion-tokens";
 import { createPortal } from "react-dom";
 import type { TreeNode, Vault } from "../../lib/types";
 import type { SortBy, SearchHit } from "../../lib/noteFilter";
@@ -742,9 +742,7 @@ function TreeItem({
             <motion.div
               key="children"
               className="tree-folder-children"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1, transition: { duration: duration.base, ease: ease.out } }}
-              exit={{ height: 0, opacity: 0, transition: { duration: exitDuration(duration.base), ease: ease.in } }}
+              {...foldMotion}
             >
               {node.children?.map((child) => (
                 <TreeItem

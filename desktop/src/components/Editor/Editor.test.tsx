@@ -91,6 +91,27 @@ describe("Editor — replacing the open note's text (#324)", () => {
     expect(onReplaceApplied).not.toHaveBeenCalled();
   });
 
+  it("tells the caller while it is on screen", () => {
+    const onPresenceChange = vi.fn();
+    const view = render(
+      <Editor
+        note={note("n1", "text")}
+        notes={[]}
+        mode="edit"
+        onModeChange={() => {}}
+        onSave={() => {}}
+        onRename={() => {}}
+        onRenameCommit={() => {}}
+        onCreateNote={() => {}}
+        onNavigateToNote={() => {}}
+        onPresenceChange={onPresenceChange}
+      />,
+    );
+    expect(onPresenceChange).toHaveBeenLastCalledWith(true);
+    view.unmount();
+    expect(onPresenceChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("does not apply an earlier request again when it mounts", () => {
     // E.g. after the graph view: the note's own content is current by now.
     const onReplaceApplied = vi.fn();

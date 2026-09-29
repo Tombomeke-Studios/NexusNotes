@@ -209,6 +209,8 @@ export default function App() {
   const replaceNonce = useRef(0);
   /** Another device's version waiting for the editor to show it (#324). */
   const pendingRemote = useRef<{ nonce: number; note: Note } | null>(null);
+  /** Whether an editor is on screen (not while the graph view is). */
+  const editorPresent = useRef(false);
   const replaceEditorText = useCallback((noteId: string, text: string, expected?: string, remote?: Note) => {
     replaceNonce.current += 1;
     pendingRemote.current = remote ? { nonce: replaceNonce.current, note: remote } : null;
@@ -263,14 +265,31 @@ export default function App() {
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
 
-  // The editor showed another device's version: the open note moves to it.
+  // The open note moves to another device's version. The ref is updated at
+  // once so a second push right after this one compares with the new text.
+  const adoptRemote = useCallback((note: Note) => {
+    editorContentRef.current = note.content;
+    setEditorContent(note.content);
+    setActiveNote((prev) => (prev?.id === note.id ? note : prev));
+  }, []);
+
+  // The editor showed another device's version.
   const handleReplaceApplied = useCallback((request: ReplaceRequest) => {
     const pending = pendingRemote.current;
     if (!pending || pending.nonce !== request.nonce) return;
     pendingRemote.current = null;
-    setEditorContent(request.text);
-    setActiveNote((prev) => (prev?.id === pending.note.id ? pending.note : prev));
-  }, []);
+    adoptRemote(pending.note);
+  }, [adoptRemote]);
+
+  // An editor leaving the screen can no longer show a waiting version: the
+  // open note takes it directly, and the next editor opens on it.
+  const handleEditorPresence = useCallback((present: boolean) => {
+    editorPresent.current = present;
+    const pending = pendingRemote.current;
+    if (present || !pending) return;
+    pendingRemote.current = null;
+    adoptRemote(pending.note);
+  }, [adoptRemote]);
 
   // The user typed before the editor could show it: that is a conflict.
   const handleReplaceRejected = useCallback((request: ReplaceRequest) => {
@@ -389,12 +408,16 @@ export default function App() {
             // (#324). Echoes of our own saves are already on screen. The open
             // note only moves to this version once the editor shows it; a
             // keystroke in between turns it into a conflict instead.
-            const replacing =
+            const fromElsewhere =
               !dirty &&
               current?.id === incoming.id &&
               incoming.content !== editorContentRef.current &&
               !isOwnVersion(incoming.id, incoming.checksum);
+            // No editor on screen (graph view): nothing can be typed over it,
+            // so the open note takes the version at once.
+            const replacing = fromElsewhere && editorPresent.current;
             if (replacing) replaceEditorText(incoming.id, incoming.content, editorContentRef.current, incoming);
+            else if (fromElsewhere) adoptRemote(incoming);
             setNoteList((prev) => {
               const idx = prev.findIndex((n) => n.id === note.id);
               if (idx >= 0) {
@@ -420,7 +443,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText]);
+  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -491,7 +514,11 @@ export default function App() {
   }, []);
 
   const handleCreateNoteWithTitle = useCallback(async (title: string) => {
-    if (!activeVaultId) return;
+    // Read from the ref: a shortcut can fire before the keyboard handler of
+    // the latest render is registered, and its stale closure would see no
+    // vault (right after start-up) or the previous one (right after a switch).
+    const vaultId = activeVaultIdRef.current;
+    if (!vaultId) return;
     // Keep note names unique (Untitled, Untitled 1, Untitled 2, …).
     const name = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), title);
     const { content: payload, checksum } = await encryptOutgoing(vaultId, "");
@@ -535,9 +562,7 @@ export default function App() {
       setCursor({ line: 1, col: 1 });
       return;
     }
-    // Read from the ref: a shortcut can fire before the keyboard handler of
-    // the latest render is registered, and its stale closure would see no
-    // vault (right after start-up) or the previous one (right after a switch).
+    // From the ref, like handleCreateNoteWithTitle: Ctrl+D can fire a stale closure.
     const vaultId = activeVaultIdRef.current;
     if (!vaultId) return;
     // A note's path is its folder, so daily notes live in the "Daily" folder;
@@ -615,9 +640,7 @@ export default function App() {
   }, []);
 
   const handleCreateFolder = useCallback((name: string) => {
-    // From the ref, like handleCreateNoteWithTitle: Ctrl+D can fire a stale closure.
-    const vaultId = activeVaultIdRef.current;
-    if (!vaultId) return;
+    if (!activeVaultId) return;
     setEmptyFolders(addFolder(activeVaultId, name));
   }, [activeVaultId]);
 
@@ -959,6 +982,9 @@ export default function App() {
       prev.some((t) => t.key === noteId) ? prev : [...prev, { key: noteId, type: "note" }],
     );
     setActiveTabKey(noteId);
+    // The open note with unsaved text stays exactly as it is: reloading it
+    // could hand the editor a server copy over text not yet saved.
+    if (activeNoteRef.current?.id === noteId && isDirtyStatus(saveStatusRef.current)) return;
     const note = await decryptIncoming(await notesApi.get(noteId));
     // Restore unsaved local text (a draft after an abrupt close, or for e2ee
     // vaults the in-memory text of a save the server hasn't confirmed) so work
@@ -975,8 +1001,11 @@ export default function App() {
       setEditorContent(note.content);
       setSaveStatus("saved");
     }
+    // Reopening the note that is already open keeps the same id, and the
+    // editor only re-reads a note's text when the id changes: hand it over.
+    replaceEditorText(noteId, local ? local.content : note.content);
     setCursor({ line: 1, col: 1 });
-  }, [decryptIncoming, flushPendingSave, localCopy]);
+  }, [decryptIncoming, flushPendingSave, localCopy, replaceEditorText]);
 
   // Keyboard navigation of the file tree: Up/Down move a single-note highlight
   // through the visible order, Enter opens it. Ignored while typing, in the
@@ -1544,6 +1573,7 @@ export default function App() {
               replaceRequest={replaceRequest}
               onReplaceApplied={handleReplaceApplied}
               onReplaceRejected={handleReplaceRejected}
+              onPresenceChange={handleEditorPresence}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
             />
           )}

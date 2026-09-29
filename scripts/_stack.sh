@@ -13,8 +13,23 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # --- Dev environment (matches docker-compose.dev.yml + README) ---
 export DATABASE_URL="postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
 export REDIS_URL="redis://localhost:6379"
-export JWT_SECRET="dev-secret"
+# A random JWT secret per checkout, kept between runs so sessions survive a
+# restart (never a fixed, guessable value; #334). tmp/ is gitignored.
+JWT_SECRET_FILE="$ROOT/services/sync-service/tmp/jwt-secret"
+if [ ! -s "$JWT_SECRET_FILE" ]; then
+  mkdir -p "$(dirname "$JWT_SECRET_FILE")"
+  (umask 077 && head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$JWT_SECRET_FILE")
+fi
+JWT_SECRET="$(cat "$JWT_SECRET_FILE")"
+export JWT_SECRET
 export PORT="8080"
+# The dev backend is for this machine only, like the packaged app's. Dev
+# containers often lack IPv6, so they bind the IPv4 loopback alone.
+if [ "${NEXUS_DEVCONTAINER:-}" = "1" ]; then
+  export BIND_ADDR="127.0.0.1"
+else
+  export BIND_ADDR="127.0.0.1,::1"
+fi
 export VITE_API_URL="http://localhost:8080"
 # Object storage for attachments (MinIO from docker-compose.dev.yml).
 export MINIO_ENDPOINT="localhost:9000"
@@ -86,17 +101,17 @@ start_stack() {
   case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) bin="$bin.exe" ;; esac
   ( cd "$ROOT/services/sync-service" && go build -o "$bin" ./cmd/server )
 
-  # Reuse a healthy backend only when the build it runs matches the one we
-  # just produced; the hash of the last-started binary is recorded below.
+  # Reuse a healthy backend only when the build it runs and its settings
+  # (bind address, secret) match; their hash is recorded below.
   local hashfile="$ROOT/services/sync-service/tmp/sync-service.hash"
   local newhash
-  newhash="$(git hash-object "$bin")"
+  newhash="$(git hash-object "$bin")-$(printf '%s|%s' "$BIND_ADDR" "$JWT_SECRET" | git hash-object --stdin)"
   if curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1; then
     if [ -f "$hashfile" ] && [ "$(cat "$hashfile")" = "$newhash" ]; then
       log "Backend already healthy on :$PORT and up to date — reusing it."
       return
     fi
-    log "Backend on :$PORT runs an outdated build — replacing it…"
+    log "Backend on :$PORT runs an outdated build or settings — replacing it…"
     local stale_pid
     stale_pid="$(port_pid "$PORT")"
     [ -n "$stale_pid" ] && kill_pid "$stale_pid"

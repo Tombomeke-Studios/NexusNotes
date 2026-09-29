@@ -135,7 +135,7 @@ docker compose -f docker-compose.dev.yml up -d
 cd services\sync-service
 $env:DATABASE_URL = "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
 $env:REDIS_URL    = "redis://localhost:6379"
-$env:JWT_SECRET   = "dev-secret"
+$env:JWT_SECRET   = -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })   # at least 32 characters
 $env:PORT         = "8080"
 go run cmd/migrate/main.go   # first run only, or after new migrations
 go run cmd/server/main.go    # leave running
@@ -148,7 +148,7 @@ docker compose -f docker-compose.dev.yml up -d
 cd services/sync-service
 export DATABASE_URL="postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
 export REDIS_URL="redis://localhost:6379"
-export JWT_SECRET="dev-secret" PORT="8080"
+export JWT_SECRET="$(openssl rand -hex 32)" PORT="8080"
 go run cmd/migrate/main.go
 go run cmd/server/main.go
 ```

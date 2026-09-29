@@ -10,7 +10,7 @@ description: Build, launch and drive NexusNotes (web UI + Go backend) to verify 
 - Full stack: `./scripts/dev-web.sh` (Docker Postgres+Redis, migrations, Go backend on :8080, Vite web UI on :1420). Run it in the background; it keeps running.
 - The backend MUST be started with cwd `services/sync-service` — its startup auto-migration reads the cwd-relative `migrations` dir (#201; `_stack.sh` handles this since the fix).
 - Manual backend (when the script's trap has killed it):
-  `cd services/sync-service && DATABASE_URL="postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable" REDIS_URL="redis://localhost:6379" JWT_SECRET="dev-secret" PORT=8080 ./tmp/sync-service.exe`
+  `cd services/sync-service && DATABASE_URL="postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable" REDIS_URL="redis://localhost:6379" JWT_SECRET="$(cat tmp/jwt-secret 2>/dev/null || openssl rand -hex 32)" PORT=8080 ./tmp/sync-service.exe`
 - Health probes: `curl http://localhost:8080/health` and `http://localhost:1420`.
 
 ## Drive the UI

@@ -60,6 +60,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   installation must set `POSTGRES_PASSWORD=nexus_pass` and
   `MINIO_ROOT_PASSWORD=nexus_minio_pass` (the old built-in values) to keep its data
   reachable; see docs/deployment.md for changing them afterwards.
+- The sync service refuses to start with a `JWT_SECRET` (or a set `ADMIN_TOKEN`) shorter
+  than 32 characters, only accepts HS256-signed access tokens, and only accepts the admin
+  token as `Authorization: Bearer <token>`. **Upgrading:** a self-hosted installation with
+  a shorter secret must set a longer one (`openssl rand -hex 32`); users then sign in once
+  more at most. The packaged app already uses a 64-character secret.
 - The dev scripts no longer sign sessions with the fixed `dev-secret`: they generate a
   random secret on the first run and start the backend on localhost only. Dev sessions
   are renewed through their refresh token on the next request.

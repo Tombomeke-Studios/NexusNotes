@@ -41,3 +41,21 @@ func TestAdminStats_DisabledWhenUnconfigured(t *testing.T) {
 		t.Fatalf("expected 404 when no admin token is configured, got %d", rec.Code)
 	}
 }
+
+// The token must come with the Bearer scheme; a bare token in the header is
+// not accepted (#328).
+func TestAdminAuthorized_RequiresTheBearerScheme(t *testing.T) {
+	h := newTestAdmin("secret-token")
+	for header, want := range map[string]bool{
+		"Bearer secret-token": true,
+		"secret-token":        false,
+		"bearer secret-token": false,
+		"Basic secret-token":  false,
+	} {
+		req := httptest.NewRequest("GET", "/api/admin/stats", nil)
+		req.Header.Set("Authorization", header)
+		if got := h.authorized(req); got != want {
+			t.Errorf("Authorization %q: authorized = %v, want %v", header, got, want)
+		}
+	}
+}

@@ -164,7 +164,8 @@ jobs:
         env:
           DATABASE_URL: postgres://nexus:nexus_dev@localhost:5432/nexus_dev?sslmode=disable
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: e2e-ci-secret
+          # CI only; the service requires at least 32 characters.
+          JWT_SECRET: e2e-ci-secret-not-for-production-use
           PORT: "8080"
           MINIO_ENDPOINT: localhost:9000
           MINIO_ACCESS_KEY: nexus_minio

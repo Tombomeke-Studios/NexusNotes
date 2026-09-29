@@ -54,6 +54,10 @@ type Config struct {
 // http://tauri.localhost (packaged app on Windows, WebView2). A web UI
 // served through a proxy on the API's own host needs no entry: the
 // WebSocket check also accepts the server's own origin.
+// MinSecretLength is the shortest JWT_SECRET and ADMIN_TOKEN accepted: a
+// short HMAC secret can be guessed offline from any token it signed (#328).
+const MinSecretLength = 32
+
 var DefaultAllowedOrigins = []string{
 	"http://localhost:1420",
 	"http://localhost:5173",
@@ -80,6 +84,9 @@ func Load() (*Config, error) {
 	if jwtSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
+	if len(jwtSecret) < MinSecretLength {
+		return nil, fmt.Errorf("JWT_SECRET must be at least %d characters (generate one with: openssl rand -hex 32)", MinSecretLength)
+	}
 
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
@@ -93,6 +100,9 @@ func Load() (*Config, error) {
 
 	meiliMasterKey := os.Getenv("MEILI_MASTER_KEY")
 	adminToken := os.Getenv("ADMIN_TOKEN")
+	if adminToken != "" && len(adminToken) < MinSecretLength {
+		return nil, fmt.Errorf("ADMIN_TOKEN must be at least %d characters, or empty to disable the admin endpoints", MinSecretLength)
+	}
 
 	authRatePerMin, err := intEnv("AUTH_RATE_LIMIT_PER_MIN", 10)
 	if err != nil {

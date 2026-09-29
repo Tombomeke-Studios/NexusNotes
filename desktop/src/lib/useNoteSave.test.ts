@@ -601,6 +601,31 @@ describe("useNoteSave — resolving conflicts", () => {
     expect(hook.result.current.saveError).toBeNull();
   });
 
+  it("still reports a newer conflict for a save after taking their text", async () => {
+    update.mockRejectedValueOnce(conflict409());
+    const { hook } = setup();
+    await act(() => hook.result.current.saveNote("my text"));
+    await flush();
+    await act(async () => {
+      await hook.result.current.resolveConflict("n1", "their text", "c9");
+    });
+
+    // The other device saves again; a save from here (Ctrl+S, the close
+    // guard) must surface that as a conflict, not hang as a stale one.
+    update.mockRejectedValueOnce(
+      new ApiError(409, "Request failed", { server_content: "newer text", server_checksum: "c11" }),
+    );
+    let outcome: Awaited<ReturnType<typeof hook.result.current.saveNote>> | undefined;
+    await act(async () => {
+      outcome = await hook.result.current.saveNote("their text");
+    });
+    await flush();
+
+    expect(outcome).toMatchObject({ ok: false, error: { kind: "conflict" } });
+    expect(hook.result.current.saveStatus).toBe("conflict");
+    expect(hook.result.current.conflictVersion("n1")).toEqual({ content: "newer text", checksum: "c11" });
+  });
+
   it("keeps a pushed update from another device as the version to compare with", async () => {
     const { hook } = setup();
     act(() => hook.result.current.liveChange("my unsaved text"));

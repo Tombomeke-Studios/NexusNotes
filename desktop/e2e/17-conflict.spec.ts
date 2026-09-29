@@ -105,6 +105,24 @@ test.describe("Conflict resolution", () => {
     await expect.poll(() => serverContent(page, apiBase, note.id)).toBe(edited);
   });
 
+  test("keeps another device's change made while the graph view was open (#324)", async ({ page }) => {
+    const { note, apiBase } = await savedNote(page);
+    await page.keyboard.press("Control+g");
+    await expect(page.locator(".graph-view")).toBeVisible();
+    await otherDeviceSaves(page, apiBase, note, THEIRS);
+    // Give the push time to arrive while the editor is not on screen.
+    await expect.poll(async () => (await fetchNote(page, apiBase, note.id)).content).toBe(THEIRS);
+    await page.waitForTimeout(500);
+
+    await page.keyboard.press("Control+g");
+    const editor = page.locator(".editor-textarea").first();
+    await expect(editor).toHaveValue(THEIRS);
+    const edited = `${THEIRS}!`;
+    await typeInEditor(page, edited);
+    await waitForSaved(page);
+    await expect.poll(() => serverContent(page, apiBase, note.id)).toBe(edited);
+  });
+
   test("shows both versions and keeps mine", async ({ page }) => {
     const { dialog, note, apiBase } = await makeConflict(page);
     await expect(dialog.locator('[data-changed="mine"]')).toHaveText("mine");

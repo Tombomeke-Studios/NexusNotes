@@ -73,6 +73,8 @@ interface EditorProps {
   onReplaceApplied?: (request: ReplaceRequest) => void;
   /** The text changed after the replacement was requested; it was not applied. */
   onReplaceRejected?: (request: ReplaceRequest) => void;
+  /** Called with true when the editor mounts and false when it unmounts. */
+  onPresenceChange?: (present: boolean) => void;
   /** Non-null when files cannot be attached in this vault; shown instead of uploading. */
   attachmentBlockReason?: string | null;
 }
@@ -110,6 +112,7 @@ export function Editor({
   replaceRequest = null,
   onReplaceApplied,
   onReplaceRejected,
+  onPresenceChange,
   attachmentBlockReason = null,
 }: EditorProps) {
   const [content, setContent] = useState("");
@@ -173,6 +176,13 @@ export function Editor({
   onReplaceAppliedRef.current = onReplaceApplied;
   const onReplaceRejectedRef = useRef(onReplaceRejected);
   onReplaceRejectedRef.current = onReplaceRejected;
+  // The caller routes outside text differently while no editor is on screen.
+  const onPresenceChangeRef = useRef(onPresenceChange);
+  onPresenceChangeRef.current = onPresenceChange;
+  useEffect(() => {
+    onPresenceChangeRef.current?.(true);
+    return () => onPresenceChangeRef.current?.(false);
+  }, []);
   useEffect(() => {
     if (!replaceRequest || replaceRequest.nonce === prevReplaceNonceRef.current) return;
     prevReplaceNonceRef.current = replaceRequest.nonce;

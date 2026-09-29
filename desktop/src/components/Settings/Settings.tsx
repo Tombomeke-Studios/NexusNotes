@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useIsPresent } from "framer-motion";
 import type { WorkspacePrefs } from "../../lib/prefs";
 import type { Vault } from "../../lib/types";
 import { auth, devices as devicesApi, ApiError } from "../../lib/api";
@@ -174,13 +174,16 @@ export function Settings({
     }
   };
 
+  const present = useIsPresent();
   useEffect(() => {
+    // Once closing (exit animation), Escape belongs to whatever is underneath.
+    if (!present) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [present, onClose]);
 
   return (
     <OverlayMotion preset="backdrop" className="settings-overlay" onClick={onClose}>

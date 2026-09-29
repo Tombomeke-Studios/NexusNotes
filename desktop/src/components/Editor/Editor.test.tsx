@@ -113,6 +113,15 @@ describe("Editor — replacing the open note's text (#324)", () => {
     );
   });
 
+  it("reports a replacement for a note it no longer shows as rejected", () => {
+    const onReplaceRejected = vi.fn();
+    const { textarea, rerender } = setup();
+    const request = { noteId: "n-other", text: "other note", nonce: 1, expected: "x" };
+    rerender({ replaceRequest: request, onReplaceRejected });
+    expect(textarea().value).toBe("old text");
+    expect(onReplaceRejected).toHaveBeenCalledWith(request);
+  });
+
   it("tells the caller while it is on screen", () => {
     const onPresenceChange = vi.fn();
     const view = render(

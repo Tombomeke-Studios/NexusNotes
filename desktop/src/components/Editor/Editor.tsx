@@ -195,8 +195,8 @@ export function Editor({
   useEffect(() => {
     if (!replaceRequest || replaceRequest.nonce === prevReplaceNonceRef.current) return;
     prevReplaceNonceRef.current = replaceRequest.nonce;
-    if (noteRef.current?.id !== replaceRequest.noteId) return;
-    if (replaceRequest.expected !== undefined && contentRef.current !== replaceRequest.expected) {
+    const otherNote = noteRef.current?.id !== replaceRequest.noteId;
+    if (otherNote || (replaceRequest.expected !== undefined && contentRef.current !== replaceRequest.expected)) {
       onReplaceRejectedRef.current?.(replaceRequest);
       return;
     }

@@ -51,6 +51,15 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   containers now listen on localhost only instead of every network interface. The next
   start recreates the Postgres and Redis containers with the new port bindings; your data
   volumes are kept.
+- The production `docker-compose.yml` has no built-in passwords or secrets any more: it
+  refuses to start until `JWT_SECRET`, `POSTGRES_PASSWORD`, `MEILI_MASTER_KEY` and
+  `MINIO_ROOT_PASSWORD` are set (copy `.env.production.example`). Only the web UI is
+  published; MinIO, Meilisearch and the monitoring UIs are no longer reachable from the
+  network. Images are pinned and services have memory limits. Prometheus and Grafana
+  moved to the optional `docker-compose.monitoring.yml`. **Upgrading:** an existing
+  installation must set `POSTGRES_PASSWORD=nexus_pass` and
+  `MINIO_ROOT_PASSWORD=nexus_minio_pass` (the old built-in values) to keep its data
+  reachable; see docs/deployment.md for changing them afterwards.
 - The dev scripts no longer sign sessions with the fixed `dev-secret`: they generate a
   random secret on the first run and start the backend on localhost only. Dev sessions
   are renewed through their refresh token on the next request.

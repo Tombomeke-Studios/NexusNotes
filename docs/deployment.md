@@ -168,15 +168,13 @@ docker compose -f docker-compose.dev.yml down -v
 ### 1. Configure environment
 
 ```bash
-cp .env.example .env
+cp .env.production.example .env
 ```
 
-Edit `.env` and set real values:
-```env
-DATABASE_URL=postgres://nexus:STRONG_PASSWORD@postgres:5432/nexus_notes?sslmode=disable
-JWT_SECRET=GENERATE_A_RANDOM_64_CHAR_STRING
-REDIS_URL=redis://redis:6379
-```
+Fill in every value the file marks REQUIRED (`JWT_SECRET`, `POSTGRES_PASSWORD`,
+`MEILI_MASTER_KEY`, `MINIO_ROOT_PASSWORD`), each with its own random value, for
+example from `openssl rand -hex 32`. There are no built-in defaults: `docker compose`
+refuses to start while one of them is empty.
 
 `BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the
@@ -191,24 +189,47 @@ start-up rather than silently listening everywhere.
 docker compose up -d
 ```
 
-This starts the sync service, PostgreSQL, Redis, and MinIO. The sync service auto-runs migrations.
+This builds and starts the web UI, the sync service, PostgreSQL, Redis, MinIO and
+Meilisearch. The sync service applies database migrations on start-up.
 
 ### 3. Verify
 
 ```bash
-curl http://localhost:8080/health
+curl http://localhost:3000/health
 # {"status":"ok","version":"0.5.0"}
 ```
 
 ### Services
 
-| Service | Port | Description |
+Only the web UI is published. It serves the app and proxies `/api`, `/ws` and
+`/health` to the sync service; everything else is reachable on the stack's internal
+network only. Put TLS in front of port 3000 (a reverse proxy such as Caddy or
+nginx) before exposing it beyond your own machine.
+
+| Service | Published | Description |
 |---|---|---|
-| sync-service | 8080 | Go backend API + WebSocket |
-| postgres | 5432 | PostgreSQL database |
-| redis | 6379 | Cache and sessions |
-| minio | 9000 | S3 attachment storage |
-| minio console | 9001 | MinIO admin UI |
+| desktop (web UI) | `3000` (`NEXUS_HTTP_PORT`) | Static app + proxy to the sync service |
+| sync-service | internal | Go backend API + WebSocket |
+| postgres | internal | PostgreSQL database |
+| redis | internal | Cache and WebSocket tickets |
+| minio | internal | S3-compatible attachment storage |
+| meilisearch | internal | Full-text search |
+
+Every image is pinned to an explicit version, and each service has a memory limit
+(512 MB for the sync service and MinIO, 1 GB for Postgres and Meilisearch, 256 MB
+for the rest). Raise a limit in `docker-compose.yml` (or an override file) for a
+large installation.
+
+### Upgrading an existing installation
+
+Earlier versions had built-in passwords for the database (`nexus_pass`) and MinIO
+(`nexus_minio_pass`). A database password is only applied when its volume is first
+created, so an existing installation must keep using the password its database
+already has: put `POSTGRES_PASSWORD=nexus_pass` and `MINIO_ROOT_PASSWORD=nexus_minio_pass`
+in `.env` to start as before. To move to a new database password, connect to the
+postgres container with `psql` as the `nexus` user, change that user's password, then
+put the same value in `POSTGRES_PASSWORD` and run `docker compose up -d`. MinIO and
+Meilisearch take new values from `.env` on their next start.
 
 ---
 
@@ -264,15 +285,18 @@ GitHub Actions workflow (`.github/workflows/validate.yml`) runs automatically on
 
 ## Monitoring
 
-`docker compose up` includes Prometheus (`:9090`) and Grafana (`:3001`,
-credentials via `GRAFANA_USER`/`GRAFANA_PASSWORD`, defaults must be changed
-in production). Grafana auto-provisions the Prometheus datasource and the
-NexusNotes dashboard from `infra/grafana/`. The operator stats endpoint
-(`GET /api/admin/stats`) is enabled by an `ADMIN_TOKEN` in the sync service's
-environment and disabled while it is unset. `docker-compose.yml` does not pass
-`ADMIN_TOKEN` through to the sync service yet, so setting it in `.env` alone has
-no effect: add `- ADMIN_TOKEN=${ADMIN_TOKEN:-}` to the sync-service
-`environment:` list first.
+Prometheus and Grafana are optional and live in their own compose file:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+Set `GRAFANA_PASSWORD` in `.env` first (there is no default). Both UIs listen on
+the host's loopback only (Prometheus on `127.0.0.1:9090`, Grafana on
+`127.0.0.1:3001`); reach them from elsewhere through an SSH tunnel. Grafana
+auto-provisions the Prometheus datasource and the NexusNotes dashboard from
+`infra/grafana/`. The operator stats endpoint (`GET /api/admin/stats`) is enabled
+by `ADMIN_TOKEN` in `.env` and disabled while it is empty.
 
 ## Email (optional)
 

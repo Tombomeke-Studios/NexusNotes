@@ -236,7 +236,9 @@ it is what it exists for:
 | `.devcontainer/` | Dev container: Go + Node + Postgres/Redis sharing the dev container's network (`NEXUS_DEVCONTAINER=1` makes `_stack.sh` skip host Docker) |
 | `VERSION` | Single source of truth for the release version (pre-1.0 semver); `scripts/set-version.sh` syncs it into package.json, tauri.conf.json, Cargo.toml + lockfiles |
 | `CHANGELOG.md` | Release notes per version |
-| `docker-compose.yml` | Production stack (all services) |
+| `docker-compose.yml` | Production stack: required secrets (no defaults), only the web UI published, pinned images, memory limits |
+| `docker-compose.monitoring.yml` | Optional Prometheus + Grafana overlay for the production stack (loopback-only ports) |
+| `.env.production.example` | Template for the production `.env` (the REQUIRED secrets) |
 | `docker-compose.dev.yml` | Development stack with hot reload |
 | `.github/workflows/validate.yml` | CI pipeline: lint, test, build |
 | `db/migrations/` | Shared SQL migrations |

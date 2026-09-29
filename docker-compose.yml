@@ -1,13 +1,25 @@
+# Production stack. Secrets have no defaults: `docker compose` refuses to start
+# until they are set in .env (copy .env.production.example; see
+# docs/deployment.md). Only the web UI is published; everything else stays on
+# the internal network. Monitoring is opt-in: docker-compose.monitoring.yml.
+
+x-limits: &small
+  deploy:
+    resources:
+      limits:
+        memory: 256M
+
 services:
   desktop:
     build:
       context: ./desktop
       dockerfile: Dockerfile
     ports:
-      - "3000:80"
+      - "${NEXUS_HTTP_PORT:-3000}:80"
     depends_on:
       - sync-service
     restart: unless-stopped
+    <<: *small
 
   sync-service:
     build:
@@ -18,11 +30,13 @@ services:
         VERSION: ${NEXUS_VERSION:-dev}
     environment:
       - PORT=8080
-      - DATABASE_URL=postgres://nexus:nexus_pass@postgres:5432/nexus_notes?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - DATABASE_URL=postgres://nexus:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/nexus_notes?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env (at least 32 random characters)}
       - REDIS_URL=redis://redis:6379
       - MEILI_URL=http://meilisearch:7700
-      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-change-me-in-production}
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in .env}
+      # Guards /api/admin/*; leave empty to disable those endpoints.
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
       # Transactional email (#50). Leave SMTP_HOST empty to disable email
       # (mail is logged, and email verification is not enforced). APP_BASE_URL
       # is the public origin used to build the links in verification/reset mails.
@@ -32,10 +46,10 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM=${SMTP_FROM:-}
-      # Attachment object storage (#153); attachments are disabled if unset.
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-nexus_minio}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-nexus_minio_pass}
+      # Attachment object storage (#153), on the internal network only.
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-nexus_minio}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
       - MINIO_BUCKET=${MINIO_BUCKET:-attachments}
       # Browser origins allowed for CORS and the WebSocket handshake, comma
       # separated. Empty = desktop app + local dev defaults; the web UI on
@@ -53,14 +67,20 @@ services:
       minio:
         condition: service_started
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.14-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=nexus
-      - POSTGRES_PASSWORD=nexus_pass
+      # Only applied when the volume is first created; see docs/deployment.md
+      # for changing the password of an existing database.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       - POSTGRES_DB=nexus_notes
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_notes"]
@@ -68,9 +88,13 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.9-alpine
     volumes:
       - redis_data:/data
     healthcheck:
@@ -79,33 +103,33 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    <<: *small
 
   minio:
     # minio/minio and quay.io/minio/minio both deny anonymous pulls now (#248);
     # this Bitnami build is the same upstream binary and stays public.
-    image: bitnamilegacy/minio:latest
+    image: bitnamilegacy/minio:2025.5.24
     # Bitnami's default non-root user can't init a fresh named volume here;
     # root avoids that without changing behaviour.
     user: root
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    command: server /data
     volumes:
       - minio_data:/data
     environment:
-      - MINIO_ROOT_USER=nexus_minio
-      - MINIO_ROOT_PASSWORD=nexus_minio_pass
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-nexus_minio}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   meilisearch:
-    image: getmeili/meilisearch:v1.11
-    ports:
-      - "7700:7700"
+    image: getmeili/meilisearch:v1.11.3
     volumes:
       - meili_data:/meili_data
     environment:
-      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:-change-me-in-production}
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in .env}
       - MEILI_ENV=production
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
@@ -113,37 +137,13 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus:v2.53.0
-    volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    depends_on:
-      - sync-service
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:11.1.0
-    volumes:
-      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./infra/grafana/dashboards:/etc/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-change-me-in-production}
-    ports:
-      - "3001:3000"
-    depends_on:
-      - prometheus
-    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
 volumes:
   postgres_data:
   redis_data:
   minio_data:
   meili_data:
-  prometheus_data:
-  grafana_data:

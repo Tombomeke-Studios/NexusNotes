@@ -68,9 +68,25 @@ interface EditorProps {
    * device's version, or a resolved conflict (#324, #225). The caller already
    * holds the text, so it is not reported back through onLiveChange.
    */
-  replaceRequest?: { noteId: string; text: string; nonce: number } | null;
+  replaceRequest?: ReplaceRequest | null;
+  /** The editor now shows a replacement's text. */
+  onReplaceApplied?: (request: ReplaceRequest) => void;
+  /** The text changed after the replacement was requested; it was not applied. */
+  onReplaceRejected?: (request: ReplaceRequest) => void;
   /** Non-null when files cannot be attached in this vault; shown instead of uploading. */
   attachmentBlockReason?: string | null;
+}
+
+export interface ReplaceRequest {
+  noteId: string;
+  text: string;
+  nonce: number;
+  /**
+   * The text the caller means to replace. When the editor holds anything else
+   * by the time the request arrives (a keystroke in between), it keeps its
+   * text and reports the request as rejected. Omitted: always replace.
+   */
+  expected?: string;
 }
 
 export function Editor({
@@ -92,6 +108,8 @@ export function Editor({
   paused = false,
   insertRequest = null,
   replaceRequest = null,
+  onReplaceApplied,
+  onReplaceRejected,
   attachmentBlockReason = null,
 }: EditorProps) {
   const [content, setContent] = useState("");
@@ -148,18 +166,30 @@ export function Editor({
     }
   }, [note]);
 
-  const prevReplaceNonceRef = useRef(0);
+  // A request made before this editor mounted is already reflected in the
+  // note it opens with (e.g. back from the graph view); never apply it again.
+  const prevReplaceNonceRef = useRef(replaceRequest?.nonce ?? 0);
+  const onReplaceAppliedRef = useRef(onReplaceApplied);
+  onReplaceAppliedRef.current = onReplaceApplied;
+  const onReplaceRejectedRef = useRef(onReplaceRejected);
+  onReplaceRejectedRef.current = onReplaceRejected;
   useEffect(() => {
     if (!replaceRequest || replaceRequest.nonce === prevReplaceNonceRef.current) return;
     prevReplaceNonceRef.current = replaceRequest.nonce;
     if (noteRef.current?.id !== replaceRequest.noteId) return;
+    if (replaceRequest.expected !== undefined && contentRef.current !== replaceRequest.expected) {
+      onReplaceRejectedRef.current?.(replaceRequest);
+      return;
+    }
     // A pending autosave holds the replaced text; it must not go out.
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = undefined;
     }
     setContent(replaceRequest.text);
+    contentRef.current = replaceRequest.text;
     setHasChanges(false);
+    onReplaceAppliedRef.current?.(replaceRequest);
   }, [replaceRequest]);
 
   // Load the note's attachments so ![[image]] embeds resolve (#153).

@@ -68,4 +68,48 @@ describe("Editor — replacing the open note's text (#324)", () => {
     rerender({ replaceRequest: request, fontSize: 15 });
     expect(textarea().value).toBe("typed after");
   });
+
+  it("reports a replacement it applied", () => {
+    const onReplaceApplied = vi.fn();
+    const { textarea, rerender } = setup();
+    const request = { noteId: "n1", text: "their text", nonce: 1, expected: "old text" };
+    rerender({ replaceRequest: request, onReplaceApplied });
+    expect(textarea().value).toBe("their text");
+    expect(onReplaceApplied).toHaveBeenCalledWith(request);
+  });
+
+  it("keeps text typed after the replacement was requested, and reports that instead", () => {
+    const onReplaceApplied = vi.fn();
+    const onReplaceRejected = vi.fn();
+    const { textarea, rerender } = setup();
+    // A keystroke lands between the request and the moment it is applied.
+    fireEvent.change(textarea(), { target: { value: "old text!" } });
+    const request = { noteId: "n1", text: "their text", nonce: 1, expected: "old text" };
+    rerender({ replaceRequest: request, onReplaceApplied, onReplaceRejected });
+    expect(textarea().value).toBe("old text!");
+    expect(onReplaceRejected).toHaveBeenCalledWith(request);
+    expect(onReplaceApplied).not.toHaveBeenCalled();
+  });
+
+  it("does not apply an earlier request again when it mounts", () => {
+    // E.g. after the graph view: the note's own content is current by now.
+    const onReplaceApplied = vi.fn();
+    const { container } = render(
+      <Editor
+        note={note("n1", "saved later")}
+        notes={[]}
+        mode="edit"
+        onModeChange={() => {}}
+        onSave={() => {}}
+        onRename={() => {}}
+        onRenameCommit={() => {}}
+        onCreateNote={() => {}}
+        onNavigateToNote={() => {}}
+        replaceRequest={{ noteId: "n1", text: "stale remote text", nonce: 3 }}
+        onReplaceApplied={onReplaceApplied}
+      />,
+    );
+    expect((container.querySelector(".editor-textarea") as HTMLTextAreaElement).value).toBe("saved later");
+    expect(onReplaceApplied).not.toHaveBeenCalled();
+  });
 });

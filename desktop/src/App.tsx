@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Sidebar } from "./components/Sidebar";
-import { Editor } from "./components/Editor";
+import { Editor, type ReplaceRequest } from "./components/Editor";
 import { GlobalSearch } from "./components/Search";
 import { GraphView } from "./components/Graph";
 import { CommandPalette } from "./components/CommandPalette";
@@ -187,17 +187,33 @@ export default function App() {
     [],
   );
 
-  const decryptIncoming = useCallback(async (note: Note): Promise<Note> => {
+  /** Decrypts a note from the server; `readable` is false when that failed. */
+  const decryptIncomingChecked = useCallback(async (note: Note): Promise<{ note: Note; readable: boolean }> => {
     const vault = vaultOf(note.vault_id);
-    if (!isE2eeVault(vault)) return note;
+    if (!isE2eeVault(vault)) return { note, readable: true };
     try {
-      return { ...note, content: await decryptNoteForVault(vault!, note.content) };
+      return { note: { ...note, content: await decryptNoteForVault(vault!, note.content) }, readable: true };
     } catch {
       // Locked vault or undecryptable payload: keep the ciphertext (unreadable
       // but harmless); a proper unlock reloads the vault.
-      return note;
+      return { note, readable: false };
     }
   }, [vaultOf]);
+  const decryptIncoming = useCallback(
+    async (note: Note): Promise<Note> => (await decryptIncomingChecked(note)).note,
+    [decryptIncomingChecked],
+  );
+
+  /** Text for the open note that came from outside the editor (#324). */
+  const [replaceRequest, setReplaceRequest] = useState<ReplaceRequest | null>(null);
+  const replaceNonce = useRef(0);
+  /** Another device's version waiting for the editor to show it (#324). */
+  const pendingRemote = useRef<{ nonce: number; note: Note } | null>(null);
+  const replaceEditorText = useCallback((noteId: string, text: string, expected?: string, remote?: Note) => {
+    replaceNonce.current += 1;
+    pendingRemote.current = remote ? { nonce: replaceNonce.current, note: remote } : null;
+    setReplaceRequest({ noteId, text, nonce: replaceNonce.current, expected });
+  }, []);
 
   // Fails closed: a vault that isn't in the list (e.g. after sign-out) is
   // never treated as unencrypted, so e2ee plaintext can't leave the client.
@@ -246,14 +262,22 @@ export default function App() {
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
 
-  /** Text for the open note that came from outside the editor (#324). */
-  const [replaceRequest, setReplaceRequest] = useState<{ noteId: string; text: string; nonce: number } | null>(null);
-  const replaceNonce = useRef(0);
-  const replaceEditorText = useCallback((noteId: string, text: string) => {
-    setEditorContent(text);
-    replaceNonce.current += 1;
-    setReplaceRequest({ noteId, text, nonce: replaceNonce.current });
+  // The editor showed another device's version: the open note moves to it.
+  const handleReplaceApplied = useCallback((request: ReplaceRequest) => {
+    const pending = pendingRemote.current;
+    if (!pending || pending.nonce !== request.nonce) return;
+    pendingRemote.current = null;
+    setEditorContent(request.text);
+    setActiveNote((prev) => (prev?.id === pending.note.id ? pending.note : prev));
   }, []);
+
+  // The user typed before the editor could show it: that is a conflict.
+  const handleReplaceRejected = useCallback((request: ReplaceRequest) => {
+    const pending = pendingRemote.current;
+    if (!pending || pending.nonce !== request.nonce) return;
+    pendingRemote.current = null;
+    acceptRemoteUpdate(pending.note);
+  }, [acceptRemoteUpdate]);
 
   const handleResolveConflict = useCallback(
     async (content: string) => {
@@ -344,7 +368,11 @@ export default function App() {
       const unsub = syncClient.onMessage((type, payload) => {
         if (type === "note:created" || type === "note:updated") {
           // E2ee payloads arrive as ciphertext; state only holds plaintext.
-          decryptIncoming(payload as Note).then((incoming) => {
+          decryptIncomingChecked(payload as Note).then(({ note: incoming, readable }) => {
+            // Text that could not be decrypted never reaches the open note:
+            // not the editor, not a conflict comparison (it would be saved
+            // back as the note's content).
+            if (!readable && activeNoteRef.current?.id === incoming.id) return;
             // An echo must not clobber unsaved local edits on the open note —
             // e.g. a rename typed right after Ctrl+N would silently revert
             // and the next autosave would persist the old title (#204).
@@ -362,15 +390,15 @@ export default function App() {
               : incoming;
             // Another device changed the open, saved note: show its text, or
             // the next edit would be saved on top of it and silently undo it
-            // (#324). Echoes of our own saves are already on screen.
-            if (
+            // (#324). Echoes of our own saves are already on screen. The open
+            // note only moves to this version once the editor shows it; a
+            // keystroke in between turns it into a conflict instead.
+            const replacing =
               !dirty &&
               current?.id === incoming.id &&
               incoming.content !== editorContentRef.current &&
-              !isOwnVersion(incoming.id, incoming.checksum)
-            ) {
-              replaceEditorText(incoming.id, incoming.content);
-            }
+              !isOwnVersion(incoming.id, incoming.checksum);
+            if (replacing) replaceEditorText(incoming.id, incoming.content, editorContentRef.current, incoming);
             setNoteList((prev) => {
               const idx = prev.findIndex((n) => n.id === note.id);
               if (idx >= 0) {
@@ -380,7 +408,7 @@ export default function App() {
               }
               return [...prev, note];
             });
-            setActiveNote((prev) => (prev?.id === note.id ? note : prev));
+            if (!replacing) setActiveNote((prev) => (prev?.id === note.id ? note : prev));
             setLastSyncAt(new Date());
           });
         } else if (type === "note:deleted") {
@@ -396,7 +424,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncoming, acceptRemoteUpdate, isOwnVersion, replaceEditorText]);
+  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -1512,6 +1540,8 @@ export default function App() {
               paused={closePrompt !== null}
               insertRequest={insertRequest}
               replaceRequest={replaceRequest}
+              onReplaceApplied={handleReplaceApplied}
+              onReplaceRejected={handleReplaceRejected}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
             />
           )}

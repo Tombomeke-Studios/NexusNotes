@@ -1,0 +1,43 @@
+# Optional monitoring for the production stack:
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+# Both UIs are bound to the host's loopback only; reach them through an SSH
+# tunnel. GRAFANA_PASSWORD has no default.
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - sync-service
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?set GRAFANA_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  prometheus_data:
+  grafana_data:

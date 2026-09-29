@@ -13,10 +13,13 @@ A markdown-first note-taking platform with cross-device sync, full-text search, 
 ### Start everything
 
 ```bash
+cp .env.production.example .env   # then fill in the REQUIRED secrets
 docker compose up -d
 ```
 
-That's it. Open `http://localhost:3000` in your browser.
+Open `http://localhost:3000` in your browser. The stack has no built-in passwords:
+see [docs/deployment.md](docs/deployment.md#production-docker-compose) for the
+settings, upgrading an existing installation and optional monitoring.
 
 ### First use
 

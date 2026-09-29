@@ -538,12 +538,12 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/conflict-resolution-ui` - Conflict resolution merge UI (#225)
 
-- [ ] Design and build a split-pane diff/merge UI component
-- [ ] Wire the `type: conflict` WebSocket event to open the merge modal
-- [ ] Highlight conflicting hunks with colour coding (local vs. remote)
-- [ ] Add "Accept Mine", "Accept Theirs", and manual edit options
-- [ ] POST the resolved content back to the server on completion and close the modal
-- [ ] Write tests for conflict detection logic in the sync service
+- [ ] Design and build a split-pane diff/merge UI component (#318)
+- [ ] Open the merge dialog when a save gets a 409 or another device's `note:updated` hits unsaved text (#319)
+- [ ] Highlight conflicting hunks with colour coding (local vs. remote) (#320)
+- [ ] Add "Accept Mine", "Accept Theirs", and manual edit options (#321)
+- [ ] Save the resolved content on top of the other device's version and close the dialog (#322)
+- [ ] Write tests for conflict detection logic in the sync service (#323)
 
 ---
 

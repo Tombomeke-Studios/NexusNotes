@@ -16,19 +16,30 @@ export REDIS_URL="redis://localhost:6379"
 # A random JWT secret per checkout, kept between runs so sessions survive a
 # restart (never a fixed, guessable value; #334). tmp/ is gitignored.
 JWT_SECRET_FILE="$ROOT/services/sync-service/tmp/jwt-secret"
-if [ ! -s "$JWT_SECRET_FILE" ]; then
+# Anything but the 64 hex characters written below (empty, cut short, edited
+# by hand) is replaced, rather than stopping the backend on a short secret.
+if ! grep -Eqx '[0-9a-f]{64}' "$JWT_SECRET_FILE" 2>/dev/null; then
   mkdir -p "$(dirname "$JWT_SECRET_FILE")"
   (umask 077 && head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$JWT_SECRET_FILE")
 fi
 JWT_SECRET="$(cat "$JWT_SECRET_FILE")"
 export JWT_SECRET
 export PORT="8080"
-# The dev backend is for this machine only, like the packaged app's. Dev
-# containers often lack IPv6, so they bind the IPv4 loopback alone.
-if [ "${NEXUS_DEVCONTAINER:-}" = "1" ]; then
-  export BIND_ADDR="127.0.0.1"
-else
+# The dev backend is for this machine only, like the packaged app's. It also
+# binds ::1 when the host has an IPv6 loopback (dev containers, WSL and some
+# Linux hosts don't, and binding it there would stop the backend).
+has_ipv6_loopback() {
+  case "$(uname -s)" in
+    Linux*) grep -qs ' lo$' /proc/net/if_inet6 ;;
+    Darwin*) ifconfig lo0 2>/dev/null | grep -q 'inet6 ::1' ;;
+    MINGW*|MSYS*|CYGWIN*) ping -6 -n 1 -w 1000 ::1 >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+if has_ipv6_loopback; then
   export BIND_ADDR="127.0.0.1,::1"
+else
+  export BIND_ADDR="127.0.0.1"
 fi
 export VITE_API_URL="http://localhost:8080"
 # Object storage for attachments (MinIO from docker-compose.dev.yml).

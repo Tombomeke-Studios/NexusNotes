@@ -173,7 +173,8 @@ cp .env.production.example .env
 
 Fill in every value the file marks REQUIRED (`JWT_SECRET`, `POSTGRES_PASSWORD`,
 `MEILI_MASTER_KEY`, `MINIO_ROOT_PASSWORD`), each with its own random value, for
-example from `openssl rand -hex 32`. There are no built-in defaults: `docker compose`
+example from `openssl rand -hex 32` (letters and digits only: the database password
+goes into a URL, where `@ : / ? # %` break it). There are no built-in defaults: `docker compose`
 refuses to start while one of them is empty, and the sync service refuses a
 `JWT_SECRET` shorter than 32 characters.
 
@@ -231,6 +232,18 @@ in `.env` to start as before. To move to a new database password, connect to the
 postgres container with `psql` as the `nexus` user, change that user's password, then
 put the same value in `POSTGRES_PASSWORD` and run `docker compose up -d`. MinIO and
 Meilisearch take new values from `.env` on their next start.
+
+The first start after upgrading must remove the containers of services that left
+`docker-compose.yml`, or Prometheus and Grafana keep running with their old,
+network-wide ports (and Grafana with the password it was first given):
+
+```bash
+docker compose up -d --remove-orphans
+```
+
+To keep monitoring, start it from the overlay instead (see Monitoring) and set
+`GRAFANA_PASSWORD`; change the Grafana admin password in Grafana itself if the old
+default was still in use.
 
 ---
 

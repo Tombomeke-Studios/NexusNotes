@@ -59,7 +59,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   moved to the optional `docker-compose.monitoring.yml`. **Upgrading:** an existing
   installation must set `POSTGRES_PASSWORD=nexus_pass` and
   `MINIO_ROOT_PASSWORD=nexus_minio_pass` (the old built-in values) to keep its data
-  reachable; see docs/deployment.md for changing them afterwards.
+  reachable; see docs/deployment.md for changing them afterwards. Run the first
+  start after upgrading with `docker compose up -d --remove-orphans`, or the old
+  Prometheus and Grafana containers keep running on their network-wide ports.
 - The sync service refuses to start with a `JWT_SECRET` (or a set `ADMIN_TOKEN`) shorter
   than 32 characters, only accepts HS256-signed access tokens, and only accepts the admin
   token as `Authorization: Bearer <token>`. **Upgrading:** a self-hosted installation with

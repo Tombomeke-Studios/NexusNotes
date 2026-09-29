@@ -63,6 +63,12 @@ interface EditorProps {
   paused?: boolean;
   /** Bump the nonce to insert text at the cursor (template insertion, #155). */
   insertRequest?: { text: string; nonce: number } | null;
+  /**
+   * Bump the nonce to replace the open note's text from outside: another
+   * device's version, or a resolved conflict (#324, #225). The caller already
+   * holds the text, so it is not reported back through onLiveChange.
+   */
+  replaceRequest?: { noteId: string; text: string; nonce: number } | null;
   /** Non-null when files cannot be attached in this vault; shown instead of uploading. */
   attachmentBlockReason?: string | null;
 }
@@ -85,6 +91,7 @@ export function Editor({
   onNavigateToNote,
   paused = false,
   insertRequest = null,
+  replaceRequest = null,
   attachmentBlockReason = null,
 }: EditorProps) {
   const [content, setContent] = useState("");
@@ -140,6 +147,20 @@ export function Editor({
       prevNoteIdRef.current = note.id;
     }
   }, [note]);
+
+  const prevReplaceNonceRef = useRef(0);
+  useEffect(() => {
+    if (!replaceRequest || replaceRequest.nonce === prevReplaceNonceRef.current) return;
+    prevReplaceNonceRef.current = replaceRequest.nonce;
+    if (noteRef.current?.id !== replaceRequest.noteId) return;
+    // A pending autosave holds the replaced text; it must not go out.
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = undefined;
+    }
+    setContent(replaceRequest.text);
+    setHasChanges(false);
+  }, [replaceRequest]);
 
   // Load the note's attachments so ![[image]] embeds resolve (#153).
   useEffect(() => {

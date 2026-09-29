@@ -554,6 +554,12 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Whether a pushed version of a note is the echo of one of this client's own saves. */
+  const isOwnVersion = useCallback(
+    (noteId: string, checksum: string) => ownChecksums.current.get(noteId)?.includes(checksum) ?? false,
+    [],
+  );
+
   /** The other device's version of a note in conflict, or null (none, or not loaded yet). */
   const conflictVersion = useCallback((noteId: string): ServerVersion | null => conflicts.get(noteId) ?? null, [conflicts]);
 
@@ -602,6 +608,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
   }, []);
 
   return {
+    isOwnVersion,
     conflictVersion,
     resolveConflict,
     saveNote,

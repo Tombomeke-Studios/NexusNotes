@@ -35,6 +35,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   files are encrypted on the client; previously they were stored unencrypted.
 - The app no longer signs you out when the server is merely unreachable at start-up; your
   session is kept and restored as soon as the server answers.
+- A note that is open and saved now shows changes made to it on another device. Before,
+  the editor kept the old text and your next edit was saved over those changes.
 
 ### Security
 - The packaged app's backend no longer signs sessions with the shared `dev-secret`: each

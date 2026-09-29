@@ -123,6 +123,17 @@ test.describe("Conflict resolution", () => {
     await expect.poll(() => serverContent(page, apiBase, note.id)).toBe(edited);
   });
 
+  test("keeps unsaved text in conflict across a graph view round trip", async ({ page }) => {
+    const { dialog } = await makeConflict(page);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.locator(".conflict-notice")).toBeVisible();
+
+    await page.keyboard.press("Control+g");
+    await expect(page.locator(".graph-view")).toBeVisible();
+    await page.keyboard.press("Control+g");
+    await expect(page.locator(".editor-textarea").first()).toHaveValue(MINE);
+  });
+
   test("shows both versions and keeps mine", async ({ page }) => {
     const { dialog, note, apiBase } = await makeConflict(page);
     await expect(dialog.locator('[data-changed="mine"]')).toHaveText("mine");

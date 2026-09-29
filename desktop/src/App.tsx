@@ -982,9 +982,9 @@ export default function App() {
       prev.some((t) => t.key === noteId) ? prev : [...prev, { key: noteId, type: "note" }],
     );
     setActiveTabKey(noteId);
-    // The open note with unsaved text stays exactly as it is: reloading it
-    // could hand the editor a server copy over text not yet saved.
-    if (activeNoteRef.current?.id === noteId && isDirtyStatus(saveStatusRef.current)) return;
+    // The open note stays as it is (e.g. back from the graph view): its text,
+    // unsaved edits included, is what the editor starts from (initialText).
+    if (activeNoteRef.current?.id === noteId) return;
     const note = await decryptIncoming(await notesApi.get(noteId));
     // Restore unsaved local text (a draft after an abrupt close, or for e2ee
     // vaults the in-memory text of a save the server hasn't confirmed) so work
@@ -1001,11 +1001,8 @@ export default function App() {
       setEditorContent(note.content);
       setSaveStatus("saved");
     }
-    // Reopening the note that is already open keeps the same id, and the
-    // editor only re-reads a note's text when the id changes: hand it over.
-    replaceEditorText(noteId, local ? local.content : note.content);
     setCursor({ line: 1, col: 1 });
-  }, [decryptIncoming, flushPendingSave, localCopy, replaceEditorText]);
+  }, [decryptIncoming, flushPendingSave, localCopy]);
 
   // Keyboard navigation of the file tree: Up/Down move a single-note highlight
   // through the visible order, Enter opens it. Ignored while typing, in the
@@ -1574,6 +1571,7 @@ export default function App() {
               onReplaceApplied={handleReplaceApplied}
               onReplaceRejected={handleReplaceRejected}
               onPresenceChange={handleEditorPresence}
+              initialText={editorContent}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
             />
           )}

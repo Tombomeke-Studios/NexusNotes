@@ -91,6 +91,28 @@ describe("Editor — replacing the open note's text (#324)", () => {
     expect(onReplaceApplied).not.toHaveBeenCalled();
   });
 
+  it("starts from the app's text for the note, unsaved edits included", () => {
+    // E.g. back from the graph view to a note whose edits aren't saved yet:
+    // the note object still holds the last saved text.
+    const { container } = render(
+      <Editor
+        note={note("n1", "saved text")}
+        initialText="saved text, and unsaved edits"
+        notes={[]}
+        mode="edit"
+        onModeChange={() => {}}
+        onSave={() => {}}
+        onRename={() => {}}
+        onRenameCommit={() => {}}
+        onCreateNote={() => {}}
+        onNavigateToNote={() => {}}
+      />,
+    );
+    expect((container.querySelector(".editor-textarea") as HTMLTextAreaElement).value).toBe(
+      "saved text, and unsaved edits",
+    );
+  });
+
   it("tells the caller while it is on screen", () => {
     const onPresenceChange = vi.fn();
     const view = render(

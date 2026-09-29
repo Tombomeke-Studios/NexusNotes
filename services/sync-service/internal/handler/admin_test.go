@@ -49,7 +49,9 @@ func TestAdminAuthorized_RequiresTheBearerScheme(t *testing.T) {
 	for header, want := range map[string]bool{
 		"Bearer secret-token": true,
 		"secret-token":        false,
-		"bearer secret-token": false,
+		"bearer secret-token": true,
+		"Bearer  secret-token": false,
+		"Bearer":              false,
 		"Basic secret-token":  false,
 	} {
 		req := httptest.NewRequest("GET", "/api/admin/stats", nil)

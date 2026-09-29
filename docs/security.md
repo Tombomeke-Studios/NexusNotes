@@ -243,10 +243,18 @@ at 3, the whole fetch times out after 15 seconds, and sources larger than
 
 ## Secrets Management
 
-- `JWT_SECRET` must be set via environment variable
+- `JWT_SECRET` must be set via environment variable and be at least 32 characters;
+  the service refuses to start otherwise. A short HMAC secret can be guessed offline
+  from any token it signed. Generate one with `openssl rand -hex 32`.
+- Access tokens are only accepted when signed with HS256, the algorithm the service
+  signs with; tokens that name any other algorithm (another HMAC variant included)
+  are rejected.
+- `ADMIN_TOKEN` (optional) enables `/api/admin/*`. It must also be at least 32
+  characters and is only accepted as `Authorization: Bearer <token>`, compared in
+  constant time. Unset, the admin endpoints answer 404.
 - Never committed to version control
 - `.env` files are gitignored
-- `.env.example` contains placeholder values only
+- `.env.example` and `.env.production.example` contain placeholders only
 
 ## Packaged Desktop App
 

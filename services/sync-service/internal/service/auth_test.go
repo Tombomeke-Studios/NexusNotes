@@ -342,3 +342,34 @@ func TestAuthService_ValidateToken_Expired(t *testing.T) {
 		t.Error("ValidateToken() should fail for expired token")
 	}
 }
+
+// Only HS256 is accepted, even for another HMAC algorithm signed with the
+// right secret (#328).
+func TestValidateToken_AcceptsOnlyHS256(t *testing.T) {
+	svc := newAuthService(&fakeUserStore{})
+	claims := func() *Claims {
+		return &Claims{
+			UserID: "u1",
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+			},
+		}
+	}
+	sign := func(method jwt.SigningMethod) string {
+		signed, err := jwt.NewWithClaims(method, claims()).SignedString([]byte("test-secret"))
+		if err != nil {
+			t.Fatalf("sign: %v", err)
+		}
+		return signed
+	}
+
+	if _, err := svc.ValidateToken(sign(jwt.SigningMethodHS256)); err != nil {
+		t.Fatalf("HS256 token rejected: %v", err)
+	}
+	for _, method := range []jwt.SigningMethod{jwt.SigningMethodHS384, jwt.SigningMethodHS512} {
+		if _, err := svc.ValidateToken(sign(method)); err == nil {
+			t.Fatalf("%s token accepted, want only HS256", method.Alg())
+		}
+	}
+}

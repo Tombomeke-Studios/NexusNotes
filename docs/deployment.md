@@ -70,14 +70,14 @@ cd services/sync-service
 **Linux / macOS:**
 ```bash
 export DATABASE_URL="postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
-export JWT_SECRET="dev-secret-change-in-production"
+export JWT_SECRET="$(openssl rand -hex 32)"   # at least 32 characters
 go run cmd/server/main.go
 ```
 
 **Windows (PowerShell):**
 ```powershell
 $env:DATABASE_URL = "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
-$env:JWT_SECRET = "dev-secret-change-in-production"
+$env:JWT_SECRET = -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })   # at least 32 characters
 go run cmd/server/main.go
 ```
 
@@ -174,7 +174,8 @@ cp .env.production.example .env
 Fill in every value the file marks REQUIRED (`JWT_SECRET`, `POSTGRES_PASSWORD`,
 `MEILI_MASTER_KEY`, `MINIO_ROOT_PASSWORD`), each with its own random value, for
 example from `openssl rand -hex 32`. There are no built-in defaults: `docker compose`
-refuses to start while one of them is empty.
+refuses to start while one of them is empty, and the sync service refuses a
+`JWT_SECRET` shorter than 32 characters.
 
 `BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the

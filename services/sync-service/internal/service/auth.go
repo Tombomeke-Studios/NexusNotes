@@ -139,12 +139,11 @@ func (s *AuthService) Login(ctx context.Context, email, password, clientIP strin
 }
 
 func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
+	// Only the algorithm this service signs with; nothing else is accepted,
+	// not even another HMAC variant (#328).
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
 		return s.jwtSecret, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
 		return nil, fmt.Errorf("parse token: %w", err)
 	}

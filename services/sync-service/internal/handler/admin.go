@@ -22,12 +22,16 @@ func NewAdminHandler(statsRepo *repository.StatsRepo, adminToken string, started
 }
 
 // authorized checks the bearer token in constant time. With no token
-// configured the endpoints act as if they don't exist.
+// configured the endpoints act as if they don't exist. Only the Bearer
+// scheme is accepted, never a bare token in the header (#328).
 func (h *AdminHandler) authorized(r *http.Request) bool {
 	if h.adminToken == "" {
 		return false
 	}
-	got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	got, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if !ok {
+		return false
+	}
 	return subtle.ConstantTimeCompare([]byte(got), []byte(h.adminToken)) == 1
 }
 

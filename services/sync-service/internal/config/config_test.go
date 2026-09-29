@@ -58,7 +58,7 @@ func TestParseAllowedOrigins_RejectsUnsafeOrMalformedEntries(t *testing.T) {
 
 func TestLoad_ReadsAllowedOriginsFromEnv(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://example")
-	t.Setenv("JWT_SECRET", "secret")
+	t.Setenv("JWT_SECRET", testSecret)
 	t.Setenv("CORS_ALLOWED_ORIGINS", "https://notes.example.com")
 
 	cfg, err := Load()
@@ -72,7 +72,7 @@ func TestLoad_ReadsAllowedOriginsFromEnv(t *testing.T) {
 
 func TestLoad_FailsOnAnInvalidAllowedOrigin(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://example")
-	t.Setenv("JWT_SECRET", "secret")
+	t.Setenv("JWT_SECRET", testSecret)
 	t.Setenv("CORS_ALLOWED_ORIGINS", "*")
 
 	if _, err := Load(); err == nil {
@@ -84,7 +84,7 @@ func TestLoad_FailsOnAnInvalidAllowedOrigin(t *testing.T) {
 func setRequired(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATABASE_URL", "postgres://example")
-	t.Setenv("JWT_SECRET", "test-secret")
+	t.Setenv("JWT_SECRET", testSecret)
 }
 
 func TestLoad_ListenAddrsDefaultsToAllInterfaces(t *testing.T) {
@@ -180,5 +180,31 @@ func TestLoad_LinkedFilesAllowPrivate(t *testing.T) {
 				t.Fatalf("LinkedFilesAllowPrivate = %v, want %v", cfg.LinkedFilesAllowPrivate, tc.want)
 			}
 		})
+	}
+}
+
+// testSecret is exactly the minimum JWT_SECRET length.
+const testSecret = "0123456789abcdef0123456789abcdef"
+
+// Short secrets are guessable offline from any token they signed (#328).
+func TestLoad_RejectsAShortJWTSecret(t *testing.T) {
+	setRequired(t)
+	t.Setenv("JWT_SECRET", testSecret[:31])
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "JWT_SECRET") {
+		t.Fatalf("err = %v, want an error naming JWT_SECRET", err)
+	}
+}
+
+func TestLoad_RejectsAShortAdminToken(t *testing.T) {
+	setRequired(t)
+	t.Setenv("ADMIN_TOKEN", "short-admin-token")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ADMIN_TOKEN") {
+		t.Fatalf("err = %v, want an error naming ADMIN_TOKEN", err)
+	}
+
+	// Unset keeps the admin endpoints disabled, as before.
+	t.Setenv("ADMIN_TOKEN", "")
+	if _, err := Load(); err != nil {
+		t.Fatalf("Load without ADMIN_TOKEN: %v", err)
 	}
 }

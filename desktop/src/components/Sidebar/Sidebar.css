@@ -454,9 +454,11 @@
   background: var(--accent);
 }
 
-/* Folder contents fold open/shut (#312); clip while the height animates. */
+/* Folder contents fold open/shut (#312). `clip` with a margin hides the rows
+   while the height animates, yet leaves room for their 2px-offset focus ring. */
 .tree-folder-children {
-  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 4px;
 }
 
 .tree-item-name {

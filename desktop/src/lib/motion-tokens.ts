@@ -171,3 +171,14 @@ export const overlayMotion = {
     exit: { opacity: 0, scale: 0.98, y: 0, transition: leave(duration.fast) },
   },
 } satisfies Record<string, OverlayPreset>;
+
+/**
+ * Folding a block open and shut (file-tree folders, #312). Clipping is left
+ * to the stylesheet (`overflow: clip` with a clip margin), so the focus rings
+ * of the rows inside stay whole; an inline overflow would override that.
+ */
+export const foldMotion = {
+  initial: { height: 0, opacity: 0 },
+  animate: { height: "auto", opacity: 1, transition: { duration: duration.base, ease: ease.out } },
+  exit: { height: 0, opacity: 0, transition: leave(duration.base) },
+};

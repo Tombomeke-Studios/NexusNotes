@@ -46,6 +46,7 @@ function savedNote(checksum: string, overrides: Partial<Note> = {}): Note {
 interface HarnessOptions {
   encryptOutgoing?: (vaultId: string, plaintext: string) => Promise<{ content: string; checksum?: string }>;
   keepsDrafts?: (vaultId: string) => boolean;
+  decryptServerContent?: (vaultId: string, content: string) => Promise<string>;
 }
 
 /**
@@ -73,6 +74,7 @@ function useHarness(initial: Note, opts: HarnessOptions, onSynced: () => void) {
     onSynced,
     encryptOutgoing: opts.encryptOutgoing ?? (async (_vaultId, plaintext) => ({ content: plaintext })),
     keepsDrafts: opts.keepsDrafts ?? (() => true),
+    decryptServerContent: opts.decryptServerContent,
     paused,
     sessionKey,
   });
@@ -441,6 +443,86 @@ describe("useNoteSave — conflicts", () => {
 
     expect(hook.result.current.saveStatus).toBe("saved");
     expect(hook.result.current.saveError).toBeNull();
+  });
+});
+
+describe("useNoteSave — resolving conflicts", () => {
+  const conflict409 = () =>
+    new ApiError(409, "Request failed", {
+      note_id: "n1",
+      server_content: "their text",
+      server_checksum: "c9",
+      client_content: "my text",
+      client_checksum: "c8",
+    });
+
+  it("keeps the server's version from a 409 so the user can compare", async () => {
+    update.mockRejectedValueOnce(conflict409());
+    const { hook } = setup();
+
+    await act(() => hook.result.current.saveNote("my text"));
+    await flush();
+
+    expect(hook.result.current.conflictVersion("n1")).toEqual({ content: "their text", checksum: "c9" });
+  });
+
+  it("decrypts the server's version for an end-to-end encrypted vault", async () => {
+    update.mockRejectedValueOnce(conflict409());
+    const { hook } = setup({ decryptServerContent: async (_vault, content) => `plain(${content})` });
+
+    await act(() => hook.result.current.saveNote("my text"));
+    await flush();
+
+    expect(hook.result.current.conflictVersion("n1")?.content).toBe("plain(their text)");
+  });
+
+  it("keeping my text saves it on top of the other device's version", async () => {
+    update.mockRejectedValueOnce(conflict409()).mockResolvedValueOnce(savedNote("c10"));
+    const { hook } = setup();
+    await act(() => hook.result.current.saveNote("my text"));
+    await flush();
+
+    let outcome: Awaited<ReturnType<typeof hook.result.current.resolveConflict>> | undefined;
+    await act(async () => {
+      outcome = await hook.result.current.resolveConflict("n1", "my text");
+    });
+
+    expect(update).toHaveBeenLastCalledWith("n1", "Note", "", "my text", "c9", undefined);
+    expect(outcome).toEqual({ ok: true });
+    expect(hook.result.current.saveStatus).toBe("saved");
+    expect(hook.result.current.saveError).toBeNull();
+    expect(hook.result.current.conflictVersion("n1")).toBeNull();
+    expect(hook.result.current.activeNote?.checksum).toBe("c10");
+  });
+
+  it("taking their text adopts it without another save", async () => {
+    update.mockRejectedValueOnce(conflict409());
+    const { hook } = setup();
+    await act(() => hook.result.current.saveNote("my text"));
+    await flush();
+
+    await act(async () => {
+      await hook.result.current.resolveConflict("n1", "their text");
+    });
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.editorContent).toBe("their text");
+    expect(hook.result.current.activeNote).toMatchObject({ content: "their text", checksum: "c9" });
+    expect(hook.result.current.saveStatus).toBe("saved");
+    expect(loadDraft("n1")).toBeNull();
+  });
+
+  it("keeps a pushed update from another device as the version to compare with", async () => {
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("my unsaved text"));
+
+    let accepted = true;
+    act(() => {
+      accepted = hook.result.current.acceptRemoteUpdate(savedNote("c7", { content: "remote text" }));
+    });
+
+    expect(accepted).toBe(false);
+    expect(hook.result.current.conflictVersion("n1")).toEqual({ content: "remote text", checksum: "c7" });
   });
 });
 

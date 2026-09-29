@@ -91,6 +91,11 @@ export interface NoteSaveDeps {
   encryptOutgoing: (vaultId: string, plaintext: string) => Promise<{ content: string; checksum?: string }>;
   /** False when plaintext must never touch disk (e2ee vaults), so no local draft is kept. */
   keepsDrafts: (vaultId: string) => boolean;
+  /**
+   * Turns the note text a 409 reports as the server's version into plaintext
+   * (e2ee vaults send ciphertext). Omitted: the text is used as it is.
+   */
+  decryptServerContent?: (vaultId: string, content: string) => Promise<string>;
   /** While true (close-confirmation dialog open) background saves wait. */
   paused?: boolean;
   /**
@@ -99,6 +104,20 @@ export interface NoteSaveDeps {
    * dropped, so nothing is sent or applied across a sign-out.
    */
   sessionKey?: string | null;
+}
+
+/** The version of a note another device saved, kept while the note is in conflict. */
+export interface ServerVersion {
+  content: string;
+  checksum: string;
+}
+
+/** Reads the server's version out of a 409 response body, if it has one. */
+function serverVersionOf(err: unknown): ServerVersion | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null;
+  const body = err.details as { server_content?: unknown; server_checksum?: unknown } | undefined;
+  if (typeof body?.server_content !== "string" || typeof body?.server_checksum !== "string") return null;
+  return { content: body.server_content, checksum: body.server_checksum };
 }
 
 interface SaveRequest {
@@ -128,6 +147,17 @@ export function useNoteSave(deps: NoteSaveDeps) {
   depsRef.current = deps;
 
   const [saveError, setSaveError] = useState<SaveError | null>(null);
+  /** Server versions of notes in conflict, for comparing and resolving (#225). */
+  const [conflicts, setConflicts] = useState<ReadonlyMap<string, ServerVersion>>(() => new Map());
+  const conflictsRef = useRef(conflicts);
+  conflictsRef.current = conflicts;
+  const setConflictVersion = (id: string, version: ServerVersion | null) =>
+    setConflicts((prev) => {
+      const next = new Map(prev);
+      if (version) next.set(id, version);
+      else next.delete(id);
+      return next;
+    });
 
   const versions = useRef(new Map<string, number>());
   /** Version of the most recent save requested per note (queued or sent). */
@@ -184,6 +214,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     lastErrors.current.delete(note.id);
     failures.current.delete(note.id);
     clearErrorFor(note.id);
+    if (conflictsRef.current.has(note.id)) setConflictVersion(note.id, null);
     const saved = { ...updated, content };
     if (lastRequests.current.get(note.id)?.version === version) lastRequests.current.delete(note.id);
     if (versionOf(note.id) === version) {
@@ -215,6 +246,18 @@ export function useNoteSave(deps: NoteSaveDeps) {
     if (kind === "conflict") {
       cancelTimer(id);
       if (isActive(id)) d.setSaveStatus("conflict");
+      const server = serverVersionOf(err);
+      if (server) {
+        const gen = generation.current;
+        const decrypt = d.decryptServerContent;
+        void (decrypt ? decrypt(req.note.vault_id, server.content) : Promise.resolve(server.content))
+          .then((content) => {
+            if (gen === generation.current) setConflictVersion(id, { content, checksum: server.checksum });
+          })
+          // Without a readable server version the dialog cannot compare; the
+          // conflict status (and the user's text) stay as they are.
+          .catch(() => {});
+      }
       return;
     }
     // A save queued behind this one is about to run and acts as the retry.
@@ -377,6 +420,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     savedVersions.current.clear();
     lastErrors.current.clear();
     setSaveError(null);
+    setConflicts(new Map());
   }, [sessionKey]);
 
   /**
@@ -503,13 +547,63 @@ export function useNoteSave(deps: NoteSaveDeps) {
     const error: SaveError = { noteId: incoming.id, kind: "conflict", message: MESSAGES.conflict(null) };
     lastErrors.current.set(incoming.id, error);
     setSaveError(error);
+    setConflictVersion(incoming.id, { content: incoming.content, checksum: incoming.checksum });
     d.setSaveStatus("conflict");
     return false;
     // baseChecksum and cancelTimer only read refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** The other device's version of a note in conflict, or null (none, or not loaded yet). */
+  const conflictVersion = useCallback((noteId: string): ServerVersion | null => conflicts.get(noteId) ?? null, [conflicts]);
+
+  /**
+   * Ends a conflict on the open note with `content` as the result, built on
+   * top of the other device's version: saving it uses that version's checksum,
+   * so nothing the other device wrote is overwritten unseen. Taking their text
+   * as it is needs no save at all.
+   */
+  const resolveConflict = useCallback(async (noteId: string, content: string): Promise<SaveOutcome> => {
+    const d = depsRef.current;
+    const current = d.activeNoteRef.current;
+    const server = conflictsRef.current.get(noteId);
+    if (!current || current.id !== noteId || !server) return outcomeOf(noteId);
+
+    // From now on the note is based on the other device's version.
+    transitions.current.set(noteId, { from: baseChecksum(current), to: server.checksum });
+    lastErrors.current.delete(noteId);
+    failures.current.delete(noteId);
+    clearErrorFor(noteId);
+    setConflictVersion(noteId, null);
+    cancelTimer(noteId);
+    const rebased: Note = { ...current, checksum: server.checksum, content };
+    d.setNoteList((prev) => prev.map((n) => (n.id === noteId ? { ...n, checksum: server.checksum, content } : n)));
+    d.setActiveNote((prev) => (prev && prev.id === noteId ? { ...prev, checksum: server.checksum, content } : prev));
+    d.setEditorContent(content);
+
+    if (content === server.content) {
+      // Their text is already what the server holds.
+      const version = versionOf(noteId);
+      savedVersions.current.set(noteId, version);
+      requested.current.set(noteId, version);
+      lastRequests.current.delete(noteId);
+      queued.current.delete(noteId);
+      clearDraft(noteId);
+      d.setSaveStatus("saved");
+      return { ok: true };
+    }
+
+    versions.current.set(noteId, versionOf(noteId) + 1);
+    d.setSaveStatus("unsaved");
+    await enqueue(rebased, content);
+    return outcomeOf(noteId);
+    // Reads only refs and stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return {
+    conflictVersion,
+    resolveConflict,
     saveNote,
     saveAll,
     hasUnconfirmed,

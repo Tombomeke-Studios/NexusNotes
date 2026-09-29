@@ -75,6 +75,12 @@ interface EditorProps {
   onReplaceRejected?: (request: ReplaceRequest) => void;
   /** Called with true when the editor mounts and false when it unmounts. */
   onPresenceChange?: (present: boolean) => void;
+  /**
+   * The open note's text as the app holds it, unsaved edits included. The
+   * editor starts from it when it mounts and when the note changes; the note
+   * object itself only carries the last loaded or saved text.
+   */
+  initialText?: string;
   /** Non-null when files cannot be attached in this vault; shown instead of uploading. */
   attachmentBlockReason?: string | null;
 }
@@ -113,6 +119,7 @@ export function Editor({
   onReplaceApplied,
   onReplaceRejected,
   onPresenceChange,
+  initialText,
   attachmentBlockReason = null,
 }: EditorProps) {
   const [content, setContent] = useState("");
@@ -146,6 +153,8 @@ export function Editor({
   pausedRef.current = paused;
   const noteRef = useRef(note);
   noteRef.current = note;
+  const initialTextRef = useRef(initialText);
+  initialTextRef.current = initialText;
 
   const notesByTitle = useMemo(() => {
     const map = new Map<string, string>();
@@ -163,7 +172,7 @@ export function Editor({
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = undefined;
       }
-      setContent(note.content);
+      setContent(initialTextRef.current ?? note.content);
       setHasChanges(false);
       prevNoteIdRef.current = note.id;
     }

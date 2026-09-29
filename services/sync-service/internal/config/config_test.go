@@ -2,6 +2,7 @@ package config
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -133,17 +134,18 @@ func TestLoad_BindAddrIgnoresBlanksAndSpaces(t *testing.T) {
 	}
 }
 
-func TestLoad_BindAddrOfOnlySeparatorsMeansAllInterfaces(t *testing.T) {
-	setRequired(t)
-	t.Setenv("PORT", "")
-	t.Setenv("BIND_ADDR", " , ")
+// A BIND_ADDR that is set but names no address is a mistake (a typo or an
+// unfilled template); falling back to every interface would expose a backend
+// that was meant to stay local (#335).
+func TestLoad_BindAddrWithoutAddressesIsAnError(t *testing.T) {
+	for _, value := range []string{" , ", ",", "   "} {
+		setRequired(t)
+		t.Setenv("PORT", "")
+		t.Setenv("BIND_ADDR", value)
 
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if got, want := cfg.ListenAddrs(), []string{":8080"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("ListenAddrs() = %v, want %v", got, want)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "BIND_ADDR") {
+			t.Fatalf("BIND_ADDR=%q: err = %v, want an error naming BIND_ADDR", value, err)
+		}
 	}
 }
 

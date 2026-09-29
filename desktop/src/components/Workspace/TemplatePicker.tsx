@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useIsPresent } from "framer-motion";
 import type { Note } from "../../lib/types";
 import { TEMPLATES_FOLDER } from "../../lib/templates";
 import "./Workspace.css";
@@ -17,8 +18,11 @@ interface TemplatePickerProps {
  */
 export function TemplatePicker({ templates, onPick, onClose }: TemplatePickerProps) {
   const [selected, setSelected] = useState(0);
+  const present = useIsPresent();
 
   useEffect(() => {
+    // Once closing (exit animation), keys belong to whatever is underneath.
+    if (!present) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
@@ -36,7 +40,7 @@ export function TemplatePicker({ templates, onPick, onClose }: TemplatePickerPro
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [templates, selected, onPick, onClose]);
+  }, [present, templates, selected, onPick, onClose]);
 
   return (
     <OverlayMotion preset="backdrop" className="tpl-overlay" onClick={onClose}>

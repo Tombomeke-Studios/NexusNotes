@@ -127,9 +127,14 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	bindAddrs, err := parseBindAddrs(os.Getenv("BIND_ADDR"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Port:                    port,
-		BindAddrs:               splitList(os.Getenv("BIND_ADDR")),
+		BindAddrs:               bindAddrs,
 		DatabaseURL:             dbURL,
 		JWTSecret:               jwtSecret,
 		RedisURL:                redisURL,
@@ -178,6 +183,18 @@ func parseAllowedOrigins(raw string) ([]string, error) {
 		return append([]string(nil), DefaultAllowedOrigins...), nil
 	}
 	return origins, nil
+}
+
+// parseBindAddrs reads BIND_ADDR. Empty means every interface (what the Docker
+// image needs). A value that is set but names no address (" , ", "   ") is
+// refused: falling back to every interface would expose a backend that was
+// meant to stay local (#335).
+func parseBindAddrs(raw string) ([]string, error) {
+	addrs := splitList(raw)
+	if raw != "" && len(addrs) == 0 {
+		return nil, fmt.Errorf("invalid BIND_ADDR %q: no address given; leave it unset to listen on every interface", raw)
+	}
+	return addrs, nil
 }
 
 // ListenAddrs returns one host:port per bind address, or ":port" (every

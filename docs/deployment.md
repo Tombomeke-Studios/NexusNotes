@@ -182,6 +182,8 @@ REDIS_URL=redis://redis:6379
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the
 container must listen on every interface or its published port cannot reach it.
 Set it when you run the binary directly on a host and put a reverse proxy in front.
+A value that names no address at all (only commas or spaces) stops the service at
+start-up rather than silently listening everywhere.
 
 ### 2. Start the stack
 

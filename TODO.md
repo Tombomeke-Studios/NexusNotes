@@ -40,7 +40,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
 - [ ] Migrate the packaged app's database password without losing data (#277)
 - [ ] Dev scripts: random JWT secret and localhost-only binding, like the packaged app (#334)
-- [ ] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces) (#335)
+- [x] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces) (#335)
 - [ ] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces (#336)
 - [ ] Linked-file fetches: limit concurrent fetches; decide whether `::ffff:0:0/96` counts as private (#337)
 - [ ] Sweep orphaned attachment files from object storage (#316)

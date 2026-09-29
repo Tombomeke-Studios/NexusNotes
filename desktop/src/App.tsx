@@ -494,8 +494,8 @@ export default function App() {
     if (!activeVaultId) return;
     // Keep note names unique (Untitled, Untitled 1, Untitled 2, …).
     const name = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), title);
-    const { content: payload, checksum } = await encryptOutgoing(activeVaultId, "");
-    const created = await notesApi.create(activeVaultId, name, "", payload, checksum);
+    const { content: payload, checksum } = await encryptOutgoing(vaultId, "");
+    const created = await notesApi.create(vaultId, name, "", payload, checksum);
     // The previous note stayed editable while the create was in flight; save
     // whatever was typed into it (e.g. a rename) before switching (#204).
     await flushPendingSave();
@@ -507,7 +507,7 @@ export default function App() {
     setEditorContent("");
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId, encryptOutgoing, flushPendingSave]);
+  }, [encryptOutgoing, flushPendingSave]);
 
   const handleCreateNote = useCallback(
     () => handleCreateNoteWithTitle("Untitled"),
@@ -535,15 +535,19 @@ export default function App() {
       setCursor({ line: 1, col: 1 });
       return;
     }
-    if (!activeVaultId) return;
+    // Read from the ref: a shortcut can fire before the keyboard handler of
+    // the latest render is registered, and its stale closure would see no
+    // vault (right after start-up) or the previous one (right after a switch).
+    const vaultId = activeVaultIdRef.current;
+    if (!vaultId) return;
     // A note's path is its folder, so daily notes live in the "Daily" folder;
     // the title carries the date. The template is user-configurable (#155).
     const template = renderTemplate(loadPrefs().dailyTemplate, {
       ...templateVars(new Date(), iso),
       date: iso,
     });
-    const { content: payload, checksum } = await encryptOutgoing(activeVaultId, template);
-    const created = await notesApi.create(activeVaultId, iso, "Daily", payload, checksum);
+    const { content: payload, checksum } = await encryptOutgoing(vaultId, template);
+    const created = await notesApi.create(vaultId, iso, "Daily", payload, checksum);
     await flushPendingSave();
     const note = { ...created, content: template };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
@@ -553,7 +557,7 @@ export default function App() {
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId, decryptIncoming, encryptOutgoing, flushPendingSave]);
+  }, [decryptIncoming, encryptOutgoing, flushPendingSave]);
 
   const openGraphTab = useCallback(() => {
     setTabs((prev) =>
@@ -611,7 +615,9 @@ export default function App() {
   }, []);
 
   const handleCreateFolder = useCallback((name: string) => {
-    if (!activeVaultId) return;
+    // From the ref, like handleCreateNoteWithTitle: Ctrl+D can fire a stale closure.
+    const vaultId = activeVaultIdRef.current;
+    if (!vaultId) return;
     setEmptyFolders(addFolder(activeVaultId, name));
   }, [activeVaultId]);
 

@@ -545,6 +545,7 @@ This entry is retained so that existing issue references remain valid.
 - [x] Save the resolved content on top of the other device's version and close the dialog (#322)
 - [x] Write tests for conflict detection logic in the sync service (#323)
 - [x] Show another device's changes in the open note instead of saving over them (#324)
+- [x] Create notes from a shortcut in the vault that is active at that moment (#340)
 
 ---
 

@@ -52,6 +52,7 @@ import { welcomeNotes } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
 import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
+import { ConflictDialog, ConflictNotice } from "./components/Conflict";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
 import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
@@ -95,6 +96,8 @@ export default function App() {
   // Bumped nonce asks the editor to insert text at the cursor (#155).
   const [insertRequest, setInsertRequest] = useState<{ text: string; nonce: number } | null>(null);
   const [closePrompt, setClosePrompt] = useState<ClosePrompt | null>(null);
+  /** The conflict dialog (#225): which note, whether its resolution is saving, why it last failed. */
+  const [conflictPrompt, setConflictPrompt] = useState<{ noteId: string; busy: boolean; error: string | null } | null>(null);
   const [starredIds, setStarredIds] = useState<string[]>([]);
   const starredIdsRef = useRef(starredIds);
   starredIdsRef.current = starredIds;
@@ -214,6 +217,8 @@ export default function App() {
     localCopy,
     acceptRemoteUpdate,
     isOwnVersion,
+    conflictVersion,
+    resolveConflict,
     saveError,
   } = useNoteSave({
     activeNoteRef,
@@ -225,6 +230,13 @@ export default function App() {
     onSynced: () => setLastSyncAt(new Date()),
     encryptOutgoing,
     keepsDrafts: (vaultId) => !isE2eeVault(vaultOf(vaultId)),
+    // The server's version in a 409 is ciphertext for e2ee vaults. An unknown
+    // vault throws, so the conflict dialog never shows unreadable text.
+    decryptServerContent: async (vaultId, content) => {
+      const vault = vaultOf(vaultId);
+      if (!vault) throw new Error("Unknown vault");
+      return isE2eeVault(vault) ? decryptNoteForVault(vault, content) : content;
+    },
     // Background saves (retries) must not persist text the user may be about
     // to discard in the close-confirmation dialog.
     paused: closePrompt !== null,
@@ -242,6 +254,28 @@ export default function App() {
     replaceNonce.current += 1;
     setReplaceRequest({ noteId, text, nonce: replaceNonce.current });
   }, []);
+
+  const handleResolveConflict = useCallback(
+    async (content: string) => {
+      const noteId = conflictPrompt?.noteId;
+      if (!noteId) return;
+      setConflictPrompt({ noteId, busy: true, error: null });
+      replaceEditorText(noteId, content);
+      const outcome = await resolveConflict(noteId, content);
+      // Anything but a fresh conflict is settled here: a network failure is
+      // retried in the background like any other save.
+      if (outcome.ok || outcome.error.kind !== "conflict") {
+        setConflictPrompt(null);
+        return;
+      }
+      setConflictPrompt({
+        noteId,
+        busy: false,
+        error: "This note was changed on the other device again. The comparison now shows its newest version.",
+      });
+    },
+    [conflictPrompt, resolveConflict, replaceEditorText],
+  );
 
   const loadNotes = useCallback(async (vaultId: string) => {
     try {
@@ -1394,6 +1428,15 @@ export default function App() {
               onNew={handleCreateNote}
             />
           )}
+          {!graphActive && activeNote && saveStatus === "conflict" && (
+            <ConflictNotice
+              onResolve={
+                conflictVersion(activeNote.id)
+                  ? () => setConflictPrompt({ noteId: activeNote.id, busy: false, error: null })
+                  : undefined
+              }
+            />
+          )}
           {vaultList.length === 0 ? (
             <FirstRunVault onCreate={handleCreateVault} />
           ) : activeVaultLocked ? (
@@ -1532,6 +1575,21 @@ export default function App() {
             onUpdatePrefs={updatePrefs}
             onSignOut={handleSignOut}
             onClose={() => setShowSettings(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {conflictPrompt && activeNote?.id === conflictPrompt.noteId && (
+          <ConflictDialog
+            key="conflict"
+            noteTitle={activeNote.title}
+            mine={editorContent}
+            theirs={conflictVersion(conflictPrompt.noteId)?.content ?? null}
+            busy={conflictPrompt.busy}
+            error={conflictPrompt.error}
+            onResolve={handleResolveConflict}
+            onCancel={() => setConflictPrompt(null)}
           />
         )}
       </AnimatePresence>

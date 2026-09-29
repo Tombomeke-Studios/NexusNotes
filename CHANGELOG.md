@@ -16,6 +16,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   cascades in, buttons lift and press, tag pills bounce, toggles spring, starred notes pop,
   the vault lock wobbles, and the file tree slides its hover, glides the active-note marker
   and folds folders. A Motion setting (System / Reduced / Full) follows Windows by default.
+- Conflict resolution: when a note was changed on another device while you were editing
+  it, a notice above the editor opens both versions side by side. Keep yours, take the
+  other device's, or merge them by hand.
 
 ### Changed
 - Muted text and the keyboard focus ring meet WCAG AA contrast; text selection and

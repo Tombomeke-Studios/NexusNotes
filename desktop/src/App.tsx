@@ -478,6 +478,8 @@ export default function App() {
   }, [user]);
   const activeVaultIdRef = useRef(activeVaultId);
   activeVaultIdRef.current = activeVaultId;
+  /** Bumped by every note selection; an older one still loading then gives way. */
+  const selectionSeq = useRef(0);
 
   // Side panel resize drag
   useEffect(() => {
@@ -520,6 +522,8 @@ export default function App() {
   }, []);
 
   const handleCreateNoteWithTitle = useCallback(async (title: string) => {
+    // A new note is a selection too: one still loading gives way to it.
+    const selection = ++selectionSeq.current;
     // Read from the ref: a shortcut can fire before the keyboard handler of
     // the latest render is registered, and its stale closure would see no
     // vault (right after start-up) or the previous one (right after a switch).
@@ -537,6 +541,8 @@ export default function App() {
     if (activeVaultIdRef.current !== vaultId) return;
     const note = { ...created, content: "" };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
+    // Another note was chosen while this one was created: it is listed, not opened.
+    if (selection !== selectionSeq.current) return;
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
     setActiveNote(note);
@@ -557,14 +563,17 @@ export default function App() {
 
   const handleOpenDaily = useCallback(async (iso: string) => {
     setShowCalendar(false);
+    const selection = ++selectionSeq.current;
     const existing = noteListRef.current.find((n) => n.title === iso);
     if (existing) {
       await flushPendingSave();
+      if (selection !== selectionSeq.current) return;
       setTabs((prev) =>
         prev.some((t) => t.key === existing.id) ? prev : [...prev, { key: existing.id, type: "note" }],
       );
       setActiveTabKey(existing.id);
       const note = await decryptIncoming(await notesApi.get(existing.id));
+      if (selection !== selectionSeq.current) return;
       setActiveNote(note);
       setEditorContent(note.content);
       setSaveStatus("saved");
@@ -586,6 +595,7 @@ export default function App() {
     if (activeVaultIdRef.current !== vaultId) return;
     const note = { ...created, content: template };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
+    if (selection !== selectionSeq.current) return;
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
     setActiveTabKey(note.id);
     setActiveNote(note);
@@ -980,9 +990,14 @@ export default function App() {
   }, []);
 
   const handleSelectNote = useCallback(async (noteId: string) => {
+    // Only the latest selection may apply its result: a click while an
+    // earlier one is still loading would otherwise leave the tab bar on one
+    // note and the editor on another.
+    const selection = ++selectionSeq.current;
     // Save any unsaved title/content of the outgoing note first (#204).
     if (activeNoteRef.current && activeNoteRef.current.id !== noteId) {
       await flushPendingSave();
+      if (selection !== selectionSeq.current) return;
     }
     keyboardCursorRef.current = noteId;
     if (activeVaultIdRef.current) {
@@ -996,6 +1011,7 @@ export default function App() {
     // unsaved edits included, is what the editor starts from (initialText).
     if (activeNoteRef.current?.id === noteId) return;
     const note = await decryptIncoming(await notesApi.get(noteId));
+    if (selection !== selectionSeq.current) return;
     // Restore unsaved local text (a draft after an abrupt close, or for e2ee
     // vaults the in-memory text of a save the server hasn't confirmed) so work
     // isn't lost. It opens on the version it was written against, not on this

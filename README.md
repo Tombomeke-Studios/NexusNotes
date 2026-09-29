@@ -85,6 +85,10 @@ healthy), then launches the UI in the foreground. Press `Ctrl+C` to stop the UI
 and backend; the Docker infra keeps running. Stop it with
 `docker compose -f docker-compose.dev.yml down`.
 
+The backend they start listens on localhost only and signs sessions with a random
+secret generated on the first run (kept in `services/sync-service/tmp/jwt-secret`,
+which git ignores). Delete that file to sign every dev session out.
+
 The manual steps below are the same thing spelled out, for when you want to run
 a single piece on its own.
 

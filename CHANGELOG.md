@@ -51,6 +51,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   containers now listen on localhost only instead of every network interface. The next
   start recreates the Postgres and Redis containers with the new port bindings; your data
   volumes are kept.
+- The dev scripts no longer sign sessions with the fixed `dev-secret`: they generate a
+  random secret on the first run and start the backend on localhost only. Dev sessions
+  are renewed through their refresh token on the next request.
 
 ## [0.5.0] - baseline
 

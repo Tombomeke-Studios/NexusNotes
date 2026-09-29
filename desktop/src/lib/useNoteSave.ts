@@ -614,7 +614,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
     d.showEditorText?.(noteId, content);
 
     if (content === server.content) {
-      // Their text is already what the server holds.
+      // Their text is already what the server holds. A new version, so a
+      // later save of it is not mistaken for one from before the resolution.
+      versions.current.set(noteId, versionOf(noteId) + 1);
       const version = versionOf(noteId);
       savedVersions.current.set(noteId, version);
       requested.current.set(noteId, version);

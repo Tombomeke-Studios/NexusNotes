@@ -532,6 +532,9 @@ export default function App() {
     // The previous note stayed editable while the create was in flight; save
     // whatever was typed into it (e.g. a rename) before switching (#204).
     await flushPendingSave();
+    // Switched vaults in the meantime: the note exists in the vault it was
+    // made for, but must not open in (or join the list of) the new one.
+    if (activeVaultIdRef.current !== vaultId) return;
     const note = { ...created, content: "" };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);
@@ -580,6 +583,7 @@ export default function App() {
     const { content: payload, checksum } = await encryptOutgoing(vaultId, template);
     const created = await notesApi.create(vaultId, iso, "Daily", payload, checksum);
     await flushPendingSave();
+    if (activeVaultIdRef.current !== vaultId) return;
     const note = { ...created, content: template };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
     setTabs((prev) => [...prev, { key: note.id, type: "note" }]);

@@ -248,6 +248,7 @@ export default function App() {
     keepsDrafts: (vaultId) => !isE2eeVault(vaultOf(vaultId)),
     // The server's version in a 409 is ciphertext for e2ee vaults. An unknown
     // vault throws, so the conflict dialog never shows unreadable text.
+    showEditorText: (noteId, text) => replaceEditorText(noteId, text),
     decryptServerContent: async (vaultId, content) => {
       const vault = vaultOf(vaultId);
       if (!vault) throw new Error("Unknown vault");
@@ -280,25 +281,20 @@ export default function App() {
   }, [acceptRemoteUpdate]);
 
   const handleResolveConflict = useCallback(
-    async (content: string) => {
+    async (content: string, basedOn: string) => {
       const noteId = conflictPrompt?.noteId;
       if (!noteId) return;
       setConflictPrompt({ noteId, busy: true, error: null });
-      replaceEditorText(noteId, content);
-      const outcome = await resolveConflict(noteId, content);
+      const outcome = await resolveConflict(noteId, content, basedOn);
       // Anything but a fresh conflict is settled here: a network failure is
       // retried in the background like any other save.
       if (outcome.ok || outcome.error.kind !== "conflict") {
         setConflictPrompt(null);
         return;
       }
-      setConflictPrompt({
-        noteId,
-        busy: false,
-        error: "This note was changed on the other device again. The comparison now shows its newest version.",
-      });
+      setConflictPrompt({ noteId, busy: false, error: outcome.error.message });
     },
-    [conflictPrompt, resolveConflict, replaceEditorText],
+    [conflictPrompt, resolveConflict],
   );
 
   const loadNotes = useCallback(async (vaultId: string) => {
@@ -1615,7 +1611,7 @@ export default function App() {
             key="conflict"
             noteTitle={activeNote.title}
             mine={editorContent}
-            theirs={conflictVersion(conflictPrompt.noteId)?.content ?? null}
+            theirs={conflictVersion(conflictPrompt.noteId)}
             busy={conflictPrompt.busy}
             error={conflictPrompt.error}
             onResolve={handleResolveConflict}

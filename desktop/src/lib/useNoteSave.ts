@@ -68,6 +68,10 @@ export function retryDelay(attempt: number): number {
   return Math.min(BASE_RETRY_DELAY_MS * 2 ** attempt, MAX_RETRY_DELAY_MS);
 }
 
+/** A conflict resolution was based on a version the other device has replaced since. */
+const CHANGED_AGAIN =
+  "This note was changed on the other device again. The comparison now shows its newest version.";
+
 const MESSAGES: Record<SaveErrorKind, (err: unknown) => string> = {
   conflict: () =>
     "This note was changed elsewhere since you opened it. Your text is kept here but has not been saved.",
@@ -96,6 +100,11 @@ export interface NoteSaveDeps {
    * (e2ee vaults send ciphertext). Omitted: the text is used as it is.
    */
   decryptServerContent?: (vaultId: string, content: string) => Promise<string>;
+  /**
+   * Puts text into the editor from outside it (a resolved conflict). The
+   * editor keeps its own copy, so setEditorContent alone doesn't show it.
+   */
+  showEditorText?: (noteId: string, text: string) => void;
   /** While true (close-confirmation dialog open) background saves wait. */
   paused?: boolean;
   /**
@@ -185,6 +194,11 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const savedVersions = useRef(new Map<string, number>());
   /** Why the note's most recent save failed; cleared by a successful save. */
   const lastErrors = useRef(new Map<string, SaveError>());
+  /**
+   * Per note, the newest edit version a conflict resolution has settled: a
+   * 409 for a save of that version or older is stale and ignored.
+   */
+  const resolvedUpTo = useRef(new Map<string, number>());
 
   const versionOf = (id: string) => versions.current.get(id) ?? 0;
   const isActive = (id: string) => depsRef.current.activeNoteRef.current?.id === id;
@@ -240,6 +254,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const fail = (req: SaveRequest, kind: SaveErrorKind, err: unknown) => {
     const id = req.note.id;
     const d = depsRef.current;
+    // Sent before the user resolved the conflict; the resolution replaced it.
+    if (kind === "conflict" && req.version <= (resolvedUpTo.current.get(id) ?? -1)) return;
     const error: SaveError = { noteId: id, kind, message: MESSAGES[kind](err) };
     lastErrors.current.set(id, error);
     setSaveError(error);
@@ -419,6 +435,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     failures.current.clear();
     savedVersions.current.clear();
     lastErrors.current.clear();
+    resolvedUpTo.current.clear();
     setSaveError(null);
     setConflicts(new Map());
   }, [sessionKey]);
@@ -565,15 +582,20 @@ export function useNoteSave(deps: NoteSaveDeps) {
 
   /**
    * Ends a conflict on the open note with `content` as the result, built on
-   * top of the other device's version: saving it uses that version's checksum,
-   * so nothing the other device wrote is overwritten unseen. Taking their text
-   * as it is needs no save at all.
+   * top of the other device's version the user was shown (`basedOn`, its
+   * checksum): saving uses that checksum, so nothing the other device wrote is
+   * overwritten unseen. When a newer version has arrived since, nothing
+   * happens and the outcome says so. Taking their text as it is needs no save.
    */
-  const resolveConflict = useCallback(async (noteId: string, content: string): Promise<SaveOutcome> => {
+  const resolveConflict = useCallback(async (noteId: string, content: string, basedOn: string): Promise<SaveOutcome> => {
     const d = depsRef.current;
     const current = d.activeNoteRef.current;
     const server = conflictsRef.current.get(noteId);
     if (!current || current.id !== noteId || !server) return outcomeOf(noteId);
+    if (server.checksum !== basedOn) {
+      return { ok: false, error: { noteId, kind: "conflict", message: CHANGED_AGAIN } };
+    }
+    resolvedUpTo.current.set(noteId, versionOf(noteId));
 
     // From now on the note is based on the other device's version.
     transitions.current.set(noteId, { from: baseChecksum(current), to: server.checksum });
@@ -586,6 +608,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     d.setNoteList((prev) => prev.map((n) => (n.id === noteId ? { ...n, checksum: server.checksum, content } : n)));
     d.setActiveNote((prev) => (prev && prev.id === noteId ? { ...prev, checksum: server.checksum, content } : prev));
     d.setEditorContent(content);
+    d.showEditorText?.(noteId, content);
 
     if (content === server.content) {
       // Their text is already what the server holds.

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useIsPresent } from "framer-motion";
 import { OverlayMotion } from "../motion/OverlayMotion";
 import { diffLines, mergeDraft, sideBySide, MERGE_MARKERS, type SideRow } from "../../lib/diff";
+import type { ServerVersion } from "../../lib/useNoteSave";
 import "./Conflict.css";
 
 interface ConflictDialogProps {
@@ -9,13 +10,16 @@ interface ConflictDialogProps {
   /** The user's text, as it is in the editor. */
   mine: string;
   /** The version the other device saved; null while it is still being read. */
-  theirs: string | null;
+  theirs: ServerVersion | null;
   /** The chosen text is being saved: every choice is locked. */
   busy: boolean;
   /** Why the last attempt failed, if it did. */
   error: string | null;
-  /** Called with the text the note should end up with. */
-  onResolve: (content: string) => void;
+  /**
+   * Called with the text the note should end up with and the checksum of the
+   * other device's version that choice was made against.
+   */
+  onResolve: (content: string, basedOn: string) => void;
   onCancel: () => void;
 }
 
@@ -99,25 +103,47 @@ function Row({ row }: { row: NumberedRow }) {
   );
 }
 
-/** Whether a merge draft still holds the conflict markers it started with. */
-const hasMarkers = (text: string) =>
-  text.split("\n").some((line) => line === MERGE_MARKERS.mine || line === MERGE_MARKERS.theirs);
+const lines = (text: string) => text.split(/\r?\n/);
+const separators = (text: string) => lines(text).filter((line) => line === MERGE_MARKERS.split).length;
+
+/**
+ * Whether a merge draft still holds conflict markers: the outer markers, or a
+ * "=======" line neither version had (a left-over separator; a heading
+ * underline both versions share is fine).
+ */
+const unresolved = (draft: string, mine: string, theirs: string) =>
+  lines(draft).some((line) => line === MERGE_MARKERS.mine || line === MERGE_MARKERS.theirs) ||
+  separators(draft) > Math.max(separators(mine), separators(theirs));
 
 /**
  * Resolving a note that was changed on another device while it was being
  * edited here (#225): both versions side by side, then keep mine, use theirs,
- * or merge by hand.
+ * or merge by hand. Every choice names the version it was made against, so a
+ * newer save on the other device is never overwritten unseen.
  */
 export function ConflictDialog({ noteTitle, mine, theirs, busy, error, onResolve, onCancel }: ConflictDialogProps) {
-  const [draft, setDraft] = useState<string | null>(null);
+  /** The merge draft and the version of the other device it was built from. */
+  const [draft, setDraft] = useState<{ text: string; base: ServerVersion } | null>(null);
   const [unfolded, setUnfolded] = useState<ReadonlySet<number>>(() => new Set());
+  /** The first version of the other device this dialog showed. */
+  const [firstSeen, setFirstSeen] = useState<string | null>(theirs?.checksum ?? null);
   const titleRef = useRef<HTMLDivElement>(null);
   const present = useIsPresent();
 
-  const rows = useMemo(() => (theirs === null ? [] : numberRows(sideBySide(diffLines(mine, theirs)))), [mine, theirs]);
+  const theirsText = theirs?.content ?? null;
+  const rows = useMemo(
+    () => (theirsText === null ? [] : numberRows(sideBySide(diffLines(mine, theirsText)))),
+    [mine, theirsText],
+  );
   const segments = useMemo(() => segment(rows), [rows]);
   const differing = rows.filter(isChanged).length;
   const ready = theirs !== null;
+
+  useEffect(() => {
+    if (firstSeen === null && theirs) setFirstSeen(theirs.checksum);
+  }, [firstSeen, theirs]);
+  const savedAgain = !!theirs && firstSeen !== null && theirs.checksum !== firstSeen;
+  const draftOutdated = !!draft && !!theirs && draft.base.checksum !== theirs.checksum;
 
   // Focus the title rather than a button, so a stray Enter can't pick a
   // version by accident; screen readers start reading from there.
@@ -137,6 +163,7 @@ export function ConflictDialog({ noteTitle, mine, theirs, busy, error, onResolve
 
   const name = `“${noteTitle || "Untitled"}”`;
   const merging = draft !== null;
+  const draftBlocked = !!draft && unresolved(draft.text, mine, draft.base.content);
 
   return (
     <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={busy ? undefined : onCancel}>
@@ -174,21 +201,35 @@ export function ConflictDialog({ noteTitle, mine, theirs, busy, error, onResolve
           </div>
         )}
 
+        {(draftOutdated || savedAgain) && (
+          <div className="conflict-notice-inline" role="status">
+            {draftOutdated ? (
+              <>
+                The other device saved this note again since you started merging. Go{" "}
+                <strong>Back to compare</strong> to see its newest version, then merge again.
+              </>
+            ) : (
+              <>The other device saved this note again while this was open. The comparison below shows its newest version.</>
+            )}
+          </div>
+        )}
+
         {merging ? (
           <div className="conflict-merge">
             <textarea
               id="conflict-merge-text"
               className="conflict-merge-text"
               aria-label="Merged text"
-              value={draft}
+              value={draft.text}
               spellCheck={false}
               disabled={busy}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => setDraft({ ...draft, text: e.target.value })}
             />
-            {hasMarkers(draft) && (
+            {draftBlocked && (
               <p className="conflict-hint">
-                Remove the conflict markers (<code>{MERGE_MARKERS.mine}</code> and{" "}
-                <code>{MERGE_MARKERS.theirs}</code>) before saving.
+                Remove the conflict markers (<code>{MERGE_MARKERS.mine}</code>,{" "}
+                <code>{MERGE_MARKERS.split}</code> and <code>{MERGE_MARKERS.theirs}</code>) before
+                saving.
               </p>
             )}
           </div>
@@ -260,8 +301,8 @@ export function ConflictDialog({ noteTitle, mine, theirs, busy, error, onResolve
               </button>
               <button
                 className="confirm-btn confirm-btn--primary"
-                onClick={() => onResolve(draft)}
-                disabled={busy || hasMarkers(draft)}
+                onClick={() => draft && !draftOutdated && onResolve(draft.text, draft.base.checksum)}
+                disabled={busy || draftBlocked || draftOutdated}
               >
                 Save merged
               </button>
@@ -270,14 +311,14 @@ export function ConflictDialog({ noteTitle, mine, theirs, busy, error, onResolve
             <>
               <button
                 className="confirm-btn"
-                onClick={() => setDraft(mergeDraft(mine, theirs ?? ""))}
+                onClick={() => theirs && setDraft({ text: mergeDraft(mine, theirs.content), base: theirs })}
                 disabled={busy || !ready}
               >
                 Merge by hand&hellip;
               </button>
               <button
                 className="confirm-btn"
-                onClick={() => theirs !== null && onResolve(theirs)}
+                onClick={() => theirs && onResolve(theirs.content, theirs.checksum)}
                 disabled={busy || !ready}
                 title="Replace your text with the other device's version"
               >
@@ -285,7 +326,7 @@ export function ConflictDialog({ noteTitle, mine, theirs, busy, error, onResolve
               </button>
               <button
                 className="confirm-btn confirm-btn--primary"
-                onClick={() => onResolve(mine)}
+                onClick={() => theirs && onResolve(mine, theirs.checksum)}
                 disabled={busy || !ready}
                 title="Save your version over the other device's changes"
               >

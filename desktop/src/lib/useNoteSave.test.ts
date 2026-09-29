@@ -497,7 +497,7 @@ describe("useNoteSave — resolving conflicts", () => {
 
     let outcome: Awaited<ReturnType<typeof hook.result.current.resolveConflict>> | undefined;
     await act(async () => {
-      outcome = await hook.result.current.resolveConflict("n1", "my text");
+      outcome = await hook.result.current.resolveConflict("n1", "my text", "c9");
     });
 
     expect(update).toHaveBeenLastCalledWith("n1", "Note", "", "my text", "c9", undefined);
@@ -515,7 +515,7 @@ describe("useNoteSave — resolving conflicts", () => {
     await flush();
 
     await act(async () => {
-      await hook.result.current.resolveConflict("n1", "their text");
+      await hook.result.current.resolveConflict("n1", "their text", "c9");
     });
 
     expect(update).toHaveBeenCalledTimes(1);
@@ -523,6 +523,53 @@ describe("useNoteSave — resolving conflicts", () => {
     expect(hook.result.current.activeNote).toMatchObject({ content: "their text", checksum: "c9" });
     expect(hook.result.current.saveStatus).toBe("saved");
     expect(loadDraft("n1")).toBeNull();
+  });
+
+  it("refuses to resolve against a version the user was not shown", async () => {
+    update.mockRejectedValueOnce(conflict409());
+    const { hook } = setup();
+    await act(() => hook.result.current.saveNote("my text"));
+    await flush();
+
+    // The dialog still showed an older version when the user chose.
+    let outcome: Awaited<ReturnType<typeof hook.result.current.resolveConflict>> | undefined;
+    await act(async () => {
+      outcome = await hook.result.current.resolveConflict("n1", "my text", "c-older");
+    });
+
+    expect(outcome).toMatchObject({ ok: false, error: { kind: "conflict" } });
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.conflictVersion("n1")).toEqual({ content: "their text", checksum: "c9" });
+    expect(hook.result.current.saveStatus).toBe("conflict");
+  });
+
+  it("ignores the conflict of a save sent before the resolution", async () => {
+    const put = deferred<Note>();
+    update.mockReturnValueOnce(put.promise);
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("my text"));
+    let inFlight: Promise<unknown> | undefined;
+    act(() => {
+      inFlight = hook.result.current.saveNote("my text");
+    });
+    act(() => {
+      hook.result.current.acceptRemoteUpdate(savedNote("c9", { content: "their text" }));
+    });
+    await act(async () => {
+      await hook.result.current.resolveConflict("n1", "their text", "c9");
+    });
+    expect(hook.result.current.saveStatus).toBe("saved");
+
+    // The save that was already on its way now comes back with a 409.
+    await act(async () => {
+      put.reject(conflict409());
+      await inFlight;
+    });
+    await flush();
+
+    expect(hook.result.current.saveStatus).toBe("saved");
+    expect(hook.result.current.saveError).toBeNull();
+    expect(hook.result.current.conflictVersion("n1")).toBeNull();
   });
 
   it("keeps a pushed update from another device as the version to compare with", async () => {

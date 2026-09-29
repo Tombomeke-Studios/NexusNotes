@@ -17,7 +17,8 @@ export interface DiffLine {
 
 const MAX_DIFF_LINES = 4000;
 
-const splitLines = (text: string): string[] => (text === "" ? [] : text.split("\n"));
+// A note saved on Windows may use CRLF; the same line must compare equal.
+const splitLines = (text: string): string[] => (text === "" ? [] : text.split(/\r?\n/));
 
 export function diffLines(mine: string, theirs: string): DiffLine[] {
   const a = splitLines(mine);

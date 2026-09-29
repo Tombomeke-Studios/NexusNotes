@@ -536,19 +536,6 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/conflict-resolution-ui` - Conflict resolution merge UI (#225)
-
-- [x] Design and build a split-pane diff/merge UI component (#318)
-- [x] Open the merge dialog when a save gets a 409 or another device's `note:updated` hits unsaved text (#319)
-- [x] Highlight conflicting hunks with colour coding (local vs. remote) (#320)
-- [x] Add "Accept Mine", "Accept Theirs", and manual edit options (#321)
-- [x] Save the resolved content on top of the other device's version and close the dialog (#322)
-- [x] Write tests for conflict detection logic in the sync service (#323)
-- [x] Show another device's changes in the open note instead of saving over them (#324)
-- [x] Create notes from a shortcut in the vault that is active at that moment (#340)
-
----
-
 ## `feature/attachments` - Attachment upload and management
 
 - [x] Add `POST /notes/:id/attachments` for multipart upload to MinIO (#153)
@@ -810,6 +797,17 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/conflict-resolution-ui` - Conflict resolution merge UI (#225, PR #325)
+
+- [x] Design and build a split-pane diff/merge UI component (#318)
+- [x] Open the merge dialog when a save gets a 409 or another device's `note:updated` hits unsaved text (#319)
+- [x] Highlight conflicting hunks with colour coding (local vs. remote) (#320)
+- [x] Add "Accept Mine", "Accept Theirs", and manual edit options (#321)
+- [x] Save the resolved content on top of the other device's version and close the dialog (#322)
+- [x] Write tests for conflict detection logic in the sync service (#323)
+- [x] Show another device's changes in the open note instead of saving over them (#324)
+- [x] Create notes from a shortcut in the vault that is active at that moment (#340)
 
 ### `fix/security-audit` - Verified audit findings (PRs #270-#287)
 

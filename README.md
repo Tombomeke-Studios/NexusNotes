@@ -90,7 +90,8 @@ and backend; the Docker infra keeps running. Stop it with
 
 The backend they start listens on localhost only and signs sessions with a random
 secret generated on the first run (kept in `services/sync-service/tmp/jwt-secret`,
-which git ignores). Delete that file to sign every dev session out.
+which git ignores; a damaged file is replaced). Delete that file to sign every dev
+session out. It also listens on `::1` when the machine has an IPv6 loopback.
 
 The manual steps below are the same thing spelled out, for when you want to run
 a single piece on its own.

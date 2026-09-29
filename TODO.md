@@ -30,21 +30,21 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `fix/production-hardening` - Production hardening (#264)
 
-- [ ] Production compose: fail fast on unset secrets, remove weak defaults, publish only public ports, pin images, resource limits
-- [ ] Sync service image: non-root user, HEALTHCHECK, `/ready` endpoint that pings Postgres and Redis, keep `/metrics` internal
-- [ ] Auth config: minimum JWT secret length, pin HS256, require the Bearer scheme and a minimum length for the admin token
-- [ ] Tauri: strict webview CSP and a shell capability limited to the sidecar
-- [ ] Tauri supervisor follow-ups: no compose polling while a foreign backend is healthy, handle `RunEvent::Exit`, re-check shutdown after spawn, restart on failing health
-- [ ] CI: build both Dockerfiles so an unbuildable image is caught
-- [ ] Graceful shutdown: drain the WebSocket hub, per-route write deadlines
-- [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash)
+- [ ] Production compose: fail fast on unset secrets, remove weak defaults, publish only public ports, pin images, resource limits (#326)
+- [ ] Sync service image: non-root user, HEALTHCHECK, `/ready` endpoint that pings Postgres and Redis, keep `/metrics` internal (#327)
+- [ ] Auth config: minimum JWT secret length, pin HS256, require the Bearer scheme and a minimum length for the admin token (#328)
+- [ ] Tauri: strict webview CSP and a shell capability limited to the sidecar (#329)
+- [ ] Tauri supervisor follow-ups: no compose polling while a foreign backend is healthy, handle `RunEvent::Exit`, re-check shutdown after spawn, restart on failing health (#330)
+- [ ] CI: build both Dockerfiles so an unbuildable image is caught (#331)
+- [ ] Graceful shutdown: drain the WebSocket hub, per-route write deadlines (#332)
+- [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
 - [ ] Migrate the packaged app's database password without losing data (#277)
-- [ ] Dev scripts: random JWT secret and localhost-only binding, like the packaged app
-- [ ] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces)
-- [ ] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces
-- [ ] Linked-file fetches: limit concurrent fetches; decide whether `::ffff:0:0/96` counts as private
+- [ ] Dev scripts: random JWT secret and localhost-only binding, like the packaged app (#334)
+- [ ] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces) (#335)
+- [ ] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces (#336)
+- [ ] Linked-file fetches: limit concurrent fetches; decide whether `::ffff:0:0/96` counts as private (#337)
 - [ ] Sweep orphaned attachment files from object storage (#316)
-- [ ] DB-backed tests for `RefreshRepo.Rotate` (rollback, double rotate, concurrent rotate)
+- [ ] DB-backed tests for `RefreshRepo.Rotate` (rollback, double rotate, concurrent rotate) (#338)
 
 ---
 

@@ -46,8 +46,8 @@ export async function login(page: Page, email: string, password = "Password1!") 
   await expect(page.locator(".sidebar")).toBeVisible({ timeout: 10_000 });
 }
 
-// E2E backend URL (matches VITE_API_URL used by the test webServer).
-const API = "http://localhost:8080";
+// E2E backend URL: the same VITE_API_URL the test webServer (Vite) is started with.
+const API = process.env.VITE_API_URL || "http://localhost:8080";
 
 /**
  * Deletes every note in a vault so tests start from an empty vault. A fresh

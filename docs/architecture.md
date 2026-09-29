@@ -113,8 +113,10 @@ one included, before it answers the PUT. The client therefore remembers the
 checksums of its own recent uploads: a push matching one of them (or the
 version the local text is based on) is merged, while any other push for a
 note with unsaved text marks it as a conflict and leaves the local text and
-base checksum untouched. Signing out drops every queued save, retry and
-in-flight result.
+base checksum untouched. A push from another device for the open note while
+it has no unsaved text replaces the editor's text, so the next edit builds on
+that version instead of silently saving over it. Signing out drops every
+queued save, retry and in-flight result.
 
 Closing a tab or the window with unsaved text (the close button, or an
 OS-level close in the native app) never closes until the server has

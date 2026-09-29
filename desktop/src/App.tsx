@@ -213,6 +213,7 @@ export default function App() {
     discard: discardUnsaved,
     localCopy,
     acceptRemoteUpdate,
+    isOwnVersion,
     saveError,
   } = useNoteSave({
     activeNoteRef,
@@ -232,6 +233,15 @@ export default function App() {
   });
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
+
+  /** Text for the open note that came from outside the editor (#324). */
+  const [replaceRequest, setReplaceRequest] = useState<{ noteId: string; text: string; nonce: number } | null>(null);
+  const replaceNonce = useRef(0);
+  const replaceEditorText = useCallback((noteId: string, text: string) => {
+    setEditorContent(text);
+    replaceNonce.current += 1;
+    setReplaceRequest({ noteId, text, nonce: replaceNonce.current });
+  }, []);
 
   const loadNotes = useCallback(async (vaultId: string) => {
     try {
@@ -316,6 +326,17 @@ export default function App() {
             const note = dirty
               ? { ...incoming, title: current!.title, content: editorContentRef.current }
               : incoming;
+            // Another device changed the open, saved note: show its text, or
+            // the next edit would be saved on top of it and silently undo it
+            // (#324). Echoes of our own saves are already on screen.
+            if (
+              !dirty &&
+              current?.id === incoming.id &&
+              incoming.content !== editorContentRef.current &&
+              !isOwnVersion(incoming.id, incoming.checksum)
+            ) {
+              replaceEditorText(incoming.id, incoming.content);
+            }
             setNoteList((prev) => {
               const idx = prev.findIndex((n) => n.id === note.id);
               if (idx >= 0) {
@@ -341,7 +362,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncoming, acceptRemoteUpdate]);
+  }, [user, decryptIncoming, acceptRemoteUpdate, isOwnVersion, replaceEditorText]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -1447,6 +1468,7 @@ export default function App() {
               onNavigateToNote={handleSelectNote}
               paused={closePrompt !== null}
               insertRequest={insertRequest}
+              replaceRequest={replaceRequest}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
             />
           )}

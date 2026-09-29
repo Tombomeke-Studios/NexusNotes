@@ -446,6 +446,19 @@ describe("useNoteSave — conflicts", () => {
   });
 });
 
+describe("useNoteSave — own versions (#324)", () => {
+  it("recognises the checksum of its own save, not another device's", async () => {
+    update.mockResolvedValueOnce(savedNote("c1"));
+    const { hook } = setup();
+
+    await act(() => hook.result.current.saveNote("mine"));
+
+    expect(hook.result.current.isOwnVersion("n1", "c1")).toBe(true);
+    expect(hook.result.current.isOwnVersion("n1", "c-other-device")).toBe(false);
+    expect(hook.result.current.isOwnVersion("n2", "c1")).toBe(false);
+  });
+});
+
 describe("useNoteSave — resolving conflicts", () => {
   const conflict409 = () =>
     new ApiError(409, "Request failed", {

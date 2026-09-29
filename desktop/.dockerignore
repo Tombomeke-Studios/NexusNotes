@@ -1,7 +1,11 @@
 node_modules
 dist
 src-tauri
+e2e
 .eslintrc.cjs
 vitest.config.ts
-*.test.ts
-*.test.tsx
+playwright.config.ts
+# Anywhere in the tree, not only the context root: tsc must not see tests
+# that import files outside the build context (src-tauri).
+**/*.test.ts
+**/*.test.tsx

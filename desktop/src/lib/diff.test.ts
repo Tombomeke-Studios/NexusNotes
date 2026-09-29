@@ -25,6 +25,10 @@ describe("diffLines", () => {
     expect(theirs).toEqual(["1", "3", "x", "5"]);
   });
 
+  it("treats Windows and Unix line endings alike", () => {
+    expect(kinds("a\r\nb", "a\nb")).toEqual(["s:a", "s:b"]);
+  });
+
   it("handles empty text on either side", () => {
     expect(kinds("", "a")).toEqual(["t:a"]);
     expect(kinds("a", "")).toEqual(["m:a"]);

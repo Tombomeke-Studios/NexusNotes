@@ -138,7 +138,12 @@ the other device's, or merges by hand, starting from a draft that holds
 every difference between Git-style conflict markers. The chosen text is
 saved with the other device's checksum as its previous checksum, so a change
 made elsewhere in the meantime produces a fresh conflict instead of being
-overwritten; taking the other version as it is needs no save.
+overwritten; taking the other version as it is needs no save. Each choice
+names the version of the other device it was made against: if a newer one
+arrived while the dialog was open (a merge started from an older version, or
+a push just before the click), nothing is saved and the dialog shows the
+newest version instead. A 409 for a save sent before the resolution is
+ignored.
 
 ### Search indexing
 

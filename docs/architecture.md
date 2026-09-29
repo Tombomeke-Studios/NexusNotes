@@ -118,7 +118,8 @@ it has no unsaved text replaces the editor's text, so the next edit builds on
 that version instead of silently saving over it. The open note only moves to
 that version once the editor shows it; a keystroke in between turns it into a
 conflict. While no editor is on screen (the graph view) it takes the version
-at once. An e2ee push that cannot be decrypted never reaches the open note. Signing out drops every queued save, retry and in-flight result.
+at once, as long as the note is still saved and its text unchanged. The editor
+always starts from the app's text for the open note, unsaved edits included. An e2ee push that cannot be decrypted never reaches the open note. Signing out drops every queued save, retry and in-flight result.
 
 Closing a tab or the window with unsaved text (the close button, or an
 OS-level close in the native app) never closes until the server has

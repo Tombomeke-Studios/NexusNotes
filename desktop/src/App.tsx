@@ -208,12 +208,12 @@ export default function App() {
   const [replaceRequest, setReplaceRequest] = useState<ReplaceRequest | null>(null);
   const replaceNonce = useRef(0);
   /** Another device's version waiting for the editor to show it (#324). */
-  const pendingRemote = useRef<{ nonce: number; note: Note } | null>(null);
+  const pendingRemote = useRef<{ nonce: number; note: Note; expected: string } | null>(null);
   /** Whether an editor is on screen (not while the graph view is). */
   const editorPresent = useRef(false);
   const replaceEditorText = useCallback((noteId: string, text: string, expected?: string, remote?: Note) => {
     replaceNonce.current += 1;
-    pendingRemote.current = remote ? { nonce: replaceNonce.current, note: remote } : null;
+    pendingRemote.current = remote ? { nonce: replaceNonce.current, note: remote, expected: expected ?? "" } : null;
     setReplaceRequest({ noteId, text, nonce: replaceNonce.current, expected });
   }, []);
 
@@ -281,15 +281,21 @@ export default function App() {
     adoptRemote(pending.note);
   }, [adoptRemote]);
 
-  // An editor leaving the screen can no longer show a waiting version: the
-  // open note takes it directly, and the next editor opens on it.
+  // An editor leaving the screen can no longer show a waiting version. The
+  // open note takes it directly only while nothing has changed since it was
+  // pushed (same note, still saved, same text); otherwise it's a conflict, or
+  // it belongs to a note that is no longer open and the list already has it.
   const handleEditorPresence = useCallback((present: boolean) => {
     editorPresent.current = present;
     const pending = pendingRemote.current;
     if (present || !pending) return;
     pendingRemote.current = null;
-    adoptRemote(pending.note);
-  }, [adoptRemote]);
+    if (activeNoteRef.current?.id !== pending.note.id) return;
+    const unchanged =
+      !isDirtyStatus(saveStatusRef.current) && editorContentRef.current === pending.expected;
+    if (unchanged) adoptRemote(pending.note);
+    else acceptRemoteUpdate(pending.note);
+  }, [adoptRemote, acceptRemoteUpdate]);
 
   // The user typed before the editor could show it: that is a conflict.
   const handleReplaceRejected = useCallback((request: ReplaceRequest) => {

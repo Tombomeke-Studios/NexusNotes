@@ -254,8 +254,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
   const fail = (req: SaveRequest, kind: SaveErrorKind, err: unknown) => {
     const id = req.note.id;
     const d = depsRef.current;
-    // Sent before the user resolved the conflict; the resolution replaced it.
-    if (kind === "conflict" && req.version <= (resolvedUpTo.current.get(id) ?? -1)) return;
+    // Sent before the user resolved the conflict; the resolution replaced it,
+    // so it is neither reported nor retried.
+    if (req.version <= (resolvedUpTo.current.get(id) ?? -1)) return;
     const error: SaveError = { noteId: id, kind, message: MESSAGES[kind](err) };
     lastErrors.current.set(id, error);
     setSaveError(error);
@@ -375,6 +376,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
           return;
         }
         const active = d.activeNoteRef.current;
+        // A conflict resolution since replaced whatever this retry would send.
+        if (retry && retry.version <= (resolvedUpTo.current.get(id) ?? -1)) return;
         if (retry && versionOf(id) === retry.version) {
           void enqueue(retry.note, retry.content);
         } else if (active?.id === id) {

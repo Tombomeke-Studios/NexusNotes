@@ -572,6 +572,35 @@ describe("useNoteSave — resolving conflicts", () => {
     expect(hook.result.current.conflictVersion("n1")).toBeNull();
   });
 
+  it("never retries a save sent before the user took the other device's text", async () => {
+    vi.useFakeTimers();
+    const put = deferred<Note>();
+    update.mockReturnValueOnce(put.promise).mockResolvedValue(savedNote("c-retry"));
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("my text 2"));
+    let inFlight: Promise<unknown> | undefined;
+    act(() => {
+      inFlight = hook.result.current.saveNote("my text 2");
+    });
+    act(() => {
+      hook.result.current.acceptRemoteUpdate(savedNote("c9", { content: "their text" }));
+    });
+    await act(async () => {
+      await hook.result.current.resolveConflict("n1", "their text", "c9");
+    });
+
+    // The older save then fails to reach the server.
+    await act(async () => {
+      put.reject(new TypeError("Failed to fetch"));
+      await inFlight;
+    });
+    await advance(60_000);
+
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.saveStatus).toBe("saved");
+    expect(hook.result.current.saveError).toBeNull();
+  });
+
   it("keeps a pushed update from another device as the version to compare with", async () => {
     const { hook } = setup();
     act(() => hook.result.current.liveChange("my unsaved text"));

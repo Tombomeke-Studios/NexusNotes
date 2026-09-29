@@ -101,8 +101,8 @@ after newer edits only adopts the returned checksum, so the note stays
 unsaved, its local draft is kept and a follow-up save goes out. Saves that
 queue up behind an in-flight one coalesce into a single PUT of the latest
 text, based on the checksum the previous save returned. A 409 puts the note
-in a "conflict" state that keeps the local text untouched (the merge UI is
-tracked in #225); an unreachable server (or a 502/503/504) is retried with
+in a "conflict" state that keeps the local text untouched (see *Resolving a
+conflict* below); an unreachable server (or a 502/503/504) is retried with
 exponential backoff capped at 30 seconds; any other failure is reported in
 the status bar and retried on the next edit.
 
@@ -123,6 +123,20 @@ OS-level close in the native app) never closes until the server has
 confirmed the save. If the save fails, the close dialog stays open, explains
 why (offline, conflict or another error) and offers retry, keep editing, or
 an explicit close without saving.
+
+#### Resolving a conflict
+
+The 409 body carries the server's content and checksum, and a conflicting
+push carries the other device's version, so the save hook keeps that
+version per note (decrypted first for e2ee vaults; if it can't be read, no
+comparison is offered). While the open note is in conflict, a notice above
+the editor opens a side-by-side comparison: a line diff of both versions
+with long unchanged stretches folded away. The user keeps their text, takes
+the other device's, or merges by hand, starting from a draft that holds
+every difference between Git-style conflict markers. The chosen text is
+saved with the other device's checksum as its previous checksum, so a change
+made elsewhere in the meantime produces a fresh conflict instead of being
+overwritten; taking the other version as it is needs no save.
 
 ### Search indexing
 

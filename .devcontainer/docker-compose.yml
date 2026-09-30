@@ -8,8 +8,10 @@ services:
       - desktop_node_modules:/workspaces/NexusNotes/desktop/node_modules
       # WSLg's X11/Wayland sockets, so the native Tauri window can render.
       # No-ops (empty bind) on hosts without WSLg — see docs/deployment.md.
+      # Docker Desktop exposes the WSL2 VM's own mounts under /mnt/host/
+      # rather than at the paths WSL itself uses inside a distro.
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - /mnt/wslg:/mnt/wslg
+      - /mnt/host/wslg:/mnt/wslg
     environment:
       - DISPLAY=${DISPLAY:-:0}
       - WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}

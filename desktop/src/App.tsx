@@ -442,6 +442,11 @@ export default function App() {
             if (!replacing) setActiveNote((prev) => (prev?.id === note.id ? note : prev));
             setLastSyncAt(new Date());
           });
+        } else if (type === "sync:reconnected") {
+          // Updates pushed while the socket was down are gone: reload the
+          // vault list and the active vault's notes (#388).
+          loadVaultsRef.current();
+          setLastSyncAt(new Date());
         } else if (type === "vault:encrypted") {
           // Another device turned a vault end-to-end encrypted (#361). This
           // device holds no key for it, so drop its plaintext from memory and

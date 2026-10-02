@@ -112,6 +112,26 @@ describe("SyncClient WebSocket auth (#258)", () => {
     expect(FakeWebSocket.instances.map(ticketOf)).toEqual(["t-1", "t-2"]);
   });
 
+  // Updates made while the socket was down are never pushed again, so the app
+  // must be told to resync after a reconnect, not after the first connect (#388).
+  it("announces a reconnect, but not the first connect", async () => {
+    vi.useFakeTimers();
+    mockTicketFetch();
+    const seen: string[] = [];
+    client.onMessage((type) => seen.push(type));
+
+    client.connect();
+    await vi.waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+    FakeWebSocket.instances[0].onopen?.({});
+    expect(seen).toEqual([]);
+
+    FakeWebSocket.instances[0].drop();
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.waitFor(() => expect(FakeWebSocket.instances).toHaveLength(2));
+    FakeWebSocket.instances[1].onopen?.({});
+    expect(seen).toEqual(["sync:reconnected"]);
+  });
+
   it("retries with backoff when the ticket request fails", async () => {
     vi.useFakeTimers();
     const fetchMock = vi

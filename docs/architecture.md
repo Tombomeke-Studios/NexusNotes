@@ -214,6 +214,18 @@ sequenceDiagram
 - **Admin stats:** `GET /api/admin/stats` (static operator token) reports
   user/vault/note totals and uptime.
 
+## Real-time Sync (WebSocket hub)
+
+- Each connected device holds one WebSocket; the hub fans note and vault events
+  out to every device of the vault's owner and members.
+- A device whose send buffer is full is disconnected rather than silently
+  missing an update (#388). Every reconnect makes the app reload the vault list
+  and the active vault's notes, since pushes sent while it was offline are not
+  replayed.
+- The hub lives in one sync-service process: run a single instance. Several
+  instances behind a load balancer would only reach the devices connected to
+  each one (a shared pub/sub, e.g. Redis, would be needed first).
+
 ## Timeouts and Shutdown
 
 - **Timeouts:** ordinary API calls run under the server-wide 15 s read and write

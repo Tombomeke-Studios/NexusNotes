@@ -51,16 +51,26 @@ func (h *Hub) Unregister(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if clients, ok := h.clients[client.UserID]; ok {
-		if clients[client] {
-			metrics.WSConnections.Dec()
-		}
-		delete(clients, client)
-		if len(clients) == 0 {
-			delete(h.clients, client.UserID)
-		}
+	if h.removeLocked(client) {
+		slog.Info("ws client unregistered", "user_id", client.UserID, "device_id", client.DeviceID)
 	}
-	slog.Info("ws client unregistered", "user_id", client.UserID, "device_id", client.DeviceID)
+}
+
+// removeLocked drops client from the hub and closes its Send channel, which
+// ends its WritePump (#388). Only the call that actually removes it closes
+// Send, so a later Unregister cannot close it twice. h.mu must be held.
+func (h *Hub) removeLocked(client *Client) bool {
+	clients, ok := h.clients[client.UserID]
+	if !ok || !clients[client] {
+		return false
+	}
+	delete(clients, client)
+	if len(clients) == 0 {
+		delete(h.clients, client.UserID)
+	}
+	metrics.WSConnections.Dec()
+	close(client.Send)
+	return true
 }
 
 // DisconnectUser force-closes every live connection of the user, e.g. after
@@ -68,14 +78,16 @@ func (h *Hub) Unregister(client *Client) {
 // which handles the rest of its teardown.
 func (h *Hub) DisconnectUser(userID string) {
 	h.mu.Lock()
-	clients := h.clients[userID]
-	delete(h.clients, userID)
+	var clients []*Client
+	for client := range h.clients[userID] {
+		clients = append(clients, client)
+	}
+	for _, client := range clients {
+		h.removeLocked(client)
+	}
 	h.mu.Unlock()
 
-	// The map entries are gone, so the eventual Unregister from each ReadPump
-	// can no longer decrement the gauge — do it here.
-	metrics.WSConnections.Sub(float64(len(clients)))
-	for client := range clients {
+	for _, client := range clients {
 		_ = client.Conn.Close()
 	}
 	if len(clients) > 0 {
@@ -95,20 +107,20 @@ func (h *Hub) DisconnectDevice(userID, deviceID string) {
 	for client := range h.clients[userID] {
 		if client.DeviceID == deviceID {
 			targets = append(targets, client)
-			delete(h.clients[userID], client)
-			metrics.WSConnections.Dec()
 		}
 	}
-	if len(h.clients[userID]) == 0 {
-		delete(h.clients, userID)
-	}
-	h.mu.Unlock()
-
 	for _, client := range targets {
+		// Queue the notice before Send is closed: the WritePump still
+		// delivers what is buffered, then sends the close frame.
 		select {
 		case client.Send <- revoked:
 		default:
 		}
+		h.removeLocked(client)
+	}
+	h.mu.Unlock()
+
+	for _, client := range targets {
 		// Give the write pump a moment to flush the message, then close.
 		go func(c *Client) {
 			time.Sleep(200 * time.Millisecond)
@@ -128,8 +140,7 @@ func (h *Hub) BroadcastToUser(userID string, msg Message, exclude *Client) {
 	}
 
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-
+	var slow []*Client
 	for client := range h.clients[userID] {
 		if client == exclude {
 			continue
@@ -137,7 +148,20 @@ func (h *Hub) BroadcastToUser(userID string, msg Message, exclude *Client) {
 		select {
 		case client.Send <- data:
 		default:
-			slog.Warn("ws client send buffer full, dropping message", "user_id", client.UserID, "device_id", client.DeviceID)
+			slow = append(slow, client)
+		}
+	}
+	h.mu.RUnlock()
+
+	// A client that cannot keep up would silently miss this update and stay
+	// stale. Disconnect it instead: it reconnects and resyncs (#388).
+	for _, client := range slow {
+		slog.Warn("ws client too slow; disconnecting it", "user_id", client.UserID, "device_id", client.DeviceID)
+		h.mu.Lock()
+		h.removeLocked(client)
+		h.mu.Unlock()
+		if client.Conn != nil {
+			_ = client.Conn.Close()
 		}
 	}
 }

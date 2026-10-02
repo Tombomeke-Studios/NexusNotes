@@ -41,6 +41,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ### Fixed
 - The command palette keeps the highlighted note when the list re-sorts while it is open,
   so Enter opens the note you picked.
+- After a dropped connection (server restart, network blip) the app now catches up on
+  changes made elsewhere in the meantime instead of silently missing them.
 - A database hiccup is no longer reported as "note not found" (which could make the app
   drop the note from view); the server now says it failed instead.
 - Clicking the search bar at the top no longer slides it to the right.

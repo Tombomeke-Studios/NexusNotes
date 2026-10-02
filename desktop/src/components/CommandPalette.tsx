@@ -35,7 +35,10 @@ export function CommandPalette({
   onClose,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState(initialQuery);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  // The highlighted item by identity, not position: the list re-sorts while
+  // it is open (a save moves a note to the top), and the highlight and Enter
+  // must stay on the item the user picked. Null = the first item.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,9 +50,17 @@ export function CommandPalette({
     [notes, commands, query],
   );
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
+  const keyOf = (item: PaletteItem) => `${item.kind}-${item.id}`;
+  const found = selectedKey === null ? -1 : flat.findIndex((item) => keyOf(item) === selectedKey);
+  // An item that dropped out of the list (filtered, deleted) falls back to the first.
+  const selectedIndex = found >= 0 ? found : 0;
+  const selectIndex = (i: number) => {
+    const item = flat[i];
+    if (item) setSelectedKey(keyOf(item));
+  };
 
   useEffect(() => {
-    setSelectedIndex(0);
+    setSelectedKey(null);
   }, [query]);
 
   const run = (item: PaletteItem) => {
@@ -64,10 +75,10 @@ export function CommandPalette({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, Math.max(0, flat.length - 1)));
+      selectIndex(Math.min(selectedIndex + 1, Math.max(0, flat.length - 1)));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
+      selectIndex(Math.max(selectedIndex - 1, 0));
     } else if (e.key === "Enter" && flat[selectedIndex]) {
       e.preventDefault();
       run(flat[selectedIndex]);
@@ -110,7 +121,7 @@ export function CommandPalette({
                     key={`${item.kind}-${item.id}`}
                     className={`palette-item${selected ? " palette-item--selected" : ""}`}
                     onClick={() => run(item)}
-                    onMouseEnter={() => setSelectedIndex(i)}
+                    onMouseEnter={() => selectIndex(i)}
                   >
                     <span className="palette-item-icon">
                       {item.kind === "note" ? <NoteIcon /> : <CommandIcon />}

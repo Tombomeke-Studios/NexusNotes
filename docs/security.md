@@ -83,7 +83,7 @@ single request. Attachment uploads are capped separately at 25 MiB.
 | Email, display name (encrypted at rest) | PostgreSQL `users` | Account identity |
 | Password (Argon2id hash) | PostgreSQL `users` | Authentication |
 | Note content, titles, paths, tags | PostgreSQL `notes` + related tables | The product |
-| Note content (search copy) | Meilisearch `notes` index | Full-text search |
+| Note content (search copy) | Meilisearch `notes` index (encrypted disk, not backed up, rebuilt from the database) | Full-text search |
 | Device names, last-seen | PostgreSQL `devices` | Sync/session management |
 | Client IPs | Server logs + in-memory rate limiter | Abuse prevention, transient |
 
@@ -315,8 +315,13 @@ ciphertext and is wrapped once more.
   cannot decrypt (a missing old key) is logged and left alone.
 - **What it does not cover.** The server holds the key while it runs, so whoever
   controls the running server can read standard vaults; only end-to-end
-  encrypted vaults keep content from the server itself. The Meilisearch index
-  lives outside the database and is tracked in #365.
+  encrypted vaults keep content from the server itself.
+- **Search index (#365).** Meilisearch keeps its own copy of standard-vault
+  content (e2ee vaults: titles and paths only) on its `meili_data` volume,
+  outside the field-level encryption. That volume must sit on an encrypted
+  disk and stay out of backups. It is derived data: when the service starts
+  with an empty index it rebuilds it from the (encrypted) database, so a
+  restore without it loses nothing.
 
 The implementation is `internal/fieldcrypt`; repositories seal and open the
 fields themselves (`internal/repository/crypt.go` names them), so handlers and

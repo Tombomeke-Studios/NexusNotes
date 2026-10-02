@@ -133,31 +133,7 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		return nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
-	if s.indexer != nil {
-		noteID := note.ID
-		doc := search.NoteDoc{
-			ID:        note.ID,
-			VaultID:   note.VaultID,
-			Title:     note.Title,
-			Path:      note.Path,
-			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
-		}
-		go func() {
-			// Omit content and tags for encrypted vaults
-			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && vault.Encryption != model.VaultEncryptionE2EE {
-				doc.Content = note.Content
-				fm, _ := ParseFrontmatter(content)
-				doc.Tags = mergeTags(content)
-				doc.Aliases = fm.Aliases
-			}
-			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
-				for _, bl := range bls {
-					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)
-				}
-			}
-			s.indexer.IndexNote(doc)
-		}()
-	}
+	s.indexAsync(note)
 
 	metrics.NoteOps.WithLabelValues("create").Inc()
 	return note, nil
@@ -249,31 +225,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		return nil, nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
-	if s.indexer != nil {
-		noteID := note.ID
-		savedContent := update.Content
-		doc := search.NoteDoc{
-			ID:        note.ID,
-			VaultID:   note.VaultID,
-			Title:     note.Title,
-			Path:      note.Path,
-			UpdatedAt: note.UpdatedAt.Format(time.RFC3339),
-		}
-		go func() {
-			if vault, err := s.vaultRepo.GetByID(context.Background(), note.VaultID); err == nil && vault.Encryption != model.VaultEncryptionE2EE {
-				doc.Content = savedContent
-				fm, _ := ParseFrontmatter(savedContent)
-				doc.Tags = mergeTags(savedContent)
-				doc.Aliases = fm.Aliases
-			}
-			if bls, err := s.GetBacklinks(context.Background(), noteID); err == nil {
-				for _, bl := range bls {
-					doc.BacklinkTitles = append(doc.BacklinkTitles, bl.Title)
-				}
-			}
-			s.indexer.IndexNote(doc)
-		}()
-	}
+	s.indexAsync(note)
 
 	metrics.NoteOps.WithLabelValues("update").Inc()
 	return note, nil, nil

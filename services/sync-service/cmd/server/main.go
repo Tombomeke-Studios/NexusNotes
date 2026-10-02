@@ -115,6 +115,13 @@ func main() {
 	resetRepo := repository.NewPasswordResetRepo(pool)
 	emailAuth := service.NewEmailAuthService(userRepo, verifyRepo, resetRepo, refreshRepo, mailer, cfg.AppBaseURL)
 	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, indexer)
+	// Search data is derived: an empty index (new volume, restore without it)
+	// is refilled from the database in the background (#365).
+	go func() {
+		if _, err := syncService.RebuildSearchIndexIfEmpty(ctx); err != nil {
+			slog.Warn("search index rebuild", "error", err)
+		}
+	}()
 
 	hub := ws.NewHub()
 	accountService := service.NewAccountService(userRepo, vaultRepo, noteRepo, indexer, hub)

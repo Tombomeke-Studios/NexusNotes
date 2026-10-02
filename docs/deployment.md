@@ -203,6 +203,15 @@ after the first start with a `DATA_ENCRYPTION_KEY`; the service keeps serving
 meanwhile. Data in database backups taken before that stays readable, so
 replace those backups once the log shows `encryption backfill done`.
 
+**Search data (`meili_data` volume):** Meilisearch stores a readable copy of
+standard-vault notes, which the field-level encryption does not cover. Put the
+Docker volume on an encrypted disk (for example a LUKS-encrypted data disk or an
+encrypted cloud volume) and **leave it out of backups**: on startup the sync
+service rebuilds an empty index from the database, so after a restore search
+comes back by itself (the log says `search index rebuilt from the database`).
+To force a rebuild, stop the stack, remove the `meili_data` volume and start it
+again.
+
 `TRUSTED_PROXIES` names the reverse proxies whose `X-Forwarded-For` / `X-Real-IP`
 headers the sync service believes (comma-separated CIDRs or IPs). The production
 compose defaults it to the private ranges, since only the web UI's nginx can reach

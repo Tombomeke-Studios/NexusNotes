@@ -141,3 +141,42 @@ func TestNoteRepo_SearchMatchesEncryptedContent(t *testing.T) {
 		t.Fatalf("snippet = %q, want the plaintext", results[1].Snippet)
 	}
 }
+
+// ForEach walks every note of every vault in batches, decrypted (#365).
+func TestNoteRepo_ForEach(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	repo := NewNoteRepo(pool, testCipher(t))
+	now := time.Now().UTC()
+	want := map[string]string{}
+	for _, vaultID := range []string{seedVault(t, pool), seedVault(t, pool)} {
+		for i := 0; i < 3; i++ {
+			n := &model.Note{ID: uuid.NewString(), VaultID: vaultID, Title: "t", Content: "secret " + uuid.NewString(), Checksum: "c", CreatedAt: now, UpdatedAt: now}
+			if err := repo.Create(ctx, n); err != nil {
+				t.Fatal(err)
+			}
+			want[n.ID] = n.Content
+		}
+	}
+
+	got := map[string]string{}
+	batches := 0
+	err := repo.ForEach(ctx, 4, func(notes []model.Note) error {
+		batches++
+		for _, n := range notes {
+			got[n.ID] = n.Content
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if batches != 2 || len(got) != len(want) {
+		t.Fatalf("batches = %d, notes = %d; want 2 batches of 6 notes", batches, len(got))
+	}
+	for id, content := range want {
+		if got[id] != content {
+			t.Fatalf("note %s: content %q, want the plaintext", id, got[id])
+		}
+	}
+}

@@ -91,3 +91,55 @@ func TestIndexer_deleteDoc_serverError(t *testing.T) {
 		t.Fatal("expected error for 404 response")
 	}
 }
+
+func TestIndexer_DocumentCount(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/indexes/notes/stats" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"numberOfDocuments":42,"isIndexing":false}`))
+	}))
+	defer srv.Close()
+	n, err := newTestIndexer(srv.URL).DocumentCount(context.Background())
+	if err != nil || n != 42 {
+		t.Fatalf("DocumentCount = %d, %v; want 42", n, err)
+	}
+
+	missing := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"code":"index_not_found"}`))
+	}))
+	defer missing.Close()
+	if n, err := newTestIndexer(missing.URL).DocumentCount(context.Background()); err != nil || n != 0 {
+		t.Fatalf("missing index: %d, %v; want 0, nil", n, err)
+	}
+
+	down := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer down.Close()
+	if _, err := newTestIndexer(down.URL).DocumentCount(context.Background()); err == nil {
+		t.Fatal("a failing Meilisearch must be an error, not an empty index")
+	}
+}
+
+func TestIndexer_IndexDocsSendsOneBatch(t *testing.T) {
+	var calls int
+	var received []NoteDoc
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		_ = json.NewDecoder(r.Body).Decode(&received)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer srv.Close()
+	docs := []NoteDoc{{ID: "a"}, {ID: "b"}, {ID: "c"}}
+	if err := newTestIndexer(srv.URL).IndexDocs(context.Background(), docs); err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 || len(received) != 3 {
+		t.Fatalf("calls = %d, docs = %d; want one request with 3 docs", calls, len(received))
+	}
+	if err := newTestIndexer(srv.URL).IndexDocs(context.Background(), nil); err != nil || calls != 1 {
+		t.Fatalf("an empty batch must not call Meilisearch (calls = %d, %v)", calls, err)
+	}
+}

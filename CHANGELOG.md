@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- The search index is rebuilt from the database when the server starts with an empty
+  one, so it can stay out of backups (keep its volume on an encrypted disk).
 - Release versioning: a single `VERSION` file, `scripts/set-version.sh`, and the backend
   reporting its version in `GET /health`.
 - The desktop app warns when its version and the server's major.minor differ.

@@ -722,6 +722,9 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  /* Many tags scroll inside the footer instead of squeezing out the file tree. */
+  max-height: 30vh;
+  overflow-y: auto;
 }
 
 .tag-tree-row {
@@ -747,6 +750,7 @@
 
 .tag-tree-label {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -772,6 +776,15 @@
 
 .tag-tree-label--group:hover { background: transparent; color: var(--text-secondary); }
 
+/* A long tag is cut off with an ellipsis (full name in the tooltip) instead
+   of pushing its count out of the panel. */
+.tag-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tag-tree-name::before {
   content: "#";
   opacity: 0.5;
@@ -779,6 +792,7 @@
 }
 
 .tag-tree-count {
+  flex-shrink: 0;
   font-size: 11px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;

@@ -64,15 +64,16 @@ test.describe("Keyboard shortcuts", () => {
     const palette = page.locator(".palette");
     await expect(palette).toBeVisible();
 
-    await expect(palette.locator(".palette-item--selected")).toBeVisible();
-    const firstText = await palette.locator(".palette-item--selected .palette-item-title").textContent();
+    const selected = palette.locator(".palette-item--selected .palette-item-title");
+    await expect(selected).toBeVisible();
+    const firstText = (await selected.textContent()) ?? "";
 
+    // Auto-retrying assertions: the selection moves on the next render, not
+    // synchronously with the key press.
     await page.keyboard.press("ArrowDown");
-    const secondText = await palette.locator(".palette-item--selected .palette-item-title").textContent();
-    expect(firstText).not.toEqual(secondText);
+    await expect(selected).not.toHaveText(firstText);
 
     await page.keyboard.press("ArrowUp");
-    const backText = await palette.locator(".palette-item--selected .palette-item-title").textContent();
-    expect(backText).toEqual(firstText);
+    await expect(selected).toHaveText(firstText);
   });
 });

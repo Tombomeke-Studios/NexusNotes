@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -18,6 +19,11 @@ const (
 	maxLinkedRedirects = 3
 	// linkedFetchTimeout bounds a whole proxied fetch, redirects included.
 	linkedFetchTimeout = 15 * time.Second
+	// maxLinkedFetchesPerUser and maxLinkedFetches cap concurrent proxied
+	// fetches, so one user cannot tie up the server's outbound connections
+	// (each fetch may run for linkedFetchTimeout) (#337).
+	maxLinkedFetchesPerUser = 2
+	maxLinkedFetches        = 16
 )
 
 var (
@@ -44,6 +50,13 @@ var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("2002::/16"),      // 6to4: embeds an IPv4 address
 	netip.MustParsePrefix("2001::/32"),      // Teredo: embeds an IPv4 address
 	netip.MustParsePrefix("::/96"),          // deprecated IPv4-compatible
+	// Reviewed in #337:
+	netip.MustParsePrefix("192.0.2.0/24"),    // TEST-NET-1 (documentation)
+	netip.MustParsePrefix("198.51.100.0/24"), // TEST-NET-2 (documentation)
+	netip.MustParsePrefix("203.0.113.0/24"),  // TEST-NET-3 (documentation)
+	netip.MustParsePrefix("192.88.99.0/24"),  // deprecated 6to4 relay anycast
+	netip.MustParsePrefix("3fff::/20"),       // documentation (RFC 9637)
+	netip.MustParsePrefix("::ffff:0:0:0/96"), // IPv4-translated (SIIT): embeds an IPv4 address
 }
 
 // isPublicAddr reports whether a is a globally routable unicast address that
@@ -54,7 +67,9 @@ func isPublicAddr(a netip.Addr) bool {
 	if !a.IsValid() {
 		return false
 	}
-	// Judge IPv4-mapped IPv6 (::ffff:a.b.c.d) by the IPv4 address it maps to.
+	// Judge IPv4-mapped IPv6 (::ffff:a.b.c.d) by the IPv4 address it maps to,
+	// so a mapped public address stays reachable and a mapped private one is
+	// refused like its IPv4 form (#337).
 	a = a.Unmap()
 	if a.IsLoopback() || a.IsPrivate() || a.IsLinkLocalUnicast() ||
 		a.IsLinkLocalMulticast() || a.IsInterfaceLocalMulticast() ||
@@ -131,4 +146,49 @@ func readLinkedBody(resp *http.Response) ([]byte, error) {
 		return nil, errSourceTooLarge
 	}
 	return body, nil
+}
+
+// fetchLimiter caps concurrent linked-file fetches per user and overall.
+// It never blocks: a fetch over either cap is refused (429), so waiting
+// requests cannot pile up behind slow sources (#337).
+type fetchLimiter struct {
+	mu      sync.Mutex
+	perUser int
+	total   int
+	active  int
+	byUser  map[string]int
+}
+
+func newFetchLimiter(perUser, total int) *fetchLimiter {
+	return &fetchLimiter{perUser: perUser, total: total, byUser: map[string]int{}}
+}
+
+// acquire admits a fetch for userID, returning a release func (safe to call
+// more than once), or false when a cap is reached.
+func (l *fetchLimiter) acquire(userID string) (func(), bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.active >= l.total || l.byUser[userID] >= l.perUser {
+		return nil, false
+	}
+	l.active++
+	l.byUser[userID]++
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			l.active--
+			if l.byUser[userID]--; l.byUser[userID] <= 0 {
+				delete(l.byUser, userID)
+			}
+		})
+	}, true
+}
+
+// inFlight reports how many fetches userID has running (for tests).
+func (l *fetchLimiter) inFlight(userID string) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.byUser[userID]
 }

@@ -49,6 +49,35 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## `feature/encryption-at-rest` - Server-side encryption at rest (#352)
+
+> User data must not be readable from the database. Field-level AES-256-GCM with a
+> server-held data key, on top of mandatory E2EE (`feature/e2ee-mandatory`).
+
+- [ ] Add field-level encryption with a required server data key (#353)
+- [ ] Encrypt note content and note versions at rest (#354)
+- [ ] Encrypt vault names, linked files, annotations, display names and device names at rest (#355)
+- [ ] Encrypt email addresses at rest with a blind index for lookups (#356)
+- [ ] Encrypt existing rows on startup (backfill) (#357)
+- [ ] Encrypt attachment files at rest in object storage (#358)
+
+---
+
+## `feature/e2ee-mandatory` - Mandatory end-to-end encryption (#359)
+
+> Every vault is end-to-end encrypted, metadata included: the server only ever holds
+> ciphertext of user content. Supersedes the opt-in decision (#349).
+
+- [ ] Create every new vault end-to-end encrypted (#360)
+- [ ] Encrypt attachment bytes on the client before upload (#238)
+- [ ] Migrate existing standard vaults to end-to-end encryption (#361)
+- [ ] Encrypt note titles, folder paths, tags and aliases on the client (#362)
+- [ ] Share end-to-end encrypted vaults with per-user key exchange (#363)
+- [ ] End-to-end encrypt linked files and their annotations (#364)
+- [ ] Stop indexing note content in Meilisearch (#365)
+
+---
+
 ## `feature/backend-scalability` - Backend scalability (#265)
 
 > Complements `feature/db-performance` (#220).

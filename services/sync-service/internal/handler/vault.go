@@ -167,6 +167,10 @@ func (h *VaultHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.vaultRepo.Update(r.Context(), vault); err != nil {
+		if errors.Is(err, repository.ErrVaultNotFound) {
+			writeError(w, http.StatusNotFound, "vault not found")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, "failed to update vault")
 		return
 	}

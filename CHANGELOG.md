@@ -38,6 +38,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- The command palette keeps the highlighted note when the list re-sorts while it is open,
+  so Enter opens the note you picked.
 - Clicking the search bar at the top no longer slides it to the right.
 - Typing three or more dashes in the editor no longer makes them invisible.
 - Closing a note's tab while the graph is open clears its highlight in the graph.

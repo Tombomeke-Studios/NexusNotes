@@ -2,6 +2,13 @@
 
 Base URL: `http://localhost:8080`
 
+## Not found versus failure
+
+`404` means the requested note, vault, attachment or link does not exist (or the
+caller may not know it does). When the server cannot look it up at all, for
+example because the database is unreachable, it answers `500` instead (#386):
+clients must not treat that as the thing being gone.
+
 ## Request size limits
 
 JSON request bodies are capped: 64 KiB on the authentication endpoints and 8 MiB on

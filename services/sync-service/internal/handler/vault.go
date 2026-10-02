@@ -133,7 +133,7 @@ func (h *VaultHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "vault not found")
+		writeLookupError(w, err, "vault not found")
 		return
 	}
 

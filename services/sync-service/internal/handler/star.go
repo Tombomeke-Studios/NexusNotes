@@ -41,7 +41,7 @@ func (h *StarHandler) requireOwnedNote(w http.ResponseWriter, r *http.Request) (
 
 	note, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "note not found")
+		writeLookupError(w, err, "note not found")
 		return "", false
 	}
 	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {

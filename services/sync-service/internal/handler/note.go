@@ -125,7 +125,7 @@ func (h *NoteHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	note, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "note not found")
+		writeLookupError(w, err, "note not found")
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	existing, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "note not found")
+		writeLookupError(w, err, "note not found")
 		return
 	}
 	if !canWrite(r.Context(), h.vaultRepo, existing.VaultID, userID) {
@@ -214,7 +214,11 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// would be a silent no-op in the database yet still drop the note from the
 	// search index and broadcast a deletion for it.
 	note, err := h.syncService.GetNote(r.Context(), noteID)
-	if err != nil || note.VaultID != vaultID {
+	if err != nil {
+		writeLookupError(w, err, "note not found")
+		return
+	}
+	if note.VaultID != vaultID {
 		writeError(w, http.StatusNotFound, "note not found")
 		return
 	}
@@ -246,7 +250,7 @@ func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
 	// access as the note itself.
 	note, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "note not found")
+		writeLookupError(w, err, "note not found")
 		return
 	}
 	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {
@@ -301,7 +305,7 @@ func (h *NoteHandler) Backlinks(w http.ResponseWriter, r *http.Request) {
 
 	note, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "note not found")
+		writeLookupError(w, err, "note not found")
 		return
 	}
 	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {

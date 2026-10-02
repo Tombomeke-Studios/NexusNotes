@@ -77,6 +77,9 @@ func (r *VaultRepo) GetByID(ctx context.Context, id string) (*model.Vault, error
 		 FROM vaults WHERE id = $1`,
 		id,
 	).Scan(&v.ID, &v.UserID, &v.Name, &v.Encryption, &meta, &v.CreatedAt, &v.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrVaultNotFound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get vault: %w", err)
 	}
@@ -98,6 +101,9 @@ func (r *VaultRepo) GetByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model
 		 FROM vaults WHERE id = $1`,
 		id,
 	).Scan(&v.ID, &v.UserID, &v.Name, &v.Encryption, &meta, &v.CreatedAt, &v.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrVaultNotFound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get vault: %w", err)
 	}

@@ -78,6 +78,9 @@ func (r *NoteRepo) GetByID(ctx context.Context, id string) (*model.Note, error) 
 		 FROM notes WHERE id = $1`,
 		id,
 	).Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNoteNotFound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get note: %w", err)
 	}

@@ -231,6 +231,13 @@ before that are served as they are and sealed by a background pass on startup, w
 also re-encrypts files after a key rotation; a file deleted or replaced while that
 pass runs is left alone.
 
+## Web UI Headers
+
+The web UI's nginx (`desktop/nginx.conf`) sends the same Content Security Policy
+as the desktop webview (#382), with `connect-src` limited to its own origin (the
+`/api` and `/ws` proxies), plus `frame-ancestors 'none'` against clickjacking,
+`X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
+
 ## Vault Sharing and Authorization
 
 Vaults can be shared with other users as viewer (read) or editor (read/write);

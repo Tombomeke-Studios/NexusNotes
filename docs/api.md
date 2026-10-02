@@ -342,7 +342,9 @@ Attachments are stored in S3-compatible object storage (MinIO); endpoints return
 
 ### POST /api/notes/:noteId/attachments
 
-Multipart upload (field `file`, max 25 MiB; anything larger is cut off with `413`) → the created `Attachment`. Write access required. `422` for a note in an end-to-end encrypted vault: attachment files are not encrypted yet, so these vaults do not accept them (the request body is not read).
+Multipart upload (field `file`, max 25 MiB; anything larger is cut off with `413`) → the created `Attachment`. Write access required.
+
+In an end-to-end encrypted vault the app encrypts the file on the device before upload (#238): the bytes are AES-GCM ciphertext and the file name is `e2ee.<base64url>.bin`, the encrypted original name and type. The server stores those as they are with `mime_type` `application/octet-stream`; an upload with any other name answers `422` (an app that would send plaintext). Clients decrypt the name, type and bytes after download.
 
 The client-declared `Content-Type` is not trusted. The stored `mime_type` is always one of this allowlist:
 

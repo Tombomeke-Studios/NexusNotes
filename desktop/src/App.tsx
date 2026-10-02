@@ -1650,6 +1650,7 @@ export default function App() {
               onPresenceChange={handleEditorPresence}
               initialText={editorContent}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
+              vault={activeVault}
             />
           )}
         </div>

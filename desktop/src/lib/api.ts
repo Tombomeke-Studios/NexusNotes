@@ -419,13 +419,17 @@ export const attachments = {
    * URL can never be an active document, even against an older server.
    */
   async objectUrl(id: string): Promise<string> {
+    const bytes = await attachments.bytes(id);
+    return URL.createObjectURL(new Blob([bytes], { type: safeBlobType(bytes.type) }));
+  },
+  /** The stored bytes as they are (ciphertext for e2ee vaults). */
+  async bytes(id: string): Promise<Blob> {
     const token = getToken();
     const res = await fetch(`${API_BASE}/api/attachments/${id}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) throw new ApiError(res.status, "Failed to load attachment");
-    const bytes = await res.blob();
-    return URL.createObjectURL(new Blob([bytes], { type: safeBlobType(bytes.type) }));
+    return res.blob();
   },
 };
 

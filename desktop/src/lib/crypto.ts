@@ -115,6 +115,21 @@ export async function decryptNote(payload: string, vaultKey: Uint8Array): Promis
   return new TextDecoder().decode(await aesDecrypt(iv, data, vaultKey));
 }
 
+/** Encrypts raw bytes (attachment files): IV (12 bytes) followed by ciphertext+tag. */
+export async function encryptBytes(plaintext: Uint8Array, vaultKey: Uint8Array): Promise<Uint8Array> {
+  const { iv, data } = await aesEncrypt(plaintext, vaultKey);
+  const out = new Uint8Array(iv.length + data.length);
+  out.set(iv);
+  out.set(data, iv.length);
+  return out;
+}
+
+/** Decrypts bytes from encryptBytes; throws on tampering or a wrong key. */
+export async function decryptBytes(payload: Uint8Array, vaultKey: Uint8Array): Promise<Uint8Array> {
+  if (payload.length < 12 + 16) throw new Error("malformed encrypted bytes");
+  return aesDecrypt(payload.slice(0, 12), payload.slice(12), vaultKey);
+}
+
 /** SHA-256 hex of the plaintext, computed before encryption (conflict detection). */
 export async function plaintextChecksum(plaintext: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(plaintext));

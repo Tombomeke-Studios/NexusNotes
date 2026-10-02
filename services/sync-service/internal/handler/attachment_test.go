@@ -134,21 +134,33 @@ func TestUpload_BodyUnderTheCapIsParsedNormally(t *testing.T) {
 	}
 }
 
-// Attachments are not encrypted yet (#238), so an end-to-end encrypted vault
-// must refuse them rather than store plaintext files on the server — and do so
-// before reading the upload.
-func TestUpload_RefusedForAnEndToEndEncryptedVault(t *testing.T) {
+// In an e2ee vault the app encrypts files on the device and sends them under
+// an opaque "e2ee.<...>.bin" name (#238). An upload with a readable name there
+// comes from an app that would store plaintext, so it is refused.
+func TestUpload_EndToEndEncryptedVaultNeedsAnEncryptedFile(t *testing.T) {
 	h := newUploadTestHandler()
 	h.vaults = fakeVaults{encryption: model.VaultEncryptionE2EE}
-	req, body := uploadRequest(t, "file", 1<<20)
+	req, _ := uploadRequest(t, "file", 1024) // file name "big.bin"
 	rec := httptest.NewRecorder()
 
 	h.Upload(rec, req)
 
 	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status = %d, want 422 for an e2ee vault", rec.Code)
+		t.Fatalf("status = %d, want 422 for a readable file in an e2ee vault", rec.Code)
 	}
-	if n := body.n.Load(); n > 0 {
-		t.Fatalf("the handler read %d bytes of a refused upload", n)
+}
+
+func TestIsEncryptedUploadName(t *testing.T) {
+	for name, want := range map[string]bool{
+		"e2ee.AbC-_123.bin": true,
+		"e2ee..bin":         false,
+		"photo.png":         false,
+		"e2ee.abc.png":      false,
+		"x.e2ee.abc.bin":    false,
+		"e2ee.ab/c.bin":     false,
+	} {
+		if got := isEncryptedUploadName(name); got != want {
+			t.Errorf("isEncryptedUploadName(%q) = %v, want %v", name, got, want)
+		}
 	}
 }

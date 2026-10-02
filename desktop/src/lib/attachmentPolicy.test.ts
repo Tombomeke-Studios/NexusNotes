@@ -6,8 +6,8 @@ describe("attachmentBlockReason", () => {
     expect(attachmentBlockReason({ encryption: "none" })).toBeNull();
   });
 
-  it("blocks attachments in an end-to-end encrypted vault (files are not encrypted yet)", () => {
-    expect(attachmentBlockReason({ encryption: "e2ee" })).toMatch(/end-to-end encrypted/);
+  it("allows attachments in an end-to-end encrypted vault (encrypted on the device, #238)", () => {
+    expect(attachmentBlockReason({ encryption: "e2ee" })).toBeNull();
   });
 
   it("fails closed while the vault is unknown", () => {

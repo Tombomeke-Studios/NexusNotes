@@ -126,6 +126,11 @@
   color: var(--text-primary);
   caret-color: var(--accent);
   font-family: var(--font-mono);
+  /* Raw markdown must show every character as typed: coding-font ligatures
+     merge runs like `---`, `->` or `==` into one glyph, and in the textarea
+     a run of 3+ dashes rendered as blank space. */
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
   line-height: 1.75;
   padding: 24px 28px;
   outline: none;

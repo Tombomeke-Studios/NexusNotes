@@ -111,6 +111,46 @@ func (r *NoteRepo) ListByVault(ctx context.Context, vaultID string) ([]model.Not
 	return notes, nil
 }
 
+// ForEach calls fn with every note of every vault, decrypted, in batches of
+// up to batchSize ordered by id (used to rebuild the search index, #365).
+func (r *NoteRepo) ForEach(ctx context.Context, batchSize int, fn func([]model.Note) error) error {
+	after := ""
+	for {
+		rows, err := r.pool.Query(ctx,
+			`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
+			 FROM notes WHERE id > $1 ORDER BY id LIMIT $2`,
+			after, batchSize,
+		)
+		if err != nil {
+			return fmt.Errorf("list notes: %w", err)
+		}
+		var batch []model.Note
+		for rows.Next() {
+			var n model.Note
+			if err := rows.Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt); err != nil {
+				rows.Close()
+				return fmt.Errorf("scan note: %w", err)
+			}
+			if err := r.open(fieldNoteContent, &n.Content); err != nil {
+				rows.Close()
+				return err
+			}
+			batch = append(batch, n)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("list notes: %w", err)
+		}
+		if len(batch) == 0 {
+			return nil
+		}
+		if err := fn(batch); err != nil {
+			return err
+		}
+		after = batch[len(batch)-1].ID
+	}
+}
+
 func (r *NoteRepo) Update(ctx context.Context, note *model.Note) error {
 	content, err := r.seal(fieldNoteContent, note.Content)
 	if err != nil {

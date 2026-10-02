@@ -153,7 +153,9 @@ ignored.
 3. Meilisearch indexes title, content, tags, and path; skips content for encrypted vaults
 4. Client sends `GET /search?q=&vault=&tag=&date_from=&date_to=` to the Sync Service
 5. Sync Service proxies to Meilisearch and returns ranked results with context snippets
-6. Without Meilisearch the Sync Service falls back to its own search: titles, tags and
+6. The index is derived data: when the Sync Service starts with an empty index it
+   rebuilds it from the database in the background (#365)
+7. Without Meilisearch the Sync Service falls back to its own search: titles, tags and
    aliases are matched in PostgreSQL, note content after decrypting it in the service
    (content is encrypted at rest, so the database cannot match it)
 
@@ -184,7 +186,9 @@ sequenceDiagram
 3. Meilisearch indexes title, content, tags, and path; skips content for encrypted vaults
 4. Client sends `GET /search?q=&vault=&tag=&date_from=&date_to=` to the Sync Service
 5. Sync Service proxies to Meilisearch and returns ranked results with context snippets
-6. Without Meilisearch the Sync Service falls back to its own search: titles, tags and
+6. The index is derived data: when the Sync Service starts with an empty index it
+   rebuilds it from the database in the background (#365)
+7. Without Meilisearch the Sync Service falls back to its own search: titles, tags and
    aliases are matched in PostgreSQL, note content after decrypting it in the service
    (content is encrypted at rest, so the database cannot match it)
 

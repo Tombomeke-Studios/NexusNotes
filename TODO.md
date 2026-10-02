@@ -61,7 +61,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Encrypt existing rows on startup (backfill) (#357)
 - [x] Encrypt attachment files at rest in object storage (#358)
 - [x] Serialise concurrent migration runs (fresh-database CI race) (#368)
-- [ ] Keep note content in the search index encrypted at rest (#365)
+- [x] Keep note content in the search index encrypted at rest: encrypted volume, out of backups, rebuilt on startup (#365)
 
 ---
 

@@ -106,8 +106,52 @@ func (idx *Indexer) deleteByVaults(ctx context.Context, vaultIDs []string) error
 	return nil
 }
 
+// IndexDocs upserts a batch of documents in one request and waits for
+// Meilisearch to accept it (used to rebuild the index, #365).
+func (idx *Indexer) IndexDocs(ctx context.Context, docs []NoteDoc) error {
+	if len(docs) == 0 {
+		return nil
+	}
+	return idx.upsertDocs(ctx, docs)
+}
+
+// DocumentCount returns how many documents the notes index holds; a missing
+// index counts as empty.
+func (idx *Indexer) DocumentCount(ctx context.Context) (int, error) {
+	url := fmt.Sprintf("%s/indexes/%s/stats", idx.baseURL, indexName)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return 0, fmt.Errorf("build request: %w", err)
+	}
+	if idx.masterKey != "" {
+		req.Header.Set("Authorization", "Bearer "+idx.masterKey)
+	}
+	resp, err := idx.httpClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("http: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotFound {
+		return 0, nil
+	}
+	if resp.StatusCode >= 300 {
+		return 0, fmt.Errorf("meilisearch responded %d", resp.StatusCode)
+	}
+	var stats struct {
+		NumberOfDocuments int `json:"numberOfDocuments"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		return 0, fmt.Errorf("decode stats: %w", err)
+	}
+	return stats.NumberOfDocuments, nil
+}
+
 func (idx *Indexer) upsertDoc(ctx context.Context, doc NoteDoc) error {
-	body, err := json.Marshal([]NoteDoc{doc})
+	return idx.upsertDocs(ctx, []NoteDoc{doc})
+}
+
+func (idx *Indexer) upsertDocs(ctx context.Context, docs []NoteDoc) error {
+	body, err := json.Marshal(docs)
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}

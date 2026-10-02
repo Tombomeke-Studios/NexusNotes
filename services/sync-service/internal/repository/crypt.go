@@ -18,6 +18,7 @@ const (
 	fieldLinkedFileSource = "linked_files.source_ref"
 	fieldAnnotation       = "linked_file_annotations.content"
 	fieldUserDisplayName  = "users.display_name"
+	fieldUserEmail        = "users.email"
 	fieldDeviceName       = "devices.name"
 )
 

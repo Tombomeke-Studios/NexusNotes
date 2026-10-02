@@ -135,6 +135,15 @@ func TestBlindIndex(t *testing.T) {
 	}
 }
 
+func TestBlindIndexesCoverOldKeys(t *testing.T) {
+	old := mustNew(t, keyA).BlindIndex("users.email", "a@example.com")
+	rotated := mustNew(t, keyB, keyA)
+	all := rotated.BlindIndexes("users.email", "a@example.com")
+	if len(all) != 2 || all[0] != rotated.BlindIndex("users.email", "a@example.com") || all[1] != old {
+		t.Fatalf("BlindIndexes = %v, want [current, old]", all)
+	}
+}
+
 func TestNewValidatesKeys(t *testing.T) {
 	bad := []string{"", "short", strings.Repeat("z", 64), keyA[:62], keyA + "00"}
 	for _, k := range bad {

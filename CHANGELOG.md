@@ -53,7 +53,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   the packaged app creates one per install. Back it up: data encrypted under a lost key
   cannot be recovered.
 - Note content and its version history are stored encrypted in the database, as are
-  vault names, linked files and their annotations, display names and device names.
+  vault names, linked files and their annotations, display names, device names and email
+  addresses. Signing in no longer depends on the case of the email address.
 - The packaged app's backend no longer signs sessions with the shared `dev-secret`: each
   installation generates its own random JWT secret on first run and keeps it in the app's
   local data directory. After upgrading, the first request renews your session through

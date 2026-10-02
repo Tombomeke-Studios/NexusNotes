@@ -51,7 +51,8 @@ function walkNode(node: MdastNode): void {
   for (const child of node.children) {
     TAG_RE.lastIndex = 0;
     if (child.type === "text" && "value" in child && TAG_RE.test((child as TextNode).value)) {
-      newChildren.push(...expandText((child as TextNode).value));
+      // A loop, not push(...): a spread overflows the call stack on huge text (#376).
+      for (const n of expandText((child as TextNode).value)) newChildren.push(n);
     } else {
       walkNode(child);
       newChildren.push(child);

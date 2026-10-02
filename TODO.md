@@ -102,7 +102,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed
 - [ ] E2E: replace `waitForTimeout` waits with real signals
 - [x] Settings: show the app and server versions instead of a hard-coded string (PR #255)
-- [ ] Remark plugins: replace `push(...expand())` spreads with loops (overflow on pathological text nodes)
+- [x] Remark plugins: replace `push(...expand())` spreads with loops (overflow on pathological text nodes) (#376)
 - [ ] Attachment download chip: delay `revokeObjectURL` so WebKit downloads are not cancelled; verify in the packaged app
 - [ ] Two windows refreshing at once trip refresh-token reuse detection; add a cross-window lock or a short grace period
 

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
@@ -56,4 +58,24 @@ func writeBodyError(w http.ResponseWriter, err error, badRequestMessage string) 
 		return
 	}
 	writeError(w, http.StatusBadRequest, badRequestMessage)
+}
+
+// isNotFound reports whether err means the requested thing does not exist.
+func isNotFound(err error) bool {
+	return errors.Is(err, repository.ErrNoteNotFound) ||
+		errors.Is(err, repository.ErrVaultNotFound) ||
+		errors.Is(err, repository.ErrAttachmentNotFound) ||
+		errors.Is(err, repository.ErrLinkedFileNotFound) ||
+		errors.Is(err, repository.ErrUserNotFound)
+}
+
+// writeLookupError answers 404 only when err says the thing does not exist
+// and 500 for anything else, so a database outage never looks like missing
+// data that clients would act on (#386).
+func writeLookupError(w http.ResponseWriter, err error, notFound string) {
+	if isNotFound(err) {
+		writeError(w, http.StatusNotFound, notFound)
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "lookup failed")
 }

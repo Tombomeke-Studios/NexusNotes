@@ -66,7 +66,7 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	note, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "note not found")
+		writeLookupError(w, err, "note not found")
 		return
 	}
 	if !canWrite(r.Context(), h.vaultRepo, note.VaultID, userID) {
@@ -155,7 +155,7 @@ func (h *AttachmentHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	note, err := h.syncService.GetNote(r.Context(), noteID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "note not found")
+		writeLookupError(w, err, "note not found")
 		return
 	}
 	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {
@@ -189,7 +189,7 @@ func (h *AttachmentHandler) Download(w http.ResponseWriter, r *http.Request) {
 
 	att, err := h.attachRepo.GetByID(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "attachment not found")
+		writeLookupError(w, err, "attachment not found")
 		return
 	}
 	if !canRead(r.Context(), h.vaultRepo, att.VaultID, userID) {
@@ -219,7 +219,7 @@ func (h *AttachmentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	att, err := h.attachRepo.GetByID(r.Context(), id)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "attachment not found")
+		writeLookupError(w, err, "attachment not found")
 		return
 	}
 	if !canWrite(r.Context(), h.vaultRepo, att.VaultID, userID) {

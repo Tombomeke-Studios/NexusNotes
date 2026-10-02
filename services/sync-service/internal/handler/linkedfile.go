@@ -117,7 +117,7 @@ func (h *LinkedFileHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.Delete(r.Context(), linkID, vaultID); err != nil {
-		writeError(w, http.StatusNotFound, "link not found")
+		writeLookupError(w, err, "link not found")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -128,7 +128,7 @@ func (h *LinkedFileHandler) linkedAccess(w http.ResponseWriter, r *http.Request,
 	userID := middleware.GetUserID(r.Context())
 	lf, err := h.repo.GetByID(r.Context(), r.PathValue("linkId"))
 	if err != nil {
-		writeError(w, http.StatusNotFound, "link not found")
+		writeLookupError(w, err, "link not found")
 		return nil, false
 	}
 	ok := write && canWrite(r.Context(), h.vaultRepo, lf.VaultID, userID) ||

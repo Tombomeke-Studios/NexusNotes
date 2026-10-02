@@ -88,7 +88,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Indexing worker queue with retry and shutdown drain; one shared helper
 - [ ] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit
 - [x] Rate limiter: periodic purge and trusted-proxy client IP (#373)
-- [ ] Distinguish not-found from database errors in handlers
+- [x] Distinguish not-found from database errors in handlers (#386)
 - [x] Search fallback: honour `tag` when `q` is set and do not return unfiltered notes when both are empty (#385)
 - [x] Vault update: answer 404 when no row matched instead of 200 (delete done in #290) (#384)
 - [x] Test the `/api/auth/me` failure path (500 vs 404) (#374)

@@ -29,6 +29,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- Clicking the search bar at the top no longer slides it to the right.
+- Typing three or more dashes in the editor no longer makes them invisible.
+- Closing a note's tab while the graph is open clears its highlight in the graph.
+- Long tag names are cut off instead of pushing their count out of the sidebar, and a
+  long tag list scrolls instead of squeezing the file tree.
 - Attachments now work in the packaged app and with the dev scripts: MinIO is started with
   the databases, the backend waits for it and receives its settings, and uploaded files live
   in a Docker volume instead of the container filesystem. Files uploaded to the dev MinIO

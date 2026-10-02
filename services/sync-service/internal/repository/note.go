@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -109,6 +110,71 @@ func (r *NoteRepo) ListByVault(ctx context.Context, vaultID string) ([]model.Not
 		notes = append(notes, n)
 	}
 	return notes, nil
+}
+
+// ChecksumsForUpdateTx returns every note of the vault (id -> checksum),
+// row-locking them until tx ends so none can be saved meanwhile (#361).
+func (r *NoteRepo) ChecksumsForUpdateTx(ctx context.Context, tx pgx.Tx, vaultID string) (map[string]string, error) {
+	rows, err := tx.Query(ctx, `SELECT id, checksum FROM notes WHERE vault_id = $1 FOR NO KEY UPDATE`, vaultID)
+	if err != nil {
+		return nil, fmt.Errorf("lock vault notes: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, sum string
+		if err := rows.Scan(&id, &sum); err != nil {
+			return nil, fmt.Errorf("scan note checksum: %w", err)
+		}
+		out[id] = sum
+	}
+	return out, rows.Err()
+}
+
+// VaultHasAttachmentsTx reports whether any note of the vault has a file.
+func (r *NoteRepo) VaultHasAttachmentsTx(ctx context.Context, tx pgx.Tx, vaultID string) (bool, error) {
+	var has bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM attachments WHERE vault_id = $1)`, vaultID).Scan(&has); err != nil {
+		return false, fmt.Errorf("check attachments: %w", err)
+	}
+	return has, nil
+}
+
+// ReplaceContentTx overwrites a note's content and checksum (the e2ee
+// conversion swaps plaintext for client ciphertext, #361).
+func (r *NoteRepo) ReplaceContentTx(ctx context.Context, tx pgx.Tx, id, vaultID, content, checksum string, at time.Time) error {
+	sealed, err := r.seal(fieldNoteContent, content)
+	if err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx,
+		`UPDATE notes SET content = $3, checksum = $4, updated_at = $5 WHERE id = $1 AND vault_id = $2`,
+		id, vaultID, sealed, checksum, at,
+	)
+	if err != nil {
+		return fmt.Errorf("replace note content: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNoteNotFound
+	}
+	return nil
+}
+
+// DropPlaintextDerivativesTx deletes what the server derived from a vault's
+// plaintext: stored versions, tags, aliases and links. An e2ee vault must
+// keep none of it (#361).
+func (r *NoteRepo) DropPlaintextDerivativesTx(ctx context.Context, tx pgx.Tx, vaultID string) error {
+	for _, q := range []string{
+		`DELETE FROM note_versions WHERE note_id IN (SELECT id FROM notes WHERE vault_id = $1)`,
+		`DELETE FROM note_tags WHERE note_id IN (SELECT id FROM notes WHERE vault_id = $1)`,
+		`DELETE FROM note_aliases WHERE note_id IN (SELECT id FROM notes WHERE vault_id = $1)`,
+		`DELETE FROM note_links WHERE vault_id = $1`,
+	} {
+		if _, err := tx.Exec(ctx, q, vaultID); err != nil {
+			return fmt.Errorf("drop plaintext derivatives: %w", err)
+		}
+	}
+	return nil
 }
 
 // ForEach calls fn with every note of every vault, decrypted, in batches of

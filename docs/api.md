@@ -166,6 +166,33 @@ change / recovery-key rotation re-wraps the Vault Key client-side). Body:
 `{ "encryption_meta": { ... } }`. Returns `204`; `404` when the vault does
 not exist, is not owned by the caller, or is not encrypted.
 
+### POST /api/vaults/:id/encryption/convert
+
+Turns the caller's standard vault into an end-to-end encrypted one (#361). The
+client generates the vault key, encrypts every note and sends them all at once:
+
+```json
+{
+  "encryption_meta": { ... },
+  "notes": [
+    { "id": "...", "content": "<ciphertext>", "checksum": "<plaintext sha-256>", "base_checksum": "<checksum the note was read at>" }
+  ]
+}
+```
+
+In one transaction the server checks it received exactly the vault's current
+notes, stores the ciphertext, deletes stored versions, tags, aliases and links
+(plaintext the server no longer may hold) and switches the vault to `e2ee`;
+search documents keep only titles and paths. Response (200): the `Vault`. The
+owner's and members' devices get a `vault:encrypted` WebSocket message
+(`{ "vault_id": "..." }`) and must reload the vault, which is now locked.
+
+Errors: `404` when the vault does not exist or the caller is not its owner;
+`409` when a note was added, removed or changed since the client read it (read
+again and retry); `422` when the vault is already e2ee or has attachments
+(attachments cannot be end-to-end encrypted yet); `400` without
+`encryption_meta`. The body may be up to 64 MiB.
+
 ### GET /api/vaults/:id
 
 Response (200): `Vault`, including the caller's `role`. `404` when the vault

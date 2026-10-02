@@ -205,6 +205,8 @@ func main() {
 	protectedMux.HandleFunc("GET /api/vaults/{id}", vaultHandler.Get)
 	protectedMux.HandleFunc("PUT /api/vaults/{id}", vaultHandler.Update)
 	protectedMux.HandleFunc("PUT /api/vaults/{id}/encryption", vaultHandler.UpdateEncryption)
+	// Converting a standard vault to e2ee uploads every note at once (#361).
+	protectedMux.Handle("POST /api/vaults/{id}/encryption/convert", longTransfer(http.HandlerFunc(noteHandler.ConvertVault)))
 	protectedMux.HandleFunc("DELETE /api/vaults/{id}", vaultHandler.Delete)
 	protectedMux.HandleFunc("GET /api/vaults/{id}/members", memberHandler.List)
 	protectedMux.HandleFunc("POST /api/vaults/{id}/members", memberHandler.Invite)

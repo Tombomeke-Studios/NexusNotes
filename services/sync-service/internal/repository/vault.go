@@ -139,6 +139,42 @@ func (r *VaultRepo) ListByUser(ctx context.Context, userID string) ([]model.Vaul
 	return vaults, nil
 }
 
+// GetForUpdateTx reads a vault inside tx and row-locks it until the
+// transaction ends (used while converting it to e2ee, #361).
+func (r *VaultRepo) GetForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*model.Vault, error) {
+	var v model.Vault
+	var meta []byte
+	err := tx.QueryRow(ctx,
+		`SELECT id, user_id, name, encryption, encryption_meta, created_at, updated_at
+		 FROM vaults WHERE id = $1 FOR UPDATE`,
+		id,
+	).Scan(&v.ID, &v.UserID, &v.Name, &v.Encryption, &meta, &v.CreatedAt, &v.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrVaultNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get vault for update: %w", err)
+	}
+	if err := r.open(fieldVaultName, &v.Name); err != nil {
+		return nil, err
+	}
+	v.EncryptionMeta = meta
+	return &v, nil
+}
+
+// SetE2EETx switches a vault to end-to-end encryption with the client's key
+// material (#361). The caller has already re-encrypted every note.
+func (r *VaultRepo) SetE2EETx(ctx context.Context, tx pgx.Tx, id string, meta []byte) error {
+	_, err := tx.Exec(ctx,
+		`UPDATE vaults SET encryption = $2, encryption_meta = $3, updated_at = now() WHERE id = $1`,
+		id, model.VaultEncryptionE2EE, meta,
+	)
+	if err != nil {
+		return fmt.Errorf("set vault e2ee: %w", err)
+	}
+	return nil
+}
+
 // UpdateEncryptionMeta replaces the opaque key-material blob of an e2ee vault
 // (passphrase change / recovery-key rotation re-wraps the Vault Key). Only the
 // owner may do this, and only for vaults that are already encrypted — the mode

@@ -103,7 +103,8 @@ test.describe("Save and close confirmation", () => {
     await closeActiveTab(page);
     await expect(page.locator(".confirm-dialog")).toBeVisible();
     page.on("request", onReq);
-    // Wait well past the 1s autosave debounce — no save may fire while paused.
+    // Deliberately a fixed wait: this proves something does NOT happen, waiting
+    // well past the 1s autosave debounce — no save may fire while paused.
     await page.waitForTimeout(1600);
     page.off("request", onReq);
     expect(putsWhileOpen).toBe(0);

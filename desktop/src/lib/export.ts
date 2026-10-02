@@ -88,15 +88,26 @@ export function vaultToZip(notes: Note[], now?: Date): Uint8Array {
   return buildZip(vaultToZipEntries(notes), now);
 }
 
-/** Triggers a browser download of the given content. */
-export function downloadFile(filename: string, mime: string, data: string | Uint8Array): void {
-  const blob = new Blob([data as BlobPart], { type: mime });
-  const url = URL.createObjectURL(blob);
+/** How long a download's object URL stays valid after the click. */
+export const DOWNLOAD_URL_LIFETIME_MS = 60_000;
+
+/**
+ * Saves an object URL as a file. The URL is revoked a minute later, not right
+ * away: WebKit (the macOS/Linux webview) starts the download asynchronously
+ * and cancels it when the URL is already gone (#392).
+ */
+export function startDownload(url: string, filename: string): void {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_LIFETIME_MS);
+}
+
+/** Triggers a browser download of the given content. */
+export function downloadFile(filename: string, mime: string, data: string | Uint8Array | Blob): void {
+  const blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: mime });
+  startDownload(URL.createObjectURL(blob), filename);
 }
 
 /**

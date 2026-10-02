@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { startDownload } from "../../lib/export";
 import { isInlineImageType } from "../../lib/api";
 import { attachmentObjectUrl } from "../../lib/attachmentClient";
 import type { Attachment } from "../../lib/api";
@@ -71,11 +72,7 @@ function AttachmentFileLink({ attachment }: { attachment: Attachment }) {
     setBusy(true);
     try {
       const url = await attachmentObjectUrl(attachment);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = attachment.filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      startDownload(url, attachment.filename);
     } catch {
       /* leave the link in place so the user can retry */
     } finally {

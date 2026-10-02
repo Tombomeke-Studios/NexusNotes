@@ -64,6 +64,7 @@ describe("AttachmentImage", () => {
   });
 
   it("downloads the file when the link is clicked", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     render(<AttachmentImage name="evil.svg" alt="" list={[att("evil.svg", "application/octet-stream")]} />);
 
@@ -74,7 +75,12 @@ describe("AttachmentImage", () => {
     expect(anchor.getAttribute("href")).toBe("blob:app/1");
     expect(anchor.download).toBe("evil.svg");
     expect(objectUrl).toHaveBeenCalledWith("id-evil.svg");
+    // WebKit starts the download asynchronously and cancels it if the URL is
+    // already revoked, so the URL lives on for a while (#392).
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(60_000);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:app/1");
+    vi.useRealTimers();
   });
 
   it("falls back to the download link when the image cannot be decoded", async () => {

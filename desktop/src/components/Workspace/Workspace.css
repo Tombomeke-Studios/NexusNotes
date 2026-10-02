@@ -72,7 +72,9 @@
 .topbar-search {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
+  /* `translate`, not `transform`: the global button:active press scale sets
+     `transform` and would otherwise drop the centring, throwing the bar right. */
+  translate: -50% 0;
   top: 7px;
   height: 26px;
   width: 340px;

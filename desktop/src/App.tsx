@@ -554,7 +554,12 @@ export default function App() {
     }
   }, []);
 
-  const handleCreateNoteWithTitle = useCallback(async (title: string) => {
+  // True while a new note is being created: the open note is read-only until
+  // the new one replaces it, so typing meant for the new note cannot land in
+  // the previous one (#403).
+  const [creatingNote, setCreatingNote] = useState(false);
+
+  const createNoteWithTitle = useCallback(async (title: string) => {
     // A new note is a selection too: one still loading gives way to it.
     const selection = ++selectionSeq.current;
     // Read from the ref: a shortcut can fire before the keyboard handler of
@@ -583,6 +588,15 @@ export default function App() {
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
   }, [encryptOutgoing, flushPendingSave]);
+
+  const handleCreateNoteWithTitle = useCallback(async (title: string) => {
+    setCreatingNote(true);
+    try {
+      await createNoteWithTitle(title);
+    } finally {
+      setCreatingNote(false);
+    }
+  }, [createNoteWithTitle]);
 
   const handleCreateNote = useCallback(
     () => handleCreateNoteWithTitle("Untitled"),
@@ -1668,6 +1682,7 @@ export default function App() {
               initialText={editorContent}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
               vault={activeVault}
+              readOnly={creatingNote}
             />
           )}
         </div>

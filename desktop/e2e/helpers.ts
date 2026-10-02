@@ -118,9 +118,15 @@ export async function createVault(page: Page, name?: string, opts: { keepSeed?: 
 /** Creates a note via Ctrl+N and sets its title, returning the title. */
 export async function createNote(page: Page, title?: string) {
   const noteTitle = title ?? `Note-${uid()}`;
+  // Wait for the new note's own tab: until then the previous note is still on
+  // screen (read-only while the new one is created, #403).
+  const tabs = page.locator(".tabbar .tab");
+  const before = await tabs.count();
   await page.keyboard.press("Control+n");
+  await expect(tabs).toHaveCount(before + 1);
   const titleInput = page.locator(".editor-title-input").first();
   await expect(titleInput).toBeVisible();
+  await expect(titleInput).not.toHaveAttribute("readonly", "");
   await titleInput.click({ clickCount: 3 });
   await titleInput.fill(noteTitle);
   await titleInput.press("Tab");

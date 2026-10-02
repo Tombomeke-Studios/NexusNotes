@@ -46,6 +46,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   on the server itself.
 - Search no longer silently misses a note when Meilisearch hiccups: index updates are
   queued, retried, and finished before the server shuts down.
+- Typing right after Ctrl+N no longer edits the previous note while the new one is being
+  created.
 - The command palette keeps the highlighted note when the list re-sorts while it is open,
   so Enter opens the note you picked.
 - After a dropped connection (server restart, network blip) the app now catches up on

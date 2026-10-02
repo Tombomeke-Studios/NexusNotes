@@ -86,6 +86,11 @@ interface EditorProps {
   attachmentBlockReason?: string | null;
   /** The note's vault: files in an e2ee vault are encrypted on this device (#238). */
   vault?: { id: string; encryption?: "none" | "e2ee" } | null;
+  /**
+   * True while another note is being created (#403): the open note is about
+   * to be replaced, so what is typed now must not land in it.
+   */
+  readOnly?: boolean;
 }
 
 export interface ReplaceRequest {
@@ -125,6 +130,7 @@ export function Editor({
   initialText,
   attachmentBlockReason = null,
   vault = null,
+  readOnly = false,
 }: EditorProps) {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -515,6 +521,7 @@ export function Editor({
         <input
           className="editor-title-input"
           value={note.title}
+          readOnly={readOnly}
           onChange={(e) => onRename(e.target.value)}
           onBlur={(e) => onRenameCommit(e.target.value)}
           onKeyDown={(e) => {
@@ -558,6 +565,7 @@ export function Editor({
           <textarea
             ref={textareaRef}
             className="editor-textarea"
+            readOnly={readOnly}
             style={{
               fontSize,
               width: mode === "split" ? `${splitPct}%` : "100%",

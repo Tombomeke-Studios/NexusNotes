@@ -80,9 +80,22 @@ func main() {
 		SecretKey: cfg.MinIOSecretKey,
 		Bucket:    cfg.MinIOBucket,
 		UseSSL:    cfg.MinIOUseSSL,
-	})
+	}, crypt)
 	if err != nil {
 		slog.Warn("object storage unavailable; attachments disabled", "error", err)
+	}
+	if attachStore != nil {
+		// Seal files stored before encryption at rest (or under a retired key).
+		go func() {
+			n, err := attachStore.EncryptExisting(ctx)
+			if err != nil {
+				slog.Error("attachment encryption backfill", "error", err, "rewritten", n)
+				return
+			}
+			if n > 0 {
+				slog.Info("attachment encryption backfill done", "rewritten", n)
+			}
+		}()
 	}
 
 	indexer := search.NewIndexer(cfg.MeiliURL, cfg.MeiliMasterKey)

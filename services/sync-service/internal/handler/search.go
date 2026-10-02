@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -92,18 +93,19 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 // It returns an empty slice (never nil) so the JSON response is always an array.
 func (h *SearchHandler) fallbackSearch(r *http.Request, params search.SearchParams) []search.Hit {
 	hits := []search.Hit{}
-	if h.noteRepo == nil {
+	// An empty search is not "everything" (#385).
+	if h.noteRepo == nil || (params.Query == "" && params.Tag == "") {
 		return hits
 	}
-	query := params.Query
-	if query == "" {
-		query = params.Tag
-	}
-	results, err := h.noteRepo.Search(r.Context(), params.VaultID, query)
+	// An empty query matches every note; the tag filter below then narrows it.
+	results, err := h.noteRepo.Search(r.Context(), params.VaultID, params.Query)
 	if err != nil {
 		return hits
 	}
 	for _, res := range results {
+		if params.Tag != "" && !hasTag(res.Tags, params.Tag) {
+			continue
+		}
 		hits = append(hits, search.Hit{
 			ID:        res.ID,
 			VaultID:   res.VaultID,
@@ -115,4 +117,15 @@ func (h *SearchHandler) fallbackSearch(r *http.Request, params search.SearchPara
 		})
 	}
 	return hits
+}
+
+// hasTag reports whether tags contains tag (case-insensitive, like the
+// Meilisearch tag filter the fallback stands in for).
+func hasTag(tags []string, tag string) bool {
+	for _, t := range tags {
+		if strings.EqualFold(t, tag) {
+			return true
+		}
+	}
+	return false
 }

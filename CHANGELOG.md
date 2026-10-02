@@ -79,6 +79,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   the editor kept the old text and your next edit was saved over those changes.
 
 ### Security
+- The editor font is bundled with the app instead of loaded from Google Fonts, so opening
+  NexusNotes no longer sends your IP address to Google.
 - The server requires a `DATA_ENCRYPTION_KEY` (64 hex characters) for encrypting user
   data at rest; it no longer starts without one. Dev scripts generate it into `.env`,
   the packaged app creates one per install. Back it up: data encrypted under a lost key

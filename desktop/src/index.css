@@ -1,4 +1,7 @@
 @import "@fontsource-variable/inter";
+/* Bundled, not loaded from Google Fonts: no request leaves the app (GDPR), and
+   the strict CSP needs no font host (#329). */
+@import "@fontsource-variable/jetbrains-mono";
 
 :root {
   /* Base layers — darkest (window chrome) to lightest (editor surface) */
@@ -63,7 +66,7 @@
   --shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-lift-accent: 0 8px 22px rgba(203, 166, 247, 0.3);
 
-  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
   --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   /* Motion tokens. They mirror src/lib/motion-tokens.ts so CSS transitions and

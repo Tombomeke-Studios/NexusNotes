@@ -175,6 +175,7 @@ it is what it exists for:
 | `internal/middleware/` | Auth, logging, CORS middleware |
 | `internal/ws/` | WebSocket hub and client management |
 | `internal/buildinfo/` | Build version (`-ldflags`-injected, `dev` locally) and the `/health` handler that reports it |
+| `internal/fieldcrypt/` | Encryption at rest (#352): AES-256-GCM field envelopes under `DATA_ENCRYPTION_KEY` (+ old keys for rotation), legacy-plaintext passthrough, HMAC blind index |
 | `internal/mail/` | SMTP mailer with a log-only fallback for transactional auth emails |
 | `migrations/` | SQL migration files |
 
@@ -256,4 +257,5 @@ it is what it exists for:
 - The packaged app owns its backend: `src-tauri/src/lib.rs` runs `supervise_backend` on a background thread (waits for Docker, reuses a healthy :8080 backend, restarts the sidecar with backoff). Never block Tauri's `setup` on Docker or the backend. The sidecar gets a per-install JWT secret (`jwt-secret` in the app's local data dir, `load_or_create_secret`) — never hardcode one.
 - The frontend must not treat an unreachable or failing server as "signed out": only an explicit rejection (401/403, or 404 = account gone) clears the session — see `restoreFailureAction` in `src/lib/session.ts`.
 - Reduced motion only goes through `useReducedMotion` in `src/lib/motion.ts` (`data-rm` on `<html>` + framer's `skipAnimations`). Never add a bare `@media (prefers-reduced-motion)` rule: the in-app "Full" choice must be able to override the OS, because Windows reports reduced motion whenever its own animations are off.
+- User data is encrypted at rest with `DATA_ENCRYPTION_KEY` (`internal/fieldcrypt`); the backend refuses to start without it. Dev scripts keep it in the repo-root `.env` (generated on first run), the packaged app in `data-encryption-key` in its local data dir. Both share the dev Postgres volume, so rows written by one are unreadable to the other unless the keys match. Never replace a key: move it to `DATA_ENCRYPTION_OLD_KEYS`.
 - Never spread a byte array into a function call (`String.fromCharCode(...bytes)`): it throws `RangeError` from ~150 KB. Use `bytesToBase64` / `base64ToBytes` from `desktop/src/lib/crypto.ts`.

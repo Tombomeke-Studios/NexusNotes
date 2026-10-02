@@ -32,6 +32,9 @@ services:
       - PORT=8080
       - DATABASE_URL=postgres://nexus:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/nexus_notes?sslmode=disable
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in .env (at least 32 random characters)}
+      # Encrypts user data at rest; back it up separately from the database.
+      - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY in .env (openssl rand -hex 32)}
+      - DATA_ENCRYPTION_OLD_KEYS=${DATA_ENCRYPTION_OLD_KEYS:-}
       - REDIS_URL=redis://redis:6379
       - MEILI_URL=http://meilisearch:7700
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in .env}

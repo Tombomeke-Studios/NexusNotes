@@ -252,9 +252,43 @@ at 3, the whole fetch times out after 15 seconds, and sources larger than
 - `ADMIN_TOKEN` (optional) enables `/api/admin/*`. It must also be at least 32
   characters and is only accepted as `Authorization: Bearer <token>`, compared in
   constant time. Unset, the admin endpoints answer 404.
+- `DATA_ENCRYPTION_KEY` (required) encrypts user data at rest; see
+  [Encryption at Rest](#encryption-at-rest).
 - Never committed to version control
 - `.env` files are gitignored
 - `.env.example` and `.env.production.example` contain placeholders only
+
+## Encryption at Rest
+
+User data the server stores is encrypted field by field before it reaches the
+database (#352), so a stolen database dump or backup does not expose it. This
+is independent of end-to-end encryption: content of an e2ee vault is already
+ciphertext and is wrapped once more.
+
+- **Algorithm.** AES-256-GCM with a random 96-bit nonce per value. The field
+  name is authenticated as additional data, so a value copied into another
+  column fails to decrypt. Encryption, the blind-index MAC and the public key id
+  each use their own subkey, derived from the data key with HKDF-SHA256.
+- **Key.** `DATA_ENCRYPTION_KEY`: 32 random bytes as 64 hex characters
+  (`openssl rand -hex 32`). The service refuses to start without a valid one.
+  Keep it out of the database and its backups, and back it up on its own:
+  **data encrypted under a lost key cannot be recovered**, by anyone.
+- **Rotation.** Move the current key to `DATA_ENCRYPTION_OLD_KEYS` (comma
+  separated) and set a new `DATA_ENCRYPTION_KEY`. Every stored value names the
+  key it was written under, so old values keep decrypting while new writes use
+  the new key.
+- **Lookups.** A field that must be searched for equality (an email address
+  at login) is found through a blind index: an HMAC-SHA256 of the normalised
+  value, which reveals nothing about it.
+- **Legacy rows.** Values written before encryption at rest are read as they
+  are until the startup backfill has encrypted them.
+- **What it does not cover.** The server holds the key while it runs, so whoever
+  controls the running server can read standard vaults; only end-to-end
+  encrypted vaults keep content from the server itself. The Meilisearch index
+  lives outside the database and is tracked in #365.
+
+The implementation is `internal/fieldcrypt`; which fields are encrypted is
+listed under the sub-issues of #352.
 
 ## Packaged Desktop App
 
@@ -273,6 +307,13 @@ machine. If the file cannot be written, the app uses a secret for that run only;
 it never falls back to a fixed value. Earlier versions signed every
 installation's tokens with the shared constant `dev-secret`, so anyone who could
 reach a backend could forge a token for any user on it.
+
+**Per-install data encryption key (#353).** The key that encrypts user data at
+rest is created the same way, in a `data-encryption-key` file next to the JWT
+secret. Unlike the JWT secret it is never replaced and never swapped for a
+per-run value: if the file is malformed or cannot be written, the backend does
+not start, because data written under a key that is not kept could never be
+read again.
 
 To rotate the secret, quit the app, delete the file and start the app again.
 Access tokens signed with the old secret are then rejected, but refresh tokens

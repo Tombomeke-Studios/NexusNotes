@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 )
 
 func TestParseAllowedOrigins(t *testing.T) {
@@ -59,6 +61,7 @@ func TestParseAllowedOrigins_RejectsUnsafeOrMalformedEntries(t *testing.T) {
 func TestLoad_ReadsAllowedOriginsFromEnv(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://example")
 	t.Setenv("JWT_SECRET", testSecret)
+	t.Setenv("DATA_ENCRYPTION_KEY", testDataKey)
 	t.Setenv("CORS_ALLOWED_ORIGINS", "https://notes.example.com")
 
 	cfg, err := Load()
@@ -73,6 +76,7 @@ func TestLoad_ReadsAllowedOriginsFromEnv(t *testing.T) {
 func TestLoad_FailsOnAnInvalidAllowedOrigin(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://example")
 	t.Setenv("JWT_SECRET", testSecret)
+	t.Setenv("DATA_ENCRYPTION_KEY", testDataKey)
 	t.Setenv("CORS_ALLOWED_ORIGINS", "*")
 
 	if _, err := Load(); err == nil {
@@ -85,6 +89,7 @@ func setRequired(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATABASE_URL", "postgres://example")
 	t.Setenv("JWT_SECRET", testSecret)
+	t.Setenv("DATA_ENCRYPTION_KEY", testDataKey)
 }
 
 func TestLoad_ListenAddrsDefaultsToAllInterfaces(t *testing.T) {
@@ -206,5 +211,40 @@ func TestLoad_RejectsAShortAdminToken(t *testing.T) {
 	t.Setenv("ADMIN_TOKEN", "")
 	if _, err := Load(); err != nil {
 		t.Fatalf("Load without ADMIN_TOKEN: %v", err)
+	}
+}
+
+// testDataKey is a valid DATA_ENCRYPTION_KEY (32 bytes as hex).
+const testDataKey = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+
+// User data is encrypted at rest, so the server must not start without a key (#353).
+func TestLoad_RequiresAValidDataEncryptionKey(t *testing.T) {
+	for _, value := range []string{"", "too-short", testDataKey[:63] + "z"} {
+		setRequired(t)
+		t.Setenv("DATA_ENCRYPTION_KEY", value)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "DATA_ENCRYPTION_KEY") {
+			t.Errorf("DATA_ENCRYPTION_KEY=%q: err = %v, want an error naming it", value, err)
+		}
+	}
+}
+
+func TestLoad_DataEncryptionKeys(t *testing.T) {
+	setRequired(t)
+	old := "1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100"
+	t.Setenv("DATA_ENCRYPTION_OLD_KEYS", " "+old+" , ")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.DataEncryptionKey != testDataKey || !reflect.DeepEqual(cfg.DataEncryptionOldKeys, []string{old}) {
+		t.Fatalf("keys = %q, %q", cfg.DataEncryptionKey, cfg.DataEncryptionOldKeys)
+	}
+	if _, err := fieldcrypt.New(cfg.DataEncryptionKey, cfg.DataEncryptionOldKeys); err != nil {
+		t.Fatalf("loaded keys must build a cipher: %v", err)
+	}
+
+	t.Setenv("DATA_ENCRYPTION_OLD_KEYS", "not-a-key")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "DATA_ENCRYPTION_OLD_KEYS") {
+		t.Fatalf("err = %v, want an error naming DATA_ENCRYPTION_OLD_KEYS", err)
 	}
 }

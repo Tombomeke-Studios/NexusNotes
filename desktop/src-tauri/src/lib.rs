@@ -21,6 +21,11 @@ const DATABASE_URL: &str = "postgres://nexus:nexus_dev@localhost:5432/nexus_note
 /// File in the app's local data dir holding this install's JWT signing secret.
 const JWT_SECRET_FILE: &str = "jwt-secret";
 
+/// File in the app's local data dir holding this install's key for encrypting
+/// user data at rest (#353). Unlike the JWT secret it is never replaced or
+/// swapped for a per-run value: data written under a lost key is unreadable.
+const DATA_KEY_FILE: &str = "data-encryption-key";
+
 /// Object storage for attachments: the MinIO service of the bundled dev compose
 /// file, bound to localhost only. The credentials are the compose file's fixed
 /// dev values, like the database password (see #277).
@@ -109,6 +114,41 @@ fn load_or_create_secret(path: &Path) -> io::Result<String> {
     let secret = generate_secret()?;
     write_private(path, &secret)?;
     Ok(secret)
+}
+
+/// Returns the data encryption key stored at `path`, generating and storing one
+/// on first run. A file that exists but does not hold a valid key is an error,
+/// never overwritten: the rows encrypted under it would be lost for good.
+fn load_or_create_data_key(path: &Path) -> io::Result<String> {
+    match fs::read_to_string(path) {
+        Ok(contents) => {
+            let key = contents.trim();
+            if key.len() == SECRET_BYTES * 2 && is_valid_secret(key) {
+                Ok(key.to_owned())
+            } else {
+                Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "{} does not hold a valid data encryption key; restore it from a backup",
+                        path.display()
+                    ),
+                ))
+            }
+        }
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {
+            let key = generate_secret()?;
+            write_private(path, &key)?;
+            Ok(key)
+        }
+        Err(err) => Err(err),
+    }
+}
+
+/// This install's data encryption key. There is no per-run fallback: data
+/// encrypted under a key that is not kept could never be read again.
+fn backend_data_key(app: &tauri::AppHandle) -> io::Result<String> {
+    let dir = app.path().app_local_data_dir().map_err(io::Error::other)?;
+    load_or_create_data_key(&dir.join(DATA_KEY_FILE))
 }
 
 /// This install's JWT secret, kept in the app's local data dir so sign-ins survive
@@ -202,11 +242,12 @@ fn wait_for(timeout: Duration, interval: Duration, mut check: impl FnMut() -> bo
 }
 
 /// Environment for the bundled sync-service sidecar.
-fn sidecar_env(jwt_secret: &str, bind_addrs: &str) -> Vec<(&'static str, String)> {
+fn sidecar_env(jwt_secret: &str, data_key: &str, bind_addrs: &str) -> Vec<(&'static str, String)> {
     vec![
         ("DATABASE_URL", DATABASE_URL.to_string()),
         ("REDIS_URL", "redis://localhost:6379".to_string()),
         ("JWT_SECRET", jwt_secret.to_string()),
+        ("DATA_ENCRYPTION_KEY", data_key.to_string()),
         ("BIND_ADDR", bind_addrs.to_string()),
         ("PORT", BACKEND_PORT.to_string()),
         ("MINIO_ENDPOINT", format!("localhost:{MINIO_PORT}")),
@@ -332,6 +373,15 @@ fn supervise_backend(app: tauri::AppHandle) {
             return;
         }
     };
+    let data_key = match backend_data_key(&app) {
+        Ok(key) => key,
+        Err(err) => {
+            // Starting without the install's own key would write data that can
+            // never be read back, so the backend stays down instead.
+            eprintln!("[backend] cannot load the data encryption key: {err}");
+            return;
+        }
+    };
     let bind_addrs = loopback_bind_addrs(ipv6_loopback_available());
     let shutting_down = || app.state::<Shutdown>().0.load(Ordering::SeqCst);
     let mut failures: u32 = 0;
@@ -359,7 +409,7 @@ fn supervise_backend(app: tauri::AppHandle) {
 
         let spawned = app.shell().sidecar("sync-service").map(|cmd| {
             cmd.current_dir(&resource_dir)
-                .envs(sidecar_env(&jwt_secret, bind_addrs))
+                .envs(sidecar_env(&jwt_secret, &data_key, bind_addrs))
                 .spawn()
         });
         let (mut events, child) = match spawned {
@@ -441,7 +491,7 @@ mod tests {
 
     #[test]
     fn sidecar_env_configures_object_storage() {
-        let env = sidecar_env("s3cret", "127.0.0.1");
+        let env = sidecar_env("s3cret", "d4ta", "127.0.0.1");
         let get = |k: &str| {
             env.iter()
                 .find(|(key, _)| *key == k)
@@ -452,6 +502,7 @@ mod tests {
         assert_eq!(get("MINIO_SECRET_KEY"), Some("nexus_minio_dev"));
         assert_eq!(get("MINIO_BUCKET"), Some("attachments"));
         assert_eq!(get("JWT_SECRET"), Some("s3cret"));
+        assert_eq!(get("DATA_ENCRYPTION_KEY"), Some("d4ta"));
         assert_eq!(get("BIND_ADDR"), Some("127.0.0.1"));
         assert_eq!(get("PORT"), Some("8080"));
     }
@@ -649,5 +700,37 @@ mod tests {
 
         let mode = fs::metadata(&path).unwrap().permissions().mode();
         assert_eq!(mode & 0o777, 0o600);
+    }
+
+    #[test]
+    fn data_key_is_created_once_and_reused() {
+        let tmp = TempDir::new("datakey");
+        let path = tmp.0.join("app").join(DATA_KEY_FILE);
+
+        let first = load_or_create_data_key(&path).unwrap();
+        let second = load_or_create_data_key(&path).unwrap();
+
+        assert_eq!(first.len(), SECRET_BYTES * 2);
+        assert!(is_valid_secret(&first));
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn invalid_data_key_is_an_error_and_left_untouched() {
+        for stored in ["", "dev-secret", "0123abcd", &"ab".repeat(SECRET_BYTES + 1)] {
+            let tmp = TempDir::new("datakey-invalid");
+            let path = tmp.0.join(DATA_KEY_FILE);
+            fs::write(&path, stored).unwrap();
+
+            assert!(
+                load_or_create_data_key(&path).is_err(),
+                "accepted {stored:?}"
+            );
+            assert_eq!(
+                fs::read_to_string(&path).unwrap(),
+                stored,
+                "overwrote {stored:?}"
+            );
+        }
     }
 }

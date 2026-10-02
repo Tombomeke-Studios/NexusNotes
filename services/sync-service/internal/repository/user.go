@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
 
@@ -23,19 +24,25 @@ var (
 // pgUniqueViolation is the PostgreSQL SQLSTATE for a unique-constraint violation.
 const pgUniqueViolation = "23505"
 
+// UserRepo stores accounts with their display names encrypted at rest (#355).
 type UserRepo struct {
 	pool *pgxpool.Pool
+	cryptor
 }
 
-func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
-	return &UserRepo{pool: pool}
+func NewUserRepo(pool *pgxpool.Pool, crypt *fieldcrypt.Cipher) *UserRepo {
+	return &UserRepo{pool: pool, cryptor: cryptor{crypt}}
 }
 
 func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
-	_, err := r.pool.Exec(ctx,
+	displayName, err := r.seal(fieldUserDisplayName, user.DisplayName)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx,
 		`INSERT INTO users (id, email, password_hash, display_name, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
-		user.ID, user.Email, user.PasswordHash, user.DisplayName, user.CreatedAt, user.UpdatedAt,
+		user.ID, user.Email, user.PasswordHash, displayName, user.CreatedAt, user.UpdatedAt,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -59,6 +66,9 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, e
 			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("get user by email: %w", err)
+	}
+	if err := r.open(fieldUserDisplayName, &u.DisplayName); err != nil {
+		return nil, err
 	}
 	return &u, nil
 }
@@ -102,6 +112,9 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) 
 			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("get user by id: %w", err)
+	}
+	if err := r.open(fieldUserDisplayName, &u.DisplayName); err != nil {
+		return nil, err
 	}
 	return &u, nil
 }

@@ -287,9 +287,18 @@ ciphertext and is wrapped once more.
   encrypted vaults keep content from the server itself. The Meilisearch index
   lives outside the database and is tracked in #365.
 
-The implementation is `internal/fieldcrypt`. Encrypted so far: note content and
-every stored note version (#354). The remaining fields are listed under the
-sub-issues of #352.
+The implementation is `internal/fieldcrypt`; repositories seal and open the
+fields themselves (`internal/repository/crypt.go` names them), so handlers and
+services only see plaintext. Encrypted so far:
+
+- note content and every stored note version (#354);
+- vault names, linked-file names, sources and annotations, user display names
+  and device names (#355). Lists sorted by these names are sorted in the
+  service after decryption.
+
+Still readable in the database: email addresses (#356), and note titles, folder
+paths, tags and aliases, which the server queries; in e2ee vaults those move to
+the client (#362).
 
 ## Packaged Desktop App
 

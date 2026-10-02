@@ -89,7 +89,7 @@ func seedUser(t *testing.T, pool *pgxpool.Pool) string {
 		ID: uuid.New().String(), Email: uuid.New().String() + "@nexus.test",
 		PasswordHash: "x", DisplayName: "Test", CreatedAt: now, UpdatedAt: now,
 	}
-	if err := repository.NewUserRepo(pool).Create(context.Background(), u); err != nil {
+	if err := repository.NewUserRepo(pool, fieldcrypttest.Cipher(t)).Create(context.Background(), u); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	return u.ID
@@ -99,7 +99,7 @@ func seedVaultFor(t *testing.T, pool *pgxpool.Pool, userID string) string {
 	t.Helper()
 	now := time.Now().UTC()
 	v := &model.Vault{ID: uuid.New().String(), UserID: userID, Name: "V", CreatedAt: now, UpdatedAt: now}
-	if err := repository.NewVaultRepo(pool).Create(context.Background(), v); err != nil {
+	if err := repository.NewVaultRepo(pool, fieldcrypttest.Cipher(t)).Create(context.Background(), v); err != nil {
 		t.Fatalf("create vault: %v", err)
 	}
 	return v.ID
@@ -110,8 +110,8 @@ func newNoteAccessFixture(t *testing.T) *noteAccessFixture {
 	pool := newIsolatedDB(t)
 	ctx := context.Background()
 
-	vaultRepo := repository.NewVaultRepo(pool)
-	memberRepo := repository.NewVaultMemberRepo(pool)
+	vaultRepo := repository.NewVaultRepo(pool, fieldcrypttest.Cipher(t))
+	memberRepo := repository.NewVaultMemberRepo(pool, fieldcrypttest.Cipher(t))
 	svc := service.NewSyncService(
 		repository.NewNoteRepo(pool, fieldcrypttest.Cipher(t)), vaultRepo,
 		repository.NewLinkRepo(pool), repository.NewTagRepo(pool), repository.NewAliasRepo(pool),

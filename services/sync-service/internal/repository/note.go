@@ -24,41 +24,18 @@ var ErrNoteLocked = errors.New("note is locked by another update")
 // pgLockNotAvailable is Postgres' SQLSTATE for an exceeded lock_timeout.
 const pgLockNotAvailable = "55P03"
 
-// Encrypted-at-rest fields (#354); the names are authenticated with each value.
-const (
-	fieldNoteContent    = "notes.content"
-	fieldVersionContent = "note_versions.content"
-)
-
 // searchSnippetRunes is how much of a note's text a search result carries.
 const searchSnippetRunes = 300
 
 // NoteRepo stores notes with their content (and every stored version)
-// encrypted at rest; callers always see plaintext.
+// encrypted at rest (#354); callers always see plaintext.
 type NoteRepo struct {
-	pool  *pgxpool.Pool
-	crypt *fieldcrypt.Cipher
+	pool *pgxpool.Pool
+	cryptor
 }
 
 func NewNoteRepo(pool *pgxpool.Pool, crypt *fieldcrypt.Cipher) *NoteRepo {
-	return &NoteRepo{pool: pool, crypt: crypt}
-}
-
-func (r *NoteRepo) seal(field, plaintext string) (string, error) {
-	enc, err := r.crypt.Encrypt(field, plaintext)
-	if err != nil {
-		return "", fmt.Errorf("encrypt %s: %w", field, err)
-	}
-	return enc, nil
-}
-
-func (r *NoteRepo) open(field string, value *string) error {
-	plain, err := r.crypt.Decrypt(field, *value)
-	if err != nil {
-		return fmt.Errorf("decrypt %s: %w", field, err)
-	}
-	*value = plain
-	return nil
+	return &NoteRepo{pool: pool, cryptor: cryptor{crypt}}
 }
 
 func (r *NoteRepo) Create(ctx context.Context, note *model.Note) error {

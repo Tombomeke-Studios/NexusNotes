@@ -55,8 +55,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	userRepo := repository.NewUserRepo(pool)
-	vaultRepo := repository.NewVaultRepo(pool)
+	userRepo := repository.NewUserRepo(pool, crypt)
+	vaultRepo := repository.NewVaultRepo(pool, crypt)
 	noteRepo := repository.NewNoteRepo(pool, crypt)
 	linkRepo := repository.NewLinkRepo(pool)
 	tagRepo := repository.NewTagRepo(pool)
@@ -93,8 +93,8 @@ func main() {
 
 	hub := ws.NewHub()
 	accountService := service.NewAccountService(userRepo, vaultRepo, noteRepo, indexer, hub)
-	deviceRepo := repository.NewDeviceRepo(pool)
-	memberRepo := repository.NewVaultMemberRepo(pool)
+	deviceRepo := repository.NewDeviceRepo(pool, crypt)
+	memberRepo := repository.NewVaultMemberRepo(pool, crypt)
 
 	// Daily cleanup (#46): forget devices that haven't been seen in 90 days.
 	go func() {
@@ -139,7 +139,7 @@ func main() {
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
-	linkHandler := handler.NewLinkedFileHandler(repository.NewLinkedFileRepo(pool), vaultRepo, cfg.LinkedFilesAllowPrivate)
+	linkHandler := handler.NewLinkedFileHandler(repository.NewLinkedFileRepo(pool, crypt), vaultRepo, cfg.LinkedFilesAllowPrivate)
 	deviceHandler := handler.NewDeviceHandler(deviceRepo, refreshRepo, hub)
 	adminHandler := handler.NewAdminHandler(repository.NewStatsRepo(pool), cfg.AdminToken, time.Now())
 	// One origin allowlist for both CORS and the WebSocket handshake (#258);

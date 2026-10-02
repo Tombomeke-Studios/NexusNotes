@@ -52,7 +52,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   data at rest; it no longer starts without one. Dev scripts generate it into `.env`,
   the packaged app creates one per install. Back it up: data encrypted under a lost key
   cannot be recovered.
-- Note content and its version history are stored encrypted in the database.
+- Note content and its version history are stored encrypted in the database, as are
+  vault names, linked files and their annotations, display names and device names.
 - The packaged app's backend no longer signs sessions with the shared `dev-secret`: each
   installation generates its own random JWT secret on first run and keeps it in the app's
   local data directory. After upgrading, the first request renews your session through

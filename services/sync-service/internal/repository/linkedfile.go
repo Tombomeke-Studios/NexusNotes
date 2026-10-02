@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
 
@@ -15,20 +16,38 @@ var ErrLinkedFileNotFound = errors.New("linked file not found")
 
 // LinkedFileRepo stores references to external files linked into a vault
 // (URLs, local paths, GitHub files) plus per-user annotations (#64).
+// Names, sources and annotations are encrypted at rest (#355).
 type LinkedFileRepo struct {
 	pool *pgxpool.Pool
+	cryptor
 }
 
-func NewLinkedFileRepo(pool *pgxpool.Pool) *LinkedFileRepo {
-	return &LinkedFileRepo{pool: pool}
+func NewLinkedFileRepo(pool *pgxpool.Pool, crypt *fieldcrypt.Cipher) *LinkedFileRepo {
+	return &LinkedFileRepo{pool: pool, cryptor: cryptor{crypt}}
+}
+
+// openFile decrypts a scanned linked file's encrypted fields in place.
+func (r *LinkedFileRepo) openFile(lf *model.LinkedFile) error {
+	if err := r.open(fieldLinkedFileName, &lf.DisplayName); err != nil {
+		return err
+	}
+	return r.open(fieldLinkedFileSource, &lf.SourceRef)
 }
 
 func (r *LinkedFileRepo) Create(ctx context.Context, lf *model.LinkedFile) error {
-	err := r.pool.QueryRow(ctx,
+	name, err := r.seal(fieldLinkedFileName, lf.DisplayName)
+	if err != nil {
+		return err
+	}
+	source, err := r.seal(fieldLinkedFileSource, lf.SourceRef)
+	if err != nil {
+		return err
+	}
+	err = r.pool.QueryRow(ctx,
 		`INSERT INTO linked_files (vault_id, display_name, source_type, source_ref, read_only)
 		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING id, created_at`,
-		lf.VaultID, lf.DisplayName, lf.SourceType, lf.SourceRef, lf.ReadOnly,
+		lf.VaultID, name, lf.SourceType, source, lf.ReadOnly,
 	).Scan(&lf.ID, &lf.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create linked file: %w", err)
@@ -39,7 +58,7 @@ func (r *LinkedFileRepo) Create(ctx context.Context, lf *model.LinkedFile) error
 func (r *LinkedFileRepo) ListByVault(ctx context.Context, vaultID string) ([]model.LinkedFile, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, vault_id, display_name, source_type, source_ref, read_only, created_at
-		 FROM linked_files WHERE vault_id = $1 ORDER BY display_name`,
+		 FROM linked_files WHERE vault_id = $1`,
 		vaultID,
 	)
 	if err != nil {
@@ -54,9 +73,16 @@ func (r *LinkedFileRepo) ListByVault(ctx context.Context, vaultID string) ([]mod
 			&lf.SourceRef, &lf.ReadOnly, &lf.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan linked file: %w", err)
 		}
+		if err := r.openFile(&lf); err != nil {
+			return nil, err
+		}
 		out = append(out, lf)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list linked files: %w", err)
+	}
+	sortByName(out, func(lf *model.LinkedFile) string { return lf.DisplayName })
+	return out, nil
 }
 
 func (r *LinkedFileRepo) GetByID(ctx context.Context, id string) (*model.LinkedFile, error) {
@@ -71,6 +97,9 @@ func (r *LinkedFileRepo) GetByID(ctx context.Context, id string) (*model.LinkedF
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get linked file: %w", err)
+	}
+	if err := r.openFile(&lf); err != nil {
+		return nil, err
 	}
 	return &lf, nil
 }
@@ -101,17 +130,24 @@ func (r *LinkedFileRepo) GetAnnotation(ctx context.Context, linkedFileID, userID
 	if err != nil {
 		return "", fmt.Errorf("get annotation: %w", err)
 	}
+	if err := r.open(fieldAnnotation, &content); err != nil {
+		return "", err
+	}
 	return content, nil
 }
 
 // UpsertAnnotation stores the user's annotation, kept separate from the linked
 // content so re-syncing the source never overwrites it (#64).
 func (r *LinkedFileRepo) UpsertAnnotation(ctx context.Context, linkedFileID, userID, content string) error {
-	_, err := r.pool.Exec(ctx,
+	sealed, err := r.seal(fieldAnnotation, content)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx,
 		`INSERT INTO linked_file_annotations (linked_file_id, user_id, content, updated_at)
 		 VALUES ($1, $2, $3, now())
 		 ON CONFLICT (linked_file_id, user_id) DO UPDATE SET content = EXCLUDED.content, updated_at = now()`,
-		linkedFileID, userID, content,
+		linkedFileID, userID, sealed,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert annotation: %w", err)

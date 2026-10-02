@@ -7,28 +7,35 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
 
 // DeviceRepo persists the sync devices registered to a user (#44).
+// Device names are encrypted at rest (#355).
 type DeviceRepo struct {
 	pool *pgxpool.Pool
+	cryptor
 }
 
-func NewDeviceRepo(pool *pgxpool.Pool) *DeviceRepo {
-	return &DeviceRepo{pool: pool}
+func NewDeviceRepo(pool *pgxpool.Pool, crypt *fieldcrypt.Cipher) *DeviceRepo {
+	return &DeviceRepo{pool: pool, cryptor: cryptor{crypt}}
 }
 
 // Upsert registers a device (id is the client-generated device id) or, when
 // it already exists, refreshes its last-seen time and descriptive fields.
 func (r *DeviceRepo) Upsert(ctx context.Context, id, userID, name, platform string) error {
-	_, err := r.pool.Exec(ctx,
+	sealed, err := r.seal(fieldDeviceName, name)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx,
 		`INSERT INTO devices (id, user_id, name, platform, last_seen)
 		 VALUES ($1, $2, $3, $4, now())
 		 ON CONFLICT (id) DO UPDATE
 		 SET last_seen = now(), name = EXCLUDED.name, platform = EXCLUDED.platform
 		 WHERE devices.user_id = EXCLUDED.user_id`,
-		id, userID, name, platform,
+		id, userID, sealed, platform,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert device: %w", err)
@@ -53,6 +60,9 @@ func (r *DeviceRepo) ListByUser(ctx context.Context, userID string) ([]model.Dev
 		var d model.Device
 		if err := rows.Scan(&d.ID, &d.UserID, &d.Name, &d.Platform, &d.LastSeen, &d.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan device: %w", err)
+		}
+		if err := r.open(fieldDeviceName, &d.Name); err != nil {
+			return nil, err
 		}
 		devices = append(devices, d)
 	}

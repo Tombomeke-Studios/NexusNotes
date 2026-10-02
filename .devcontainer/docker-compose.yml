@@ -6,6 +6,9 @@ services:
       - ..:/workspaces/NexusNotes:cached
       # Host node_modules would carry Windows native binaries; keep Linux ones separate.
       - desktop_node_modules:/workspaces/NexusNotes/desktop/node_modules
+      # Claude Code and GitHub CLI logins survive a container rebuild.
+      - claude_config:/home/vscode/.claude
+      - gh_config:/home/vscode/.config/gh
       # WSLg's X11/Wayland sockets, so the native Tauri window can render.
       # No-ops (empty bind) on hosts without WSLg — see docs/deployment.md.
       # Docker Desktop exposes the WSL2 VM's own mounts under /mnt/host/
@@ -37,3 +40,5 @@ services:
 volumes:
   desktop_node_modules:
   postgres_data:
+  claude_config:
+  gh_config:

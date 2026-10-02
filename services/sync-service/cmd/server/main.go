@@ -250,7 +250,9 @@ func main() {
 	})
 
 	server := &http.Server{
-		Handler:      middleware.RequestID(middleware.Logging(middleware.Metrics(c.Handler(mux)))),
+		// RealIP first, so logs, rate limits and the login throttle all see the
+		// client behind a trusted reverse proxy (#373).
+		Handler:      middleware.RealIP(cfg.TrustedProxies)(middleware.RequestID(middleware.Logging(middleware.Metrics(c.Handler(mux))))),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

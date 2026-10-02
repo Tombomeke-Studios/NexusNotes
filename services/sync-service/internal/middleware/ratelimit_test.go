@@ -107,3 +107,29 @@ func TestRateLimit_PurgesStaleClients(t *testing.T) {
 		t.Fatalf("got %d tracked clients after purge, want 1", n)
 	}
 }
+
+// Stale buckets are dropped, but the map is not walked on every request (#373).
+func TestRateLimit_PurgesStaleBucketsPeriodically(t *testing.T) {
+	rl := NewRateLimiter(60, 5)
+	now := time.Unix(1_000_000, 0)
+	rl.now = func() time.Time { return now }
+
+	rl.allow("10.0.0.1")
+	now = now.Add(staleAfter + time.Second)
+	rl.allow("10.0.0.2") // first purge pass: drops 10.0.0.1
+	if _, ok := rl.clients["10.0.0.1"]; ok {
+		t.Fatal("a bucket idle for longer than staleAfter must be purged")
+	}
+
+	now = now.Add(time.Second)
+	rl.clients["ghost"] = &bucket{lastSeen: now.Add(-time.Hour)}
+	rl.allow("10.0.0.2") // within purgeEvery of the last pass: no walk
+	if _, ok := rl.clients["ghost"]; !ok {
+		t.Fatal("purge must not run on every request")
+	}
+	now = now.Add(purgeEvery)
+	rl.allow("10.0.0.2")
+	if _, ok := rl.clients["ghost"]; ok {
+		t.Fatal("the next periodic purge must drop the stale bucket")
+	}
+}

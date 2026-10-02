@@ -37,9 +37,15 @@
 - Defaults: 10 requests/minute with a burst of 10; configurable via
   `AUTH_RATE_LIMIT_PER_MIN` and `AUTH_RATE_LIMIT_BURST`
 - Exceeding the limit returns `429` with a `Retry-After` header (seconds)
-- The limiter keys on `RemoteAddr`; when deploying behind a reverse proxy,
-  ensure the proxy passes the real client IP as the connection source (or
-  terminate rate limiting at the proxy instead)
+- The limiter (and the login throttle) key on the client IP. Behind a reverse
+  proxy that is the proxy's address for every request, so set
+  `TRUSTED_PROXIES` (CIDRs/IPs) to the proxies in front of the service: only
+  when the direct peer is in that list is the client taken from
+  `X-Forwarded-For` (the rightmost hop that is not a trusted proxy) or
+  `X-Real-IP`. From any other peer those headers are ignored, so a client
+  cannot pick its own bucket (#373). The production compose trusts the compose
+  network's private ranges, as the web UI's nginx is the only way in.
+- Stale buckets are swept at most once a minute rather than on every request.
 
 ### Request body limits
 

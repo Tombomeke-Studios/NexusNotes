@@ -87,7 +87,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Paginate or slim the note list; cap and prune `note_versions`
 - [ ] Indexing worker queue with retry and shutdown drain; one shared helper
 - [ ] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit
-- [ ] Rate limiter: periodic purge and trusted-proxy client IP
+- [x] Rate limiter: periodic purge and trusted-proxy client IP (#373)
 - [ ] Distinguish not-found from database errors in handlers
 - [ ] Search fallback: honour `tag` when `q` is set and do not return unfiltered notes when both are empty
 - [ ] Vault update: answer 404 when no row matched instead of 200 (delete done in #290)

@@ -203,6 +203,13 @@ after the first start with a `DATA_ENCRYPTION_KEY`; the service keeps serving
 meanwhile. Data in database backups taken before that stays readable, so
 replace those backups once the log shows `encryption backfill done`.
 
+`TRUSTED_PROXIES` names the reverse proxies whose `X-Forwarded-For` / `X-Real-IP`
+headers the sync service believes (comma-separated CIDRs or IPs). The production
+compose defaults it to the private ranges, since only the web UI's nginx can reach
+the service; if another proxy (a TLS terminator, say) sits in front of the web UI,
+add its address too and make it append `X-Forwarded-For`. Without the right value
+all users share one rate limit.
+
 `BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the
 container must listen on every interface or its published port cannot reach it.

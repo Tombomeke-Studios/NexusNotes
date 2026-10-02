@@ -287,8 +287,9 @@ ciphertext and is wrapped once more.
   encrypted vaults keep content from the server itself. The Meilisearch index
   lives outside the database and is tracked in #365.
 
-The implementation is `internal/fieldcrypt`; which fields are encrypted is
-listed under the sub-issues of #352.
+The implementation is `internal/fieldcrypt`. Encrypted so far: note content and
+every stored note version (#354). The remaining fields are listed under the
+sub-issues of #352.
 
 ## Packaged Desktop App
 

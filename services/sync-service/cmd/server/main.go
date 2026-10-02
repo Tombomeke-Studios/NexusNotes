@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/buildinfo"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/config"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/handler"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/mail"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
@@ -47,9 +48,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// User data is encrypted at rest under the server's data key (#352).
+	crypt, err := fieldcrypt.New(cfg.DataEncryptionKey, cfg.DataEncryptionOldKeys)
+	if err != nil {
+		slog.Error("data encryption key", "error", err)
+		os.Exit(1)
+	}
+
 	userRepo := repository.NewUserRepo(pool)
 	vaultRepo := repository.NewVaultRepo(pool)
-	noteRepo := repository.NewNoteRepo(pool)
+	noteRepo := repository.NewNoteRepo(pool, crypt)
 	linkRepo := repository.NewLinkRepo(pool)
 	tagRepo := repository.NewTagRepo(pool)
 	aliasRepo := repository.NewAliasRepo(pool)

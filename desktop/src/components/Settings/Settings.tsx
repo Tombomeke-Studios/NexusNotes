@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { downloadFile } from "../../lib/export";
 import { motion, useIsPresent } from "framer-motion";
 import type { WorkspacePrefs } from "../../lib/prefs";
 import type { Vault } from "../../lib/types";
@@ -149,12 +150,7 @@ export function Settings({
     setExportError(null);
     try {
       const blob = await auth.exportAccount();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `nexusnotes-export-${new Date().toISOString().slice(0, 10)}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadFile(`nexusnotes-export-${new Date().toISOString().slice(0, 10)}.zip`, "application/zip", blob);
     } catch {
       setExportError("Export failed. Please try again.");
     } finally {

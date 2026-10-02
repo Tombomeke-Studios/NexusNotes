@@ -120,8 +120,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   random secret on the first run and start the backend on localhost only. Dev sessions
   are renewed through their refresh token on the next request.
 
-## [0.5.0] - baseline
+## [0.5.0] - 2026-09-26
 
 First versioned release. Covers the work to date: markdown editor with live preview, vaults
 and notes sync over WebSocket, search, tags and backlinks, graph view, end-to-end encrypted
 vaults with recovery codes, vault sharing, linked files, attachments, templates and export.
+
+[Unreleased]: https://github.com/Tombomeke-Studios/NexusNotes/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Tombomeke-Studios/NexusNotes/releases/tag/v0.5.0

@@ -17,6 +17,12 @@
 Postgres, Redis) so the app builds and runs the same on every machine. Open the repo
 in VS Code and "Reopen in Container", or use the Dev Containers CLI.
 
+The container also installs Claude Code (the `anthropics/devcontainer-features/claude-code`
+feature plus the VS Code extension). `CLAUDE_CONFIG_DIR` points at `/home/vscode/.claude`,
+which — like `/home/vscode/.config/gh` — is a named volume (`claude_config`, `gh_config`),
+so the Claude Code and GitHub CLI logins survive rebuilding the container. Remove those
+volumes to sign out completely.
+
 The native Tauri window needs a display. On Windows 11 with WSL2, WSLg provides one
 automatically and the container's `docker-compose.yml` forwards its X11/Wayland
 sockets (`/tmp/.X11-unix`, `/mnt/wslg`) — no extra setup needed. On hosts without

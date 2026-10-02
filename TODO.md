@@ -123,6 +123,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > Windows `dlltool` build failure on a second machine).
 
 - [x] Add a dev container (Go, Node, Postgres, Redis) that runs `dev-web.sh` out of the box (#250)
+- [x] Install Claude Code automatically in the dev container and keep its (and `gh`'s) login across rebuilds
 
 ---
 

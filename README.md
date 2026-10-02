@@ -42,7 +42,9 @@ docker compose down -v    # stop + wipe database
 
 Open the repo in VS Code and choose **Reopen in Container** (needs Docker Desktop
 and the Dev Containers extension). It provides Go 1.25, Node 20, Rust, Postgres and
-Redis, so no machine-specific toolchain is needed. Run `./scripts/dev-web.sh` inside
+Redis, so no machine-specific toolchain is needed. Claude Code (CLI + VS Code extension)
+is installed automatically; its login and the `gh` login live in named volumes, so you
+only sign in once (`claude`, `gh auth login`) and it survives a rebuild. Run `./scripts/dev-web.sh` inside
 the container and open http://localhost:1420 for UI work, or `npm run tauri dev` /
 `desktop/e2e` (Playwright) for a native/native-like window — on Windows hosts with
 WSLg (the default on Windows 11), the container forwards its display so the Tauri

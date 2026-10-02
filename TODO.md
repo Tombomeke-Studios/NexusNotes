@@ -121,7 +121,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel
 - [ ] Composed empty states with a call to action; skeleton loaders instead of spinners
 - [ ] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops
-- [ ] Dialog focus trap and focus return audit; skip link
+- [x] Dialog focus trap and focus return audit; skip link
 
 ---
 

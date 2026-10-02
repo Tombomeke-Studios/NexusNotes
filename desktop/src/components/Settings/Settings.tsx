@@ -187,7 +187,7 @@ export function Settings({
 
   return (
     <OverlayMotion preset="backdrop" className="settings-overlay" onClick={onClose}>
-      <OverlayMotion preset="dialog" className="settings-modal" onClick={(e) => e.stopPropagation()}>
+      <OverlayMotion preset="dialog" className="settings-modal" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="settings-nav">
           <div className="settings-nav-title">Settings</div>
           {(["appearance", "sync", "shortcuts", "account"] as SettingsTab[]).map((t) => (

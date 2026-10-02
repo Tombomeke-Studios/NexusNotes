@@ -375,6 +375,8 @@ Read access required. Errors:
 - `400` when `source_ref` is not an `http(s)` URL.
 - `502` when the source can't be reached, answers with an error status,
   redirects more than 3 times, or is larger than 5 MiB.
+- `429` (with `Retry-After`) when the caller already has 2 fetches running, or
+  the server 16 in total.
 
 ### GET /api/links/:linkId/annotation
 

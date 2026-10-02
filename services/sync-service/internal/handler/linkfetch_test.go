@@ -27,6 +27,12 @@ func TestIsPublicAddr(t *testing.T) {
 		"::ffff:127.0.0.1", "::ffff:10.0.0.1", // IPv4-mapped IPv6
 		"::ffff:169.254.169.254", "64:ff9b::a9fe:a9fe", // mapped / NAT64 forms of metadata
 		"fec0::1", // deprecated site-local
+		// Documentation / test networks (#337).
+		"192.0.2.1", "198.51.100.7", "203.0.113.9", "2001:db8::1", "3fff::1",
+		"192.88.99.1", // deprecated 6to4 relay anycast
+		// IPv4-translated (SIIT) form embeds an IPv4 address that Unmap misses.
+		"::ffff:0:7f00:1", "::ffff:0:a00:1",
+		"::ffff:192.0.2.1", // mapped form of a documentation address
 	}
 	for _, s := range blocked {
 		if isPublicAddr(netip.MustParseAddr(s)) {
@@ -39,6 +45,9 @@ func TestIsPublicAddr(t *testing.T) {
 		"172.32.0.1", "172.15.255.255", // just outside 172.16.0.0/12
 		"100.63.255.255", "100.128.0.1", // just outside 100.64.0.0/10
 		"2606:4700:4700::1111", "2001:4860:4860::8888",
+		// IPv4-mapped IPv6 is judged by the IPv4 address it carries (#337):
+		// a public one stays reachable.
+		"::ffff:8.8.8.8", "::ffff:93.184.216.34",
 	}
 	for _, s := range allowed {
 		if !isPublicAddr(netip.MustParseAddr(s)) {
@@ -156,5 +165,43 @@ func TestReadLinkedBody_RejectsOversizedSources(t *testing.T) {
 	// A declared length over the limit is refused without reading the body.
 	if _, err := readLinkedBody(&http.Response{ContentLength: maxLinkedContentBytes + 1, Body: io.NopCloser(strings.NewReader(""))}); !errors.Is(err, errSourceTooLarge) {
 		t.Fatalf("declared length over the limit: err = %v, want errSourceTooLarge", err)
+	}
+}
+
+// Linked-file fetches are capped per user and overall (#337).
+func TestFetchLimiter(t *testing.T) {
+	l := newFetchLimiter(2, 3)
+
+	r1, ok := l.acquire("alice")
+	if !ok {
+		t.Fatal("first fetch must be admitted")
+	}
+	r2, ok := l.acquire("alice")
+	if !ok {
+		t.Fatal("second fetch for the same user must be admitted")
+	}
+	if _, ok := l.acquire("alice"); ok {
+		t.Fatal("a third concurrent fetch for one user must be refused")
+	}
+	r3, ok := l.acquire("bob")
+	if !ok {
+		t.Fatal("another user must still be admitted")
+	}
+	if _, ok := l.acquire("carol"); ok {
+		t.Fatal("the overall cap must refuse a fourth concurrent fetch")
+	}
+
+	r1()
+	r1() // releasing twice must not free a second slot
+	if _, ok := l.acquire("carol"); !ok {
+		t.Fatal("a released slot must be reusable")
+	}
+	if _, ok := l.acquire("dave"); ok {
+		t.Fatal("double release freed an extra slot")
+	}
+	r2()
+	r3()
+	if got := l.inFlight("alice"); got != 0 {
+		t.Fatalf("alice still has %d fetches in flight", got)
 	}
 }

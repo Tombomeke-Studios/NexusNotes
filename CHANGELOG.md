@@ -57,6 +57,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   addresses. Attachment files are encrypted before they reach object storage. Signing
   in no longer depends on the case of the email address. Existing data and files are
   encrypted automatically in the background after the upgrade.
+- Loading linked files is limited to 2 at a time per user (16 overall), and the server
+  also refuses documentation-range and IPv4-translated addresses for them.
 - `/metrics` is no longer served on the API port; set `METRICS_ADDR` (the monitoring
   overlay does) to serve it on a separate internal listener. The server image runs as
   an unprivileged user and has a Docker health check on the new `GET /ready`.

@@ -18,12 +18,17 @@ type LinkedFileHandler struct {
 	repo      *repository.LinkedFileRepo
 	vaultRepo *repository.VaultRepo
 	client    *http.Client
+	limiter   *fetchLimiter
 }
 
 // NewLinkedFileHandler builds the handler. The URL proxy only connects to
 // public addresses unless allowPrivate is set (see newLinkedFileClient).
 func NewLinkedFileHandler(repo *repository.LinkedFileRepo, vaultRepo *repository.VaultRepo, allowPrivate bool) *LinkedFileHandler {
-	return &LinkedFileHandler{repo: repo, vaultRepo: vaultRepo, client: newLinkedFileClient(allowPrivate)}
+	return &LinkedFileHandler{
+		repo: repo, vaultRepo: vaultRepo,
+		client:  newLinkedFileClient(allowPrivate),
+		limiter: newFetchLimiter(maxLinkedFetchesPerUser, maxLinkedFetches),
+	}
 }
 
 // validLinkedSourceType reports whether s is an accepted linked-file source type.
@@ -150,6 +155,14 @@ func (h *LinkedFileHandler) Content(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid URL")
 		return
 	}
+
+	release, ok := h.limiter.acquire(middleware.GetUserID(r.Context()))
+	if !ok {
+		w.Header().Set("Retry-After", "2")
+		writeError(w, http.StatusTooManyRequests, "too many linked files are loading at once; try again in a moment")
+		return
+	}
+	defer release()
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, lf.SourceRef, nil)
 	if err != nil {

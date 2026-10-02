@@ -45,6 +45,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   changes made elsewhere in the meantime instead of silently missing them.
 - A database hiccup is no longer reported as "note not found" (which could make the app
   drop the note from view); the server now says it failed instead.
+- Downloads (attachments, account and vault exports) are no longer cancelled in the macOS
+  and Linux app.
+- Having the app open in two windows no longer signs you out when both renew the session
+  at the same moment.
 - Clicking the search bar at the top no longer slides it to the right.
 - Typing three or more dashes in the editor no longer makes them invisible.
 - Closing a note's tab while the graph is open clears its highlight in the graph.

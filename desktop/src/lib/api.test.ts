@@ -91,6 +91,37 @@ describe("access token refresh on 401 (#49)", () => {
     vi.unstubAllGlobals();
   });
 
+  // Two windows share one refresh token: if another window rotated it while
+  // this one waited for the cross-window lock, this one adopts the new session
+  // instead of presenting the used token (which the server treats as reuse and
+  // answers by revoking the whole chain) (#393).
+  it("adopts a refresh done by another window instead of rotating again", async () => {
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      locks: {
+        request: async (_name: string, cb: () => Promise<unknown>) => {
+          // The other window held the lock and finished its refresh first.
+          localStorage.setItem("nexus_token", "token-from-other-window");
+          localStorage.setItem("nexus_refresh", "refresh-2");
+          return cb();
+        },
+      },
+    });
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string, init: RequestInit) => {
+      calls.push(String(url));
+      const authed = (init?.headers as Record<string, string>)?.Authorization === "Bearer token-from-other-window";
+      return Promise.resolve({
+        ok: authed, status: authed ? 200 : 401, statusText: "s",
+        json: () => Promise.resolve(authed ? [] : { error: "unauthorized" }),
+      });
+    }));
+
+    expect(await notes.list("v1")).toEqual([]);
+    expect(calls.filter((c) => c.includes("/api/auth/refresh"))).toHaveLength(0);
+    expect(getToken()).toBe("token-from-other-window");
+  });
+
   it("rotates the refresh token and replays the request once", async () => {
     const calls: string[] = [];
     const fetchMock = vi.fn().mockImplementation((url: string, init: RequestInit) => {

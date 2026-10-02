@@ -248,3 +248,23 @@ func TestLoad_DataEncryptionKeys(t *testing.T) {
 		t.Fatalf("err = %v, want an error naming DATA_ENCRYPTION_OLD_KEYS", err)
 	}
 }
+
+// /metrics is only served on its own listener, never on the public one (#327).
+func TestLoad_MetricsAddr(t *testing.T) {
+	setRequired(t)
+	t.Setenv("METRICS_ADDR", "")
+	cfg, err := Load()
+	if err != nil || cfg.MetricsAddr != "" {
+		t.Fatalf("unset: MetricsAddr = %q, %v; want metrics off", cfg.MetricsAddr, err)
+	}
+
+	t.Setenv("METRICS_ADDR", " :9091 ")
+	if cfg, err = Load(); err != nil || cfg.MetricsAddr != ":9091" {
+		t.Fatalf("set: MetricsAddr = %q, %v", cfg.MetricsAddr, err)
+	}
+
+	t.Setenv("METRICS_ADDR", "9091")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "METRICS_ADDR") {
+		t.Fatalf("missing colon: err = %v, want an error naming METRICS_ADDR", err)
+	}
+}

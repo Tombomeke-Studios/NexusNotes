@@ -542,22 +542,27 @@ Response (200): `{"status":"ok","version":"0.5.0"}`
 local `go build`). Clients compare it with their own version and warn when the
 major.minor differs (see [Versioning](deployment.md#versioning)).
 
+`/health` is a cheap liveness check: it answers as long as the process runs.
+
+### GET /ready
+
+Response (200): `{"status":"ready"}` when the service can reach its database
+within 2 seconds; (503): `{"status":"unavailable"}` otherwise. The reason is only
+logged, never returned. The sync service image uses it as its Docker
+`HEALTHCHECK`; point load balancers at it too.
+
 ---
 
 ## Metrics
 
 ### GET /metrics
 
-Prometheus scrape endpoint (text exposition format) served by the sync service.
-It has **no authentication**; anyone who can reach it can read it.
-
-In the production compose stack the sync service publishes no port of its own
-and the web front end's proxy does not forward `/metrics`. The bundled
-Prometheus that scrapes it, however, is published on port `9090` without
-authentication, so the collected metrics are readable from any host that can
-reach that port. If you expose the sync service's port directly, `/metrics` is
-public as well. Restricting these ports is tracked in the production-hardening
-backlog (#264).
+Prometheus scrape endpoint (text exposition format). It has **no
+authentication**, so it is never served on the API's port: it only exists on a
+separate listener set with `METRICS_ADDR` (for example `:9091`), and is off when
+that is unset (#327). The monitoring compose overlay sets it and Prometheus
+scrapes `sync-service:9091` over the compose network; that port is not published
+to the host.
 
 It reports request count and latency per normalised route, the live WebSocket
 connection gauge, note create/update/delete counters and Go runtime metrics

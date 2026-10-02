@@ -335,7 +335,13 @@ Set `GRAFANA_PASSWORD` in `.env` first (there is no default). Both UIs listen on
 the host's loopback only (Prometheus on `127.0.0.1:9090`, Grafana on
 `127.0.0.1:3001`); reach them from elsewhere through an SSH tunnel. Grafana
 auto-provisions the Prometheus datasource and the NexusNotes dashboard from
-`infra/grafana/`. The operator stats endpoint (`GET /api/admin/stats`) is enabled
+`infra/grafana/`. The overlay turns on the sync service's metrics listener
+(`METRICS_ADDR=:9091`); without it `/metrics` is not served at all, and it is never
+served on the API port.
+
+The sync service image runs as an unprivileged user (uid 10001) and declares a
+Docker `HEALTHCHECK` on `GET /ready`, so `docker compose ps` shows it as healthy
+only while it can reach Postgres. The operator stats endpoint (`GET /api/admin/stats`) is enabled
 by `ADMIN_TOKEN` in `.env` and disabled while it is empty.
 
 ## Email (optional)

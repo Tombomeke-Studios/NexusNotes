@@ -196,7 +196,10 @@ sequenceDiagram
 - **Logging:** all sync-service log lines are structured JSON (`slog`); every
   HTTP request gets a correlation id (inbound `X-Request-ID` honoured, echoed
   in the response) that is stamped on its request log line.
-- **Metrics:** `GET /metrics` exposes Prometheus instruments — request count
+- **Health:** `GET /health` is liveness (process up, build version);
+  `GET /ready` is readiness (database reachable) and backs the image's Docker
+  `HEALTHCHECK`.
+- **Metrics:** `GET /metrics`, on its own `METRICS_ADDR` listener only, exposes Prometheus instruments — request count
   and latency by normalized route (ids replaced with `:id`), live WebSocket
   connection gauge, note create/update/delete counters and Go runtime stats.
 - **Dashboards:** the compose stack ships Prometheus (scraping every 15s) and

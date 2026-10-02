@@ -31,7 +31,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ## `fix/production-hardening` - Production hardening (#264)
 
 - [x] Production compose: fail fast on unset secrets, remove weak defaults, publish only public ports, pin images, resource limits (#326)
-- [ ] Sync service image: non-root user, HEALTHCHECK, `/ready` endpoint that pings Postgres and Redis, keep `/metrics` internal (#327)
+- [x] Sync service image: non-root user, HEALTHCHECK, `/ready` endpoint that pings Postgres (Redis is unused), keep `/metrics` internal (#327)
 - [x] Auth config: minimum JWT secret length, pin HS256, require the Bearer scheme and a minimum length for the admin token (#328)
 - [ ] Tauri: strict webview CSP and a shell capability limited to the sidecar (#329)
 - [ ] Tauri supervisor follow-ups: no compose polling while a foreign backend is healthy, handle `RunEvent::Exit`, re-check shutdown after spawn, restart on failing health (#330)

@@ -4,6 +4,12 @@
 # tunnel. GRAFANA_PASSWORD has no default.
 
 services:
+  # /metrics is only served on its own listener (#327), reachable from the
+  # compose network but never through the web UI's public port.
+  sync-service:
+    environment:
+      - METRICS_ADDR=:9091
+
   prometheus:
     image: prom/prometheus:v2.53.0
     volumes:

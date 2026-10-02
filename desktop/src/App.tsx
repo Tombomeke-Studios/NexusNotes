@@ -1107,6 +1107,12 @@ export default function App() {
           setEditorContent("");
           setSaveStatus("idle");
         }
+      } else if (activeNoteRef.current?.id === key) {
+        // Closing the open note's tab from behind another tab (the graph):
+        // unload it too, or the graph keeps highlighting a closed note.
+        setActiveNote(null);
+        setEditorContent("");
+        setSaveStatus("idle");
       }
     },
     [handleSelectNote],

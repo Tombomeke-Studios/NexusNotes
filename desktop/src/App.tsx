@@ -1447,6 +1447,18 @@ export default function App() {
         });
       }}
     >
+      {/* First Tab stop: jump past the chrome to the editor (#267). */}
+      <a
+        className="skip-link"
+        href="#main-content"
+        onClick={(e) => {
+          e.preventDefault();
+          const editor = document.querySelector<HTMLElement>(".editor-textarea");
+          (editor ?? document.getElementById("main-content"))?.focus();
+        }}
+      >
+        Skip to editor
+      </a>
       <ConnectionBanner />
       <TopBar
         vaultName={activeVault?.name ?? "NexusNotes"}
@@ -1551,7 +1563,7 @@ export default function App() {
             setDragging({ type: "left", startX: e.clientX, startW: prefs.leftWidth });
           }}
         />
-        <div className="center-column">
+        <div className="center-column" id="main-content" tabIndex={-1}>
           {vaultList.length > 0 && tabs.length > 0 && (
             <TabBar
               tabs={tabItems}

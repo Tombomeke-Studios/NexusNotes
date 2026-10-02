@@ -83,7 +83,7 @@ export function GlobalSearch({ vaultId, clientNotes, onSelect, onClose }: Global
 
   return (
     <OverlayMotion preset="backdrop" className="global-search-overlay" onClick={onClose}>
-      <OverlayMotion preset="palette" className="global-search" onClick={(e) => e.stopPropagation()}>
+      <OverlayMotion preset="palette" className="global-search" aria-label="Search all notes" onClick={(e) => e.stopPropagation()}>
         <div className="global-search-header">
           <input
             ref={inputRef}

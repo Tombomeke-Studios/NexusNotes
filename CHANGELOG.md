@@ -28,6 +28,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   other device's, or merge them by hand.
 
 ### Changed
+- Keyboard users stay inside open dialogs (Tab cycles within them) and return to where they
+  were when a dialog closes; a "Skip to editor" link is the first Tab stop.
 - Each note keeps its 50 most recent versions; older ones are removed on the next save.
 - New vaults are end-to-end encrypted by default. Turning it off shows a short warning
   that the server could then read the vault, with a plain explanation on request.

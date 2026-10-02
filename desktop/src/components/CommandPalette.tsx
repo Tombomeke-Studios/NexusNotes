@@ -91,7 +91,7 @@ export function CommandPalette({
 
   return (
     <OverlayMotion preset="backdrop" className="palette-overlay" onClick={onClose}>
-      <OverlayMotion preset="palette" className="palette" onClick={(e) => e.stopPropagation()}>
+      <OverlayMotion preset="palette" className="palette" aria-label="Command palette" onClick={(e) => e.stopPropagation()}>
         <div className="palette-head">
           <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
             <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />

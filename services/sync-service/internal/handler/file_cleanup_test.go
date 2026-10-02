@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt/fieldcrypttest"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/service"
@@ -35,8 +36,8 @@ func TestVaultDelete_OnlyTheOwnerDeletesAndOnlyThenAreFilesRemoved(t *testing.T)
 	pool := newIsolatedDB(t)
 	owner, other := seedUser(t, pool), seedUser(t, pool)
 	vaultID := seedVaultFor(t, pool, owner)
-	vaultRepo := repository.NewVaultRepo(pool)
-	h := NewVaultHandler(vaultRepo, repository.NewUserRepo(pool), repository.NewVaultMemberRepo(pool), false)
+	vaultRepo := repository.NewVaultRepo(pool, fieldcrypttest.Cipher(t))
+	h := NewVaultHandler(vaultRepo, repository.NewUserRepo(pool, fieldcrypttest.Cipher(t)), repository.NewVaultMemberRepo(pool, fieldcrypttest.Cipher(t)), false)
 	files := &fakeFileCleanup{}
 	h.SetFileCleanup(files)
 

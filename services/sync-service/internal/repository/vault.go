@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
 
@@ -15,12 +16,14 @@ import (
 // vault" so callers cannot distinguish those cases (no information leak).
 var ErrVaultNotFound = errors.New("vault not found")
 
+// VaultRepo stores vaults with their names encrypted at rest (#355).
 type VaultRepo struct {
 	pool *pgxpool.Pool
+	cryptor
 }
 
-func NewVaultRepo(pool *pgxpool.Pool) *VaultRepo {
-	return &VaultRepo{pool: pool}
+func NewVaultRepo(pool *pgxpool.Pool, crypt *fieldcrypt.Cipher) *VaultRepo {
+	return &VaultRepo{pool: pool, cryptor: cryptor{crypt}}
 }
 
 // AccessRole returns the caller's effective role for a vault in one query:
@@ -51,10 +54,14 @@ func (r *VaultRepo) Create(ctx context.Context, vault *model.Vault) error {
 	if vault.Encryption == "" {
 		vault.Encryption = model.VaultEncryptionNone
 	}
-	_, err := r.pool.Exec(ctx,
+	name, err := r.seal(fieldVaultName, vault.Name)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx,
 		`INSERT INTO vaults (id, user_id, name, encryption, encryption_meta, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		vault.ID, vault.UserID, vault.Name, vault.Encryption, []byte(vault.EncryptionMeta), vault.CreatedAt, vault.UpdatedAt,
+		vault.ID, vault.UserID, name, vault.Encryption, []byte(vault.EncryptionMeta), vault.CreatedAt, vault.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("insert vault: %w", err)
@@ -72,6 +79,9 @@ func (r *VaultRepo) GetByID(ctx context.Context, id string) (*model.Vault, error
 	).Scan(&v.ID, &v.UserID, &v.Name, &v.Encryption, &meta, &v.CreatedAt, &v.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get vault: %w", err)
+	}
+	if err := r.open(fieldVaultName, &v.Name); err != nil {
+		return nil, err
 	}
 	v.EncryptionMeta = meta
 	return &v, nil
@@ -91,6 +101,9 @@ func (r *VaultRepo) GetByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model
 	if err != nil {
 		return nil, fmt.Errorf("get vault: %w", err)
 	}
+	if err := r.open(fieldVaultName, &v.Name); err != nil {
+		return nil, err
+	}
 	v.EncryptionMeta = meta
 	return &v, nil
 }
@@ -98,7 +111,7 @@ func (r *VaultRepo) GetByIDTx(ctx context.Context, tx pgx.Tx, id string) (*model
 func (r *VaultRepo) ListByUser(ctx context.Context, userID string) ([]model.Vault, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, user_id, name, encryption, encryption_meta, created_at, updated_at
-		 FROM vaults WHERE user_id = $1 ORDER BY name`,
+		 FROM vaults WHERE user_id = $1`,
 		userID,
 	)
 	if err != nil {
@@ -113,9 +126,16 @@ func (r *VaultRepo) ListByUser(ctx context.Context, userID string) ([]model.Vaul
 		if err := rows.Scan(&v.ID, &v.UserID, &v.Name, &v.Encryption, &meta, &v.CreatedAt, &v.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan vault: %w", err)
 		}
+		if err := r.open(fieldVaultName, &v.Name); err != nil {
+			return nil, err
+		}
 		v.EncryptionMeta = meta
 		vaults = append(vaults, v)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list vaults: %w", err)
+	}
+	sortByName(vaults, func(v *model.Vault) string { return v.Name })
 	return vaults, nil
 }
 
@@ -139,9 +159,13 @@ func (r *VaultRepo) UpdateEncryptionMeta(ctx context.Context, id, userID string,
 }
 
 func (r *VaultRepo) Update(ctx context.Context, vault *model.Vault) error {
-	_, err := r.pool.Exec(ctx,
+	name, err := r.seal(fieldVaultName, vault.Name)
+	if err != nil {
+		return err
+	}
+	_, err = r.pool.Exec(ctx,
 		`UPDATE vaults SET name = $1, updated_at = $2 WHERE id = $3 AND user_id = $4`,
-		vault.Name, vault.UpdatedAt, vault.ID, vault.UserID,
+		name, vault.UpdatedAt, vault.ID, vault.UserID,
 	)
 	if err != nil {
 		return fmt.Errorf("update vault: %w", err)

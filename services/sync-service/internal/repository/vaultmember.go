@@ -8,16 +8,18 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
 
 // VaultMemberRepo manages membership of shared vaults (#51-#54).
 type VaultMemberRepo struct {
 	pool *pgxpool.Pool
+	cryptor
 }
 
-func NewVaultMemberRepo(pool *pgxpool.Pool) *VaultMemberRepo {
-	return &VaultMemberRepo{pool: pool}
+func NewVaultMemberRepo(pool *pgxpool.Pool, crypt *fieldcrypt.Cipher) *VaultMemberRepo {
+	return &VaultMemberRepo{pool: pool, cryptor: cryptor{crypt}}
 }
 
 // Add invites a user to a vault (auto-accepted — there is no separate accept
@@ -73,6 +75,9 @@ func (r *VaultMemberRepo) List(ctx context.Context, vaultID string) ([]model.Vau
 			&m.InvitedBy, &m.AcceptedAt, &m.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan vault member: %w", err)
 		}
+		if err := r.open(fieldUserDisplayName, &m.DisplayName); err != nil {
+			return nil, err
+		}
 		members = append(members, m)
 	}
 	return members, rows.Err()
@@ -109,7 +114,7 @@ func (r *VaultMemberRepo) ListSharedVaults(ctx context.Context, userID string) (
 		`SELECT v.id, v.user_id, v.name, v.encryption, v.encryption_meta,
 		        v.created_at, v.updated_at, m.role
 		 FROM vault_members m JOIN vaults v ON v.id = m.vault_id
-		 WHERE m.user_id = $1 ORDER BY v.name`,
+		 WHERE m.user_id = $1`,
 		userID,
 	)
 	if err != nil {
@@ -125,10 +130,17 @@ func (r *VaultMemberRepo) ListSharedVaults(ctx context.Context, userID string) (
 			&v.CreatedAt, &v.UpdatedAt, &v.Role); err != nil {
 			return nil, fmt.Errorf("scan shared vault: %w", err)
 		}
+		if err := r.open(fieldVaultName, &v.Name); err != nil {
+			return nil, err
+		}
 		v.EncryptionMeta = meta
 		vaults = append(vaults, v)
 	}
-	return vaults, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list shared vaults: %w", err)
+	}
+	sortByName(vaults, func(v *model.Vault) string { return v.Name })
+	return vaults, nil
 }
 
 // MemberUserIDs returns the user ids of every member of the vault (excluding

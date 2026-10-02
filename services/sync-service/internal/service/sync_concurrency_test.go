@@ -78,7 +78,7 @@ func newIsolatedDBWithConns(t *testing.T, maxConns int32) *pgxpool.Pool {
 func newTestSync(t testing.TB, pool *pgxpool.Pool) *SyncService {
 	return NewSyncService(
 		repository.NewNoteRepo(pool, fieldcrypttest.Cipher(t)),
-		repository.NewVaultRepo(pool),
+		repository.NewVaultRepo(pool, fieldcrypttest.Cipher(t)),
 		repository.NewLinkRepo(pool),
 		repository.NewTagRepo(pool),
 		repository.NewAliasRepo(pool),
@@ -94,11 +94,11 @@ func seedVault(t *testing.T, pool *pgxpool.Pool) string {
 		ID: uuid.New().String(), Email: uuid.New().String() + "@nexus.test",
 		PasswordHash: "x", DisplayName: "Test", CreatedAt: now, UpdatedAt: now,
 	}
-	if err := repository.NewUserRepo(pool).Create(ctx, user); err != nil {
+	if err := repository.NewUserRepo(pool, fieldcrypttest.Cipher(t)).Create(ctx, user); err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 	vault := &model.Vault{ID: uuid.New().String(), UserID: user.ID, Name: "V", CreatedAt: now, UpdatedAt: now}
-	if err := repository.NewVaultRepo(pool).Create(ctx, vault); err != nil {
+	if err := repository.NewVaultRepo(pool, fieldcrypttest.Cipher(t)).Create(ctx, vault); err != nil {
 		t.Fatalf("create vault: %v", err)
 	}
 	return vault.ID

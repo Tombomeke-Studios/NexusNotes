@@ -49,6 +49,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   and Linux app.
 - Having the app open in two windows no longer signs you out when both renew the session
   at the same moment.
+- Attachment files left in storage after their note, vault or account was deleted are now
+  removed by a daily sweep.
 - The desktop app restarts its built-in server when it stops responding, and warns when the
   server it finds on port 8080 is reachable from other computers on the network.
 - Clicking the search bar at the top no longer slides it to the right.

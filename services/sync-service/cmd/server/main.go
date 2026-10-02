@@ -163,6 +163,18 @@ func main() {
 	// Wired only when object storage is up: a nil *storage.Store inside the
 	// interface would not be nil.
 	if attachStore != nil {
+		// Remove files no attachment row refers to (#316): at start-up, then daily.
+		sweeper := service.NewOrphanSweeper(attachStore, repository.NewAttachmentRepo(pool))
+		go func() {
+			ticker := time.NewTicker(24 * time.Hour)
+			defer ticker.Stop()
+			for {
+				if _, err := sweeper.Sweep(context.Background()); err != nil {
+					slog.Warn("orphan attachment sweep", "error", err)
+				}
+				<-ticker.C
+			}
+		}()
 		files := service.NewFileCleanup(attachStore, repository.NewAttachmentRepo(pool))
 		accountService.SetFileCleanup(files)
 		vaultHandler.SetFileCleanup(files)

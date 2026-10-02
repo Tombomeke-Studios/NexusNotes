@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -200,6 +201,22 @@ func (s *Store) DeletePrefix(ctx context.Context, prefix string) error {
 func (s *Store) Delete(ctx context.Context, key string) error {
 	if err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{}); err != nil {
 		return fmt.Errorf("delete object: %w", err)
+	}
+	return nil
+}
+
+// ListObjects calls fn with the key and last-modified time of every object,
+// stopping at the first error fn returns (used by the orphan sweep, #316).
+func (s *Store) ListObjects(ctx context.Context, fn func(key string, modified time.Time) error) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel() // stops minio-go's listing goroutine if fn bails out early
+	for obj := range s.client.ListObjects(ctx, s.bucket, minio.ListObjectsOptions{Recursive: true}) {
+		if obj.Err != nil {
+			return fmt.Errorf("list objects: %w", obj.Err)
+		}
+		if err := fn(obj.Key, obj.LastModified); err != nil {
+			return err
+		}
 	}
 	return nil
 }

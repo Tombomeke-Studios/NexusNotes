@@ -35,7 +35,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Auth config: minimum JWT secret length, pin HS256, require the Bearer scheme and a minimum length for the admin token (#328)
 - [ ] Tauri: strict webview CSP and a shell capability limited to the sidecar (#329)
 - [ ] Tauri supervisor follow-ups: no compose polling while a foreign backend is healthy, handle `RunEvent::Exit`, re-check shutdown after spawn, restart on failing health (#330)
-- [ ] CI: build both Dockerfiles so an unbuildable image is caught (#331)
+- [x] CI: build both Dockerfiles so an unbuildable image is caught (#331)
 - [ ] Graceful shutdown: drain the WebSocket hub, per-route write deadlines (#332)
 - [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
 - [ ] Migrate the packaged app's database password without losing data (#277)

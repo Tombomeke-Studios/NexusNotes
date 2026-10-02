@@ -305,6 +305,7 @@ GitHub Actions workflow (`.github/workflows/validate.yml`) runs automatically on
 | Detect changes | Always | Determines which jobs to run based on changed files |
 | Backend (Go) | `services/sync-service/**` changes | Lint (golangci-lint), test (`go test -race`), build |
 | Desktop (React) | `desktop/**` changes | Lint (ESLint), type check (tsc), test (Vitest) |
+| Docker images | `services/sync-service/**`, `desktop/**` or `docker-compose.yml` changes | Builds the sync service and web UI production images (no push), so an unbuildable Dockerfile fails CI |
 
 ---
 

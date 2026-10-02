@@ -375,6 +375,9 @@ bump is always compatible. `1.0.0` marks the first stable release.
   when major.minor differs, so an old `.exe` never fails silently against a newer server.
 - Release notes live in [CHANGELOG.md](../CHANGELOG.md). Tag releases `vX.Y.Z` on `main`
   (see the promotion flow in CLAUDE.md).
+  When cutting a release, move the *Unreleased* entries under a new
+  `## [X.Y.Z] - YYYY-MM-DD` heading and add its compare link at the bottom of
+  the changelog (`[X.Y.Z]: …/compare/vPREV...vX.Y.Z`).
 
 ---
 

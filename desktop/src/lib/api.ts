@@ -271,6 +271,15 @@ export const vaults = {
       method: "PUT",
       body: JSON.stringify({ name }),
     }),
+  /**
+   * Turns a standard vault into an e2ee one (#361): every note, already
+   * encrypted under the new vault key, plus the wrapped key material.
+   */
+  convertToE2ee: (id: string, encryptionMeta: unknown, notes: unknown[]) =>
+    request<Vault>(`/api/vaults/${id}/encryption/convert`, {
+      method: "POST",
+      body: JSON.stringify({ encryption_meta: encryptionMeta, notes }),
+    }),
   /** Replaces the opaque key material (passphrase change / recovery rewrap). */
   updateEncryption: (id: string, encryptionMeta: unknown) =>
     request<void>(`/api/vaults/${id}/encryption`, {

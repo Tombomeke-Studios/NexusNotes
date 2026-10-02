@@ -195,7 +195,7 @@ it is what it exists for:
 | `src/components/Search/Snippet.tsx` + `src/lib/snippet.ts` | Renders search snippets as text with `<em>` highlights (snippets are raw note text; never render them as HTML) |
 | `src/components/CommandPalette.tsx` | Unified palette: quick-open notes + `>` command mode |
 | `src/components/Conflict/` | Conflict resolution (#225): side-by-side comparison dialog (keep mine / use theirs / merge by hand) and the notice above the editor |
-| `src/components/Encryption/` | E2EE vault UI: encryption opt-in (EncryptionSetup), new-vault dialog, one-time recovery-code dialog, unlock dialog |
+| `src/components/Encryption/` | E2EE vault UI: encryption choice (EncryptionSetup, on by default with an opt-out warning), new-vault dialog, one-time recovery-code dialog, unlock dialog, ConvertVaultForm (encrypt an existing vault) |
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
 | `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror |
@@ -213,6 +213,7 @@ it is what it exists for:
 | `src/lib/stars.ts` | Starred-notes helpers: `migrateLegacyPins` moves legacy localStorage pins to server-side stars, dropping a pin only once the server took (or permanently rejected) it |
 | `src/lib/crypto.ts` | E2EE crypto core: Argon2id derivation, AES-GCM note encryption, key wrapping, recovery codes (see docs/encryption.md) |
 | `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
+| `src/lib/vaultConvert.ts` | Converts a standard vault to e2ee (#361): new vault key, every note encrypted on the device, one atomic `POST /api/vaults/{id}/encryption/convert`, retry on 409 |
 | `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |
 | `src/lib/clientSearch.ts` | Client-side full-text search over decrypted in-memory notes (e2ee vaults; server search only sees ciphertext) |
 | `src/lib/remarkCallouts.ts` | remark plugin: `> [!NOTE]` blockquotes → styled callout blocks in the preview (#223) |

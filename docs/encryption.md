@@ -40,6 +40,23 @@ plain-language explanation on request. Standard vaults are still encrypted at
 rest on the server (see [security.md](security.md#encryption-at-rest)), but the
 server holds that key, so it is not zero-knowledge.
 
+### Converting a standard vault (#361)
+
+The owner of a standard vault can encrypt it later (Settings → Sync → *Encrypt
+this vault*). The client generates the Vault Key and its wrapped forms exactly
+as at creation, reads every note, encrypts each one on the device and sends all
+of them in one request. The server swaps them in within a single transaction,
+and only if it received exactly the vault's current notes (otherwise `409`, and
+the client reads and encrypts again). In the same transaction it deletes what it
+derived from the plaintext (stored versions, tags, aliases, links) and its search
+documents are rebuilt with titles and paths only. The device that converted the
+vault keeps the key in its session and shows the recovery code once; its local
+drafts are deleted. Other devices receive `vault:encrypted`, drop the vault's
+plaintext from memory and drafts, and ask for the passphrase.
+
+A vault with attachments cannot be converted yet: attachment bytes are not
+end-to-end encrypted (#238).
+
 ```
 vaults.encryption = 'none'  -> existing behaviour, no change
 vaults.encryption = 'e2ee'  -> all note content encrypted before upload

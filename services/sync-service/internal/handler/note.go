@@ -321,3 +321,54 @@ func (h *NoteHandler) Backlinks(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, backlinks)
 }
+
+// maxConvertBody caps POST /api/vaults/{id}/encryption/convert, which carries
+// every note of the vault re-encrypted.
+const maxConvertBody = 64 << 20
+
+// ConvertVault turns the caller's standard vault into an e2ee one (#361): the
+// client sends every note encrypted under the new vault key plus the wrapped
+// key material. On success every device of the owner and members is told to
+// reload the vault, which is now locked for them.
+func (h *NoteHandler) ConvertVault(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	vaultID := r.PathValue("id")
+
+	var req struct {
+		EncryptionMeta json.RawMessage       `json:"encryption_meta"`
+		Notes          []service.ConvertNote `json:"notes"`
+	}
+	if err := decodeLimited(w, r, &req, maxConvertBody); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	err := h.syncService.ConvertVaultToE2EE(r.Context(), vaultID, userID, req.EncryptionMeta, req.Notes)
+	switch {
+	case err == nil:
+	case errors.Is(err, repository.ErrVaultNotFound):
+		writeError(w, http.StatusNotFound, "vault not found")
+		return
+	case errors.Is(err, service.ErrConvertMissingMeta):
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	case errors.Is(err, service.ErrConvertNotesChanged):
+		writeError(w, http.StatusConflict, err.Error())
+		return
+	case errors.Is(err, service.ErrConvertNotStandard), errors.Is(err, service.ErrConvertHasAttachments):
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	default:
+		writeError(w, http.StatusInternalServerError, "failed to convert vault")
+		return
+	}
+
+	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load vault")
+		return
+	}
+	payload, _ := json.Marshal(map[string]string{"vault_id": vaultID})
+	h.broadcastToVault(r, vaultID, ws.Message{Type: "vault:encrypted", Payload: payload})
+	writeJSON(w, http.StatusOK, vault)
+}

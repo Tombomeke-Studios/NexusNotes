@@ -152,7 +152,10 @@ ignored.
 ### Search indexing
 
 1. Note created or updated in Sync Service
-2. Sync Service publishes an async index task to Meilisearch — does not block the save response
+2. Sync Service queues the index update for its indexing worker — the save response never waits.
+   The worker sends updates in order, retries a failed call up to 4 times with backoff
+   (not for a request Meilisearch rejects as invalid), and the queue is drained on
+   shutdown (#401)
 3. Meilisearch indexes title, content, tags, and path; skips content for encrypted vaults
 4. Client sends `GET /search?q=&vault=&tag=&date_from=&date_to=` to the Sync Service
 5. Sync Service proxies to Meilisearch and returns ranked results with context snippets
@@ -185,7 +188,10 @@ sequenceDiagram
 ### Search indexing
 
 1. Note created or updated in Sync Service
-2. Sync Service publishes an async index task to Meilisearch — does not block the save response
+2. Sync Service queues the index update for its indexing worker — the save response never waits.
+   The worker sends updates in order, retries a failed call up to 4 times with backoff
+   (not for a request Meilisearch rejects as invalid), and the queue is drained on
+   shutdown (#401)
 3. Meilisearch indexes title, content, tags, and path; skips content for encrypted vaults
 4. Client sends `GET /search?q=&vault=&tag=&date_from=&date_to=` to the Sync Service
 5. Sync Service proxies to Meilisearch and returns ranked results with context snippets

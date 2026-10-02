@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"strconv"
@@ -58,6 +59,10 @@ type Config struct {
 	// host:port such as ":9091"). Empty disables /metrics: it is never served
 	// on the public listener (#327).
 	MetricsAddr string
+	// TrustedProxies are the reverse proxies (TRUSTED_PROXIES, comma-separated
+	// CIDRs or IPs) whose X-Forwarded-For / X-Real-IP name the real client.
+	// Empty: those headers are ignored (#373).
+	TrustedProxies []netip.Prefix
 }
 
 // DefaultAllowedOrigins covers the desktop app and local development:
@@ -177,6 +182,11 @@ func Load() (*Config, error) {
 		}
 	}
 
+	trustedProxies, err := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Port:                    port,
 		BindAddrs:               bindAddrs,
@@ -204,7 +214,30 @@ func Load() (*Config, error) {
 		AllowedOrigins:          allowedOrigins,
 		LinkedFilesAllowPrivate: linkedAllowPrivate,
 		MetricsAddr:             metricsAddr,
+		TrustedProxies:          trustedProxies,
 	}, nil
+}
+
+// parseTrustedProxies reads TRUSTED_PROXIES: comma-separated CIDRs or single
+// IPs (a bare IP trusts exactly that address).
+func parseTrustedProxies(raw string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
+	for _, part := range strings.Split(raw, ",") {
+		v := strings.TrimSpace(part)
+		if v == "" {
+			continue
+		}
+		if p, err := netip.ParsePrefix(v); err == nil {
+			out = append(out, p.Masked())
+			continue
+		}
+		a, err := netip.ParseAddr(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid TRUSTED_PROXIES entry %q: want a CIDR (172.16.0.0/12) or an IP", v)
+		}
+		out = append(out, netip.PrefixFrom(a, a.BitLen()))
+	}
+	return out, nil
 }
 
 // parseAllowedOrigins turns a comma-separated CORS_ALLOWED_ORIGINS value into

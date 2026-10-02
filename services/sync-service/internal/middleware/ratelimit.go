@@ -12,6 +12,10 @@ import (
 // staleAfter is how long a client may be idle before its bucket is dropped.
 const staleAfter = 3 * time.Minute
 
+// purgeEvery is how often stale buckets are swept; sweeping on every request
+// would cost O(clients) per request (#373).
+const purgeEvery = time.Minute
+
 type bucket struct {
 	tokens   float64
 	lastSeen time.Time
@@ -27,6 +31,8 @@ type RateLimiter struct {
 	rate    float64 // tokens per second
 	burst   float64
 	now     func() time.Time
+	// lastPurge is when stale buckets were last swept.
+	lastPurge time.Time
 }
 
 func NewRateLimiter(perMinute, burst int) *RateLimiter {
@@ -76,6 +82,10 @@ func (rl *RateLimiter) allow(ip string) (bool, int) {
 }
 
 func (rl *RateLimiter) purge(now time.Time) {
+	if now.Sub(rl.lastPurge) < purgeEvery {
+		return
+	}
+	rl.lastPurge = now
 	for ip, b := range rl.clients {
 		if now.Sub(b.lastSeen) > staleAfter {
 			delete(rl.clients, ip)
@@ -85,7 +95,8 @@ func (rl *RateLimiter) purge(now time.Time) {
 
 // ClientIP extracts the remote host, ignoring the ephemeral port so that all
 // connections from one address share a bucket. Also used by the login
-// throttle's compound email+IP key.
+// throttle's compound email+IP key. Behind a trusted reverse proxy, RealIP has
+// already replaced RemoteAddr with the client's address.
 func ClientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

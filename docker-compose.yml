@@ -36,6 +36,11 @@ services:
       - DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY in .env (openssl rand -hex 32)}
       - DATA_ENCRYPTION_OLD_KEYS=${DATA_ENCRYPTION_OLD_KEYS:-}
       - REDIS_URL=redis://redis:6379
+      # The web UI's nginx is the only way in, so trust the compose network's
+      # private ranges for X-Forwarded-For / X-Real-IP; otherwise every user
+      # would share one rate-limit bucket (#373). Add an outer proxy here if
+      # one sits in front of the web UI.
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8,192.168.0.0/16}
       - MEILI_URL=http://meilisearch:7700
       - MEILI_MASTER_KEY=${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in .env}
       # Guards /api/admin/*; leave empty to disable those endpoints.

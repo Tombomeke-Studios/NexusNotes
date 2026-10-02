@@ -71,6 +71,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - `/metrics` is no longer served on the API port; set `METRICS_ADDR` (the monitoring
   overlay does) to serve it on a separate internal listener. The server image runs as
   an unprivileged user and has a Docker health check on the new `GET /ready`.
+- Behind the bundled web proxy, sign-in rate limits now apply per user instead of to
+  everyone at once (`TRUSTED_PROXIES`); spoofed forwarding headers are ignored.
 - The packaged app's backend no longer signs sessions with the shared `dev-secret`: each
   installation generates its own random JWT secret on first run and keeps it in the app's
   local data directory. After upgrading, the first request renews your session through

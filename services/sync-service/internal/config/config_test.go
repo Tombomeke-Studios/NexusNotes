@@ -268,3 +268,32 @@ func TestLoad_MetricsAddr(t *testing.T) {
 		t.Fatalf("missing colon: err = %v, want an error naming METRICS_ADDR", err)
 	}
 }
+
+func TestLoad_TrustedProxies(t *testing.T) {
+	setRequired(t)
+	t.Setenv("TRUSTED_PROXIES", "")
+	cfg, err := Load()
+	if err != nil || len(cfg.TrustedProxies) != 0 {
+		t.Fatalf("unset: %v, %v; want none (headers never trusted)", cfg.TrustedProxies, err)
+	}
+
+	t.Setenv("TRUSTED_PROXIES", " 172.16.0.0/12 , 10.1.2.3, ::1 ,")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"172.16.0.0/12", "10.1.2.3/32", "::1/128"}
+	if len(cfg.TrustedProxies) != len(want) {
+		t.Fatalf("TrustedProxies = %v, want %v", cfg.TrustedProxies, want)
+	}
+	for i, p := range cfg.TrustedProxies {
+		if p.String() != want[i] {
+			t.Fatalf("TrustedProxies = %v, want %v", cfg.TrustedProxies, want)
+		}
+	}
+
+	t.Setenv("TRUSTED_PROXIES", "not-a-cidr")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXIES") {
+		t.Fatalf("err = %v, want an error naming TRUSTED_PROXIES", err)
+	}
+}

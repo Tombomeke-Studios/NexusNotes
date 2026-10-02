@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -178,5 +179,34 @@ func TestNoteRepo_ForEach(t *testing.T) {
 		if got[id] != content {
 			t.Fatalf("note %s: content %q, want the plaintext", id, got[id])
 		}
+	}
+}
+
+// Only the most recent versions of a note are kept (#387).
+func TestNoteRepo_PrunesOldVersions(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	repo := NewNoteRepo(pool, testCipher(t))
+	vaultID := seedVault(t, pool)
+	start := time.Now().UTC().Add(-time.Hour)
+	note := &model.Note{ID: uuid.NewString(), VaultID: vaultID, Title: "t", Content: "c", Checksum: "c", CreatedAt: start, UpdatedAt: start}
+	if err := repo.Create(ctx, note); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < MaxNoteVersions+5; i++ {
+		v := &model.NoteVersion{ID: uuid.NewString(), NoteID: note.ID, Content: fmt.Sprintf("v%d", i), Checksum: "c", CreatedAt: start.Add(time.Duration(i) * time.Second)}
+		if err := repo.CreateVersion(ctx, v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	versions, err := repo.ListVersions(ctx, note.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(versions) != MaxNoteVersions {
+		t.Fatalf("%d versions kept, want %d", len(versions), MaxNoteVersions)
+	}
+	if versions[0].Content != fmt.Sprintf("v%d", MaxNoteVersions+4) || versions[len(versions)-1].Content != "v5" {
+		t.Fatalf("kept %q..%q, want the newest %d", versions[0].Content, versions[len(versions)-1].Content, MaxNoteVersions)
 	}
 }

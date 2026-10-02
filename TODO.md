@@ -83,8 +83,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Complements `feature/db-performance` (#220).
 
-- [ ] Search fallback: `EXISTS` for tags/aliases plus a trigram/full-text index instead of leading-wildcard `LIKE`
-- [ ] Paginate or slim the note list; cap and prune `note_versions`
+- [x] Search fallback: `EXISTS` for tags/aliases (#354); a trigram/full-text index on content is no longer possible, as content is encrypted at rest
+- [ ] Paginate or slim the note list
+- [x] Cap and prune `note_versions` (keep the newest 50 per note) (#387)
 - [ ] Indexing worker queue with retry and shutdown drain; one shared helper
 - [ ] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit
 - [x] Rate limiter: periodic purge and trusted-proxy client IP (#373)

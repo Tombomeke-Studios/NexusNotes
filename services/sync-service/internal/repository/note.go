@@ -25,6 +25,14 @@ var ErrNoteLocked = errors.New("note is locked by another update")
 // pgLockNotAvailable is Postgres' SQLSTATE for an exceeded lock_timeout.
 const pgLockNotAvailable = "55P03"
 
+// MaxNoteVersions is how many stored versions a note keeps; older ones are
+// pruned when a new one is added, so history does not grow without bound and
+// content the user removed long ago does not linger (#387).
+const MaxNoteVersions = 50
+
+const pruneVersionsSQL = `DELETE FROM note_versions WHERE note_id = $1 AND id NOT IN (
+	SELECT id FROM note_versions WHERE note_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2)`
+
 // searchSnippetRunes is how much of a note's text a search result carries.
 const searchSnippetRunes = 300
 
@@ -292,6 +300,9 @@ func (r *NoteRepo) CreateVersion(ctx context.Context, version *model.NoteVersion
 	if err != nil {
 		return fmt.Errorf("insert note version: %w", err)
 	}
+	if _, err := r.pool.Exec(ctx, pruneVersionsSQL, version.NoteID, MaxNoteVersions); err != nil {
+		return fmt.Errorf("prune note versions: %w", err)
+	}
 	return nil
 }
 
@@ -348,6 +359,9 @@ func (r *NoteRepo) CreateVersionTx(ctx context.Context, tx pgx.Tx, version *mode
 	)
 	if err != nil {
 		return fmt.Errorf("insert note version tx: %w", err)
+	}
+	if _, err := tx.Exec(ctx, pruneVersionsSQL, version.NoteID, MaxNoteVersions); err != nil {
+		return fmt.Errorf("prune note versions: %w", err)
 	}
 	return nil
 }

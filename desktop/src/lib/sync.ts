@@ -17,6 +17,8 @@ export class SyncClient {
   // event) is dropped, so a quick disconnect/reconnect never ends up with two
   // sockets or a reconnect loop nobody asked for.
   private generation = 0;
+  // Set once a socket of this session has opened; a later open is a reconnect.
+  private hasConnected = false;
 
   connect() {
     this.stopped = false;
@@ -29,6 +31,7 @@ export class SyncClient {
 
   disconnect() {
     this.stopped = true;
+    this.hasConnected = false;
     this.generation++;
     this.clearReconnectTimer();
     this.closeSocket();
@@ -66,7 +69,12 @@ export class SyncClient {
     this.ws = ws;
 
     ws.onopen = () => {
-      if (this.isCurrent(generation)) this.reconnectDelay = 1000;
+      if (!this.isCurrent(generation)) return;
+      this.reconnectDelay = 1000;
+      // Pushes sent while the socket was down are lost: tell the app to resync
+      // (#388). The first connect of a session needs no such signal.
+      if (this.hasConnected) this.handlers.forEach((h) => h("sync:reconnected", null));
+      this.hasConnected = true;
     };
 
     ws.onmessage = (event) => {

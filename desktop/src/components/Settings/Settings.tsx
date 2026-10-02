@@ -8,6 +8,7 @@ import { relativeTimeLabel } from "../../lib/stats";
 import { APP_VERSION, formatVersionLabel } from "../../lib/version";
 import { useServerStatus } from "../../lib/useServerStatus";
 import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
+import { ConvertVaultForm } from "../Encryption/ConvertVaultForm";
 import type { MotionPreference } from "../../lib/motion";
 import { spring } from "../../lib/motion-tokens";
 import "./Settings.css";
@@ -24,6 +25,8 @@ interface SettingsProps {
   activeVault: Vault | null;
   /** Re-wraps the active e2ee vault's key under a new passphrase (#199). */
   onChangePassphrase: (currentPassphrase: string, newPassphrase: string) => Promise<void>;
+  /** Encrypts the active standard vault end to end with a new passphrase (#361). */
+  onEncryptVault: (passphrase: string) => Promise<void>;
   /** Downloads the active vault as an Obsidian-compatible zip (#152). */
   onExportVault: () => void;
   onUpdatePrefs: (partial: Partial<WorkspacePrefs>) => void;
@@ -101,6 +104,7 @@ export function Settings({
   lastSyncLabel,
   activeVault,
   onChangePassphrase,
+  onEncryptVault,
   onExportVault,
   onUpdatePrefs,
   onSignOut,
@@ -340,6 +344,26 @@ export function Settings({
                       </div>
                     </div>
                     <ChangePassphraseForm onChange={onChangePassphrase} />
+                  </>
+                )}
+                {activeVault?.encryption === "none" && (activeVault.role ?? "owner") === "owner" && (
+                  <>
+                    <div className="settings-section-title settings-section-title--spaced">
+                      Encryption — {activeVault.name}
+                    </div>
+                    <div className="settings-kv">
+                      <span>Mode</span>
+                      <span>Encrypted on the server, not end to end</span>
+                    </div>
+                    <div className="settings-row">
+                      <div>
+                        <div className="settings-row-label">End-to-end encryption</div>
+                        <div className="settings-row-sub">
+                          Lock this vault so only you can read it
+                        </div>
+                      </div>
+                    </div>
+                    <ConvertVaultForm vaultName={activeVault.name} onConvert={onEncryptVault} />
                   </>
                 )}
               </>

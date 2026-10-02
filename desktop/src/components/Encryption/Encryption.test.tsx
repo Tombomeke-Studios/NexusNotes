@@ -7,6 +7,8 @@ import { CreateVaultDialog } from "./CreateVaultDialog";
 import { UnlockVaultDialog } from "./UnlockVaultDialog";
 import { ChangePassphraseForm } from "./ChangePassphraseForm";
 import { FirstRunVault } from "../Workspace/FirstRunVault";
+import { ConvertVaultForm } from "./ConvertVaultForm";
+import { ApiError } from "../../lib/api";
 
 /** Stateful wrapper so the controlled EncryptionSetup behaves like in the app. */
 function SetupHarness({ initialEnabled = false }: { initialEnabled?: boolean }) {
@@ -272,5 +274,35 @@ describe("ChangePassphraseForm", () => {
       "disabled",
       true,
     );
+  });
+});
+
+describe("ConvertVaultForm", () => {
+  it("encrypts with a confirmed passphrase and closes on success (#361)", async () => {
+    const onConvert = vi.fn().mockResolvedValue(undefined);
+    render(<ConvertVaultForm vaultName="Work" onConvert={onConvert} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /encrypt this vault/i }));
+    const go = screen.getByRole("button", { name: "Encrypt vault" });
+    expect(go).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByPlaceholderText("New vault passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.change(screen.getByPlaceholderText("Confirm passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.click(go);
+
+    await waitFor(() => expect(onConvert).toHaveBeenCalledWith("a strong passphrase"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /encrypt this vault/i })).toBeTruthy());
+  });
+
+  it("explains a refusal in plain words and stays open", async () => {
+    const onConvert = vi.fn().mockRejectedValue(new ApiError(422, "vaults with attachments cannot be end-to-end encrypted yet"));
+    render(<ConvertVaultForm vaultName="Work" onConvert={onConvert} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /encrypt this vault/i }));
+    fireEvent.change(screen.getByPlaceholderText("New vault passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.change(screen.getByPlaceholderText("Confirm passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.click(screen.getByRole("button", { name: "Encrypt vault" }));
+
+    expect(await screen.findByText(/has attachments/i)).toBeTruthy();
+    expect(screen.getByPlaceholderText("New vault passphrase")).toBeTruthy();
   });
 });

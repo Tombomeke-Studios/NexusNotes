@@ -72,7 +72,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Default new vaults to end-to-end encryption and warn when it is turned off (#360)
 - [ ] Encrypt attachment bytes on the client before upload (#238)
-- [ ] Let owners convert a standard vault to end-to-end encryption (#361)
+- [x] Let owners convert a standard vault to end-to-end encryption (#361)
 - [ ] Encrypt note titles, folder paths, tags and aliases on the client in e2ee vaults (#362)
 - [ ] Share end-to-end encrypted vaults with per-user key exchange (#363)
 - [ ] End-to-end encrypt linked files and their annotations (#364)

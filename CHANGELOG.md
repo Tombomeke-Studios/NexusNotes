@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Existing vaults can be end-to-end encrypted afterwards (Settings → Sync → Encrypt this
+  vault). Every note is encrypted on your device and the server keeps no readable copy or
+  history; other devices ask for the new passphrase.
 - The search index is rebuilt from the database when the server starts with an empty
   one, so it can stay out of backups (keep its volume on an encrypted disk).
 - Release versioning: a single `VERSION` file, `scripts/set-version.sh`, and the backend

@@ -111,8 +111,9 @@ that feature ships.
 ## End-to-End Encrypted Vaults
 
 New vaults use zero-knowledge E2EE by default; a user can turn it off at
-creation time after a warning that the server could then read the vault (full
-design in [encryption.md](encryption.md)):
+creation time after a warning that the server could then read the vault, and
+encrypt a standard vault later (#361; full design in
+[encryption.md](encryption.md)):
 
 - Note content is encrypted client-side with AES-256-GCM before upload; the
   server stores only `iv:ciphertext` plus opaque wrapped-key material and can

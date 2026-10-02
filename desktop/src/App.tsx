@@ -46,6 +46,8 @@ import { buildTagCounts, extractTags } from "./lib/tags";
 import { renameTagInContent, normalizeTag, contentHasTag } from "./lib/tagRename";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
 import { migrateLegacyPins } from "./lib/stars";
+import { convertVaultToE2ee } from "./lib/vaultConvert";
+import { clearDraft } from "./lib/drafts";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
@@ -355,6 +357,8 @@ export default function App() {
       setUser(null);
     }
   }, [loadNotes]);
+  const loadVaultsRef = useRef(loadVaults);
+  loadVaultsRef.current = loadVaults;
 
   // A stored session is restored on start. If the server simply is not answering
   // (Docker still booting, backend restarting) the session is kept and a waiting
@@ -438,6 +442,21 @@ export default function App() {
             if (!replacing) setActiveNote((prev) => (prev?.id === note.id ? note : prev));
             setLastSyncAt(new Date());
           });
+        } else if (type === "vault:encrypted") {
+          // Another device turned a vault end-to-end encrypted (#361). This
+          // device holds no key for it, so drop its plaintext from memory and
+          // from local drafts, and reload: the vault now asks to be unlocked.
+          const { vault_id } = payload as { vault_id: string };
+          if (vaultKeySession.get(vault_id)) return; // converted here
+          if (activeVaultIdRef.current === vault_id) {
+            for (const n of noteListRef.current) clearDraft(n.id);
+            setTabs([]);
+            setActiveTabKey(null);
+            setActiveNote(null);
+            setEditorContent("");
+            setNoteList([]);
+          }
+          loadVaultsRef.current();
         } else if (type === "note:deleted") {
           const { note_id } = payload as { note_id: string };
           setNoteList((prev) => prev.filter((n) => n.id !== note_id));
@@ -919,6 +938,23 @@ export default function App() {
     );
     setRecoveryCode(code);
   }, []);
+
+  // Encrypts the active standard vault end to end (#361): every note is
+  // encrypted here and swapped in at once on the server. Unsaved edits go out
+  // first so they are part of it; local drafts (plaintext on disk) are removed.
+  const handleEncryptVault = useCallback(async (passphrase: string) => {
+    const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
+    if (!vault || vault.encryption !== "none") throw new Error("not a standard vault");
+    await flushPendingSave();
+    const { vault: converted, vaultKey, recoveryCode: code } = await convertVaultToE2ee(vault.id, passphrase, {
+      listNotes: (id) => notesApi.list(id),
+      convert: (id, meta, notes) => vaultsApi.convertToE2ee(id, meta, notes),
+    });
+    vaultKeySession.set(converted.id, vaultKey);
+    setVaultList((prev) => prev.map((v) => (v.id === converted.id ? { ...v, ...converted } : v)));
+    for (const n of noteListRef.current) clearDraft(n.id);
+    setRecoveryCode(code);
+  }, [flushPendingSave]);
 
   /** Derives the key from the passphrase; rejects (dialog shows the error) when wrong. */
   const handleUnlockVault = useCallback(async (passphrase: string) => {
@@ -1672,6 +1708,7 @@ export default function App() {
             lastSyncLabel={lastSyncAt ? relativeTimeLabel(lastSyncAt) : null}
             activeVault={activeVault ?? null}
             onChangePassphrase={handleChangePassphrase}
+            onEncryptVault={handleEncryptVault}
             onExportVault={handleExportVault}
             onUpdatePrefs={updatePrefs}
             onSignOut={handleSignOut}

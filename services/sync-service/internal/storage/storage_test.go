@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
@@ -184,5 +185,29 @@ func TestStore_EncryptExistingSealsLegacyAndRotatedFiles(t *testing.T) {
 	}
 	if again, err := s.EncryptExisting(ctx); err != nil || again != 0 {
 		t.Fatalf("second run rewrote %d (%v), want 0", again, err)
+	}
+}
+
+func TestStore_ListObjects(t *testing.T) {
+	s := newTestStore(t)
+	ctx := context.Background()
+	for _, k := range []string{"v1/a.png", "v2/b.pdf"} {
+		if err := s.Put(ctx, k, bytes.NewReader([]byte("x")), 1, "application/octet-stream"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var got []string
+	if err := s.ListObjects(ctx, func(key string, modified time.Time) error {
+		if modified.IsZero() {
+			t.Errorf("%s: no modification time", key)
+		}
+		got = append(got, key)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(got)
+	if strings.Join(got, ",") != "v1/a.png,v2/b.pdf" {
+		t.Fatalf("listed %v", got)
 	}
 }

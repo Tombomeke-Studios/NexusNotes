@@ -86,3 +86,22 @@ func (r *AttachmentRepo) Delete(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// KnownKeys returns which of the given storage keys still belong to an
+// attachment row (the orphan sweep keeps those, #316).
+func (r *AttachmentRepo) KnownKeys(ctx context.Context, keys []string) (map[string]bool, error) {
+	rows, err := r.pool.Query(ctx, `SELECT storage_path FROM attachments WHERE storage_path = ANY($1)`, keys)
+	if err != nil {
+		return nil, fmt.Errorf("known attachment keys: %w", err)
+	}
+	defer rows.Close()
+	known := make(map[string]bool, len(keys))
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return nil, fmt.Errorf("scan attachment key: %w", err)
+		}
+		known[k] = true
+	}
+	return known, rows.Err()
+}

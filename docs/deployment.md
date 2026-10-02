@@ -481,6 +481,11 @@ optionally `MINIO_BUCKET` (default `attachments`) to enable note attachments
 backed by MinIO or any S3-compatible store; the bucket is created on startup.
 Leave `MINIO_ENDPOINT` empty to disable attachments (the endpoints return 503).
 
+Files whose attachment row is gone (a cleanup that failed while storage was
+unreachable, or deletions from older versions) are swept at start-up and daily;
+the log says `orphan sweep removed attachment files` with the count. Files younger
+than an hour are never swept, so an upload in progress is safe.
+
 ## Linked files (optional)
 
 The linked-file URL proxy only connects to public internet addresses. To let

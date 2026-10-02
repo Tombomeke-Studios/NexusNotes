@@ -99,8 +99,10 @@ that feature ships.
   live WebSocket sessions are closed. Deleting a single vault or note also
   removes its attachment files. File removal is best effort: it needs object
   storage to have been reachable when the server started, and a storage error
-  is logged rather than retried, so files can remain (as can files of data
-  deleted before this existed); a sweeper for such orphans is tracked in #316. Available self-service in the
+  is logged rather than retried. Files left behind that way (or by deletions
+  from before this existed) are removed by a sweep at start-up and then daily:
+  every stored file without an attachment row that is older than an hour is
+  deleted, and nothing is deleted when the database cannot be asked (#316). Available self-service in the
   desktop Settings → Account tab.
 - **Portability (Art. 20):** `GET /api/auth/export` streams all vaults as
   markdown in a zip plus `account.json`, also self-service in Settings.

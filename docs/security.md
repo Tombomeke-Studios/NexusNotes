@@ -272,7 +272,8 @@ the server's outbound connections. Self-hosters who want to link LAN resources c
 - The sync service container runs as an unprivileged user.
 - Never committed to version control
 - `.env` files are gitignored
-- `.env.example` and `.env.production.example` contain placeholders only
+- `.env.production.example` contains placeholders only; `.env.example` carries a
+  shared development-only `DATA_ENCRYPTION_KEY`, which must never be used in production
 
 ## Encryption at Rest
 

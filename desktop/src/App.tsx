@@ -45,7 +45,7 @@ import { buildGraphData } from "./lib/wikilinks";
 import { buildTagCounts, extractTags } from "./lib/tags";
 import { renameTagInContent, normalizeTag, contentHasTag } from "./lib/tagRename";
 import { filterNotes, sortNotes, searchNotes, topLevelFolders, uniqueTitle } from "./lib/noteFilter";
-import { drainLegacyPins } from "./lib/stars";
+import { migrateLegacyPins } from "./lib/stars";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
 import { welcomeNotes } from "./lib/welcome";
@@ -78,6 +78,8 @@ const GRAPH_TAB_KEY = "__graph";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const userIdRef = useRef<string | null>(null);
+  userIdRef.current = user?.id ?? null;
   const [vaultList, setVaultList] = useState<Vault[]>([]);
   const [activeVaultId, setActiveVaultId] = useState<string | null>(null);
   const [noteList, setNoteList] = useState<Note[]>([]);
@@ -455,26 +457,33 @@ export default function App() {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
     setEmptyFolders(activeVaultId ? loadFolders(activeVaultId) : []);
     // One-time migration: push this vault's legacy localStorage pins to the
-    // server-backed stars (#151), then forget them locally.
-    if (activeVaultId) {
-      const legacy = drainLegacyPins(activeVaultId);
-      if (legacy.length > 0) {
-        for (const id of legacy) starsApi.star(id).catch(() => {});
-        setStarredIds((prev) => [...prev, ...legacy.filter((id) => !prev.includes(id))]);
-      }
-    }
+    // server-backed stars (#151). Pins the server could not take yet stay for
+    // the next start. Stars span vaults, so a vault switch meanwhile is fine,
+    // but nothing lands in state once that user has signed out (#377).
+    if (!activeVaultId) return;
+    const owner = userIdRef.current;
+    migrateLegacyPins(activeVaultId, starsApi.star).then((starred) => {
+      if (starred.length === 0 || userIdRef.current !== owner) return;
+      setStarredIds((prev) => [...prev, ...starred.filter((id) => !prev.includes(id))]);
+    });
   }, [activeVaultId]);
 
   // Stars live server-side per user; load them once per session. Merge with
   // whatever is already in state so a legacy-pin migration that raced this
   // fetch isn't wiped by a list snapshot taken before its POSTs landed.
+  // A sign-out before the list arrives must not leak it into the next session.
   useEffect(() => {
-    if (user) {
-      starsApi
-        .list()
-        .then((ids) => setStarredIds((prev) => [...ids, ...prev.filter((x) => !ids.includes(x))]))
-        .catch(() => {});
-    }
+    if (!user) return;
+    let cancelled = false;
+    starsApi
+      .list()
+      .then((ids) => {
+        if (!cancelled) setStarredIds((prev) => [...ids, ...prev.filter((x) => !ids.includes(x))]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
   const activeVaultIdRef = useRef(activeVaultId);
   activeVaultIdRef.current = activeVaultId;

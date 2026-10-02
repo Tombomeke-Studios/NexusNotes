@@ -210,7 +210,7 @@ it is what it exists for:
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
 | `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |
-| `src/lib/stars.ts` | Starred-notes helpers: one-time migration of legacy localStorage pins to server-side stars |
+| `src/lib/stars.ts` | Starred-notes helpers: `migrateLegacyPins` moves legacy localStorage pins to server-side stars, dropping a pin only once the server took (or permanently rejected) it |
 | `src/lib/crypto.ts` | E2EE crypto core: Argon2id derivation, AES-GCM note encryption, key wrapping, recovery codes (see docs/encryption.md) |
 | `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
 | `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |

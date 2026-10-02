@@ -110,11 +110,11 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > Raised during use. Each has a GitHub issue; promote into a feature branch when picked up.
 
 - [x] Add "New note" to the folder right-click context menu (#246)
-- [x] Top search bar jumps right when clicked (`fix/desktop-ui-bugs`)
-- [x] Three or more dashes are invisible in the editor (font ligatures) (`fix/desktop-ui-bugs`)
-- [x] Graph keeps highlighting a note after its tab is closed (`fix/desktop-ui-bugs`)
-- [x] Long tag names overflow the sidebar tag panel; tag list has no height limit (`fix/desktop-ui-bugs`)
-- [ ] New vaults are not end-to-end encrypted by default (decide: default-on vs. keep opt-in)
+- [x] Top search bar jumps right when clicked (#345)
+- [x] Three or more dashes are invisible in the editor (font ligatures) (#346)
+- [x] Graph keeps highlighting a note after its tab is closed (#347)
+- [x] Long tag names overflow the sidebar tag panel; tag list has no height limit (#348)
+- [ ] New vaults are not end-to-end encrypted by default (decide: default-on vs. keep opt-in) (#349)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload

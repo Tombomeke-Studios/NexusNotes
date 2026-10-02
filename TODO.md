@@ -44,7 +44,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces (#336)
 - [x] Linked-file fetches: limit concurrent fetches; decide whether `::ffff:0:0/96` counts as private (#337)
 - [ ] Sweep orphaned attachment files from object storage (#316)
-- [ ] DB-backed tests for `RefreshRepo.Rotate` (rollback, double rotate, concurrent rotate) (#338)
+- [x] DB-backed tests for `RefreshRepo.Rotate` (rollback, double rotate, concurrent rotate) (#338)
 - [x] Fix the web UI Docker image build (#339)
 
 ---

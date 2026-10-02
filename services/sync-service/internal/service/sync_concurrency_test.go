@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt/fieldcrypttest"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 )
@@ -74,9 +75,9 @@ func newIsolatedDBWithConns(t *testing.T, maxConns int32) *pgxpool.Pool {
 	return pool
 }
 
-func newTestSync(pool *pgxpool.Pool) *SyncService {
+func newTestSync(t testing.TB, pool *pgxpool.Pool) *SyncService {
 	return NewSyncService(
-		repository.NewNoteRepo(pool),
+		repository.NewNoteRepo(pool, fieldcrypttest.Cipher(t)),
 		repository.NewVaultRepo(pool),
 		repository.NewLinkRepo(pool),
 		repository.NewTagRepo(pool),
@@ -119,7 +120,7 @@ func seedNote(t *testing.T, pool *pgxpool.Pool, svc *SyncService, content string
 
 func TestUpdateNote_RejectsStalePrevChecksum(t *testing.T) {
 	pool := newIsolatedDB(t)
-	svc := newTestSync(pool)
+	svc := newTestSync(t, pool)
 	note := seedNote(t, pool, svc, "v1")
 
 	if _, _, err := svc.UpdateNote(context.Background(), NoteUpdate{
@@ -145,7 +146,7 @@ func TestUpdateNote_RejectsStalePrevChecksum(t *testing.T) {
 // earlier one and no conflict is ever reported.
 func TestUpdateNote_ConcurrentSavesWithSamePrevChecksumOnlyOneWins(t *testing.T) {
 	pool := newIsolatedDB(t)
-	svc := newTestSync(pool)
+	svc := newTestSync(t, pool)
 	note := seedNote(t, pool, svc, "original")
 
 	const writers = 8
@@ -199,7 +200,7 @@ func TestUpdateNote_ConcurrentSavesWithSamePrevChecksumOnlyOneWins(t *testing.T)
 
 func TestUpdateNote_UnknownNoteIsNotFound(t *testing.T) {
 	pool := newIsolatedDB(t)
-	svc := newTestSync(pool)
+	svc := newTestSync(t, pool)
 	_, _, err := svc.UpdateNote(context.Background(), NoteUpdate{
 		NoteID: uuid.New().String(), Content: "x", Title: "x", Path: "x.md", PrevChecksum: "whatever",
 	})
@@ -213,7 +214,7 @@ func TestUpdateNote_UnknownNoteIsNotFound(t *testing.T) {
 // which a full FOR UPDATE row lock would conflict with.
 func TestUpdateNote_MutuallyLinkedNotesSavedConcurrentlyDoNotDeadlock(t *testing.T) {
 	pool := newIsolatedDB(t)
-	svc := newTestSync(pool)
+	svc := newTestSync(t, pool)
 	vaultID := seedVault(t, pool)
 	a := seedNoteIn(t, svc, vaultID, "A", "see [[B]]")
 	b := seedNoteIn(t, svc, vaultID, "B", "see [[A]]")
@@ -247,7 +248,7 @@ func TestUpdateNote_MutuallyLinkedNotesSavedConcurrentlyDoNotDeadlock(t *testing
 // connection while the lock holder waits for one (a self-inflicted hang).
 func TestUpdateNote_SmallPoolDoesNotStarve(t *testing.T) {
 	pool := newIsolatedDBWithConns(t, 2)
-	svc := newTestSync(pool)
+	svc := newTestSync(t, pool)
 	note := seedNote(t, pool, svc, "original")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -278,7 +279,7 @@ func TestUpdateNote_SmallPoolDoesNotStarve(t *testing.T) {
 // instead of a generic failure.
 func TestUpdateNote_LockTimeoutIsReportedAsBusy(t *testing.T) {
 	pool := newIsolatedDB(t)
-	svc := newTestSync(pool)
+	svc := newTestSync(t, pool)
 	svc.lockTimeout = "200ms"
 	note := seedNote(t, pool, svc, "original")
 

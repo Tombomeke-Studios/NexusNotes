@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt/fieldcrypttest"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
@@ -112,7 +113,7 @@ func newNoteAccessFixture(t *testing.T) *noteAccessFixture {
 	vaultRepo := repository.NewVaultRepo(pool)
 	memberRepo := repository.NewVaultMemberRepo(pool)
 	svc := service.NewSyncService(
-		repository.NewNoteRepo(pool), vaultRepo,
+		repository.NewNoteRepo(pool, fieldcrypttest.Cipher(t)), vaultRepo,
 		repository.NewLinkRepo(pool), repository.NewTagRepo(pool), repository.NewAliasRepo(pool),
 		nil, // no search indexer
 	)

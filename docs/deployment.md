@@ -198,6 +198,11 @@ cannot be read by anyone. To rotate it, move the current key into
 `DATA_ENCRYPTION_OLD_KEYS` and set a new one; see
 [docs/security.md](security.md#encryption-at-rest).
 
+**Upgrading to encryption at rest:** existing data is encrypted automatically
+after the first start with a `DATA_ENCRYPTION_KEY`; the service keeps serving
+meanwhile. Data in database backups taken before that stays readable, so
+replace those backups once the log shows `encryption backfill done`.
+
 `BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the
 container must listen on every interface or its published port cannot reach it.

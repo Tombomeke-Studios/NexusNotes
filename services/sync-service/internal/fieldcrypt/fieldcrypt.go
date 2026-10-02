@@ -147,13 +147,20 @@ func (c *Cipher) Decrypt(field, value string) (string, error) {
 	return string(plain), nil
 }
 
+// CurrentPrefix is the prefix every value encrypted under the current key
+// starts with; a stored value without it needs NeedsReencrypt's rewrite. Lets
+// a backfill select only the rows that still need work.
+func (c *Cipher) CurrentPrefix() string {
+	return envelopePrefix + c.current.id + ":"
+}
+
 // NeedsReencrypt reports whether a stored value should be rewritten: it is
 // legacy plaintext, or encrypted under a key other than the current one.
 func (c *Cipher) NeedsReencrypt(value string) bool {
 	if !IsEncrypted(value) {
 		return true
 	}
-	return !strings.HasPrefix(value, envelopePrefix+c.current.id+":")
+	return !strings.HasPrefix(value, c.CurrentPrefix())
 }
 
 // BlindIndex returns a deterministic, non-reversible token for value, for

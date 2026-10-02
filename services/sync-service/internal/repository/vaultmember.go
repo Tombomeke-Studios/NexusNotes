@@ -75,6 +75,9 @@ func (r *VaultMemberRepo) List(ctx context.Context, vaultID string) ([]model.Vau
 			&m.InvitedBy, &m.AcceptedAt, &m.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan vault member: %w", err)
 		}
+		if err := r.open(fieldUserEmail, &m.Email); err != nil {
+			return nil, err
+		}
 		if err := r.open(fieldUserDisplayName, &m.DisplayName); err != nil {
 			return nil, err
 		}

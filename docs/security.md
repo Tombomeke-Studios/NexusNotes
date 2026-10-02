@@ -74,7 +74,7 @@ single request. Attachment uploads are capped separately at 25 MiB.
 
 | Personal data | Where | Why |
 |---|---|---|
-| Email, display name | PostgreSQL `users` | Account identity |
+| Email, display name (encrypted at rest) | PostgreSQL `users` | Account identity |
 | Password (Argon2id hash) | PostgreSQL `users` | Authentication |
 | Note content, titles, paths, tags | PostgreSQL `notes` + related tables | The product |
 | Note content (search copy) | Meilisearch `notes` index | Full-text search |
@@ -279,7 +279,8 @@ ciphertext and is wrapped once more.
   the new key.
 - **Lookups.** A field that must be searched for equality (an email address
   at login) is found through a blind index: an HMAC-SHA256 of the normalised
-  value, which reveals nothing about it.
+  value, which reveals nothing about it beyond equality with another indexed
+  value.
 - **Legacy rows.** Values written before encryption at rest are read as they
   are until the startup backfill has encrypted them.
 - **What it does not cover.** The server holds the key while it runs, so whoever
@@ -294,9 +295,13 @@ services only see plaintext. Encrypted so far:
 - note content and every stored note version (#354);
 - vault names, linked-file names, sources and annotations, user display names
   and device names (#355). Lists sorted by these names are sorted in the
-  service after decryption.
+  service after decryption;
+- email addresses (#356). Sign-in, sign-up and invites find an account through
+  the blind index of the address, lower-cased and trimmed (so addresses match
+  regardless of case). Lookups try the index under every configured key, so
+  accounts indexed before a key rotation still sign in.
 
-Still readable in the database: email addresses (#356), and note titles, folder
+Still readable in the database: note titles, folder
 paths, tags and aliases, which the server queries; in e2ee vaults those move to
 the client (#362).
 

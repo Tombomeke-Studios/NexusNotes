@@ -47,6 +47,8 @@ type dataKey struct {
 type Cipher struct {
 	current *dataKey
 	byID    map[string]*dataKey
+	// keys lists every configured key, the current one first.
+	keys []*dataKey
 }
 
 // New builds a Cipher from the current data key and any retired keys that
@@ -56,7 +58,7 @@ func New(currentHex string, oldHex []string) (*Cipher, error) {
 	if err != nil {
 		return nil, fmt.Errorf("data encryption key: %w", err)
 	}
-	c := &Cipher{current: current, byID: map[string]*dataKey{current.id: current}}
+	c := &Cipher{current: current, byID: map[string]*dataKey{current.id: current}, keys: []*dataKey{current}}
 	for i, h := range oldHex {
 		k, err := parseKey(h)
 		if err != nil {
@@ -64,6 +66,7 @@ func New(currentHex string, oldHex []string) (*Cipher, error) {
 		}
 		if _, dup := c.byID[k.id]; !dup {
 			c.byID[k.id] = k
+			c.keys = append(c.keys, k)
 		}
 	}
 	return c, nil
@@ -157,7 +160,22 @@ func (c *Cipher) NeedsReencrypt(value string) bool {
 // equality lookups on an encrypted field (e.g. finding a user by email).
 // Callers normalise value first (e.g. lower-case an email address).
 func (c *Cipher) BlindIndex(field, value string) string {
-	mac := hmac.New(sha256.New, c.current.index)
+	return c.current.blindIndex(field, value)
+}
+
+// BlindIndexes returns value's blind index under every configured key, the
+// current key's first. Lookups match any of them, so rows indexed before a
+// key rotation are still found until they are re-indexed.
+func (c *Cipher) BlindIndexes(field, value string) []string {
+	out := make([]string, len(c.keys))
+	for i, k := range c.keys {
+		out[i] = k.blindIndex(field, value)
+	}
+	return out
+}
+
+func (k *dataKey) blindIndex(field, value string) string {
+	mac := hmac.New(sha256.New, k.index)
 	mac.Write([]byte(field))
 	mac.Write([]byte{0})
 	mac.Write([]byte(value))

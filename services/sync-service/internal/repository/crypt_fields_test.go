@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt/fieldcrypttest"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 )
 
@@ -144,5 +145,94 @@ func TestRepos_EncryptFreeTextFieldsAtRest(t *testing.T) {
 	ds, err := devices.ListByUser(ctx, owner.ID)
 	if err != nil || len(ds) != 1 || ds[0].Name != "Alice's laptop" {
 		t.Fatalf("devices ListByUser: %+v, %v", ds, err)
+	}
+}
+
+// Email addresses are encrypted at rest and found through a blind index (#356).
+func TestUserRepo_EncryptsEmailWithBlindIndex(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	crypt := testCipher(t)
+	users := NewUserRepo(pool, crypt)
+	now := time.Now().UTC()
+
+	u := &model.User{ID: uuid.NewString(), Email: "Alice@Example.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now}
+	if err := users.Create(ctx, u); err != nil {
+		t.Fatal(err)
+	}
+	assertSealed(t, pool, `SELECT email FROM users WHERE id = $1`, u.ID, "lice@")
+	if idx := rawColumn(t, pool, `SELECT email_index FROM users WHERE id = $1`, u.ID); idx == "" || strings.Contains(strings.ToLower(idx), "example") {
+		t.Fatalf("email_index = %q, want an opaque token", idx)
+	}
+
+	got, err := users.GetByEmail(ctx, "  alice@example.COM ")
+	if err != nil || got.ID != u.ID || got.Email != "Alice@Example.com" {
+		t.Fatalf("GetByEmail (other case, spaces): %+v, %v", got, err)
+	}
+	if got, err := users.GetByID(ctx, u.ID); err != nil || got.Email != "Alice@Example.com" {
+		t.Fatalf("GetByID: %+v, %v", got, err)
+	}
+	if _, err := users.GetByEmail(ctx, "bob@example.com"); err != ErrUserNotFound {
+		t.Fatalf("unknown email: err = %v, want ErrUserNotFound", err)
+	}
+
+	dup := &model.User{ID: uuid.NewString(), Email: "ALICE@example.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now}
+	if err := users.Create(ctx, dup); err != ErrDuplicateEmail {
+		t.Fatalf("same address in another case: err = %v, want ErrDuplicateEmail", err)
+	}
+
+	// A row written before encryption at rest (plaintext, no index) is still
+	// found, and still blocks a second account with its address.
+	legacyID := uuid.NewString()
+	if _, err := pool.Exec(ctx, `INSERT INTO users (id, email, password_hash) VALUES ($1, 'Legacy@Example.com', 'x')`, legacyID); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := users.GetByEmail(ctx, "legacy@example.com"); err != nil || got.ID != legacyID || got.Email != "Legacy@Example.com" {
+		t.Fatalf("legacy GetByEmail: %+v, %v", got, err)
+	}
+	again := &model.User{ID: uuid.NewString(), Email: "legacy@example.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now}
+	if err := users.Create(ctx, again); err != ErrDuplicateEmail {
+		t.Fatalf("legacy duplicate: err = %v, want ErrDuplicateEmail", err)
+	}
+
+	// Members list the decrypted address.
+	vaults := NewVaultRepo(pool, crypt)
+	members := NewVaultMemberRepo(pool, crypt)
+	v := &model.Vault{ID: uuid.NewString(), UserID: legacyID, Name: "v", CreatedAt: now, UpdatedAt: now}
+	if err := vaults.Create(ctx, v); err != nil {
+		t.Fatal(err)
+	}
+	if err := members.Add(ctx, v.ID, u.ID, model.VaultRoleViewer, legacyID); err != nil {
+		t.Fatal(err)
+	}
+	ms, err := members.List(ctx, v.ID)
+	if err != nil || len(ms) != 1 || ms[0].Email != "Alice@Example.com" {
+		t.Fatalf("members List: %+v, %v", ms, err)
+	}
+}
+
+// After a key rotation, accounts indexed under the old key still sign in and
+// still block duplicates.
+func TestUserRepo_EmailLookupSurvivesKeyRotation(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	before := NewUserRepo(pool, testCipher(t))
+	u := &model.User{ID: uuid.NewString(), Email: "rot@example.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now}
+	if err := before.Create(ctx, u); err != nil {
+		t.Fatal(err)
+	}
+
+	rotated, err := fieldcrypt.New("1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100", []string{fieldcrypttest.Key})
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := NewUserRepo(pool, rotated)
+	if got, err := after.GetByEmail(ctx, "rot@example.com"); err != nil || got.ID != u.ID || got.Email != "rot@example.com" {
+		t.Fatalf("GetByEmail after rotation: %+v, %v", got, err)
+	}
+	dup := &model.User{ID: uuid.NewString(), Email: "ROT@example.com", PasswordHash: "x", CreatedAt: now, UpdatedAt: now}
+	if err := after.Create(ctx, dup); err != ErrDuplicateEmail {
+		t.Fatalf("duplicate after rotation: err = %v, want ErrDuplicateEmail", err)
 	}
 }

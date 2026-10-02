@@ -1,9 +1,15 @@
 import { APP_VERSION, assessHealth, type HealthPayload, type ServerStatus } from "./version";
+import { resolveApiBase } from "./apiBase";
+import { isTauriWindow } from "./platform";
 import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember } from "./types";
 
-// Falls back to the bundled sidecar's fixed port (see src-tauri/src/lib.rs) —
-// a packaged build has no VITE_API_URL env var at runtime.
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// The packaged app has no VITE_API_URL at runtime and uses its sidecar's fixed
+// port (see src-tauri/src/lib.rs); the web UI uses its own origin (#399).
+const API_BASE = resolveApiBase(
+  import.meta.env.VITE_API_URL,
+  isTauriWindow,
+  typeof window !== "undefined" ? window.location.origin : "",
+);
 
 /** Origin of the sync server this build talks to (shown in connection messages). */
 export const API_URL: string = API_BASE;

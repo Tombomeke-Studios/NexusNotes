@@ -39,6 +39,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- The web UI of the Docker stack talks to its own server again instead of to
+  `localhost:8080` on the visitor's computer, so signing in works when it is not opened
+  on the server itself.
 - The command palette keeps the highlighted note when the list re-sorts while it is open,
   so Enter opens the note you picked.
 - After a dropped connection (server restart, network blip) the app now catches up on

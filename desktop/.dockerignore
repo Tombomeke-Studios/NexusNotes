@@ -9,3 +9,7 @@ playwright.config.ts
 # that import files outside the build context (src-tauri).
 **/*.test.ts
 **/*.test.tsx
+# A developer's local settings (VITE_API_URL=http://localhost:8080) must never be
+# baked into the web UI image: there it has to talk to its own origin (#399).
+.env
+.env.*

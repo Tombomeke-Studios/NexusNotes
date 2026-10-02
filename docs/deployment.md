@@ -263,7 +263,77 @@ Every image is pinned to an explicit version, and each service has a memory limi
 for the rest). Raise a limit in `docker-compose.yml` (or an override file) for a
 large installation.
 
-### Upgrading an existing installation
+### Backup and restore
+
+A complete backup is three things. Keep them apart: whoever has all three can
+read every standard vault.
+
+| What | Why | How |
+|---|---|---|
+| `.env`, above all `DATA_ENCRYPTION_KEY` | Without the key the stored data cannot be read by anyone | Copy it once, and after every change, into a password manager or secrets vault. Never next to the database backups |
+| The database (`postgres_data`) | Accounts, vaults, notes (encrypted at rest) | `pg_dump`, below |
+| Attachment files (`minio_data`) | Uploaded files (encrypted at rest) | Archive the volume, below |
+
+Not needed: `meili_data` (the search index is rebuilt from the database on start,
+and should stay out of backups because it holds readable copies; see Search data)
+and `redis_data` (transient). End-to-end encrypted vaults stay unreadable even
+with all of the above: their owners need their passphrase or recovery code.
+
+**Back up** (run from the directory with `docker-compose.yml`):
+
+```bash
+# Database: a consistent dump while the stack runs.
+docker compose exec -T postgres pg_dump -U nexus -Fc nexus_notes > nexus-db-$(date +%F).dump
+
+# Attachment files: archive the MinIO volume (its name is prefixed with the
+# compose project name; `docker volume ls | grep minio_data` shows it).
+docker run --rm -v "$(docker volume ls -q | grep minio_data)":/data -v "$PWD":/backup \
+  alpine tar czf /backup/nexus-files-$(date +%F).tgz -C /data .
+```
+
+**Restore** on a new host (or after losing the volumes):
+
+1. Check out the same release, and restore `.env` with the **same**
+   `DATA_ENCRYPTION_KEY` (and `DATA_ENCRYPTION_OLD_KEYS`, if any).
+2. Start only the database and load the dump:
+   ```bash
+   docker compose up -d postgres
+   docker compose exec -T postgres pg_restore -U nexus -d nexus_notes --clean --if-exists < nexus-db-2026-10-02.dump
+   ```
+3. Restore the files into the MinIO volume (create it by starting MinIO once,
+   then stop it):
+   ```bash
+   docker compose up -d minio && docker compose stop minio
+   docker run --rm -v "$(docker volume ls -q | grep minio_data)":/data -v "$PWD":/backup \
+     alpine sh -c "cd /data && tar xzf /backup/nexus-files-2026-10-02.tgz"
+   ```
+4. Start everything: `docker compose up -d`. The search index rebuilds by itself
+   (the log says `search index rebuilt from the database`).
+
+Try a restore on a spare machine now and then: a backup that was never restored
+is a hope, not a backup.
+
+### Upgrading to a new release
+
+1. Read the release's section in `CHANGELOG.md`, especially *Security* and
+   anything about new required settings (a new release may refuse to start
+   without one, such as `DATA_ENCRYPTION_KEY` for encryption at rest).
+2. Back up (above).
+3. Update and restart:
+   ```bash
+   git fetch --tags && git checkout vX.Y.Z
+   export NEXUS_VERSION=$(cat VERSION)
+   docker compose build && docker compose up -d --remove-orphans
+   ```
+   Database migrations run automatically when the sync service starts.
+4. Check that it is healthy: `docker compose ps` shows the sync service as
+   `healthy` once `/ready` passes, and `curl http://localhost:3000/health`
+   reports the new version.
+
+To roll back, check out the previous release and restore the backup from step 2:
+migrations only move forward.
+
+### Upgrading from an older installation (one-time notes)
 
 Earlier versions had built-in passwords for the database (`nexus_pass`) and MinIO
 (`nexus_minio_pass`). A database password is only applied when its volume is first

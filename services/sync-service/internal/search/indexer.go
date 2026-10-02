@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -25,12 +26,20 @@ type NoteDoc struct {
 }
 
 // Indexer sends note documents to Meilisearch over its REST API.
-// All methods return immediately; the actual HTTP call happens in a goroutine
-// so note-save latency is never increased.
+// IndexNote/DeleteNote/DeleteVaultNotes return immediately: the HTTP calls run
+// on one worker behind a bounded queue, with retries (#401), so note-save
+// latency is never increased. Close drains the queue on shutdown.
 type Indexer struct {
 	baseURL    string
 	masterKey  string
 	httpClient *http.Client
+
+	startOnce  sync.Once
+	mu         sync.Mutex
+	closed     bool
+	jobs       chan job
+	done       chan struct{}
+	retryDelay func(attempt int) time.Duration
 }
 
 func NewIndexer(meiliURL, masterKey string) *Indexer {
@@ -46,30 +55,20 @@ func NewIndexer(meiliURL, masterKey string) *Indexer {
 // IndexNote enqueues an upsert for the given note document.
 // Errors are logged to stderr; they do not propagate to callers.
 func (idx *Indexer) IndexNote(doc NoteDoc) {
-	go func() {
-		if err := idx.upsertDoc(context.Background(), doc); err != nil {
-			fmt.Printf("search: index note %s: %v\n", doc.ID, err)
-		}
-	}()
+	idx.enqueue("index note "+doc.ID, func(ctx context.Context) error { return idx.upsertDoc(ctx, doc) })
 }
 
 // DeleteNote enqueues a deletion for the given note ID.
 func (idx *Indexer) DeleteNote(noteID string) {
-	go func() {
-		if err := idx.deleteDoc(context.Background(), noteID); err != nil {
-			fmt.Printf("search: delete note %s: %v\n", noteID, err)
-		}
-	}()
+	idx.enqueue("delete note "+noteID, func(ctx context.Context) error { return idx.deleteDoc(ctx, noteID) })
 }
 
 // DeleteVaultNotes enqueues deletion of every indexed note belonging to the
 // given vaults (used when an account or vault is erased).
 func (idx *Indexer) DeleteVaultNotes(vaultIDs []string) {
-	go func() {
-		if err := idx.deleteByVaults(context.Background(), vaultIDs); err != nil {
-			fmt.Printf("search: delete vault notes %v: %v\n", vaultIDs, err)
-		}
-	}()
+	idx.enqueue(fmt.Sprintf("delete vault notes %v", vaultIDs), func(ctx context.Context) error {
+		return idx.deleteByVaults(ctx, vaultIDs)
+	})
 }
 
 func (idx *Indexer) deleteByVaults(ctx context.Context, vaultIDs []string) error {
@@ -101,7 +100,7 @@ func (idx *Indexer) deleteByVaults(ctx context.Context, vaultIDs []string) error
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)
+		return statusError{resp.StatusCode}
 	}
 	return nil
 }
@@ -173,7 +172,7 @@ func (idx *Indexer) upsertDocs(ctx context.Context, docs []NoteDoc) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)
+		return statusError{resp.StatusCode}
 	}
 	return nil
 }
@@ -195,7 +194,7 @@ func (idx *Indexer) deleteDoc(ctx context.Context, noteID string) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("meilisearch responded %d", resp.StatusCode)
+		return statusError{resp.StatusCode}
 	}
 	return nil
 }

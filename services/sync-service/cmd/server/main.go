@@ -333,5 +333,10 @@ func main() {
 		slog.Error("shutdown error", "error", err)
 		os.Exit(1)
 	}
+	// After the HTTP server: requests that were still running have queued
+	// their index updates by now; let them reach Meilisearch (#401).
+	if err := indexer.Close(shutdownCtx); err != nil {
+		slog.Warn("search index queue not drained", "error", err)
+	}
 	slog.Info("server stopped")
 }

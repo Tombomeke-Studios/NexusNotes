@@ -87,7 +87,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Search fallback: `EXISTS` for tags/aliases (#354); a trigram/full-text index on content is no longer possible, as content is encrypted at rest
 - [ ] Paginate or slim the note list
 - [x] Cap and prune `note_versions` (keep the newest 50 per note) (#387)
-- [ ] Indexing worker queue with retry and shutdown drain; one shared helper
+- [x] Indexing worker queue with retry and shutdown drain; one shared helper (#401; the shared doc builder came with #365)
 - [x] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit (#388)
 - [x] Rate limiter: periodic purge and trusted-proxy client IP (#373)
 - [x] Distinguish not-found from database errors in handlers (#386)

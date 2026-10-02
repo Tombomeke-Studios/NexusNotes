@@ -364,6 +364,18 @@ NexusNotes follows [semantic versioning](https://semver.org). It is pre-1.0, so
 a **minor** bump (`0.5` → `0.6`) may change the API or sync protocol, and a patch
 bump is always compatible. `1.0.0` marks the first stable release.
 
+**API stability before 1.0.** The HTTP API and the WebSocket messages are
+versioned together with the app:
+
+- A patch release never changes them in an incompatible way.
+- A minor release may. Every such change is listed in the changelog under
+  *Changed* or *Removed*, with what a client or self-hoster has to do.
+- The desktop app checks the server's version on start and shows a banner when
+  their major.minor differ, so a mismatched pair never fails silently.
+- Endpoints under `/api/admin/` and anything not in [api.md](api.md) are internal
+  and may change in any release.
+- From `1.0.0` on, incompatible changes only come with a major release.
+
 - The repo-root `VERSION` file is the single source of truth.
 - `./scripts/set-version.sh 0.6.0` updates it and syncs `package.json`,
   `tauri.conf.json`, `Cargo.toml` and the lockfiles; a Vitest test fails if they drift.

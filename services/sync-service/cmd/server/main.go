@@ -188,7 +188,11 @@ func main() {
 	protectedMux := http.NewServeMux()
 	protectedMux.HandleFunc("GET /api/auth/me", authHandler.Me)
 	protectedMux.HandleFunc("DELETE /api/auth/account", authHandler.DeleteAccount)
-	protectedMux.HandleFunc("GET /api/auth/export", authHandler.ExportAccount)
+	// Long transfers get their own deadlines instead of the server-wide 15 s
+	// (#332): exports and attachments can be large, and the linked-file proxy
+	// may itself wait up to 15 s for the source.
+	longTransfer := middleware.Deadlines(2*time.Minute, 5*time.Minute)
+	protectedMux.Handle("GET /api/auth/export", longTransfer(http.HandlerFunc(authHandler.ExportAccount)))
 	protectedMux.HandleFunc("GET /api/vaults", vaultHandler.List)
 	protectedMux.HandleFunc("POST /api/vaults", vaultHandler.Create)
 	protectedMux.HandleFunc("GET /api/vaults/{id}", vaultHandler.Get)
@@ -207,14 +211,14 @@ func main() {
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
-	protectedMux.HandleFunc("POST /api/notes/{noteId}/attachments", attachHandler.Upload)
+	protectedMux.Handle("POST /api/notes/{noteId}/attachments", longTransfer(http.HandlerFunc(attachHandler.Upload)))
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/attachments", attachHandler.List)
-	protectedMux.HandleFunc("GET /api/attachments/{id}", attachHandler.Download)
+	protectedMux.Handle("GET /api/attachments/{id}", longTransfer(http.HandlerFunc(attachHandler.Download)))
 	protectedMux.HandleFunc("DELETE /api/attachments/{id}", attachHandler.Delete)
 	protectedMux.HandleFunc("GET /api/vaults/{id}/links", linkHandler.List)
 	protectedMux.HandleFunc("POST /api/vaults/{id}/links", linkHandler.Create)
 	protectedMux.HandleFunc("DELETE /api/vaults/{id}/links/{linkId}", linkHandler.Delete)
-	protectedMux.HandleFunc("GET /api/links/{linkId}/content", linkHandler.Content)
+	protectedMux.Handle("GET /api/links/{linkId}/content", middleware.Deadlines(15*time.Second, 45*time.Second)(http.HandlerFunc(linkHandler.Content)))
 	protectedMux.HandleFunc("GET /api/links/{linkId}/annotation", linkHandler.GetAnnotation)
 	protectedMux.HandleFunc("PUT /api/links/{linkId}/annotation", linkHandler.PutAnnotation)
 	protectedMux.HandleFunc("GET /api/notes/starred", starHandler.List)
@@ -293,6 +297,12 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Close WebSockets first (#332): http.Server.Shutdown does not track
+	// hijacked connections, and clients should hear "going away" rather than
+	// a dropped TCP connection.
+	if err := hub.Shutdown(shutdownCtx); err != nil {
+		slog.Warn("ws hub shutdown", "error", err)
+	}
 	if metricsServer != nil {
 		_ = metricsServer.Shutdown(shutdownCtx)
 	}

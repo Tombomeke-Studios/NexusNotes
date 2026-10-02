@@ -35,6 +35,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Long tag names are cut off instead of pushing their count out of the sidebar, and a
   long tag list scrolls instead of squeezing the file tree.
 - In the dev container, the web UI reloads again when files are edited from a Windows host.
+- Large exports and attachment transfers on slow connections are no longer cut off after
+  15 seconds, and a server restart now tells connected apps it is going away instead of
+  dropping them.
 - Attachments now work in the packaged app and with the dev scripts: MinIO is started with
   the databases, the backend waits for it and receives its settings, and uploaded files live
   in a Docker volume instead of the container filesystem. Files uploaded to the dev MinIO

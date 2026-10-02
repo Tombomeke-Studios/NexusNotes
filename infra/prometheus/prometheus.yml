@@ -4,4 +4,4 @@ global:
 scrape_configs:
   - job_name: sync-service
     static_configs:
-      - targets: ["sync-service:8080"]
+      - targets: ["sync-service:9091"]

@@ -262,6 +262,9 @@ at 3, the whole fetch times out after 15 seconds, and sources larger than
   constant time. Unset, the admin endpoints answer 404.
 - `DATA_ENCRYPTION_KEY` (required) encrypts user data at rest; see
   [Encryption at Rest](#encryption-at-rest).
+- `/metrics` has no authentication, so it is only served on a separate
+  `METRICS_ADDR` listener, never on the API port (#327).
+- The sync service container runs as an unprivileged user.
 - Never committed to version control
 - `.env` files are gitignored
 - `.env.example` and `.env.production.example` contain placeholders only

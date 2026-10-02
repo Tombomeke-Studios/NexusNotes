@@ -230,14 +230,13 @@ func main() {
 	mux.Handle("/api/", authMw(protectedMux))
 	mux.HandleFunc("/ws", wsHandler.HandleConnect)
 
-	// Prometheus scrape endpoint (#57): expose it on the internal network
-	// only; the compose stack keeps it off the public edge.
-	mux.Handle("GET /metrics", promhttp.Handler())
-
 	// Operator-only; guarded by its own static token, not user JWTs (#59).
 	mux.HandleFunc("GET /api/admin/stats", adminHandler.Stats)
 
 	mux.HandleFunc("GET /health", buildinfo.HealthHandler)
+	// Readiness (#327): can the service reach its database? Redis is not
+	// probed: the service does not use it.
+	mux.HandleFunc("GET /ready", buildinfo.ReadyHandler(pool.Ping, 2*time.Second))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   cfg.AllowedOrigins,
@@ -270,6 +269,22 @@ func main() {
 		}()
 	}
 
+	// Prometheus scrape endpoint (#57) on its own listener (METRICS_ADDR), so
+	// it is never reachable through the public port (#327).
+	var metricsServer *http.Server
+	if cfg.MetricsAddr != "" {
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("GET /metrics", promhttp.Handler())
+		metricsServer = &http.Server{Addr: cfg.MetricsAddr, Handler: metricsMux, ReadHeaderTimeout: 5 * time.Second}
+		go func() {
+			slog.Info("metrics listening", "addr", cfg.MetricsAddr)
+			if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				slog.Error("metrics server error", "error", err)
+				os.Exit(1)
+			}
+		}()
+	}
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -278,6 +293,9 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	if metricsServer != nil {
+		_ = metricsServer.Shutdown(shutdownCtx)
+	}
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		slog.Error("shutdown error", "error", err)
 		os.Exit(1)

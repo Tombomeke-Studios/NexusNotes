@@ -174,9 +174,9 @@ it is what it exists for:
 | `internal/service/` | Business logic (sync, conflict detection, versioning) |
 | `internal/middleware/` | Auth, logging, CORS middleware |
 | `internal/ws/` | WebSocket hub and client management |
-| `internal/buildinfo/` | Build version (`-ldflags`-injected, `dev` locally) and the `/health` handler that reports it |
 | `internal/fieldcrypt/` | Encryption at rest (#352): AES-256-GCM field envelopes under `DATA_ENCRYPTION_KEY` (+ old keys for rotation), legacy-plaintext passthrough, HMAC blind index |
 | `internal/storage/` | S3/MinIO attachment store: files are sealed with the data key on `Put`, opened on `Get`; `EncryptExisting` backfills old objects |
+| `internal/buildinfo/` | Build version (`-ldflags`-injected, `dev` locally) and the `/health` (liveness) and `/ready` (database reachable) handlers |
 | `internal/mail/` | SMTP mailer with a log-only fallback for transactional auth emails |
 | `migrations/` | SQL migration files |
 

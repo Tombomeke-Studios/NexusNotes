@@ -54,6 +54,10 @@ type Config struct {
 	// private and link-local addresses. Off by default; only for self-hosters
 	// who deliberately link resources on their own network.
 	LinkedFilesAllowPrivate bool
+	// MetricsAddr is the separate listener /metrics is served on (METRICS_ADDR,
+	// host:port such as ":9091"). Empty disables /metrics: it is never served
+	// on the public listener (#327).
+	MetricsAddr string
 }
 
 // DefaultAllowedOrigins covers the desktop app and local development:
@@ -166,6 +170,13 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	metricsAddr := strings.TrimSpace(os.Getenv("METRICS_ADDR"))
+	if metricsAddr != "" {
+		if _, _, err := net.SplitHostPort(metricsAddr); err != nil {
+			return nil, fmt.Errorf("invalid METRICS_ADDR %q: want host:port such as :9091", metricsAddr)
+		}
+	}
+
 	return &Config{
 		Port:                    port,
 		BindAddrs:               bindAddrs,
@@ -192,6 +203,7 @@ func Load() (*Config, error) {
 		MinIOUseSSL:             os.Getenv("MINIO_USE_SSL") == "true",
 		AllowedOrigins:          allowedOrigins,
 		LinkedFilesAllowPrivate: linkedAllowPrivate,
+		MetricsAddr:             metricsAddr,
 	}, nil
 }
 

@@ -59,6 +59,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   addresses. Attachment files are encrypted before they reach object storage. Signing
   in no longer depends on the case of the email address. Existing data and files are
   encrypted automatically in the background after the upgrade.
+- `/metrics` is no longer served on the API port; set `METRICS_ADDR` (the monitoring
+  overlay does) to serve it on a separate internal listener. The server image runs as
+  an unprivileged user and has a Docker health check on the new `GET /ready`.
 - The packaged app's backend no longer signs sessions with the shared `dev-secret`: each
   installation generates its own random JWT secret on first run and keeps it in the app's
   local data directory. After upgrading, the first request renews your session through

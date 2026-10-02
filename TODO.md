@@ -70,7 +70,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > New vaults are end-to-end encrypted by default; turning it off is possible after a
 > clear warning. Every vault is encrypted at rest regardless (#352). Supersedes #349.
 
-- [ ] Default new vaults to end-to-end encryption and warn when it is turned off (#360)
+- [x] Default new vaults to end-to-end encryption and warn when it is turned off (#360)
 - [ ] Encrypt attachment bytes on the client before upload (#238)
 - [ ] Let owners convert a standard vault to end-to-end encryption (#361)
 - [ ] Encrypt note titles, folder paths, tags and aliases on the client in e2ee vaults (#362)

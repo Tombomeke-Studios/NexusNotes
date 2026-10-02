@@ -31,11 +31,14 @@ plaintext before encryption. It is not used to protect note content.
 
 ---
 
-## Encryption model - per-vault opt-in
+## Encryption model - per vault, on by default
 
-Vaults are either Standard (plaintext, existing behaviour) or Encrypted (E2EE).
-The user selects the encryption mode at vault creation time. Standard vaults
-are unaffected.
+Vaults are either Encrypted (E2EE) or Standard. The user chooses at vault
+creation time; end-to-end encryption is selected by default (#360). Turning it
+off shows a short warning that the server could read the vault, with a
+plain-language explanation on request. Standard vaults are still encrypted at
+rest on the server (see [security.md](security.md#encryption-at-rest)), but the
+server holds that key, so it is not zero-knowledge.
 
 ```
 vaults.encryption = 'none'  -> existing behaviour, no change

@@ -365,6 +365,16 @@ it never falls back to a fixed value. Earlier versions signed every
 installation's tokens with the shared constant `dev-secret`, so anyone who could
 reach a backend could forge a token for any user on it.
 
+**Webview lockdown (#329).** The webview runs under a strict Content Security
+Policy (`app.security.csp` in `tauri.conf.json`): scripts only from the app
+itself, no `eval`, no plugins, frames or form posts; network access only to the
+app, the local sync service (`localhost:8080`, HTTP and WebSocket) and Tauri's
+IPC. Images may also come from `blob:` (attachments, decrypted on the device),
+`data:` and `https:` (remote images a note links to). Fonts are bundled, so no
+third-party host is contacted. `devCsp` only adds the Vite dev server. The
+webview holds no shell permission at all: only the Rust side starts the
+bundled sync-service sidecar, so page script cannot spawn processes.
+
 **Supervisor (#330, #336).** The app reuses a backend that already answers on
 localhost:8080 (a dev script, a previous run) without polling Docker. It also
 checks whether that backend accepts connections on this machine's network

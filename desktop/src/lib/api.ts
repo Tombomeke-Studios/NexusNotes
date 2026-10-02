@@ -36,11 +36,28 @@ let refreshInFlight: Promise<RefreshResult> | null = null;
  */
 type RefreshResult = "ok" | "rejected" | "unavailable";
 
+/**
+ * Runs fn while holding a lock shared by every window of the app (Web Locks
+ * API), so two windows never rotate the shared refresh token at once (#393).
+ * Without the API (older webviews) fn just runs.
+ */
+function withRefreshLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
+  return locks ? (locks.request("nexus-refresh", fn) as Promise<T>) : fn();
+}
+
 /** Rotates the refresh token into a fresh session. */
 function tryRefresh(): Promise<RefreshResult> {
-  refreshInFlight ??= (async () => {
+  // The token this window holds now; if it changed by the time the lock is
+  // ours, another window already rotated and this one takes over its session.
+  const seen = localStorage.getItem("nexus_refresh");
+  refreshInFlight ??= withRefreshLock(async (): Promise<RefreshResult> => {
     const refresh = localStorage.getItem("nexus_refresh");
     if (!refresh) return "rejected";
+    if (refresh !== seen) {
+      authToken = localStorage.getItem("nexus_token");
+      return authToken ? "ok" : "rejected";
+    }
     try {
       const res = await fetch(`${API_BASE}/api/auth/refresh`, {
         method: "POST",
@@ -56,7 +73,7 @@ function tryRefresh(): Promise<RefreshResult> {
     } catch {
       return "unavailable";
     }
-  })().finally(() => {
+  }).finally(() => {
     refreshInFlight = null;
   });
   return refreshInFlight;

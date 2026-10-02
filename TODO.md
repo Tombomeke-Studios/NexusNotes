@@ -104,8 +104,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] E2E: replace `waitForTimeout` waits with real signals
 - [x] Settings: show the app and server versions instead of a hard-coded string (PR #255)
 - [x] Remark plugins: replace `push(...expand())` spreads with loops (overflow on pathological text nodes) (#376)
-- [ ] Attachment download chip: delay `revokeObjectURL` so WebKit downloads are not cancelled; verify in the packaged app
-- [ ] Two windows refreshing at once trip refresh-token reuse detection; add a cross-window lock or a short grace period
+- [x] Attachment download chip: delay `revokeObjectURL` so WebKit downloads are not cancelled (also the account and vault exports) (#392)
+- [x] Two windows refreshing at once trip refresh-token reuse detection; add a cross-window lock or a short grace period (#393)
 
 ---
 

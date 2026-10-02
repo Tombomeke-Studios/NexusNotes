@@ -11,11 +11,12 @@ interface FirstRunVaultProps {
 /**
  * Shown in the center column when the account has no vaults yet, so a new
  * user has a clear path to their first vault (notes can't exist without one).
- * Offers the same E2EE opt-in as the new-vault dialog.
+ * Offers the same E2EE choice as the new-vault dialog.
  */
 export function FirstRunVault({ onCreate }: FirstRunVaultProps) {
   const [name, setName] = useState("");
-  const [encrypt, setEncrypt] = useState(false);
+  // End-to-end encryption is the default; turning it off shows a warning (#360).
+  const [encrypt, setEncrypt] = useState(true);
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
 

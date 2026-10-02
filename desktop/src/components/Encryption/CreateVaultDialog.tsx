@@ -11,11 +11,12 @@ interface CreateVaultDialogProps {
 
 /**
  * Modal for creating an additional vault (the very first vault uses the
- * FirstRunVault card instead). Offers the same E2EE opt-in as first run.
+ * FirstRunVault card instead). Offers the same E2EE choice as first run.
  */
 export function CreateVaultDialog({ onCreate, onClose }: CreateVaultDialogProps) {
   const [name, setName] = useState("");
-  const [encrypt, setEncrypt] = useState(false);
+  // End-to-end encryption is the default; turning it off shows a warning (#360).
+  const [encrypt, setEncrypt] = useState(true);
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
 

@@ -21,6 +21,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   other device's, or merge them by hand.
 
 ### Changed
+- New vaults are end-to-end encrypted by default. Turning it off shows a short warning
+  that the server could then read the vault, with a plain explanation on request.
 - Muted text and the keyboard focus ring meet WCAG AA contrast; text selection and
   scrollbars use the accent colour.
 

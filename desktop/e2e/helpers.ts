@@ -92,8 +92,10 @@ export async function createVault(page: Page, name?: string, opts: { keepSeed?: 
   const firstRun = page.locator(".firstrun-input");
   const isFirstVault = await firstRun.isVisible().catch(() => false);
   if (isFirstVault) {
-    // No vaults yet: the first-run onboarding card is shown
+    // No vaults yet: the first-run onboarding card is shown. Encryption is on
+    // by default (#360); these tests use a standard vault.
     await firstRun.fill(vaultName);
+    await page.getByLabel(/end-to-end encrypt/i).uncheck();
     await firstRun.press("Enter");
   } else {
     // Otherwise the vault switcher lives behind the sidebar head button
@@ -101,6 +103,7 @@ export async function createVault(page: Page, name?: string, opts: { keepSeed?: 
     await page.getByRole("button", { name: /new vault/i }).click();
     const input = page.getByPlaceholder(/vault name/i);
     await input.fill(vaultName);
+    await page.getByLabel(/end-to-end encrypt/i).uncheck();
     await input.press("Enter");
   }
   // The new vault becomes active; its name shows in the sidebar head button

@@ -6,6 +6,7 @@ import { RecoveryCodeDialog } from "./RecoveryCodeDialog";
 import { CreateVaultDialog } from "./CreateVaultDialog";
 import { UnlockVaultDialog } from "./UnlockVaultDialog";
 import { ChangePassphraseForm } from "./ChangePassphraseForm";
+import { FirstRunVault } from "../Workspace/FirstRunVault";
 
 /** Stateful wrapper so the controlled EncryptionSetup behaves like in the app. */
 function SetupHarness({ initialEnabled = false }: { initialEnabled?: boolean }) {
@@ -44,6 +45,26 @@ describe("EncryptionSetup", () => {
     });
     expect(screen.getByText("Passphrases do not match")).toBeTruthy();
   });
+
+  it("warns briefly when turned off, with a plain explanation on request", () => {
+    render(<SetupHarness initialEnabled />);
+    expect(screen.queryByRole("note")).toBeNull();
+
+    fireEvent.click(screen.getByLabelText(/end-to-end encrypt/i));
+    const warning = screen.getByRole("note");
+    expect(warning.textContent).toMatch(/not end-to-end encrypted/i);
+    expect(screen.queryByText(/a hacker who steals/i)).toBeNull();
+
+    const more = screen.getByRole("button", { name: /what does this mean/i });
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(more);
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText(/a hacker who steals/i)).toBeTruthy();
+
+    // Turning it back on removes the warning.
+    fireEvent.click(screen.getByLabelText(/end-to-end encrypt/i));
+    expect(screen.queryByRole("note")).toBeNull();
+  });
 });
 
 describe("RecoveryCodeDialog", () => {
@@ -65,12 +86,26 @@ describe("RecoveryCodeDialog", () => {
 });
 
 describe("CreateVaultDialog", () => {
-  it("creates a standard vault with just a name (Enter submits)", () => {
+  it("starts end-to-end encrypted, so a name alone is not enough (#360)", () => {
+    const onCreate = vi.fn();
+    render(<CreateVaultDialog onCreate={onCreate} onClose={() => {}} />);
+
+    expect(screen.getByLabelText(/end-to-end encrypt/i)).toHaveProperty("checked", true);
+    const name = screen.getByPlaceholderText("Vault name...");
+    fireEvent.change(name, { target: { value: "Work" } });
+    fireEvent.keyDown(name, { key: "Enter" });
+
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Create vault" })).toHaveProperty("disabled", true);
+  });
+
+  it("creates a standard vault once encryption is turned off (Enter submits)", () => {
     const onCreate = vi.fn();
     render(<CreateVaultDialog onCreate={onCreate} onClose={() => {}} />);
 
     const name = screen.getByPlaceholderText("Vault name...");
     fireEvent.change(name, { target: { value: "Work" } });
+    fireEvent.click(screen.getByLabelText(/end-to-end encrypt/i));
     fireEvent.keyDown(name, { key: "Enter" });
 
     expect(onCreate).toHaveBeenCalledWith("Work", undefined);
@@ -81,7 +116,6 @@ describe("CreateVaultDialog", () => {
     render(<CreateVaultDialog onCreate={onCreate} onClose={() => {}} />);
 
     fireEvent.change(screen.getByPlaceholderText("Vault name..."), { target: { value: "Secret" } });
-    fireEvent.click(screen.getByLabelText(/end-to-end encrypt/i));
 
     const create = screen.getByRole("button", { name: "Create vault" });
     expect(create).toHaveProperty("disabled", true);
@@ -95,6 +129,21 @@ describe("CreateVaultDialog", () => {
     fireEvent.click(create);
 
     expect(onCreate).toHaveBeenCalledWith("Secret", "a strong passphrase");
+  });
+});
+
+describe("FirstRunVault", () => {
+  it("starts end-to-end encrypted and asks for a passphrase (#360)", () => {
+    const onCreate = vi.fn();
+    render(<FirstRunVault onCreate={onCreate} />);
+
+    expect(screen.getByLabelText(/end-to-end encrypt/i)).toHaveProperty("checked", true);
+    fireEvent.change(screen.getByPlaceholderText(/vault name/i), { target: { value: "Personal" } });
+    fireEvent.change(screen.getByPlaceholderText("Vault passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.change(screen.getByPlaceholderText("Confirm passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create vault" }));
+
+    expect(onCreate).toHaveBeenCalledWith("Personal", "a strong passphrase");
   });
 });
 

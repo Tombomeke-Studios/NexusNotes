@@ -207,6 +207,17 @@ sequenceDiagram
 - **Admin stats:** `GET /api/admin/stats` (static operator token) reports
   user/vault/note totals and uptime.
 
+## Timeouts and Shutdown
+
+- **Timeouts:** ordinary API calls run under the server-wide 15 s read and write
+  timeouts. Long transfers set their own (#332): account export and attachment
+  upload/download get 2 min to read the request and 5 min to write the response,
+  and the linked-file proxy 45 s to respond (its own fetch may take 15 s).
+- **Shutdown:** on SIGINT/SIGTERM the WebSocket hub first sends every client a
+  `1001 going away` close frame and stops accepting connections; clients that do
+  not answer within a second are disconnected. The metrics listener and the HTTP
+  server then drain within the 10 s shutdown budget (#332).
+
 ## Data Model
 
 The relational schema lives in `services/sync-service/migrations/` (source of

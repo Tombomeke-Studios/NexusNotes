@@ -1,10 +1,13 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/metrics"
 )
@@ -17,6 +20,8 @@ type Message struct {
 type Hub struct {
 	mu      sync.RWMutex
 	clients map[string]map[*Client]bool // userID -> set of clients
+	// closing is set by Shutdown; later registrations are turned away.
+	closing bool
 }
 
 func NewHub() *Hub {
@@ -28,6 +33,11 @@ func NewHub() *Hub {
 func (h *Hub) Register(client *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	if h.closing {
+		client.closeGoingAway()
+		return
+	}
 
 	if h.clients[client.UserID] == nil {
 		h.clients[client.UserID] = make(map[*Client]bool)
@@ -129,5 +139,75 @@ func (h *Hub) BroadcastToUser(userID string, msg Message, exclude *Client) {
 		default:
 			slog.Warn("ws client send buffer full, dropping message", "user_id", client.UserID, "device_id", client.DeviceID)
 		}
+	}
+}
+
+// clientCount returns the number of registered connections.
+func (h *Hub) clientCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	n := 0
+	for _, clients := range h.clients {
+		n += len(clients)
+	}
+	return n
+}
+
+// shutdownGrace is how long Shutdown waits for clients to answer the close
+// frame before it closes their connections itself.
+const shutdownGrace = time.Second
+
+// Shutdown sends every connected client a "going away" close frame and turns
+// away new connections (#332). Clients that complete the close handshake
+// within shutdownGrace leave on their own; the rest are closed, and Shutdown
+// returns once every ReadPump has unregistered or ctx ends. Hijacked
+// WebSocket connections are not covered by http.Server.Shutdown.
+func (h *Hub) Shutdown(ctx context.Context) error {
+	h.mu.Lock()
+	h.closing = true
+	var all []*Client
+	for _, clients := range h.clients {
+		for c := range clients {
+			all = append(all, c)
+		}
+	}
+	h.mu.Unlock()
+
+	for _, c := range all {
+		c.closeGoingAway()
+	}
+	slog.Info("ws hub shutting down", "connections", len(all))
+
+	graceCtx, cancel := context.WithTimeout(ctx, shutdownGrace)
+	defer cancel()
+	if h.waitEmpty(graceCtx) == nil {
+		return nil
+	}
+	for _, c := range all {
+		_ = c.Conn.Close()
+	}
+	return h.waitEmpty(ctx)
+}
+
+// waitEmpty polls until no client is registered or ctx ends.
+func (h *Hub) waitEmpty(ctx context.Context) error {
+	tick := time.NewTicker(20 * time.Millisecond)
+	defer tick.Stop()
+	for h.clientCount() > 0 {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-tick.C:
+		}
+	}
+	return nil
+}
+
+// closeGoingAway starts the close handshake with a 1001 frame. The client's
+// reply ends its ReadPump, which unregisters it and closes the connection.
+func (c *Client) closeGoingAway() {
+	msg := websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down")
+	if err := c.Conn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(writeWait)); err != nil {
+		_ = c.Conn.Close()
 	}
 }

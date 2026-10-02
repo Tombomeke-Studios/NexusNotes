@@ -36,7 +36,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Tauri: strict webview CSP and a shell capability limited to the sidecar (#329)
 - [ ] Tauri supervisor follow-ups: no compose polling while a foreign backend is healthy, handle `RunEvent::Exit`, re-check shutdown after spawn, restart on failing health (#330)
 - [x] CI: build both Dockerfiles so an unbuildable image is caught (#331)
-- [ ] Graceful shutdown: drain the WebSocket hub, per-route write deadlines (#332)
+- [x] Graceful shutdown: drain the WebSocket hub, per-route write deadlines (#332)
 - [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
 - [ ] Migrate the packaged app's database password without losing data (#277)
 - [x] Dev scripts: random JWT secret and localhost-only binding, like the packaged app (#334)

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { register, createVault, createNote, clearAuth } from "./helpers";
+import { register, createVault, createNote, clearAuth, waitForSaved } from "./helpers";
 
 // A 1x1 transparent PNG.
 const PNG_B64 =
@@ -17,7 +17,7 @@ test.describe("Attachments (#153)", () => {
     const textarea = page.locator(".editor-textarea").first();
     await textarea.click();
     await textarea.fill("An image:\n\n");
-    await page.waitForTimeout(1200);
+    await waitForSaved(page);
 
     // Simulate a file drop with a real PNG File via a synthetic DataTransfer.
     await page.evaluate((b64) => {

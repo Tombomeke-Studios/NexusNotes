@@ -101,7 +101,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Decompose `App.tsx` into hooks (`useNoteSave`, `useTabs`, `useVaults`, `useStars`, `useCloseGuard`, ...) and `Workspace` / `ModalHost` components
 - [ ] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths
 - [x] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed (#377)
-- [ ] E2E: replace `waitForTimeout` waits with real signals
+- [x] E2E: replace `waitForTimeout` waits with real signals (the two left are deliberate: proving nothing happens, and a push with no visible effect)
 - [x] Settings: show the app and server versions instead of a hard-coded string (PR #255)
 - [x] Remark plugins: replace `push(...expand())` spreads with loops (overflow on pathological text nodes) (#376)
 - [x] Attachment download chip: delay `revokeObjectURL` so WebKit downloads are not cancelled (also the account and vault exports) (#392)

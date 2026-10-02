@@ -112,6 +112,8 @@ test.describe("Conflict resolution", () => {
     await otherDeviceSaves(page, apiBase, note, THEIRS);
     // Give the push time to arrive while the editor is not on screen.
     await expect.poll(async () => (await fetchNote(page, apiBase, note.id)).content).toBe(THEIRS);
+    // The push has no visible effect while the graph is open; leave the app a
+    // moment to apply it before the editor comes back (no signal to wait on).
     await page.waitForTimeout(500);
 
     await page.keyboard.press("Control+g");

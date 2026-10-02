@@ -20,7 +20,16 @@ test.describe("Device management (#44 #45)", () => {
     await pageB.getByPlaceholder("Password").fill(password);
     await pageB.getByRole("button", { name: /sign in/i }).click();
     await expect(pageB.locator(".sidebar")).toBeVisible({ timeout: 10_000 });
-    await pageB.waitForTimeout(800); // WS connect registers the device
+    // Device B registers itself when its WebSocket connects: wait for that.
+    const token = await pageA.evaluate(() => localStorage.getItem("nexus_token"));
+    await expect
+      .poll(async () => {
+        const res = await pageA.request.get("http://localhost:8080/api/devices", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        return ((await res.json()) as unknown[]).length;
+      })
+      .toBe(2);
 
     // Device A sees both devices; its own row is badged and not revocable.
     await pageA.keyboard.press("Control+,");

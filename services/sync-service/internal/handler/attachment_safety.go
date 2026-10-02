@@ -94,3 +94,19 @@ func setAttachmentHeaders(h http.Header, mimeType, filename string) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
 }
+
+// isEncryptedUploadName reports whether an upload's file name is the opaque
+// "e2ee.<base64url>.bin" the app gives files it encrypted on the device (#238).
+func isEncryptedUploadName(name string) bool {
+	const prefix, suffix = "e2ee.", ".bin"
+	if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) || len(name) <= len(prefix)+len(suffix) {
+		return false
+	}
+	for _, c := range name[len(prefix) : len(name)-len(suffix)] {
+		base64url := c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' || c == '_'
+		if !base64url {
+			return false
+		}
+	}
+	return true
+}

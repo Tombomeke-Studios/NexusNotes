@@ -54,8 +54,18 @@ vault keeps the key in its session and shows the recovery code once; its local
 drafts are deleted. Other devices receive `vault:encrypted`, drop the vault's
 plaintext from memory and drafts, and ask for the passphrase.
 
-A vault with attachments cannot be converted yet: attachment bytes are not
-end-to-end encrypted (#238).
+A vault with attachments cannot be converted yet: its existing files were
+stored readable by the server and would have to be re-encrypted too.
+
+### Attachments (#238)
+
+Files attached in an e2ee vault are encrypted on the device with the Vault
+Key (AES-256-GCM, a random IV per file). Their original name and type are
+encrypted as well and sent as the upload's file name,
+`e2ee.<base64url(iv || ciphertext)>.bin`, so the server stores neither. After
+download the client decrypts name, type and bytes and builds the blob with
+its own safe type. The server refuses uploads to an e2ee vault whose name is
+not of that form.
 
 ```
 vaults.encryption = 'none'  -> existing behaviour, no change

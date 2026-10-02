@@ -73,18 +73,12 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
-	// Attachment files are stored as uploaded; until they are encrypted on the
-	// client (#238), an end-to-end encrypted vault must not receive plaintext
-	// files. Refused before the body is read.
 	vault, err := h.vaults.GetByID(r.Context(), note.VaultID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to load vault")
 		return
 	}
-	if vault.Encryption == model.VaultEncryptionE2EE {
-		writeError(w, http.StatusUnprocessableEntity, "attachments are not available in end-to-end encrypted vaults yet")
-		return
-	}
+	e2ee := vault.Encryption == model.VaultEncryptionE2EE
 
 	// Cap what is read at all (the file plus multipart framing) so an oversized
 	// upload is cut off instead of being streamed to a temp file first.
@@ -118,6 +112,16 @@ func (h *AttachmentHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	contentType := resolveUploadType(header.Header.Get("Content-Type"), head[:n])
+	if e2ee {
+		// The app encrypts files in an e2ee vault on the device, name and type
+		// included (#238); a readable name means an app that would upload
+		// plaintext. The bytes are opaque, so their type is too.
+		if !isEncryptedUploadName(header.Filename) {
+			writeError(w, http.StatusUnprocessableEntity, "this vault is end-to-end encrypted: update the app to attach files here")
+			return
+		}
+		contentType = "application/octet-stream"
+	}
 	// Key namespaces objects by vault; the random id avoids collisions and
 	// keeps the original filename out of the storage path.
 	key := fmt.Sprintf("%s/%s%s", note.VaultID, uuid.New().String(), filepath.Ext(header.Filename))

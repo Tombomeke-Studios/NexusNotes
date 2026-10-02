@@ -22,7 +22,8 @@ import { remarkTags } from "../../lib/remarkTags";
 import { remarkImageEmbeds } from "../../lib/remarkImageEmbeds";
 import { remarkCallouts } from "../../lib/remarkCallouts";
 import { wikiUrlTransform } from "../../lib/markdownUrls";
-import { attachments as attachmentsApi, ApiError, type Attachment } from "../../lib/api";
+import { ApiError, type Attachment } from "../../lib/api";
+import { listAttachments, uploadAttachment } from "../../lib/attachmentClient";
 import { AttachmentImage } from "./AttachmentImage";
 import "./Editor.css";
 
@@ -83,6 +84,8 @@ interface EditorProps {
   initialText?: string;
   /** Non-null when files cannot be attached in this vault; shown instead of uploading. */
   attachmentBlockReason?: string | null;
+  /** The note's vault: files in an e2ee vault are encrypted on this device (#238). */
+  vault?: { id: string; encryption?: "none" | "e2ee" } | null;
 }
 
 export interface ReplaceRequest {
@@ -121,6 +124,7 @@ export function Editor({
   onPresenceChange,
   initialText,
   attachmentBlockReason = null,
+  vault = null,
 }: EditorProps) {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -133,6 +137,8 @@ export function Editor({
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const blockReasonRef = useRef(attachmentBlockReason);
   blockReasonRef.current = attachmentBlockReason;
+  const vaultRef = useRef(vault);
+  vaultRef.current = vault;
   // The notice is hidden while further files upload, so its 4s only start
   // counting once the upload batch has finished.
   useEffect(() => {
@@ -217,9 +223,9 @@ export function Editor({
       setAttachmentList([]);
       return;
     }
+    if (!vaultRef.current) return;
     let active = true;
-    attachmentsApi
-      .list(note.id)
+    listAttachments(note.id, vaultRef.current)
       .then((list) => active && setAttachmentList(list))
       .catch(() => active && setAttachmentList([]));
     return () => {
@@ -246,7 +252,8 @@ export function Editor({
     try {
       for (const file of files) {
         try {
-          const att = await attachmentsApi.upload(current.id, file);
+          if (!vaultRef.current) throw new Error("vault not loaded");
+          const att = await uploadAttachment(current.id, file, vaultRef.current);
           setAttachmentList((prev) => [...prev, att]);
           const embed = att.mime_type.startsWith("image/") ? `![[${att.filename}]]` : `[[${att.filename}]]`;
           const el = textareaRef.current;

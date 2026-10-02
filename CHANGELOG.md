@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Files can be attached in end-to-end encrypted vaults: they are encrypted on your device,
+  name and type included, before they are uploaded.
 - Existing vaults can be end-to-end encrypted afterwards (Settings → Sync → Encrypt this
   vault). Every note is encrypted on your device and the server keeps no readable copy or
   history; other devices ask for the new passphrase.

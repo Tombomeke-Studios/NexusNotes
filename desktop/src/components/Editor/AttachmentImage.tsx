@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { attachments as attachmentsApi, isInlineImageType } from "../../lib/api";
+import { isInlineImageType } from "../../lib/api";
+import { attachmentObjectUrl } from "../../lib/attachmentClient";
 import type { Attachment } from "../../lib/api";
 
 interface AttachmentImageProps {
@@ -28,8 +29,7 @@ export function AttachmentImage({ name, alt, list }: AttachmentImageProps) {
     if (!match || !inline) return;
     let objectUrl: string | null = null;
     let cancelled = false;
-    attachmentsApi
-      .objectUrl(match.id)
+    attachmentObjectUrl(match)
       .then((u) => {
         if (cancelled) {
           URL.revokeObjectURL(u);
@@ -70,7 +70,7 @@ function AttachmentFileLink({ attachment }: { attachment: Attachment }) {
   const download = async () => {
     setBusy(true);
     try {
-      const url = await attachmentsApi.objectUrl(attachment.id);
+      const url = await attachmentObjectUrl(attachment);
       const a = document.createElement("a");
       a.href = url;
       a.download = attachment.filename;

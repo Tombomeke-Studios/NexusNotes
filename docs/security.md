@@ -219,7 +219,10 @@ image types are kept and everything else becomes `application/octet-stream`, whi
 browser only ever downloads. The preview likewise only renders raster images inline;
 any other embedded attachment (an `![[drawing.svg]]`, say) is shown as a download link.
 
-Attachment files are encrypted at rest (#358): the sync service seals each file with
+In end-to-end encrypted vaults the app encrypts attachment files on the device,
+name and type included, before upload (#238; see
+[encryption.md](encryption.md#attachments-238)); the server refuses a readable
+file there. Attachment files are also encrypted at rest (#358): the sync service seals each file with
 the data key before writing it to object storage, binding it to its object key, and
 decrypts it on download, so the storage bucket only holds ciphertext. Files stored
 before that are served as they are and sealed by a background pass on startup, which

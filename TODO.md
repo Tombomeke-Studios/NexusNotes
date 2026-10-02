@@ -71,7 +71,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > clear warning. Every vault is encrypted at rest regardless (#352). Supersedes #349.
 
 - [x] Default new vaults to end-to-end encryption and warn when it is turned off (#360)
-- [ ] Encrypt attachment bytes on the client before upload (#238)
+- [x] Encrypt attachment bytes on the client before upload (#238)
 - [x] Let owners convert a standard vault to end-to-end encryption (#361)
 - [ ] Encrypt note titles, folder paths, tags and aliases on the client in e2ee vaults (#362)
 - [ ] Share end-to-end encrypted vaults with per-user key exchange (#363)
@@ -579,7 +579,7 @@ This entry is retained so that existing issue references remain valid.
 - [x] Add `POST /notes/:id/attachments` for multipart upload to MinIO (#153)
 - [x] Add `GET /notes/:id/attachments` to list attachments (#153)
 - [x] Add `DELETE /attachments/:id` to remove an attachment (#153)
-- [ ] For encrypted vaults, encrypt attachment bytes client-side before upload (#238)
+- [x] For encrypted vaults, encrypt attachment bytes client-side before upload (#238)
 - [x] Build drag-and-drop (and paste) file upload into the editor (#153)
 - [x] Render uploaded images inline using `![[filename]]` embed syntax (#153)
 - [ ] Add an attachment panel in the editor sidebar (#238)

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { API_URL } from "../lib/api";
 import { useServerStatus } from "../lib/useServerStatus";
+import { useBackendExposed } from "../lib/useBackendExposed";
 import { describeServerStatus } from "../lib/connection";
 import { Logo } from "./Logo";
 import "./ConnectionBanner.css";
@@ -8,7 +9,16 @@ import "./ConnectionBanner.css";
 /** Persistent notice at the bottom of the window while the server is down or on another version. */
 export function ConnectionBanner() {
   const status = useServerStatus();
+  const exposed = useBackendExposed();
   const notice = status ? describeServerStatus(status, API_URL) : null;
+  if (!notice && exposed) {
+    return (
+      <div className="connection-banner connection-banner--warning" role="status" aria-live="polite">
+        <strong>The server on port 8080 can be reached by other computers on your network.</strong>
+        <span>It is not the app&rsquo;s own private server. Stop it so the app can start its own.</span>
+      </div>
+    );
+  }
   if (!notice) return null;
   return (
     <div className={`connection-banner connection-banner--${notice.tone}`} role="status" aria-live="polite">

@@ -363,6 +363,15 @@ it never falls back to a fixed value. Earlier versions signed every
 installation's tokens with the shared constant `dev-secret`, so anyone who could
 reach a backend could forge a token for any user on it.
 
+**Supervisor (#330, #336).** The app reuses a backend that already answers on
+localhost:8080 (a dev script, a previous run) without polling Docker. It also
+checks whether that backend accepts connections on this machine's network
+address; if so it is not the app's own loopback-only server, and the UI shows
+a warning banner instead of trusting it silently. A sidecar the app started
+itself is restarted after failing three health checks in a row (after a
+one-minute start-up grace), and it is stopped on every way the app exits,
+including a shutdown that began while it was starting.
+
 **Per-install data encryption key (#353).** The key that encrypts user data at
 rest is created the same way, in a `data-encryption-key` file next to the JWT
 secret. Unlike the JWT secret it is never replaced and never swapped for a

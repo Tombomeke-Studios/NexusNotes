@@ -82,6 +82,7 @@ cd services/sync-service
 ```bash
 export DATABASE_URL="postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
 export JWT_SECRET="$(openssl rand -hex 32)"   # at least 32 characters
+export DATA_ENCRYPTION_KEY="..."              # 64 hex characters; keep the same one between runs
 go run cmd/server/main.go
 ```
 
@@ -89,6 +90,7 @@ go run cmd/server/main.go
 ```powershell
 $env:DATABASE_URL = "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable"
 $env:JWT_SECRET = -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })   # at least 32 characters
+$env:DATA_ENCRYPTION_KEY = "..."   # 64 hex characters; keep the same one between runs
 go run cmd/server/main.go
 ```
 
@@ -182,12 +184,19 @@ docker compose -f docker-compose.dev.yml down -v
 cp .env.production.example .env
 ```
 
-Fill in every value the file marks REQUIRED (`JWT_SECRET`, `POSTGRES_PASSWORD`,
-`MEILI_MASTER_KEY`, `MINIO_ROOT_PASSWORD`), each with its own random value, for
+Fill in every value the file marks REQUIRED (`JWT_SECRET`, `DATA_ENCRYPTION_KEY`,
+`POSTGRES_PASSWORD`, `MEILI_MASTER_KEY`, `MINIO_ROOT_PASSWORD`), each with its own random value, for
 example from `openssl rand -hex 32` (letters and digits only: the database password
 goes into a URL, where `@ : / ? # %` break it). There are no built-in defaults: `docker compose`
 refuses to start while one of them is empty, and the sync service refuses a
 `JWT_SECRET` shorter than 32 characters.
+
+`DATA_ENCRYPTION_KEY` encrypts user data at rest and must be exactly 64 hex
+characters (`openssl rand -hex 32`). **Back it up separately from the database
+backups** (a password manager or secrets vault): without it, the stored data
+cannot be read by anyone. To rotate it, move the current key into
+`DATA_ENCRYPTION_OLD_KEYS` and set a new one; see
+[docs/security.md](security.md#encryption-at-rest).
 
 `BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the

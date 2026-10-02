@@ -166,6 +166,8 @@ jobs:
           REDIS_URL: redis://localhost:6379
           # CI only; the service requires at least 32 characters.
           JWT_SECRET: e2e-ci-secret-not-for-production-use
+          # CI only; encrypts user data at rest (#353). 64 hex characters.
+          DATA_ENCRYPTION_KEY: 00c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1
           PORT: "8080"
           MINIO_ENDPOINT: localhost:9000
           MINIO_ACCESS_KEY: nexus_minio

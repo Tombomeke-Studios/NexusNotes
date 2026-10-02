@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 )
 
 type Config struct {
@@ -15,14 +17,19 @@ type Config struct {
 	// comma-separated). Empty means every interface, which the Docker image
 	// needs; the packaged desktop app passes its loopback addresses so the
 	// bundled backend cannot be reached from the network (#260).
-	BindAddrs           []string
-	DatabaseURL         string
-	JWTSecret           string
-	RedisURL            string
-	MeiliURL            string
-	MeiliMasterKey      string
-	AuthRateLimitPerMin int
-	AuthRateLimitBurst  int
+	BindAddrs   []string
+	DatabaseURL string
+	JWTSecret   string
+	// DataEncryptionKey encrypts user data at rest (#353): 64 hex characters.
+	// DataEncryptionOldKeys are retired keys that existing rows may still be
+	// encrypted under (key rotation). Losing a key loses the data under it.
+	DataEncryptionKey     string
+	DataEncryptionOldKeys []string
+	RedisURL              string
+	MeiliURL              string
+	MeiliMasterKey        string
+	AuthRateLimitPerMin   int
+	AuthRateLimitBurst    int
 	// AdminToken guards /api/admin/*; the endpoints are disabled when empty.
 	AdminToken string
 	// SMTP_* mail settings; when SMTPHost is empty, mail is logged not sent
@@ -88,6 +95,23 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("JWT_SECRET must be at least %d characters (generate one with: openssl rand -hex 32)", MinSecretLength)
 	}
 
+	dataKey := strings.TrimSpace(os.Getenv("DATA_ENCRYPTION_KEY"))
+	if dataKey == "" {
+		return nil, fmt.Errorf("DATA_ENCRYPTION_KEY is required (generate one with: openssl rand -hex 32, and back it up: data encrypted under a lost key cannot be recovered)")
+	}
+	if _, err := fieldcrypt.New(dataKey, nil); err != nil {
+		return nil, fmt.Errorf("DATA_ENCRYPTION_KEY: %w", err)
+	}
+	var oldDataKeys []string
+	for _, part := range strings.Split(os.Getenv("DATA_ENCRYPTION_OLD_KEYS"), ",") {
+		if k := strings.TrimSpace(part); k != "" {
+			oldDataKeys = append(oldDataKeys, k)
+		}
+	}
+	if _, err := fieldcrypt.New(dataKey, oldDataKeys); err != nil {
+		return nil, fmt.Errorf("DATA_ENCRYPTION_OLD_KEYS: %w", err)
+	}
+
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL == "" {
 		redisURL = "redis://localhost:6379"
@@ -147,6 +171,8 @@ func Load() (*Config, error) {
 		BindAddrs:               bindAddrs,
 		DatabaseURL:             dbURL,
 		JWTSecret:               jwtSecret,
+		DataEncryptionKey:       dataKey,
+		DataEncryptionOldKeys:   oldDataKeys,
 		RedisURL:                redisURL,
 		MeiliURL:                meiliURL,
 		MeiliMasterKey:          meiliMasterKey,

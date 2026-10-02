@@ -24,6 +24,25 @@ if ! grep -Eqx '[0-9a-f]{64}' "$JWT_SECRET_FILE" 2>/dev/null; then
 fi
 JWT_SECRET="$(cat "$JWT_SECRET_FILE")"
 export JWT_SECRET
+# User data is encrypted at rest with DATA_ENCRYPTION_KEY (#353). It lives in
+# the repo-root .env (gitignored); the first run generates one and appends it.
+# Unlike the JWT secret it is never replaced: rows encrypted under a lost key
+# cannot be read again, so a bad value stops the script instead.
+ENV_FILE="$ROOT/.env"
+if [ -z "${DATA_ENCRYPTION_KEY:-}" ]; then
+  DATA_ENCRYPTION_KEY="$(sed -n 's/^DATA_ENCRYPTION_KEY=//p' "$ENV_FILE" 2>/dev/null | tail -n1 | tr -d '\r"'"'"' ')"
+fi
+if [ -z "$DATA_ENCRYPTION_KEY" ]; then
+  DATA_ENCRYPTION_KEY="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  [ -s "$ENV_FILE" ] && [ -n "$(tail -c1 "$ENV_FILE")" ] && echo >> "$ENV_FILE"
+  printf '%s\n' "# Dev-only key for encrypting user data at rest (#353). Keep it: data" \
+    "# written under it is unreadable without it." "DATA_ENCRYPTION_KEY=$DATA_ENCRYPTION_KEY" >> "$ENV_FILE"
+fi
+if ! printf '%s' "$DATA_ENCRYPTION_KEY" | grep -Eqx '[0-9a-fA-F]{64}'; then
+  echo "DATA_ENCRYPTION_KEY in $ENV_FILE must be 64 hex characters; fix it rather than replacing it (data encrypted under the old key would be lost)." >&2
+  exit 1
+fi
+export DATA_ENCRYPTION_KEY
 export PORT="8080"
 # The dev backend is for this machine only, like the packaged app's. It also
 # binds ::1 when the host has an IPv6 loopback (dev containers, WSL and some
@@ -113,10 +132,10 @@ start_stack() {
   ( cd "$ROOT/services/sync-service" && go build -o "$bin" ./cmd/server )
 
   # Reuse a healthy backend only when the build it runs and its settings
-  # (bind address, secret) match; their hash is recorded below.
+  # (bind address, secrets) match; their hash is recorded below.
   local hashfile="$ROOT/services/sync-service/tmp/sync-service.hash"
   local newhash
-  newhash="$(git hash-object "$bin")-$(printf '%s|%s' "$BIND_ADDR" "$JWT_SECRET" | git hash-object --stdin)"
+  newhash="$(git hash-object "$bin")-$(printf '%s|%s|%s' "$BIND_ADDR" "$JWT_SECRET" "$DATA_ENCRYPTION_KEY" | git hash-object --stdin)"
   if curl -sf "http://localhost:$PORT/health" >/dev/null 2>&1; then
     if [ -f "$hashfile" ] && [ "$(cat "$hashfile")" = "$newhash" ]; then
       log "Backend already healthy on :$PORT and up to date — reusing it."

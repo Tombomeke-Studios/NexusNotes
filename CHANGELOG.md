@@ -48,6 +48,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   the editor kept the old text and your next edit was saved over those changes.
 
 ### Security
+- The server requires a `DATA_ENCRYPTION_KEY` (64 hex characters) for encrypting user
+  data at rest; it no longer starts without one. Dev scripts generate it into `.env`,
+  the packaged app creates one per install. Back it up: data encrypted under a lost key
+  cannot be recovered.
 - The packaged app's backend no longer signs sessions with the shared `dev-secret`: each
   installation generates its own random JWT secret on first run and keeps it in the app's
   local data directory. After upgrading, the first request renews your session through

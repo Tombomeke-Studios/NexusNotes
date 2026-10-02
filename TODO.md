@@ -54,7 +54,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > User data must not be readable from the database. Field-level AES-256-GCM with a
 > server-held data key, always on, under E2EE by default (`feature/e2ee-default`).
 
-- [ ] Add field-level encryption with a required server data key (#353)
+- [x] Add field-level encryption with a required server data key (#353)
 - [ ] Encrypt note content and note versions at rest (#354)
 - [ ] Encrypt vault names, linked files, annotations, display names and device names at rest (#355)
 - [ ] Encrypt email addresses at rest with a blind index for lookups (#356)

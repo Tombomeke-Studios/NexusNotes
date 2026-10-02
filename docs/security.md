@@ -276,13 +276,20 @@ ciphertext and is wrapped once more.
 - **Rotation.** Move the current key to `DATA_ENCRYPTION_OLD_KEYS` (comma
   separated) and set a new `DATA_ENCRYPTION_KEY`. Every stored value names the
   key it was written under, so old values keep decrypting while new writes use
-  the new key.
+  the new key, and the startup backfill re-encrypts the rest. Once it has run
+  (the log says `encryption backfill done`, and a later start rewrites
+  nothing), the old key can be removed.
 - **Lookups.** A field that must be searched for equality (an email address
   at login) is found through a blind index: an HMAC-SHA256 of the normalised
   value, which reveals nothing about it beyond equality with another indexed
   value.
-- **Legacy rows.** Values written before encryption at rest are read as they
-  are until the startup backfill has encrypted them.
+- **Legacy rows and backfill (#357).** Values written before encryption at
+  rest are read as they are until the startup backfill has encrypted them. On
+  every start the service walks each encrypted column in the background, in
+  batches, and rewrites any value not under the current key (plaintext, or a
+  retired key), filling in the email blind index as it goes. A row changed
+  while it runs is left to the writer, which encrypts it anyway; a value it
+  cannot decrypt (a missing old key) is logged and left alone.
 - **What it does not cover.** The server holds the key while it runs, so whoever
   controls the running server can read standard vaults; only end-to-end
   encrypted vaults keep content from the server itself. The Meilisearch index

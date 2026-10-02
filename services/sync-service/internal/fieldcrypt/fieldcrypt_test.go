@@ -110,6 +110,9 @@ func TestRotation(t *testing.T) {
 	if rotated.NeedsReencrypt(fresh) {
 		t.Fatal("a value under the current key needs no re-encryption")
 	}
+	if !strings.HasPrefix(fresh, rotated.CurrentPrefix()) || strings.HasPrefix(enc, rotated.CurrentPrefix()) {
+		t.Fatal("CurrentPrefix must match exactly the values under the current key")
+	}
 	if !rotated.NeedsReencrypt("legacy plaintext") {
 		t.Fatal("legacy plaintext needs encryption")
 	}

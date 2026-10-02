@@ -58,7 +58,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Encrypt note content and note versions at rest (#354)
 - [x] Encrypt vault names, linked files, annotations, display names and device names at rest (#355)
 - [x] Encrypt email addresses at rest with a blind index for lookups (#356)
-- [ ] Encrypt existing rows on startup (backfill) (#357)
+- [x] Encrypt existing rows on startup (backfill) (#357)
 - [ ] Encrypt attachment files at rest in object storage (#358)
 - [ ] Keep note content in the search index encrypted at rest (#365)
 

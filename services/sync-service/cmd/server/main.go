@@ -54,6 +54,18 @@ func main() {
 		slog.Error("data encryption key", "error", err)
 		os.Exit(1)
 	}
+	// Encrypt rows from before encryption at rest, or under a retired key, in
+	// the background (#357): reads already handle both, so serving need not wait.
+	go func() {
+		n, err := repository.BackfillEncryption(ctx, pool, crypt, 500)
+		if err != nil {
+			slog.Error("encryption backfill", "error", err, "rewritten", n)
+			return
+		}
+		if n > 0 {
+			slog.Info("encryption backfill done", "rewritten", n)
+		}
+	}()
 
 	userRepo := repository.NewUserRepo(pool, crypt)
 	vaultRepo := repository.NewVaultRepo(pool, crypt)

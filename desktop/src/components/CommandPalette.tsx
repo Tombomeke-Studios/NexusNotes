@@ -63,6 +63,12 @@ export function CommandPalette({
     setSelectedKey(null);
   }, [query]);
 
+  // Pin the initial highlight to the item it is shown on, so a re-sort before
+  // any key press does not move it to another note (#404).
+  useEffect(() => {
+    if (selectedKey === null && flat[0]) setSelectedKey(keyOf(flat[0]));
+  }, [selectedKey, flat]);
+
   const run = (item: PaletteItem) => {
     if (item.kind === "note") {
       onSelectNote(item.id);

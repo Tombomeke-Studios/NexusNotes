@@ -1,13 +1,13 @@
 use std::fs;
 use std::io::{self, Read, Write};
-use std::net::{Ipv6Addr, SocketAddr, TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv6Addr, SocketAddr, TcpListener, TcpStream, UdpSocket};
 use std::path::Path;
 use std::process::{Command as StdCommand, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use tauri::{Manager, RunEvent};
+use tauri::{Emitter, Manager, RunEvent};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
@@ -227,6 +227,40 @@ fn object_storage_ready(port: u16) -> bool {
     http_get_local(port, "/minio/health/ready").is_some_and(|r| is_ok_status(&r))
 }
 
+/// This machine's address on its default route (no packet is sent: connecting
+/// a UDP socket only picks the route). None when offline or loopback-only.
+fn non_loopback_local_ip() -> Option<IpAddr> {
+    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("192.0.2.1:80").ok()?; // TEST-NET-1: never actually contacted
+    let ip = socket.local_addr().ok()?.ip();
+    (!ip.is_loopback() && !ip.is_unspecified()).then_some(ip)
+}
+
+/// True when something accepts connections on `port` at `ip`, a non-loopback
+/// address of this machine: a backend there is reachable from the network,
+/// not only from this computer (#336).
+fn listens_on(ip: IpAddr, port: u16) -> bool {
+    TcpStream::connect_timeout(&SocketAddr::new(ip, port), Duration::from_millis(500)).is_ok()
+}
+
+/// Whether the backend on `port` is also reachable beyond loopback. Unknown
+/// (no network address to test from) counts as not exposed.
+fn backend_exposed(port: u16) -> bool {
+    non_loopback_local_ip().is_some_and(|ip| listens_on(ip, port))
+}
+
+/// Health checks in a row a running sidecar may fail before it is restarted,
+/// and how long after its start the first counts (#330).
+const MAX_FAILED_HEALTH_CHECKS: u32 = 3;
+const HEALTH_GRACE: Duration = Duration::from_secs(60);
+const HEALTH_INTERVAL: Duration = Duration::from_secs(10);
+
+/// Whether a sidecar should be restarted: it is past its start-up grace
+/// period and has failed `failures` health checks in a row.
+fn should_restart(uptime: Duration, failures: u32) -> bool {
+    uptime >= HEALTH_GRACE && failures >= MAX_FAILED_HEALTH_CHECKS
+}
+
 /// Polls `check` every `interval` until it passes (true) or `timeout` elapses (false).
 fn wait_for(timeout: Duration, interval: Duration, mut check: impl FnMut() -> bool) -> bool {
     let deadline = Instant::now() + timeout;
@@ -387,6 +421,21 @@ fn supervise_backend(app: tauri::AppHandle) {
     let mut failures: u32 = 0;
 
     while !shutting_down() {
+        // An already running backend (dev script, previous run) is reused
+        // without polling Docker (#330). One that is also reachable from the
+        // network is not ours to trust: the app is told so it can warn (#336).
+        if backend_healthy(BACKEND_PORT) {
+            let exposed = backend_exposed(BACKEND_PORT);
+            if exposed {
+                eprintln!("[backend] the server on :{BACKEND_PORT} is reachable from the network; not treating it as the app's own");
+            }
+            let _ = app.emit("backend-exposed", exposed);
+            std::thread::sleep(Duration::from_secs(5));
+            failures = 0;
+            continue;
+        }
+        let _ = app.emit("backend-exposed", false);
+
         if !docker_engine_ready() {
             eprintln!("[backend] waiting for the Docker engine…");
             std::thread::sleep(backoff(failures));
@@ -397,13 +446,6 @@ fn supervise_backend(app: tauri::AppHandle) {
             eprintln!("[backend] Postgres/Redis are not ready yet, retrying…");
             std::thread::sleep(backoff(failures));
             failures = failures.saturating_add(1);
-            continue;
-        }
-
-        if backend_healthy(BACKEND_PORT) {
-            // Someone else's backend (dev script, previous run) already serves the port.
-            std::thread::sleep(Duration::from_secs(5));
-            failures = 0;
             continue;
         }
 
@@ -428,8 +470,45 @@ fn supervise_backend(app: tauri::AppHandle) {
             }
         };
         app.state::<Backend>().0.lock().unwrap().replace(child);
+        // Shutdown may have begun while the sidecar was starting (#330).
+        if shutting_down() {
+            if let Some(child) = app.state::<Backend>().0.lock().unwrap().take() {
+                let _ = child.kill();
+            }
+            break;
+        }
 
         let started = Instant::now();
+        // Watchdog (#330): a sidecar that stops answering /health (hung, not
+        // exited) is killed, so the loop below sees it end and restarts it.
+        let alive = Arc::new(AtomicBool::new(true));
+        {
+            let alive = alive.clone();
+            let app = app.clone();
+            std::thread::spawn(move || {
+                let mut failed = 0u32;
+                while alive.load(Ordering::SeqCst) {
+                    std::thread::sleep(HEALTH_INTERVAL);
+                    if !alive.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    failed = if backend_healthy(BACKEND_PORT) {
+                        0
+                    } else {
+                        failed + 1
+                    };
+                    if should_restart(started.elapsed(), failed) {
+                        eprintln!(
+                            "[backend] failed {failed} health checks in a row; restarting it"
+                        );
+                        if let Some(child) = app.state::<Backend>().0.lock().unwrap().take() {
+                            let _ = child.kill();
+                        }
+                        break;
+                    }
+                }
+            });
+        }
         while let Some(event) = tauri::async_runtime::block_on(events.recv()) {
             match event {
                 CommandEvent::Stdout(line) | CommandEvent::Stderr(line) => {
@@ -442,6 +521,7 @@ fn supervise_backend(app: tauri::AppHandle) {
                 _ => {}
             }
         }
+        alive.store(false, Ordering::SeqCst);
         app.state::<Backend>().0.lock().unwrap().take();
 
         // A backend that ran for a while was healthy; restart it promptly, not with a long backoff.
@@ -473,7 +553,8 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            if let RunEvent::ExitRequested { .. } = event {
+            // Exit as well as ExitRequested: not every way out raises the latter (#330).
+            if matches!(event, RunEvent::ExitRequested { .. } | RunEvent::Exit) {
                 app_handle
                     .state::<Shutdown>()
                     .0
@@ -732,5 +813,37 @@ mod tests {
                 "overwrote {stored:?}"
             );
         }
+    }
+
+    #[test]
+    fn restart_needs_grace_and_repeated_failures() {
+        let grace = HEALTH_GRACE;
+        assert!(
+            !should_restart(grace - Duration::from_secs(1), 99),
+            "still starting up"
+        );
+        assert!(!should_restart(grace, MAX_FAILED_HEALTH_CHECKS - 1));
+        assert!(should_restart(grace, MAX_FAILED_HEALTH_CHECKS));
+    }
+
+    #[test]
+    fn exposure_is_detected_from_a_non_loopback_address() {
+        let Some(ip) = non_loopback_local_ip() else {
+            eprintln!("no non-loopback address on this machine; skipping");
+            return;
+        };
+        let everywhere = TcpListener::bind(("0.0.0.0", 0)).unwrap();
+        let port = everywhere.local_addr().unwrap().port();
+        assert!(
+            listens_on(ip, port),
+            "a listener on all interfaces is reachable via {ip}"
+        );
+
+        let local_only = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = local_only.local_addr().unwrap().port();
+        assert!(
+            !listens_on(ip, port),
+            "a loopback-only listener is not reachable via {ip}"
+        );
     }
 }

@@ -49,6 +49,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   and Linux app.
 - Having the app open in two windows no longer signs you out when both renew the session
   at the same moment.
+- The desktop app restarts its built-in server when it stops responding, and warns when the
+  server it finds on port 8080 is reachable from other computers on the network.
 - Clicking the search bar at the top no longer slides it to the right.
 - Typing three or more dashes in the editor no longer makes them invisible.
 - Closing a note's tab while the graph is open clears its highlight in the graph.

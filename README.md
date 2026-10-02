@@ -278,7 +278,7 @@ cd desktop && npm test
 |---|---|
 | [Architecture](docs/architecture.md) | System design, data flows, ER diagram |
 | [API](docs/api.md) | REST endpoints, WebSocket messages |
-| [Deployment](docs/deployment.md) | Docker, environment setup |
+| [Deployment](docs/deployment.md) | Docker, environment setup, [backup and restore](docs/deployment.md#backup-and-restore), [upgrading](docs/deployment.md#upgrading-to-a-new-release) |
 | [Security](docs/security.md) | Auth, encryption, known gaps |
 | [Security policy](SECURITY.md) | How to report a vulnerability privately; supported versions |
 | [Contributing](CONTRIBUTING.md) | Branches, commit format, TDD, test and lint commands |

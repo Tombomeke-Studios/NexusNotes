@@ -85,6 +85,9 @@ sequenceDiagram
     end
 ```
 
+Every save stores the previous text as a version record; each note keeps its
+newest 50 versions and older ones are pruned on the next save (#387).
+
 The comparison and the write happen in one database transaction that holds a row lock on
 the note. Two devices saving at the same moment with the same previous checksum therefore
 queue up: the first wins, and the second sees the new checksum and receives the `409`

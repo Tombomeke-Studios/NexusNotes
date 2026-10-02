@@ -236,3 +236,20 @@ func TestUserRepo_EmailLookupSurvivesKeyRotation(t *testing.T) {
 		t.Fatalf("duplicate after rotation: err = %v, want ErrDuplicateEmail", err)
 	}
 }
+
+// Renaming a vault that does not exist or is not the caller's is not a
+// success (#384).
+func TestVaultRepo_UpdateReportsNoMatch(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	repo := NewVaultRepo(pool, testCipher(t))
+	vaultID := seedVault(t, pool)
+	now := time.Now().UTC()
+	err := repo.Update(ctx, &model.Vault{ID: vaultID, UserID: "someone-else", Name: "x", UpdatedAt: now})
+	if err != ErrVaultNotFound {
+		t.Fatalf("not the owner: err = %v, want ErrVaultNotFound", err)
+	}
+	if err := repo.Update(ctx, &model.Vault{ID: uuid.NewString(), UserID: "x", Name: "x", UpdatedAt: now}); err != ErrVaultNotFound {
+		t.Fatalf("unknown vault: err = %v, want ErrVaultNotFound", err)
+	}
+}

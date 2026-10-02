@@ -199,12 +199,15 @@ func (r *VaultRepo) Update(ctx context.Context, vault *model.Vault) error {
 	if err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(ctx,
+	tag, err := r.pool.Exec(ctx,
 		`UPDATE vaults SET name = $1, updated_at = $2 WHERE id = $3 AND user_id = $4`,
 		name, vault.UpdatedAt, vault.ID, vault.UserID,
 	)
 	if err != nil {
 		return fmt.Errorf("update vault: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrVaultNotFound
 	}
 	return nil
 }

@@ -130,9 +130,11 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [ ] API stability promise for the pre-1.0 window
+- [ ] CHANGELOG: date 0.5.0 and add compare links
+- [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters
 - [ ] Signed installer and an update path
-- [ ] Cut or mark the mobile app and web clipper as post-1.0
+- [x] Cut or mark the mobile app and web clipper as post-1.0 (also the MCP and GitHub services, which do not exist yet; Redis documented as unused)
 
 ---
 

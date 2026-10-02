@@ -225,12 +225,12 @@ the `meilisearch` service: `docker compose -f docker-compose.dev.yml up -d meili
 | Component | Technology |
 |---|---|
 | Sync Service | Go 1.23 |
-| MCP Service | Go 1.23 — Model Context Protocol (spec 2025-11-25) |
+| MCP Service | Go — Model Context Protocol (planned, after 1.0) |
 | Search | Meilisearch 1.x |
 | Desktop App | Tauri v2 + React + TypeScript |
-| Mobile App | Flutter (planned) |
+| Mobile App | Flutter (planned, after 1.0) |
 | Database | PostgreSQL 16 |
-| Cache / Sessions | Redis 7 |
+| Cache | Redis 7 (part of the stack; not used by the sync service yet) |
 | Attachments | MinIO (S3-compatible) |
 
 ## Project Structure

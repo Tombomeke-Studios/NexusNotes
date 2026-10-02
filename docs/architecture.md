@@ -51,14 +51,14 @@ graph TB
 | Component | Technology | Role |
 |---|---|---|
 | Sync Service | Go 1.23 | Note storage, versioning, conflict resolution, real-time sync |
-| MCP Service | Go 1.23 | AI client access via Model Context Protocol (spec 2025-11-25) |
+| MCP Service | Go | AI client access via Model Context Protocol — *planned, after 1.0* |
 | Search Service | Meilisearch 1.x | Full-text search, fuzzy matching, tag and folder filters |
-| GitHub Service | Go 1.23 | OAuth, repository import, webhook-driven sync |
+| GitHub Service | Go | OAuth, repository import, webhook-driven sync — *planned, after 1.0* |
 | Desktop App | Tauri v2 + React + TypeScript | Primary editor — markdown preview, graph view, offline-first |
-| Mobile App | Flutter | Mobile editor with simplified graph view |
-| Web Clipper | Browser Extension (JS) | Save web pages and selections to a vault |
+| Mobile App | Flutter | Mobile editor with simplified graph view — *planned, after 1.0* |
+| Web Clipper | Browser Extension (JS) | Save web pages and selections to a vault — *planned, after 1.0* |
 | Database | PostgreSQL 16 | Structured data (users, vaults, notes, versions) |
-| Cache | Redis 7 | Session state, WebSocket sync state, rate limiting |
+| Cache | Redis 7 | Part of the stack but not used by the sync service yet: sessions, WebSocket state and rate limits are in-process (one instance, see Real-time Sync) |
 | Storage | MinIO | S3-compatible attachment storage |
 | Proxy | Nginx | TLS termination, routing |
 

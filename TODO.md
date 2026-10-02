@@ -91,7 +91,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Distinguish not-found from database errors in handlers
 - [ ] Search fallback: honour `tag` when `q` is set and do not return unfiltered notes when both are empty
 - [ ] Vault update: answer 404 when no row matched instead of 200 (delete done in #290)
-- [ ] Test the `/api/auth/me` failure path (500 vs 404)
+- [x] Test the `/api/auth/me` failure path (500 vs 404) (#374)
 
 ---
 

@@ -211,6 +211,13 @@ image types are kept and everything else becomes `application/octet-stream`, whi
 browser only ever downloads. The preview likewise only renders raster images inline;
 any other embedded attachment (an `![[drawing.svg]]`, say) is shown as a download link.
 
+Attachment files are encrypted at rest (#358): the sync service seals each file with
+the data key before writing it to object storage, binding it to its object key, and
+decrypts it on download, so the storage bucket only holds ciphertext. Files stored
+before that are served as they are and sealed by a background pass on startup, which
+also re-encrypts files after a key rotation; a file deleted or replaced while that
+pass runs is left alone.
+
 ## Vault Sharing and Authorization
 
 Vaults can be shared with other users as viewer (read) or editor (read/write);
@@ -303,6 +310,7 @@ services only see plaintext. Encrypted so far:
 - vault names, linked-file names, sources and annotations, user display names
   and device names (#355). Lists sorted by these names are sorted in the
   service after decryption;
+- attachment files in object storage (#358, see [Attachments](#attachments));
 - email addresses (#356). Sign-in, sign-up and invites find an account through
   the blind index of the address, lower-cased and trimmed (so addresses match
   regardless of case). Lookups try the index under every configured key, so

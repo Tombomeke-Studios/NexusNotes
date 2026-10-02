@@ -1,6 +1,7 @@
 package fieldcrypt
 
 import (
+	"bytes"
 	"encoding/base64"
 	"strings"
 	"testing"
@@ -159,5 +160,44 @@ func TestNewValidatesKeys(t *testing.T) {
 	}
 	if _, err := New(strings.ToUpper(keyA), nil); err != nil {
 		t.Errorf("upper-case hex must be accepted: %v", err)
+	}
+}
+
+func TestBytesRoundTripAndLegacy(t *testing.T) {
+	c := mustNew(t, keyA)
+	plain := []byte("\x89PNG binary \x00\x01 attachment")
+	enc, err := c.EncryptBytes("attachments/v1/a.png", plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !IsEncryptedBytes(enc) || bytes.Contains(enc, []byte("attachment")) {
+		t.Fatal("EncryptBytes output must be an envelope without the plaintext")
+	}
+	got, err := c.DecryptBytes("attachments/v1/a.png", enc)
+	if err != nil || !bytes.Equal(got, plain) {
+		t.Fatalf("round trip: %q, %v", got, err)
+	}
+	if _, err := c.DecryptBytes("attachments/v1/other.png", enc); err == nil {
+		t.Fatal("bytes sealed for one object must not open as another")
+	}
+	if got, err := c.DecryptBytes("x", plain); err != nil || !bytes.Equal(got, plain) {
+		t.Fatalf("legacy bytes must pass through: %q, %v", got, err)
+	}
+	if c.NeedsReencryptBytes(enc) || !c.NeedsReencryptBytes(plain) {
+		t.Fatal("NeedsReencryptBytes: current-key envelope needs nothing, plaintext needs sealing")
+	}
+
+	rotated := mustNew(t, keyB, keyA)
+	if got, err := rotated.DecryptBytes("attachments/v1/a.png", enc); err != nil || !bytes.Equal(got, plain) {
+		t.Fatalf("old key must still open bytes: %v", err)
+	}
+	if !rotated.NeedsReencryptBytes(enc) {
+		t.Fatal("bytes under a retired key need re-encryption")
+	}
+	if _, err := mustNew(t, keyB).DecryptBytes("attachments/v1/a.png", enc); err == nil {
+		t.Fatal("bytes under an unknown key must not open")
+	}
+	if _, err := c.DecryptBytes("x", []byte("NXE1short")); err == nil {
+		t.Fatal("a truncated envelope must not open")
 	}
 }

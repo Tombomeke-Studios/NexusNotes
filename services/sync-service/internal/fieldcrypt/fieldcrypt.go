@@ -15,6 +15,7 @@
 package fieldcrypt
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hkdf"
@@ -39,6 +40,7 @@ var errMalformed = errors.New("fieldcrypt: malformed encrypted value")
 
 type dataKey struct {
 	id    string
+	rawID []byte
 	aead  cipher.AEAD
 	index []byte
 }
@@ -102,7 +104,7 @@ func parseKey(h string) (*dataKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dataKey{id: hex.EncodeToString(idBytes), aead: aead, index: indexKey}, nil
+	return &dataKey{id: hex.EncodeToString(idBytes), rawID: idBytes, aead: aead, index: indexKey}, nil
 }
 
 // IsEncrypted reports whether v is an encrypted envelope (vs legacy plaintext).
@@ -187,4 +189,69 @@ func (k *dataKey) blindIndex(field, value string) string {
 	mac.Write([]byte{0})
 	mac.Write([]byte(value))
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+// Binary values (attachment files) use a compact envelope:
+//
+//	"NXE1" || 4-byte key id || nonce || ciphertext
+//
+// so a file stored before encryption at rest (any other first bytes) is
+// recognised and returned as is.
+var bytesMagic = []byte("NXE1")
+
+const keyIDBytes = 4
+
+// IsEncryptedBytes reports whether data is a binary encrypted envelope.
+func IsEncryptedBytes(data []byte) bool {
+	return bytes.HasPrefix(data, bytesMagic)
+}
+
+// EncryptBytes seals binary data for the given field (for a file, its object
+// key) under the current key.
+func (c *Cipher) EncryptBytes(field string, plaintext []byte) ([]byte, error) {
+	k := c.current
+	head := make([]byte, 0, len(bytesMagic)+keyIDBytes+k.aead.NonceSize())
+	head = append(head, bytesMagic...)
+	head = append(head, k.rawID...)
+	nonce := make([]byte, k.aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	head = append(head, nonce...)
+	return k.aead.Seal(head, nonce, plaintext, []byte(field)), nil
+}
+
+// DecryptBytes opens data sealed by EncryptBytes for field. Data without the
+// envelope magic is legacy plaintext and is returned unchanged.
+func (c *Cipher) DecryptBytes(field string, data []byte) ([]byte, error) {
+	if !IsEncryptedBytes(data) {
+		return data, nil
+	}
+	rest := data[len(bytesMagic):]
+	if len(rest) < keyIDBytes {
+		return nil, errMalformed
+	}
+	id := hex.EncodeToString(rest[:keyIDBytes])
+	k, ok := c.byID[id]
+	if !ok {
+		return nil, fmt.Errorf("fieldcrypt: data is encrypted under unknown key %q (is an old DATA_ENCRYPTION_KEY missing?)", id)
+	}
+	rest = rest[keyIDBytes:]
+	if len(rest) < k.aead.NonceSize() {
+		return nil, errMalformed
+	}
+	plain, err := k.aead.Open(nil, rest[:k.aead.NonceSize()], rest[k.aead.NonceSize():], []byte(field))
+	if err != nil {
+		return nil, errors.New("fieldcrypt: data failed authentication (wrong field, key or tampered data)")
+	}
+	return plain, nil
+}
+
+// NeedsReencryptBytes reports whether binary data is plaintext or sealed under
+// a key other than the current one.
+func (c *Cipher) NeedsReencryptBytes(data []byte) bool {
+	if !IsEncryptedBytes(data) || len(data) < len(bytesMagic)+keyIDBytes {
+		return true
+	}
+	return !bytes.Equal(data[len(bytesMagic):len(bytesMagic)+keyIDBytes], c.current.rawID)
 }

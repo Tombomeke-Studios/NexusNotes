@@ -40,6 +40,7 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Large exports and attachment transfers on slow connections are no longer cut off after
   15 seconds, and a server restart now tells connected apps it is going away instead of
   dropping them.
+- The preview no longer crashes on a paragraph with a huge number of tags, links or embeds.
 - Attachments now work in the packaged app and with the dev scripts: MinIO is started with
   the databases, the backend waits for it and receives its settings, and uploaded files live
   in a Docker volume instead of the container filesystem. Files uploaded to the dev MinIO

@@ -41,7 +41,8 @@ function walk(node: MdastNode): void {
   const next: MdastNode[] = [];
   for (const child of node.children) {
     if (child.type === "text" && typeof child.value === "string" && EMBED_RE.test(child.value)) {
-      next.push(...(expandEmbeds(child.value) as MdastNode[]));
+      // A loop, not push(...): a spread overflows the call stack on huge text (#376).
+      for (const n of expandEmbeds(child.value) as MdastNode[]) next.push(n);
     } else {
       walk(child);
       next.push(child);

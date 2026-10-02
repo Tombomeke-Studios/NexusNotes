@@ -64,6 +64,10 @@ test.describe("Keyboard shortcuts", () => {
     const palette = page.locator(".palette");
     await expect(palette).toBeVisible();
 
+    // Both notes must be listed before the arrows can move between them: the
+    // second one can still be on its way into the list when the palette opens.
+    await expect(palette.locator(".palette-item-title", { hasText: /^Second Arrow Note$/ })).toBeVisible();
+    await expect(palette.locator(".palette-item-title", { hasText: /^First Arrow Note$/ })).toBeVisible();
     const selected = palette.locator(".palette-item--selected .palette-item-title");
     await expect(selected).toBeVisible();
     const firstText = (await selected.textContent()) ?? "";

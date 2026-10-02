@@ -36,3 +36,23 @@ describe("CommandPalette selection", () => {
     expect(onSelectNote).toHaveBeenCalledWith(second === "Alpha" ? "a" : "b");
   });
 });
+
+describe("CommandPalette initial highlight", () => {
+  it("stays on the first shown item when the list re-sorts before any key press", () => {
+    const a = note("a", "Alpha", "2026-01-02T00:00:00Z");
+    const b = note("b", "Beta", "2026-01-01T00:00:00Z");
+    const onSelectNote = vi.fn();
+    const { rerender } = render(
+      <CommandPalette notes={[a, b]} commands={[]} onSelectNote={onSelectNote} onClose={() => {}} />,
+    );
+    expect(selectedTitle()).toBe("Alpha");
+
+    // Beta is saved and moves to the top while nothing was pressed yet.
+    rerender(
+      <CommandPalette notes={[a, { ...b, updated_at: "2026-02-01T00:00:00Z" }]} commands={[]} onSelectNote={onSelectNote} onClose={() => {}} />,
+    );
+    expect(selectedTitle()).toBe("Alpha");
+    fireEvent.keyDown(screen.getByPlaceholderText(/search notes/i), { key: "Enter" });
+    expect(onSelectNote).toHaveBeenCalledWith("a");
+  });
+});

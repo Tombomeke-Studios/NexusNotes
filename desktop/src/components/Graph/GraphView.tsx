@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import * as d3 from "d3";
 import { findGraphNode } from "../../lib/wikilinks";
+import { enterDelay, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
 import type { GraphData } from "../../lib/wikilinks";
 import "./GraphView.css";
@@ -63,6 +64,10 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   const [hover, setHover] = useState<Hover | null>(null);
   // Set by render(): highlights a node and flies the camera to it (#146).
   const flyToRef = useRef<(id: string | null) => void>(() => {});
+  // Where each node was last placed, so re-renders don't re-lay out (#439),
+  // and whether the first render's staggered fade-in has played.
+  const positions = useRef(new Map<string, Point>());
+  const entered = useRef(false);
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current);
@@ -74,9 +79,13 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     const width = rect.width;
     const height = rect.height;
 
-    const nodes: SimNode[] = data.nodes
-      .filter((n) => showOrphans || n.connections > 0)
-      .map((n) => ({ ...n }));
+    const seeded = seedPositions(
+      data.nodes.filter((n) => showOrphans || n.connections > 0),
+      positions.current,
+      width,
+      height,
+    );
+    const nodes: SimNode[] = seeded.nodes;
     const nodeIds = new Set(nodes.map((n) => n.id));
     const links: SimLink[] = data.links
       .filter((l) => nodeIds.has(l.source) && nodeIds.has(l.target))
@@ -140,6 +149,8 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .force("x", d3.forceX(width / 2).strength(compact ? 0.12 : 0.06))
       .force("y", d3.forceY(height / 2).strength(compact ? 0.12 : 0.06))
       .force("collision", d3.forceCollide().radius(compact ? 20 : 28));
+    // Every node already placed: only settle, don't shake the whole layout.
+    if (nodes.length > 0 && seeded.reused === nodes.length) simulation.alpha(0.12);
 
     const link = g.append("g")
       .selectAll("line")
@@ -189,8 +200,11 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .style("--node-color", (d) => folderColor(d.folder))
       .on("click", (_, d) => {
         // A ghost is an unresolved [[link]]; clicking it creates that note.
-        if (d.ghost) onCreateNote?.(d.title);
-        else onSelectNote(d.id);
+        if (d.ghost) {
+          onCreateNote?.(d.title);
+          return;
+        }
+        onSelectNote(d.id);
       })
       .on("dblclick", (event) => event.stopPropagation()) // not the background reset
       .on("mouseover", (event, d) => {
@@ -210,6 +224,15 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
 
     node.append("circle")
       .attr("r", nodeRadius);
+
+    // First render: nodes fade in one after another as the simulation pushes
+    // them out from the centre (#439). Later renders appear at once.
+    if (!entered.current && nodes.length > 0) {
+      entered.current = true;
+      node
+        .classed("graph-node--enter", true)
+        .style("animation-delay", (_, i) => `${enterDelay(i, nodes.length)}ms`);
+    }
 
     node.filter((d) => !!d.ghost)
       .append("title")
@@ -257,6 +280,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
         .attr("y2", (d) => end(d).y);
 
       node.attr("transform", (d) => `translate(${d.x},${d.y})`);
+      for (const n of nodes) positions.current.set(n.id, { x: n.x!, y: n.y! });
     });
 
     return () => { simulation.stop(); };
@@ -347,7 +371,11 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       )}
       <button
         className="graph-recenter"
-        onClick={() => setRenderKey((k) => k + 1)}
+        onClick={() => {
+          // Re-center lays everything out afresh.
+          positions.current.clear();
+          setRenderKey((k) => k + 1);
+        }}
         title="Lay the graph out again (releases pinned notes)"
       >
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none">

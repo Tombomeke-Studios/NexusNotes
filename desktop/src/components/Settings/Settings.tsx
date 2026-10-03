@@ -1,3 +1,4 @@
+import { HistorySettings } from "./HistorySettings";
 import { useEffect, useState } from "react";
 import { downloadFile } from "../../lib/export";
 import { motion, useIsPresent } from "framer-motion";
@@ -44,6 +45,7 @@ const SHORTCUTS: Array<[string, string]> = [
   ["Insert template", "Ctrl+T"],
   ["Cycle view", "Ctrl+E"],
   ["Global search", "Ctrl+Shift+F"],
+  ["Version history", "Ctrl+Shift+H"],
   ["Save", "Ctrl+S"],
   ["Toggle sidebar", "Ctrl+B"],
   ["Toggle side panel", "Ctrl+."],
@@ -322,6 +324,7 @@ export function Settings({
                     Export .zip
                   </button>
                 </div>
+                {activeVault && <HistorySettings vault={activeVault} />}
                 {activeVault?.encryption === "e2ee" && (
                   <>
                     <div className="settings-section-title settings-section-title--spaced">

@@ -37,6 +37,20 @@ type Vault struct {
 	Role string `json:"role,omitempty"`
 }
 
+// VersionRetention is how much note history a vault keeps (#418): the newest
+// KeepCount versions of each note, minus versions older than KeepDays (0 = no
+// age limit). A note's newest version is always kept.
+type VersionRetention struct {
+	KeepCount int `json:"keep_count"`
+	KeepDays  int `json:"keep_days"`
+}
+
+// Retention limits the API accepts.
+const (
+	MaxVersionKeepCount = 500
+	MaxVersionKeepDays  = 3650
+)
+
 // Vault roles. Owner is implicit (vaults.user_id); members are viewer/editor.
 const (
 	VaultRoleOwner  = "owner"

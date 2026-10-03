@@ -114,7 +114,9 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		DeviceID:  deviceID,
 		CreatedAt: now,
 	}
-	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, repository.VersionSnapshotWindow); err != nil {
+	// A new note has a single version: nothing to trim yet.
+	keep := model.VersionRetention{KeepCount: repository.MaxNoteVersions}
+	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, repository.VersionSnapshotWindow, keep); err != nil {
 		return nil, fmt.Errorf("create initial version: %w", err)
 	}
 
@@ -210,7 +212,11 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 	if update.NewVersion {
 		window = 0
 	}
-	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, window); err != nil {
+	keep, err := s.vaultRepo.GetVersionRetentionTx(ctx, tx, note.VaultID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, window, keep); err != nil {
 		return nil, nil, fmt.Errorf("create version: %w", err)
 	}
 
@@ -287,6 +293,27 @@ func (s *SyncService) RestoreVersion(ctx context.Context, noteID, versionID, pre
 		DeviceID:     deviceID,
 		NewVersion:   true,
 	})
+}
+
+// ErrInvalidRetention is returned for a retention outside the accepted range.
+var ErrInvalidRetention = fmt.Errorf("keep between 1 and %d versions, and 0 to %d days", model.MaxVersionKeepCount, model.MaxVersionKeepDays)
+
+// GetVersionRetention reads how much history the vault keeps (#418).
+func (s *SyncService) GetVersionRetention(ctx context.Context, vaultID string) (model.VersionRetention, error) {
+	return s.vaultRepo.GetVersionRetention(ctx, vaultID)
+}
+
+// SetVersionRetention changes the vault's retention and trims its notes'
+// history to it right away, rather than at the next save or daily cleanup.
+func (s *SyncService) SetVersionRetention(ctx context.Context, vaultID string, keep model.VersionRetention) error {
+	if keep.KeepCount < 1 || keep.KeepCount > model.MaxVersionKeepCount || keep.KeepDays < 0 || keep.KeepDays > model.MaxVersionKeepDays {
+		return ErrInvalidRetention
+	}
+	if err := s.vaultRepo.SetVersionRetention(ctx, vaultID, keep); err != nil {
+		return err
+	}
+	_, err := s.noteRepo.PruneVersions(ctx, vaultID)
+	return err
 }
 
 // GetVersions lists a note's versions without their content (#414).

@@ -28,9 +28,10 @@ var ErrNoteLocked = errors.New("note is locked by another update")
 // pgLockNotAvailable is Postgres' SQLSTATE for an exceeded lock_timeout.
 const pgLockNotAvailable = "55P03"
 
-// MaxNoteVersions is how many stored versions a note keeps; older ones are
-// pruned when a new one is added, so history does not grow without bound and
-// content the user removed long ago does not linger (#387).
+// MaxNoteVersions is the default of how many stored versions a note keeps
+// (a vault can change it, #418); older ones are pruned when a new one is
+// added, so history does not grow without bound and content the user removed
+// long ago does not linger (#387).
 const MaxNoteVersions = 50
 
 // VersionSnapshotWindow is how long a version keeps absorbing saves of the
@@ -40,6 +41,36 @@ const VersionSnapshotWindow = 5 * time.Minute
 
 const pruneVersionsSQL = `DELETE FROM note_versions WHERE note_id = $1 AND id NOT IN (
 	SELECT id FROM note_versions WHERE note_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2)`
+
+// pruneNoteRetentionSQL applies a retention ($2 versions, $3 days) to one
+// note ($1); the newest version always stays (#418).
+const pruneNoteRetentionSQL = `DELETE FROM note_versions WHERE id IN (
+	SELECT id FROM (
+		SELECT id, updated_at, row_number() OVER (ORDER BY created_at DESC, id DESC) AS rn
+		FROM note_versions WHERE note_id = $1) ranked
+	WHERE rn > $2 OR ($3 > 0 AND rn > 1 AND updated_at < now() - make_interval(days => $3)))`
+
+// pruneVaultsRetentionSQL applies each vault's own retention to all its
+// notes; $1 limits it to one vault ('' = every vault).
+const pruneVaultsRetentionSQL = `DELETE FROM note_versions WHERE id IN (
+	SELECT id FROM (
+		SELECT nv.id, nv.updated_at, v.version_keep_count AS keep_count, v.version_keep_days AS keep_days,
+			row_number() OVER (PARTITION BY nv.note_id ORDER BY nv.created_at DESC, nv.id DESC) AS rn
+		FROM note_versions nv
+		JOIN notes n ON n.id = nv.note_id
+		JOIN vaults v ON v.id = n.vault_id
+		WHERE $1 = '' OR v.id = $1) ranked
+	WHERE rn > keep_count OR (keep_days > 0 AND rn > 1 AND updated_at < now() - make_interval(days => keep_days)))`
+
+// PruneVersions applies each vault's retention to its notes' history (#418):
+// one vault, or every vault when vaultID is empty (the daily cleanup).
+func (r *NoteRepo) PruneVersions(ctx context.Context, vaultID string) (int64, error) {
+	tag, err := r.pool.Exec(ctx, pruneVaultsRetentionSQL, vaultID)
+	if err != nil {
+		return 0, fmt.Errorf("prune versions: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
 
 // searchSnippetRunes is how much of a note's text a search result carries.
 const searchSnippetRunes = 300
@@ -401,8 +432,9 @@ func (r *NoteRepo) UpdateTx(ctx context.Context, tx pgx.Tx, note *model.Note) er
 
 // RecordVersionTx stores the note's new state in its history (#413). When the
 // note's latest version was started by the same device less than window ago,
-// that snapshot takes the new content; otherwise a new version starts.
-func (r *NoteRepo) RecordVersionTx(ctx context.Context, tx pgx.Tx, version *model.NoteVersion, window time.Duration) error {
+// that snapshot takes the new content; otherwise a new version starts, and
+// the note's history is trimmed to the vault's retention (#418).
+func (r *NoteRepo) RecordVersionTx(ctx context.Context, tx pgx.Tx, version *model.NoteVersion, window time.Duration, keep model.VersionRetention) error {
 	content, err := r.seal(fieldVersionContent, version.Content)
 	if err != nil {
 		return err
@@ -419,7 +451,13 @@ func (r *NoteRepo) RecordVersionTx(ctx context.Context, tx pgx.Tx, version *mode
 	if tag.RowsAffected() > 0 {
 		return nil
 	}
-	return r.CreateVersionTx(ctx, tx, version)
+	if err := r.CreateVersionTx(ctx, tx, version); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, pruneNoteRetentionSQL, version.NoteID, keep.KeepCount, keep.KeepDays); err != nil {
+		return fmt.Errorf("prune note versions: %w", err)
+	}
+	return nil
 }
 
 func (r *NoteRepo) CreateVersionTx(ctx context.Context, tx pgx.Tx, version *model.NoteVersion) error {

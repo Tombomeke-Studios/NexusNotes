@@ -91,8 +91,10 @@ updating it for 5 minutes (#413), so autosave every second does not fill the
 history with near-identical copies. A save from another device, or after the
 window, starts a new version; so does restoring a version (#417), which the
 server does by copying the stored version back, so the text it replaces is
-kept. Each note keeps its newest 50 versions and older ones are pruned on the
-next save (#387).
+kept. How much history a vault keeps is the owner's choice (#418): the newest N
+versions of each note (50 by default) and, optionally, nothing older than D
+days, but always a note's newest version. It is applied when a new version is
+stored, when the setting changes, and by the daily cleanup.
 
 The comparison and the write happen in one database transaction that holds a row lock on
 the note. Two devices saving at the same moment with the same previous checksum therefore

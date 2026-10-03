@@ -281,8 +281,17 @@ export const auth = {
     }),
 };
 
+/** How much note history a vault keeps (#418); keep_days 0 = no age limit. */
+export interface HistoryRetention {
+  keep_count: number;
+  keep_days: number;
+}
+
 export const vaults = {
   list: () => request<Vault[]>("/api/vaults"),
+  historySettings: (id: string) => request<HistoryRetention>(`/api/vaults/${id}/history-settings`),
+  setHistorySettings: (id: string, keep: HistoryRetention) =>
+    request<HistoryRetention>(`/api/vaults/${id}/history-settings`, { method: "PUT", body: JSON.stringify(keep) }),
   get: (id: string) => request<Vault>(`/api/vaults/${id}`),
   create: (name: string, encryption?: { encryption: "e2ee"; encryption_meta: unknown }) =>
     request<Vault>("/api/vaults", {

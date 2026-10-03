@@ -482,3 +482,29 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Version history retention (#418). */
+.settings-select {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--border-inner);
+  border-radius: 7px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.settings-select:disabled {
+  opacity: 0.6;
+}
+
+.settings-history-note {
+  padding-top: 8px;
+}
+
+.settings-history-error {
+  padding-top: 8px;
+  font-size: 12px;
+  color: var(--error);
+}

@@ -1,3 +1,4 @@
+import { Tip } from "../Tip";
 import { useMemo, useState } from "react";
 import type { Note } from "../../lib/types";
 import type { RightTab } from "../../lib/prefs";
@@ -119,6 +120,10 @@ export function RightPanel({
 
       {tab === "links" && (
         <div className="right-panel-body right-panel-body--links">
+          <Tip id="backlinks" className="right-panel-tip">
+            Notes that link here with <code>[[{note?.title || "this note"}]]</code> show up below, with the line
+            that mentions it.
+          </Tip>
           <div className="right-panel-label">
             {backlinks.length} linked mention{backlinks.length === 1 ? "" : "s"}
           </div>

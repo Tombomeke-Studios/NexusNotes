@@ -1,3 +1,4 @@
+import { Tip } from "./Tip";
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Note } from "../lib/types";
 import { buildPaletteGroups, isCommandQuery } from "../lib/palette";
@@ -146,6 +147,9 @@ export function CommandPalette({
             <div className="palette-empty">No matches for &ldquo;{query}&rdquo;</div>
           )}
         </div>
+        <Tip id="palette" className="palette-tip">
+          Type to jump to a note; start with <kbd>&gt;</kbd> to run a command instead.
+        </Tip>
         <div className="palette-foot">
           <span>
             <span className="palette-foot-kbd">↕</span> navigate

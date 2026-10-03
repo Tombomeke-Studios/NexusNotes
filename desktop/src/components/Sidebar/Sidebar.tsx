@@ -1,4 +1,5 @@
 import { SkeletonTree } from "../Skeleton";
+import { Tip } from "../Tip";
 import { EmptyState } from "../EmptyState";
 import { GettingStarted } from "./GettingStarted";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -504,6 +505,12 @@ export function Sidebar({
       )}
 
       {view === "files" && <GettingStarted />}
+      {view === "files" && filterTags.length > 0 && (
+        <Tip id="tag-filter" className="sidebar-tip">
+          Only notes tagged {filterTags.map((t) => `#${t}`).join(" and ")} are shown. Click more tags to narrow it
+          down, or a tag again to remove it.
+        </Tip>
+      )}
       {starredNotes.length > 0 && (
         <div className="sidebar-recent">
           <button className="sidebar-recent-head" onClick={() => setStarredOpen((o) => !o)}>

@@ -5,6 +5,7 @@ import { enterDelay, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
 import type { GraphData } from "../../lib/wikilinks";
 import { EmptyState } from "../EmptyState";
+import { Tip } from "../Tip";
 import "./GraphView.css";
 
 interface GraphViewProps {
@@ -342,6 +343,12 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   return (
     <div className="graph-view">
       <svg ref={svgRef} className="graph-svg" />
+      {noteCount > 0 && (
+        <Tip id="graph" className="graph-tip">
+          Drag notes to arrange them, scroll to zoom, click a note to open it. Double-click the background to
+          reset the view.
+        </Tip>
+      )}
       {/* Nothing to connect yet (#450): say how links appear. */}
       {(noteCount === 0 || data.links.length === 0) && (
         <div className="graph-empty">

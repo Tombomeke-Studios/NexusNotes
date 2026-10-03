@@ -65,3 +65,18 @@ describe("StatusBar autosave animation (#422)", () => {
     expect(saved).not.toBe(saving);
   });
 });
+
+describe("StatusBar word count tick (#423)", () => {
+  const bar = (content: string) => (
+    <StatusBar content={content} saveStatus="saved" hasNote lastSyncLabel={null} line={1} col={1} viewMode="edit" onCycleView={() => {}} />
+  );
+
+  it("remounts the number only when the count changes", () => {
+    const view = render(bar("one two"));
+    const first = screen.getByText("2");
+    view.rerender(bar("one two "));
+    expect(screen.getByText("2")).toBe(first);
+    view.rerender(bar("one two three"));
+    expect(screen.getByText("3")).toHaveClass("status-count");
+  });
+});

@@ -242,21 +242,42 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
-	userID := middleware.GetUserID(r.Context())
-	noteID := r.PathValue("noteId")
-
-	// Past versions carry full note content, so they need the same vault read
-	// access as the note itself.
-	note, err := h.syncService.GetNote(r.Context(), noteID)
+// readableNote loads the path's note and checks vault read access: versions
+// carry note content, so they need the same access as the note itself.
+func (h *NoteHandler) readableNote(w http.ResponseWriter, r *http.Request) (*model.Note, bool) {
+	note, err := h.syncService.GetNote(r.Context(), r.PathValue("noteId"))
 	if err != nil {
 		writeLookupError(w, err, "note not found")
-		return
+		return nil, false
 	}
-	if !canRead(r.Context(), h.vaultRepo, note.VaultID, userID) {
+	if !canRead(r.Context(), h.vaultRepo, note.VaultID, middleware.GetUserID(r.Context())) {
 		writeError(w, http.StatusForbidden, "access denied")
+		return nil, false
+	}
+	return note, true
+}
+
+// Version returns one version of a note with its content (#414).
+func (h *NoteHandler) Version(w http.ResponseWriter, r *http.Request) {
+	note, ok := h.readableNote(w, r)
+	if !ok {
 		return
 	}
+	v, err := h.syncService.GetVersion(r.Context(), note.ID, r.PathValue("versionId"))
+	if err != nil {
+		writeLookupError(w, err, "version not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
+
+// Versions lists a note's versions, newest first, without content.
+func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
+	note, ok := h.readableNote(w, r)
+	if !ok {
+		return
+	}
+	noteID := note.ID
 
 	versions, err := h.syncService.GetVersions(r.Context(), noteID)
 	if err != nil {

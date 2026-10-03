@@ -89,7 +89,7 @@ type Note struct {
 type NoteVersion struct {
 	ID        string    `json:"id"`
 	NoteID    string    `json:"note_id"`
-	Content   string    `json:"content"`
+	Content   string    `json:"content,omitempty"` // omitted in the version list (#414)
 	Checksum  string    `json:"checksum"`
 	DeviceID  string    `json:"device_id"`
 	CreatedAt time.Time `json:"created_at"`

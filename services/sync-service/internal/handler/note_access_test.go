@@ -177,6 +177,33 @@ func TestVersions_AccessControl(t *testing.T) {
 		if len(versions) != 1 || versions[0].Checksum == f.note.Checksum {
 			t.Fatalf("got %+v, want one snapshot holding the edit", versions)
 		}
+		// The list carries no content; one version is fetched by id (#414).
+		if strings.Contains(rec.Body.String(), "draft") {
+			t.Fatalf("the list carries version content: %s", rec.Body.String())
+		}
+		one := call(f.h.Version, http.MethodGet, f.owner, map[string]string{"noteId": f.note.ID, "versionId": versions[0].ID})
+		var v model.NoteVersion
+		if one.Code != http.StatusOK || json.Unmarshal(one.Body.Bytes(), &v) != nil || v.Content != "second draft" {
+			t.Fatalf("one version: %d %s", one.Code, one.Body.String())
+		}
+	})
+
+	t.Run("a version is only found under its own note", func(t *testing.T) {
+		other, err := f.svc.CreateNote(context.Background(), f.outsiderVault, "Mine", "", "outsider text", "dev", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		list := call(f.h.Versions, http.MethodGet, f.owner, map[string]string{"noteId": f.note.ID})
+		var versions []model.NoteVersion
+		_ = json.Unmarshal(list.Body.Bytes(), &versions)
+		// The outsider names the owner's version under their own note.
+		rec := call(f.h.Version, http.MethodGet, f.outsider, map[string]string{"noteId": other.ID, "versionId": versions[0].ID})
+		if rec.Code != http.StatusNotFound || strings.Contains(rec.Body.String(), "draft") {
+			t.Fatalf("status = %d (%s), want 404", rec.Code, rec.Body.String())
+		}
+		if rec := call(f.h.Version, http.MethodGet, f.outsider, map[string]string{"noteId": f.note.ID, "versionId": versions[0].ID}); rec.Code != http.StatusForbidden {
+			t.Fatalf("outsider on the owner's note: status = %d, want 403", rec.Code)
+		}
 	})
 
 	t.Run("vault member reads the history", func(t *testing.T) {

@@ -1,7 +1,7 @@
 import { APP_VERSION, assessHealth, type HealthPayload, type ServerStatus } from "./version";
 import { resolveApiBase } from "./apiBase";
 import { isTauriWindow } from "./platform";
-import type { User, Vault, Note, NoteVersion, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember } from "./types";
+import type { User, Vault, Note, NoteVersion, NoteVersionInfo, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember } from "./types";
 
 // The packaged app has no VITE_API_URL at runtime and uses its sidecar's fixed
 // port (see src-tauri/src/lib.rs); the web UI uses its own origin (#399).
@@ -372,7 +372,9 @@ export const notes = {
       method: "DELETE",
     }),
   versions: (noteId: string) =>
-    request<NoteVersion[]>(`/api/notes/${noteId}/versions`),
+    request<NoteVersionInfo[]>(`/api/notes/${noteId}/versions`),
+  version: (noteId: string, versionId: string) =>
+    request<NoteVersion>(`/api/notes/${noteId}/versions/${versionId}`),
   backlinks: (noteId: string) =>
     request<BacklinkNote[]>(`/api/notes/${noteId}/backlinks`),
 };

@@ -67,7 +67,7 @@ func TestRebuildSearchIndexIfEmpty(t *testing.T) {
 	}
 
 	meili := &fakeMeili{}
-	svc := NewSyncService(notes, vaults, repository.NewLinkRepo(pool), repository.NewTagRepo(pool), repository.NewAliasRepo(pool),
+	svc := NewSyncService(notes, vaults, repository.NewLinkRepo(pool), repository.NewTagRepo(pool), repository.NewAliasRepo(pool), repository.NewLinkedFileRepo(pool, fieldcrypttest.Cipher(t)),
 		search.NewIndexer(meili.server(t).URL, "k"))
 
 	n, err := svc.RebuildSearchIndexIfEmpty(ctx)

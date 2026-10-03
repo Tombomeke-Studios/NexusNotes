@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt/fieldcrypttest"
+	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/repository"
 )
 
@@ -52,30 +53,30 @@ func TestConvertVaultToE2EE(t *testing.T) {
 	}
 
 	// Refusals leave the vault untouched.
-	if err := svc.ConvertVaultToE2EE(ctx, vaultID, "someone-else", meta, full); !errors.Is(err, repository.ErrVaultNotFound) {
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, "someone-else", meta, full, nil); !errors.Is(err, repository.ErrVaultNotFound) {
 		t.Fatalf("not the owner: err = %v, want ErrVaultNotFound", err)
 	}
-	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, full[:1]); !errors.Is(err, ErrConvertNotesChanged) {
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, full[:1], nil); !errors.Is(err, ErrConvertNotesChanged) {
 		t.Fatalf("a note missing: err = %v, want ErrConvertNotesChanged", err)
 	}
 	stale := append([]ConvertNote(nil), full...)
 	stale[1].BaseChecksum = "outdated"
-	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, stale); !errors.Is(err, ErrConvertNotesChanged) {
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, stale, nil); !errors.Is(err, ErrConvertNotesChanged) {
 		t.Fatalf("a note changed meanwhile: err = %v, want ErrConvertNotesChanged", err)
 	}
-	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, nil, full); !errors.Is(err, ErrConvertMissingMeta) {
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, nil, full, nil); !errors.Is(err, ErrConvertMissingMeta) {
 		t.Fatalf("no key material: err = %v, want ErrConvertMissingMeta", err)
 	}
 	untitled := append([]ConvertNote(nil), full...)
 	untitled[0].Title = ""
-	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, untitled); !errors.Is(err, ErrConvertMissingTitle) {
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, untitled, nil); !errors.Is(err, ErrConvertMissingTitle) {
 		t.Fatalf("a note without its sealed title: err = %v, want ErrConvertMissingTitle", err)
 	}
 	if got, _ := svc.GetNote(ctx, a.ID); got.Content != "alpha v2 #tag [[B]]" {
 		t.Fatalf("a refused conversion changed the note: %q", got.Content)
 	}
 
-	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, full); err != nil {
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, full, nil); err != nil {
 		t.Fatalf("convert: %v", err)
 	}
 	vault, err := repository.NewVaultRepo(pool, fieldcrypttest.Cipher(t)).GetByID(ctx, vaultID)
@@ -96,7 +97,7 @@ func TestConvertVaultToE2EE(t *testing.T) {
 		}
 	}
 
-	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, full); !errors.Is(err, ErrConvertNotStandard) {
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, full, nil); !errors.Is(err, ErrConvertNotStandard) {
 		t.Fatalf("second conversion: err = %v, want ErrConvertNotStandard", err)
 	}
 }
@@ -111,8 +112,46 @@ func TestConvertVaultToE2EE_RefusesAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := svc.ConvertVaultToE2EE(ctx, vaultID, vaultOwner(t, pool, vaultID), json.RawMessage(`{}`),
-		[]ConvertNote{{ID: n.ID, Title: "t", Content: "x", Checksum: "y", BaseChecksum: n.Checksum}})
+		[]ConvertNote{{ID: n.ID, Title: "t", Content: "x", Checksum: "y", BaseChecksum: n.Checksum}}, nil)
 	if !errors.Is(err, ErrConvertHasAttachments) {
 		t.Fatalf("err = %v, want ErrConvertHasAttachments", err)
+	}
+}
+
+// Links that exist when a vault is converted are sealed with it (#410).
+func TestConvertVaultToE2EE_SealsLinks(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	svc := newTestSync(t, pool)
+	links := repository.NewLinkedFileRepo(pool, fieldcrypttest.Cipher(t))
+	vaultID := seedVault(t, pool)
+	owner := vaultOwner(t, pool, vaultID)
+	n := seedNoteIn(t, svc, vaultID, "A", "alpha")
+	lf := &model.LinkedFile{VaultID: vaultID, DisplayName: "Docs", SourceType: model.LinkedSourceURL, SourceRef: "https://example.com", ReadOnly: true}
+	if err := links.Create(ctx, lf); err != nil {
+		t.Fatal(err)
+	}
+	notes := []ConvertNote{{ID: n.ID, Title: "e2ee:t", Path: "e2ee:p", Content: "c", Checksum: "s", BaseChecksum: n.Checksum}}
+	meta := json.RawMessage(`{}`)
+
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, notes, nil); !errors.Is(err, ErrConvertNotesChanged) {
+		t.Fatalf("link missing: err = %v, want ErrConvertNotesChanged", err)
+	}
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, notes, []ConvertLink{{ID: lf.ID, DisplayName: "e2ee:n"}}); !errors.Is(err, ErrConvertMissingLinkField) {
+		t.Fatalf("link without source: err = %v, want ErrConvertMissingLinkField", err)
+	}
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, notes, []ConvertLink{{ID: "other", DisplayName: "e2ee:n", SourceRef: "e2ee:s"}}); !errors.Is(err, ErrConvertNotesChanged) {
+		t.Fatalf("unknown link: err = %v, want ErrConvertNotesChanged", err)
+	}
+	if got, _ := links.GetByID(ctx, lf.ID); got.SourceRef != "https://example.com" {
+		t.Fatalf("a refused conversion changed the link: %+v", got)
+	}
+
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, notes, []ConvertLink{{ID: lf.ID, DisplayName: "e2ee:n", SourceRef: "e2ee:s"}}); err != nil {
+		t.Fatalf("convert: %v", err)
+	}
+	got, err := links.GetByID(ctx, lf.ID)
+	if err != nil || got.DisplayName != "e2ee:n" || got.SourceRef != "e2ee:s" {
+		t.Fatalf("link after convert: %+v, %v", got, err)
 	}
 }

@@ -115,6 +115,7 @@ func newNoteAccessFixture(t *testing.T) *noteAccessFixture {
 	svc := service.NewSyncService(
 		repository.NewNoteRepo(pool, fieldcrypttest.Cipher(t)), vaultRepo,
 		repository.NewLinkRepo(pool), repository.NewTagRepo(pool), repository.NewAliasRepo(pool),
+		repository.NewLinkedFileRepo(pool, fieldcrypttest.Cipher(t)),
 		nil, // no search indexer
 	)
 

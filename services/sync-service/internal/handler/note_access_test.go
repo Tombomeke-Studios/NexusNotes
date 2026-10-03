@@ -294,3 +294,51 @@ func TestRestoreVersion_HTTP(t *testing.T) {
 		t.Fatalf("restore: %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+// GET/PUT /api/vaults/{id}/history-settings (#418).
+func TestHistorySettings_HTTP(t *testing.T) {
+	f := newNoteAccessFixture(t)
+	vault := map[string]string{"id": f.ownerVault}
+
+	rec := call(f.h.GetHistorySettings, http.MethodGet, f.viewer, vault)
+	var keep model.VersionRetention
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &keep) != nil || keep.KeepCount != 50 || keep.KeepDays != 0 {
+		t.Fatalf("defaults: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := call(f.h.GetHistorySettings, http.MethodGet, f.outsider, vault); rec.Code != http.StatusForbidden {
+		t.Fatalf("outsider reads: status %d, want 403", rec.Code)
+	}
+
+	put := func(user string, body any) int {
+		r := httptest.NewRequest(http.MethodPut, "/", strings.NewReader(mustJSON(t, body)))
+		r.SetPathValue("id", f.ownerVault)
+		r = r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, user))
+		w := httptest.NewRecorder()
+		f.h.PutHistorySettings(w, r)
+		return w.Code
+	}
+	if code := put(f.viewer, model.VersionRetention{KeepCount: 10}); code != http.StatusForbidden {
+		t.Fatalf("member changes it: status %d, want 403", code)
+	}
+	for _, bad := range []model.VersionRetention{{KeepCount: 0}, {KeepCount: 501}, {KeepCount: 10, KeepDays: -1}, {KeepCount: 10, KeepDays: 4000}} {
+		if code := put(f.owner, bad); code != http.StatusBadRequest {
+			t.Fatalf("%+v: status %d, want 400", bad, code)
+		}
+	}
+	if code := put(f.owner, model.VersionRetention{KeepCount: 10, KeepDays: 30}); code != http.StatusOK {
+		t.Fatalf("owner: status %d", code)
+	}
+	rec = call(f.h.GetHistorySettings, http.MethodGet, f.owner, vault)
+	if json.Unmarshal(rec.Body.Bytes(), &keep) != nil || keep.KeepCount != 10 || keep.KeepDays != 30 {
+		t.Fatalf("read back: %s", rec.Body.String())
+	}
+}
+
+func mustJSON(t *testing.T, v any) string {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}

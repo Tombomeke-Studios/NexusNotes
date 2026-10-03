@@ -311,6 +311,50 @@ func (h *NoteHandler) RestoreVersion(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, note)
 }
 
+// GetHistorySettings returns the vault's version retention (#418). Read
+// access required.
+func (h *NoteHandler) GetHistorySettings(w http.ResponseWriter, r *http.Request) {
+	vaultID := r.PathValue("id")
+	if !canRead(r.Context(), h.vaultRepo, vaultID, middleware.GetUserID(r.Context())) {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+	keep, err := h.syncService.GetVersionRetention(r.Context(), vaultID)
+	if err != nil {
+		writeLookupError(w, err, "vault not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, keep)
+}
+
+// PutHistorySettings changes the vault's version retention and trims its
+// history at once. Only the owner may: it deletes history for every member.
+func (h *NoteHandler) PutHistorySettings(w http.ResponseWriter, r *http.Request) {
+	vault, err := h.vaultRepo.GetByID(r.Context(), r.PathValue("id"))
+	if err != nil {
+		writeLookupError(w, err, "vault not found")
+		return
+	}
+	if vault.UserID != middleware.GetUserID(r.Context()) {
+		writeError(w, http.StatusForbidden, "only the vault owner can change its history settings")
+		return
+	}
+	var keep model.VersionRetention
+	if err := decodeJSON(w, r, &keep); err != nil {
+		writeBodyError(w, err, "invalid request body")
+		return
+	}
+	if err := h.syncService.SetVersionRetention(r.Context(), vault.ID, keep); err != nil {
+		if errors.Is(err, service.ErrInvalidRetention) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeLookupError(w, err, "vault not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, keep)
+}
+
 // Versions lists a note's versions, newest first, without content.
 func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
 	note, ok := h.readableNote(w, r)

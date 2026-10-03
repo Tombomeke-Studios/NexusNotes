@@ -597,8 +597,8 @@ This entry is retained so that existing issue references remain valid.
 - [x] Build a version history panel listing saved versions per note (#415)
 - [x] Render a diff between any two selected versions (side-by-side or inline) (#416)
 - [x] Add a "Restore this version" action (#417)
-- [ ] Add a version retention policy setting (keep last N versions or keep for X days) (#418)
-- [ ] Write tests for the version repository and restore flow (#419)
+- [x] Add a version retention policy setting (keep last N versions or keep for X days) (#418)
+- [x] Write tests for the version repository and restore flow (#419)
 
 ---
 

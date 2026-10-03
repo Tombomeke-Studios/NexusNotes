@@ -90,6 +90,46 @@ func (r *VaultRepo) GetByID(ctx context.Context, id string) (*model.Vault, error
 	return &v, nil
 }
 
+// GetVersionRetention reads how much note history the vault keeps (#418).
+func (r *VaultRepo) GetVersionRetention(ctx context.Context, vaultID string) (model.VersionRetention, error) {
+	return scanRetention(r.pool.QueryRow(ctx, retentionSQL, vaultID))
+}
+
+// GetVersionRetentionTx is GetVersionRetention inside tx.
+func (r *VaultRepo) GetVersionRetentionTx(ctx context.Context, tx pgx.Tx, vaultID string) (model.VersionRetention, error) {
+	return scanRetention(tx.QueryRow(ctx, retentionSQL, vaultID))
+}
+
+const retentionSQL = `SELECT version_keep_count, version_keep_days FROM vaults WHERE id = $1`
+
+func scanRetention(row pgx.Row) (model.VersionRetention, error) {
+	var keep model.VersionRetention
+	err := row.Scan(&keep.KeepCount, &keep.KeepDays)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return keep, ErrVaultNotFound
+	}
+	if err != nil {
+		return keep, fmt.Errorf("get version retention: %w", err)
+	}
+	return keep, nil
+}
+
+// SetVersionRetention changes the vault's retention; values outside the
+// accepted range are refused by the database.
+func (r *VaultRepo) SetVersionRetention(ctx context.Context, vaultID string, keep model.VersionRetention) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE vaults SET version_keep_count = $2, version_keep_days = $3 WHERE id = $1`,
+		vaultID, keep.KeepCount, keep.KeepDays,
+	)
+	if err != nil {
+		return fmt.Errorf("set version retention: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrVaultNotFound
+	}
+	return nil
+}
+
 // GetByIDTx is GetByID on an open transaction's connection. Used while the
 // transaction holds a row lock, so the lock holder never needs a second pool
 // connection (which could all be taken by requests queued on that lock).

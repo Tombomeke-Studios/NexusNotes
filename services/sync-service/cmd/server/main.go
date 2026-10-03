@@ -148,6 +148,13 @@ func main() {
 			if _, err := verifyRepo.DeleteExpired(context.Background()); err != nil {
 				slog.Error("verification token cleanup failed", "error", err)
 			}
+			// Versions past their vault's retention (#418); age limits are
+			// otherwise only applied when a note is saved.
+			if n, err := noteRepo.PruneVersions(context.Background(), ""); err != nil {
+				slog.Error("version history cleanup failed", "error", err)
+			} else if n > 0 {
+				slog.Info("version history cleanup removed old versions", "count", n)
+			}
 			if _, err := resetRepo.DeleteExpired(context.Background()); err != nil {
 				slog.Error("reset token cleanup failed", "error", err)
 			}
@@ -234,6 +241,8 @@ func main() {
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions/{versionId}", noteHandler.Version)
 	protectedMux.HandleFunc("POST /api/notes/{noteId}/versions/{versionId}/restore", noteHandler.RestoreVersion)
+	protectedMux.HandleFunc("GET /api/vaults/{id}/history-settings", noteHandler.GetHistorySettings)
+	protectedMux.HandleFunc("PUT /api/vaults/{id}/history-settings", noteHandler.PutHistorySettings)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
 	protectedMux.Handle("POST /api/notes/{noteId}/attachments", longTransfer(http.HandlerFunc(attachHandler.Upload)))
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/attachments", attachHandler.List)

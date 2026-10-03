@@ -62,3 +62,26 @@ test.describe("Version history", () => {
     await expect(page.locator(".status-indicator--conflict")).toHaveCount(0);
   });
 });
+
+test.describe("Version history settings", () => {
+  test.beforeEach(async ({ page }) => {
+    await clearAuth(page);
+    await register(page);
+  });
+
+  test("the owner sets how much history the vault keeps", async ({ page }) => {
+    await createVault(page);
+    await page.keyboard.press("Control+,");
+    await page.getByRole("button", { name: /^sync$/i }).click();
+    const count = page.getByLabel("Versions kept per note");
+    await expect(count).toHaveValue("50");
+    await count.selectOption("10");
+    await page.getByLabel("Delete versions older than").selectOption("30");
+    await expect(page.getByText("Saved")).toBeVisible();
+
+    const h = await headers(page);
+    const vaults = await (await page.request.get(`${API}/api/vaults`, { headers: h })).json();
+    const keep = await (await page.request.get(`${API}/api/vaults/${vaults[0].id}/history-settings`, { headers: h })).json();
+    expect(keep).toEqual({ keep_count: 10, keep_days: 30 });
+  });
+});

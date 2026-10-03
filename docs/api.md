@@ -307,6 +307,20 @@ One version with its `content` (ciphertext for e2ee vaults; the client
 decrypts it). Same access rules; `404` when the note has no version with that
 id.
 
+### GET /api/vaults/:id/history-settings
+
+How much note history the vault keeps (#418): `{ "keep_count": 50, "keep_days": 0 }`.
+Each note keeps its newest `keep_count` versions, minus versions older than
+`keep_days` days (`0` = no age limit); a note's newest version is always kept.
+Read access required.
+
+### PUT /api/vaults/:id/history-settings
+
+Changes it from the same body and trims the vault's history right away.
+`keep_count` must be 1-500 and `keep_days` 0-3650 (`400` otherwise). Owner
+only (`403` for members), since it deletes history for everyone in the vault.
+Response (200): the new settings.
+
 ### POST /api/notes/:noteId/versions/:versionId/restore
 
 Makes a stored version the note's content again (#417). Body:

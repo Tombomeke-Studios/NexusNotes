@@ -374,7 +374,12 @@ export default function App() {
 
   /** Vaults whose legacy plaintext titles are being sealed right now (#362). */
   const sealingMeta = useRef(new Set<string>());
+  // True while a vault's note list is on its way (#434); only the latest load counts.
+  const [notesLoading, setNotesLoading] = useState(false);
+  const notesLoadSeq = useRef(0);
   const loadNotes = useCallback(async (vaultId: string) => {
+    const seq = ++notesLoadSeq.current;
+    setNotesLoading(true);
     try {
       const list = await notesApi.list(vaultId);
       setNoteList(await Promise.all((list || []).map(decryptIncoming)));
@@ -385,6 +390,8 @@ export default function App() {
       }
     } catch {
       setNoteList([]);
+    } finally {
+      if (seq === notesLoadSeq.current) setNotesLoading(false);
     }
   }, [decryptIncoming, vaultOf]);
 
@@ -1628,6 +1635,7 @@ export default function App() {
             <Sidebar
               view={railView}
               activeVaultLocked={activeVaultLocked}
+              loading={notesLoading}
               vaults={vaultList}
               activeVaultId={activeVaultId}
               tree={tree}

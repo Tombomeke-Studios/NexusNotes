@@ -1,3 +1,4 @@
+import { SkeletonTree } from "../Skeleton";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { foldMotion, spring } from "../../lib/motion-tokens";
@@ -105,11 +106,14 @@ interface SidebarProps {
   /** Note with unsaved changes (shows a dot in the tree). */
   unsavedNoteId?: string | null;
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
+  /** The vault's notes are still loading: placeholder rows, not the empty state (#434). */
+  loading?: boolean;
 }
 
 export function Sidebar({
   view,
   activeVaultLocked = false,
+  loading = false,
   vaults,
   activeVaultId,
   tree,
@@ -602,7 +606,8 @@ export function Sidebar({
             />
           </div>
         )}
-        {tree.length === 0 && !showNewFolder && (
+        {tree.length === 0 && loading && <SkeletonTree />}
+        {tree.length === 0 && !loading && !showNewFolder && (
           <div className="sidebar-empty">
             {hasFilter ? "No notes match the current filter" : "No notes yet. Create your first note."}
           </div>

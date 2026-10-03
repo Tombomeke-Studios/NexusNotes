@@ -6,6 +6,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Graph view motion: the graph unfolds from the centre with nodes fading in one by one, a
+  hovered note grows and its links glow with dashes flowing in the link direction, notes
+  without links pulse gently, and clicking a note glides onto it before opening it. The
+  graph keeps its layout when a note is saved while it is open.
 - Loading placeholders: the file tree, a note that takes a moment to open and the graph show
   shimmering outlines while their content arrives.
 - Short notifications in the bottom-right corner confirm actions such as copying a link,

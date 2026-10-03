@@ -1,7 +1,17 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useIsPresent } from "framer-motion";
 import { OverlayMotion } from "../motion/OverlayMotion";
-import { diffLines, mergeDraft, sideBySide, MERGE_MARKERS, type SideRow } from "../../lib/diff";
+import {
+  diffLines,
+  foldUnchanged,
+  isChangedRow,
+  mergeDraft,
+  numberSideRows,
+  sideBySide,
+  MERGE_MARKERS,
+  type NumberedSideRow,
+  type SideRow,
+} from "../../lib/diff";
 import type { ServerVersion } from "../../lib/useNoteSave";
 import "./Conflict.css";
 
@@ -23,57 +33,7 @@ interface ConflictDialogProps {
   onCancel: () => void;
 }
 
-/** Unchanged lines kept visible around each change. */
-const CONTEXT = 3;
-/** Shorter unchanged runs than this are shown in full rather than folded. */
-const MIN_FOLD = 4;
-
-interface NumberedRow extends SideRow {
-  leftNo: number | null;
-  rightNo: number | null;
-}
-
-type Segment = { kind: "rows"; rows: NumberedRow[] } | { kind: "fold"; id: number; rows: NumberedRow[] };
-
-const isChanged = (r: SideRow) => !!(r.left?.changed || r.right?.changed);
-
-function numberRows(rows: SideRow[]): NumberedRow[] {
-  let l = 0;
-  let r = 0;
-  return rows.map((row) => ({ ...row, leftNo: row.left ? ++l : null, rightNo: row.right ? ++r : null }));
-}
-
-/** Splits the rows into visible stretches and folds of unchanged lines far from any change. */
-function segment(rows: NumberedRow[]): Segment[] {
-  const out: Segment[] = [];
-  const push = (list: NumberedRow[]) => {
-    if (list.length === 0) return;
-    const last = out[out.length - 1];
-    if (last?.kind === "rows") last.rows.push(...list);
-    else out.push({ kind: "rows", rows: [...list] });
-  };
-  let i = 0;
-  while (i < rows.length) {
-    if (isChanged(rows[i])) {
-      push([rows[i]]);
-      i++;
-      continue;
-    }
-    const start = i;
-    while (i < rows.length && !isChanged(rows[i])) i++;
-    const run = rows.slice(start, i);
-    const keepHead = start === 0 ? 0 : CONTEXT;
-    const keepTail = i === rows.length ? 0 : CONTEXT;
-    if (run.length - keepHead - keepTail < MIN_FOLD) {
-      push(run);
-      continue;
-    }
-    push(run.slice(0, keepHead));
-    out.push({ kind: "fold", id: start + keepHead, rows: run.slice(keepHead, run.length - keepTail) });
-    push(run.slice(run.length - keepTail));
-  }
-  return out;
-}
+type NumberedRow = NumberedSideRow;
 
 function Cell({ no, cell, side }: { no: number | null; cell: SideRow["left"]; side: "mine" | "theirs" }) {
   if (!cell) {
@@ -132,11 +92,11 @@ export function ConflictDialog({ noteTitle, mine, theirs, busy, error, onResolve
 
   const theirsText = theirs?.content ?? null;
   const rows = useMemo(
-    () => (theirsText === null ? [] : numberRows(sideBySide(diffLines(mine, theirsText)))),
+    () => (theirsText === null ? [] : numberSideRows(sideBySide(diffLines(mine, theirsText)))),
     [mine, theirsText],
   );
-  const segments = useMemo(() => segment(rows), [rows]);
-  const differing = rows.filter(isChanged).length;
+  const segments = useMemo(() => foldUnchanged(rows, isChangedRow), [rows]);
+  const differing = rows.filter(isChangedRow).length;
   const ready = theirs !== null;
 
   useEffect(() => {

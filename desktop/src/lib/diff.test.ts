@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { diffLines, sideBySide, mergeDraft, MERGE_MARKERS } from "./diff";
+import { diffLines, sideBySide, mergeDraft, foldUnchanged, MERGE_MARKERS } from "./diff";
 
 const kinds = (a: string, b: string) => diffLines(a, b).map((l) => `${l.kind[0]}:${l.text}`);
 
@@ -82,5 +82,21 @@ describe("mergeDraft", () => {
 
   it("returns the text unchanged when both versions agree", () => {
     expect(mergeDraft("same\ntext", "same\ntext")).toBe("same\ntext");
+  });
+});
+
+describe("foldUnchanged", () => {
+  const changed = (n: number) => n < 0;
+  it("folds long unchanged runs but keeps context next to each change", () => {
+    const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, -1, 11, 12];
+    const segs = foldUnchanged(rows, changed, 3, 4);
+    expect(segs).toEqual([
+      { kind: "fold", id: 0, rows: [1, 2, 3, 4, 5, 6, 7] },
+      { kind: "rows", rows: [8, 9, 10, -1, 11, 12] },
+    ]);
+  });
+
+  it("shows short runs in full", () => {
+    expect(foldUnchanged([1, -1, 2, 3, 4, -2], changed, 3, 4)).toEqual([{ kind: "rows", rows: [1, -1, 2, 3, 4, -2] }]);
   });
 });

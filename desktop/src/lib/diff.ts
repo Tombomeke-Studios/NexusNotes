@@ -109,6 +109,59 @@ export interface SideRow {
   right: SideCell | null;
 }
 
+/** A side-by-side row with each side's line number (null where a side has no line). */
+export interface NumberedSideRow extends SideRow {
+  leftNo: number | null;
+  rightNo: number | null;
+}
+
+export function numberSideRows(rows: SideRow[]): NumberedSideRow[] {
+  let l = 0;
+  let r = 0;
+  return rows.map((row) => ({ ...row, leftNo: row.left ? ++l : null, rightNo: row.right ? ++r : null }));
+}
+
+export const isChangedRow = (r: SideRow) => !!(r.left?.changed || r.right?.changed);
+
+/** A visible stretch of rows, or a fold of unchanged rows far from any change. */
+export type DiffSegment<T> = { kind: "rows"; rows: T[] } | { kind: "fold"; id: number; rows: T[] };
+
+/**
+ * Splits diff rows into visible stretches and folds: unchanged runs keep
+ * `context` rows next to each change, and a run is only folded when that
+ * hides at least `minFold` rows.
+ */
+export function foldUnchanged<T>(rows: T[], isChanged: (row: T) => boolean, context = 3, minFold = 4): DiffSegment<T>[] {
+  const out: DiffSegment<T>[] = [];
+  const push = (list: T[]) => {
+    if (list.length === 0) return;
+    const last = out[out.length - 1];
+    if (last?.kind === "rows") last.rows.push(...list);
+    else out.push({ kind: "rows", rows: [...list] });
+  };
+  let i = 0;
+  while (i < rows.length) {
+    if (isChanged(rows[i])) {
+      push([rows[i]]);
+      i++;
+      continue;
+    }
+    const start = i;
+    while (i < rows.length && !isChanged(rows[i])) i++;
+    const run = rows.slice(start, i);
+    const keepHead = start === 0 ? 0 : context;
+    const keepTail = i === rows.length ? 0 : context;
+    if (run.length - keepHead - keepTail < minFold) {
+      push(run);
+      continue;
+    }
+    push(run.slice(0, keepHead));
+    out.push({ kind: "fold", id: start + keepHead, rows: run.slice(keepHead, run.length - keepTail) });
+    push(run.slice(run.length - keepTail));
+  }
+  return out;
+}
+
 /**
  * Rows for a two-column view: common lines sit on both sides, and each run of
  * changes pairs its "mine" lines with its "theirs" lines row by row.

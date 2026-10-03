@@ -282,7 +282,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Fly the camera smoothly to a clicked node before opening the note (#441)
 - [ ] Animate the 2D-to-3D toggle by scattering nodes into z-space
 - [x] Render edge particle flow using animated dashed lines or moving dot particles (#442)
-- [ ] Apply a slow continuous pulse to orphan nodes to draw attention (#443)
+- [x] Apply a slow continuous pulse to orphan nodes to draw attention (#443)
 - [ ] Fade in the cluster convex hull with a gentle boundary pulse
 
 ### Toasts and notifications

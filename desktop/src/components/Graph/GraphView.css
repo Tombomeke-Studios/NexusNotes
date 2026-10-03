@@ -205,8 +205,20 @@
   filter: drop-shadow(0 0 6px var(--success));
 }
 
+/* Orphans breathe slowly so unlinked notes catch the eye (#443); hovering
+   one hands the circle back to the hover scale. */
 .graph-node--orphan circle {
   fill: var(--text-faint);
+  animation: orphanPulse 3.2s ease-in-out infinite;
+}
+
+.graph-node--orphan:hover circle {
+  animation: none;
+}
+
+@keyframes orphanPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.14); opacity: 1; }
 }
 
 .graph-node text {

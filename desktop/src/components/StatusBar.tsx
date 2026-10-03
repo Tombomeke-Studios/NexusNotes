@@ -61,7 +61,10 @@ export function StatusBar({
             title={hint ? saveError?.message : undefined}
           >
             <span className="status-dot" key={saveStatus} />
-            {SAVE_LABELS[saveStatus]}
+            {/* Keyed so each new status replays its animation (#422). */}
+            <span className="status-label" key={`label-${saveStatus}`}>
+              {SAVE_LABELS[saveStatus]}
+            </span>
             {hint && <span className="status-indicator-hint">&middot; {hint}</span>}
           </span>
         )}

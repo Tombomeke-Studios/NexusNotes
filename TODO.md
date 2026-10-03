@@ -821,9 +821,9 @@ Lower priority items not focused on the desktop application.
 - [ ] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
 - [ ] Store consent timestamp and policy version in the database alongside the user record
 - [ ] Add consent checkbox on any marketing / newsletter sign-up form
-- [ ] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
-- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
-- [ ] Implement account deletion confirmation email with a 7-day grace-period cancellation link
+- [x] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
+- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
+- [x] Implement account deletion confirmation email with a 7-day grace-period cancellation link
 - [x] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
 
 ---

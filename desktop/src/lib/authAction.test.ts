@@ -29,3 +29,10 @@ describe("parseAuthAction", () => {
     expect(parseAuthAction("/reset-password", "?other=1")).toBeNull();
   });
 });
+
+describe("account deletion links (#289)", () => {
+  it("recognises the confirm and cancel links", () => {
+    expect(parseAuthAction("/confirm-deletion", "?token=c")).toEqual({ kind: "confirm-deletion", token: "c" });
+    expect(parseAuthAction("/cancel-deletion", "?token=k")).toEqual({ kind: "cancel-deletion", token: "k" });
+  });
+});

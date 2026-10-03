@@ -5,6 +5,8 @@ export interface User {
   email_verified: boolean;
   created_at: string;
   updated_at: string;
+  /** Set while the account waits out its deletion grace period (#289). */
+  deletion_scheduled_at?: string;
 }
 
 export type VaultRole = "owner" | "editor" | "viewer";

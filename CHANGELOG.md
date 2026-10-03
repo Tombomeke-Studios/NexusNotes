@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Deleting your account now waits 7 days: you are signed out, get an email with a link to
+  cancel, and can also sign in and choose "Keep my account". If you can no longer sign in,
+  "Locked out? Request account deletion" on the sign-in screen emails a confirmation link.
 - Graph view motion: the graph unfolds from the centre with nodes fading in one by one, a
   hovered note grows and its links glow with dashes flowing in the link direction, notes
   without links pulse gently, and clicking a note glides onto it before opening it. The

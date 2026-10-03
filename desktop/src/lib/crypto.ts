@@ -115,6 +115,16 @@ export async function decryptNote(payload: string, vaultKey: Uint8Array): Promis
   return new TextDecoder().decode(await aesDecrypt(iv, data, vaultKey));
 }
 
+/** URL- and filename-safe base64 without padding. */
+export function bytesToBase64Url(bytes: Uint8Array): string {
+  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function base64UrlToBytes(s: string): Uint8Array {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4);
+  return base64ToBytes(b64);
+}
+
 /** Encrypts raw bytes (attachment files): IV (12 bytes) followed by ciphertext+tag. */
 export async function encryptBytes(plaintext: Uint8Array, vaultKey: Uint8Array): Promise<Uint8Array> {
   const { iv, data } = await aesEncrypt(plaintext, vaultKey);

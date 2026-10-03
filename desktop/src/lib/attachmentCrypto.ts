@@ -1,4 +1,4 @@
-import { encryptBytes, decryptBytes } from "./crypto";
+import { encryptBytes, decryptBytes, bytesToBase64Url as toBase64Url, base64UrlToBytes as fromBase64Url } from "./crypto";
 import type { Attachment } from "./api";
 
 /**
@@ -14,20 +14,6 @@ const SUFFIX = ".bin";
 interface AttachmentMeta {
   name: string;
   type: string;
-}
-
-function toBase64Url(bytes: Uint8Array): string {
-  let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function fromBase64Url(s: string): Uint8Array {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4);
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
 }
 
 /** Reads a Blob's bytes (FileReader fallback for environments without Blob.arrayBuffer). */

@@ -1,4 +1,5 @@
 import { headingSlug } from "../../lib/outline";
+import { LinkPreview } from "./LinkPreview";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -155,6 +156,18 @@ export function Editor({
   }, [uploadNotice, uploading]);
   const contentRowRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  // [[link]] hover preview (#425): opens after a short hover, like a tooltip.
+  const [hoverLink, setHoverLink] = useState<{ noteId: string; rect: DOMRect } | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showLinkPreview = useCallback((noteId: string, el: HTMLElement, delay: number) => {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHoverLink({ noteId, rect: el.getBoundingClientRect() }), delay);
+  }, []);
+  const hideLinkPreview = useCallback(() => {
+    clearTimeout(hoverTimer.current);
+    setHoverLink(null);
+  }, []);
+  useEffect(() => () => clearTimeout(hoverTimer.current), []);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const onSaveRef = useRef(onSave);
   const contentRef = useRef(content);
@@ -473,8 +486,15 @@ export function Editor({
           return (
             <button
               className="wikilink wikilink--resolved"
-              onClick={() => onNavigateToNote(targetId)}
-              title={`Open: ${title}`}
+              onClick={() => {
+                hideLinkPreview();
+                onNavigateToNote(targetId);
+              }}
+              onMouseEnter={(e) => showLinkPreview(targetId, e.currentTarget, 350)}
+              onMouseLeave={hideLinkPreview}
+              onFocus={(e) => showLinkPreview(targetId, e.currentTarget, 0)}
+              onBlur={hideLinkPreview}
+              aria-label={`Open ${title}`}
             >
               {children}
             </button>
@@ -520,7 +540,7 @@ export function Editor({
         </a>
       );
     },
-    [notesByTitle, onNavigateToNote, onCreateNote, onTagClick],
+    [notesByTitle, onNavigateToNote, onCreateNote, onTagClick, showLinkPreview, hideLinkPreview],
   );
 
   if (!note) {
@@ -644,7 +664,7 @@ export function Editor({
           </div>
         )}
         {(mode === "preview" || mode === "split") && (
-          <div ref={previewRef} className="editor-preview markdown-body" style={{ fontSize }}>
+          <div ref={previewRef} className="editor-preview markdown-body" style={{ fontSize }} onScroll={hoverLink ? hideLinkPreview : undefined}>
             <div className="markdown-body-inner">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkImageEmbeds, remarkWikilinks, remarkTags, remarkCallouts]}
@@ -657,6 +677,10 @@ export function Editor({
           </div>
         )}
       </div>
+      {hoverLink && (() => {
+        const target = notes.find((n) => n.id === hoverLink.noteId);
+        return target ? <LinkPreview key={hoverLink.noteId} note={target} anchor={hoverLink.rect} /> : null;
+      })()}
     </div>
   );
 }

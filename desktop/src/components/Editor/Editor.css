@@ -665,3 +665,48 @@
   color: var(--warning);
   border-color: var(--warning);
 }
+
+/* [[link]] hover preview (#425): fades in with a slight upward drift. */
+.link-preview {
+  position: fixed;
+  z-index: 60;
+  width: 340px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-modal), var(--surface-highlight);
+  pointer-events: none;
+  animation: linkPreviewIn var(--duration-base) var(--easing-spring);
+}
+
+.link-preview-title {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.link-preview-body {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: pre-line;
+  max-height: 190px;
+  overflow: hidden;
+}
+
+/* Text that runs past the card fades out rather than being cut off. */
+.link-preview-body--clipped {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent);
+}
+
+.link-preview-body--empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@keyframes linkPreviewIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

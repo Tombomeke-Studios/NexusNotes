@@ -198,3 +198,53 @@ describe("Editor — heading anchors in the preview (#426)", () => {
     }
   });
 });
+
+describe("Editor — [[link]] hover previews (#425)", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const target = { ...note("n2", "# Other\n\nThe opening line of the other note."), title: "Other" } as Note;
+
+  function renderPreview() {
+    return render(
+      <Editor
+        note={note("n1", "See [[Other]].")}
+        notes={[target]}
+        mode="preview"
+        onModeChange={() => {}}
+        onSave={() => {}}
+        onLiveChange={() => {}}
+        onRename={() => {}}
+        onRenameCommit={() => {}}
+        onCreateNote={() => {}}
+        onNavigateToNote={() => {}}
+      />,
+    );
+  }
+
+  it("shows the linked note's opening text after a short hover", () => {
+    const view = renderPreview();
+    const link = view.getByText("Other", { selector: ".wikilink, .wikilink *" });
+    fireEvent.mouseEnter(link);
+    expect(view.queryByRole("tooltip")).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    const tip = view.getByRole("tooltip");
+    expect(tip.textContent).toContain("Other");
+    expect(tip.textContent).toContain("The opening line of the other note.");
+    fireEvent.mouseLeave(link);
+    expect(view.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("does not open when the pointer only passes over the link", () => {
+    const view = renderPreview();
+    const link = view.getByText("Other", { selector: ".wikilink, .wikilink *" });
+    fireEvent.mouseEnter(link);
+    fireEvent.mouseLeave(link);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(view.queryByRole("tooltip")).toBeNull();
+  });
+});

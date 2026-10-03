@@ -6,6 +6,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Hovering a `[[link]]` in reading view shows a preview of the linked note.
+- `[text](#heading)` links jump to that heading in the note, and heading navigation scrolls
+  smoothly.
+- Editor polish: a soft glow while the editor has focus, the view-mode switch fades, callouts
+  slide in, the word count ticks and the "Saved" label settles after a save.
 - Version history (Ctrl+Shift+H, the command palette or a note's context menu): browse the
   snapshots kept while you edit, compare any of them with the current text or with each
   other (side by side or inline), and restore one. Restoring keeps the text it replaces in

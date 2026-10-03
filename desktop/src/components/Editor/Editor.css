@@ -181,6 +181,18 @@
   background: var(--bg-base);
 }
 
+/* Switching view mode (#424): the pane that appears fades in instead of
+   popping. Only mounts animate, so typing never replays it. */
+.editor-textarea,
+.editor-preview {
+  animation: paneFade var(--duration-base) ease-out;
+}
+
+@keyframes paneFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* --- Markdown body --- */
 .markdown-body {
   line-height: 1.75;

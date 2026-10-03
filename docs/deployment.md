@@ -445,6 +445,21 @@ Docker `HEALTHCHECK` on `GET /ready`, so `docker compose ps` shows it as healthy
 only while it can reach Postgres. The operator stats endpoint (`GET /api/admin/stats`) is enabled
 by `ADMIN_TOKEN` in `.env` and disabled while it is empty.
 
+## Legal pages (required before opening a server to others)
+
+The web UI serves a Privacy Policy, Terms of Service, Cookie Policy and Refund
+Policy from `desktop/public/legal/` (`/legal/privacy.html` and so on). The
+sign-up form links to the Terms and Privacy Policy and records when each user
+agreed and to which version (#289).
+
+Whoever runs a server is the data controller for its users, so these pages
+are templates: replace every `[bracketed]` item (operator, contact, hosting
+and email providers, retention, governing law) and have them reviewed by a
+legal professional before letting anyone else sign up. When the Terms or
+Privacy Policy change materially, bump `CurrentTermsVersion` in
+`internal/model/model.go`; when the Cookie Policy's categories change, bump
+`CONSENT_VERSION` in `desktop/src/lib/consent.ts` so users are asked again.
+
 ## Email (optional)
 
 Set `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USER`, `SMTP_PASS`,

@@ -76,6 +76,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Password    string `json:"password"`
 		DisplayName string `json:"display_name"`
 		DeviceID    string `json:"device_id"`
+		// The signup form's "I agree to the Terms of Service and Privacy
+		// Policy" box (#289); recorded with the policy version.
+		AcceptedTerms bool `json:"accepted_terms"`
 	}
 	if err := decodeSmallJSON(w, r, &req); err != nil {
 		writeBodyError(w, err, "invalid request body")
@@ -84,6 +87,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	if req.Email == "" || req.Password == "" {
 		writeError(w, http.StatusBadRequest, "email and password are required")
+		return
+	}
+	if !req.AcceptedTerms {
+		writeError(w, http.StatusBadRequest, "you must accept the Terms of Service and Privacy Policy")
 		return
 	}
 

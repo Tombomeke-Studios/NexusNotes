@@ -803,24 +803,24 @@ Lower priority items not focused on the desktop application.
 
 ### Policy pages (static, web)
 
-- [ ] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact)
-- [ ] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
-- [ ] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
-- [ ] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
+- [x] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact) (#289: operator templates in `desktop/public/legal/`; legal review before launch)
+- [x] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
+- [x] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
+- [x] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
 
 ### Cookie consent
 
-- [ ] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
-- [ ] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
-- [ ] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
-- [ ] Link to Cookie Policy from the banner
-- [ ] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
+- [x] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
+- [x] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
+- [x] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
+- [x] Link to Cookie Policy from the banner
+- [x] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
 
 ### Form consents & data deletion
 
-- [ ] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
-- [ ] Store consent timestamp and policy version in the database alongside the user record
-- [ ] Add consent checkbox on any marketing / newsletter sign-up form
+- [x] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
+- [x] Store consent timestamp and policy version in the database alongside the user record
+- [x] Add consent checkbox on any marketing / newsletter sign-up form (N/A: NexusNotes has no marketing or newsletter forms; any future one needs an unticked consent box)
 - [ ] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
 - [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
 - [ ] Implement account deletion confirmation email with a 7-day grace-period cancellation link

@@ -1,0 +1,17 @@
+/* Policy pages (#289): readable on their own, light or dark with the system. */
+:root { color-scheme: light dark; --fg: #1e1e2e; --muted: #5c5f77; --bg: #fafafc; --accent: #7c4dff; --line: #dcdce6; }
+@media (prefers-color-scheme: dark) { :root { --fg: #cdd6f4; --muted: #a6adc8; --bg: #11111b; --accent: #cba6f7; --line: #313244; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+header a { color: var(--accent); font-weight: 600; text-decoration: none; }
+h1 { font-size: 2rem; line-height: 1.2; margin: 24px 0 4px; text-wrap: balance; }
+h2 { font-size: 1.2rem; margin: 36px 0 8px; }
+p, li { text-wrap: pretty; }
+a { color: var(--accent); }
+.meta { color: var(--muted); font-size: 0.9rem; }
+.note { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; color: var(--muted); font-size: 0.92rem; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: left; vertical-align: top; }
+code { font-size: 0.88em; }
+nav.legal { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.9rem; }

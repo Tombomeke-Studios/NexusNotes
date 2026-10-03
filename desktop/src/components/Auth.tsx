@@ -1,3 +1,5 @@
+import { openConsentPreferences } from "../lib/consent";
+import { ConsentBanner } from "./ConsentBanner";
 import { useRef, useState } from "react";
 import { Logo } from "./Logo";
 import { AuthBackground } from "./AuthBackground";
@@ -21,6 +23,8 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  // "I agree to the Terms of Service and Privacy Policy" (#289).
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const glowRef = useRef<HTMLDivElement>(null);
@@ -181,6 +185,22 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
             minLength={8}
           />
 
+          {!isLogin && (
+            <label className="auth-consent">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
+              <span>
+                I agree to the{" "}
+                <a href="/legal/terms.html" target="_blank" rel="noopener">
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="/legal/privacy.html" target="_blank" rel="noopener">
+                  Privacy Policy
+                </a>
+              </span>
+            </label>
+          )}
+
           {error && <div className="auth-error">{error}</div>}
 
           <button type="submit" className="auth-button" disabled={loading}>
@@ -222,6 +242,12 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
           <span className="auth-footer-dot" />
           Self-hosted &middot; end-to-end encrypted sync
         </div>
+        <ConsentBanner />
+        <nav className="auth-legal" aria-label="Legal">
+          <a href="/legal/privacy.html" target="_blank" rel="noopener">Privacy</a>
+          <a href="/legal/terms.html" target="_blank" rel="noopener">Terms</a>
+          <button type="button" onClick={openConsentPreferences}>Cookie preferences</button>
+        </nav>
       </div>
     </div>
   );

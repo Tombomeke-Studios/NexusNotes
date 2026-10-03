@@ -189,7 +189,7 @@ it is what it exists for:
 | `src/components/Auth.tsx` + `AuthBackground.tsx` | Login/signup screen; animated mouse-reactive node-graph background |
 | `src/components/Workspace/` | Shell chrome: top bar (breadcrumb, window controls), activity rail, panel styles |
 | `src/components/Workspace/WindowControls.tsx` | Native minimize/maximize/close controls (reused by top bar + login screen) |
-| `src/components/Editor/` | Markdown editor with live preview |
+| `src/components/Editor/` | Markdown editor with live preview; `LinkPreview.tsx` + `src/lib/linkPreview.ts` show a [[link]]'s target on hover (#425) |
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
 | `src/components/RightPanel/` | Right panel: outline, backlinks, note info |
 | `src/components/Search/Snippet.tsx` + `src/lib/snippet.ts` | Renders search snippets as text with `<em>` highlights (snippets are raw note text; never render them as HTML) |

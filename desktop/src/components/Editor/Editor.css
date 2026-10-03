@@ -301,14 +301,42 @@
 /* Callout blocks (#223): `> [!NOTE] Title` rendered by lib/remarkCallouts. */
 .markdown-body .callout {
   --callout-color: var(--accent);
+  position: relative;
   border: 1px solid var(--border-inner);
-  border-left: 3px solid var(--callout-color);
+  border-left: 3px solid transparent;
   border-radius: 8px;
   padding: 10px 14px;
   margin: 0.9em 0;
   background: color-mix(in srgb, var(--callout-color) 8%, transparent);
   color: var(--text-secondary);
   font-style: normal;
+  animation: calloutGlow 0.9s ease-out;
+}
+
+/* The coloured bar slides down into place when a callout appears, with a
+   brief glow in its colour (#427). */
+.markdown-body .callout::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -3px;
+  width: 3px;
+  border-radius: 8px 0 0 8px;
+  background: var(--callout-color);
+  transform-origin: top;
+  animation: calloutBar var(--duration-slow) var(--easing-spring) both;
+}
+
+@keyframes calloutBar {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes calloutGlow {
+  0% { box-shadow: 0 0 0 0 transparent; }
+  35% { box-shadow: -2px 0 18px -6px color-mix(in srgb, var(--callout-color) 70%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 .markdown-body .callout-title {

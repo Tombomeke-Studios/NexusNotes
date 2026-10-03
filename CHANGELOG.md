@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Loading placeholders: the file tree, a note that takes a moment to open and the graph show
+  shimmering outlines while their content arrives.
 - Short notifications in the bottom-right corner confirm actions such as copying a link,
   exporting and restoring a version.
 - The top bar shows a spinner while syncing and a checkmark once synced; the note title

@@ -21,6 +21,7 @@ import { LinkedFilesDialog } from "./components/Workspace/LinkedFilesDialog";
 import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
+import { SkeletonNote } from "./components/Skeleton";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -374,6 +375,8 @@ export default function App() {
 
   /** Vaults whose legacy plaintext titles are being sealed right now (#362). */
   const sealingMeta = useRef(new Set<string>());
+  /** A note whose text is still being fetched after a click (#435). */
+  const [loadingNoteId, setLoadingNoteId] = useState<string | null>(null);
   // True while a vault's note list is on its way (#434); only the latest load counts.
   const [notesLoading, setNotesLoading] = useState(false);
   const notesLoadSeq = useRef(0);
@@ -1189,7 +1192,18 @@ export default function App() {
     // The open note stays as it is (e.g. back from the graph view): its text,
     // unsaved edits included, is what the editor starts from (initialText).
     if (activeNoteRef.current?.id === noteId) return;
-    const note = await decryptIncoming(await notesApi.get(noteId));
+    // A note that takes a moment to arrive shows a placeholder (#435); a quick
+    // one never does, so switching notes doesn't flicker.
+    const slow = setTimeout(() => {
+      if (selection === selectionSeq.current) setLoadingNoteId(noteId);
+    }, 150);
+    let note: Note;
+    try {
+      note = await decryptIncoming(await notesApi.get(noteId));
+    } finally {
+      clearTimeout(slow);
+      if (selection === selectionSeq.current) setLoadingNoteId(null);
+    }
     if (selection !== selectionSeq.current) return;
     // Restore unsaved local text (a draft after an abrupt close, or for e2ee
     // vaults the in-memory text of a save the server hasn't confirmed) so work
@@ -1769,6 +1783,8 @@ export default function App() {
               onSelectNote={handleSelectNote}
               onCreateNote={handleCreateNoteWithTitle}
             />
+          ) : loadingNoteId !== null && loadingNoteId === activeTabKey ? (
+            <SkeletonNote />
           ) : (
             <Editor
               note={activeNote}

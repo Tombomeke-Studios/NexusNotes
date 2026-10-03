@@ -9,6 +9,9 @@ import {
   isVaultLocked,
   encryptNoteForVault,
   decryptNoteForVault,
+  encryptFieldForVault,
+  decryptFieldForVault,
+  isEncryptedField,
   VaultLockedError,
   UnknownVaultEncryptionError,
   type EncryptionMeta,
@@ -141,5 +144,35 @@ describe("meta parsing safety", () => {
   it("unlock rejects malformed meta instead of crashing", async () => {
     const broken = { version: 1 } as unknown as EncryptionMeta;
     await expect(unlockVaultKey(broken, "whatever")).rejects.toThrow();
+  });
+});
+
+// Titles and folder paths of e2ee notes are encrypted too (#362).
+describe("note metadata fields", () => {
+  beforeEach(() => vaultKeySession.clear());
+  const e2ee = { id: "v-meta", encryption: "e2ee" as const };
+  const plain = { id: "v-plain", encryption: "none" as const };
+
+  it("encrypts a field into an opaque, URL-safe token and back", async () => {
+    vaultKeySession.set(e2ee.id, new Uint8Array(32).fill(7));
+    for (const value of ["My diary", "Work/Projects/Secret plan", ""]) {
+      const sealed = await encryptFieldForVault(e2ee, value);
+      expect(sealed).toMatch(/^e2ee:[A-Za-z0-9_-]+$/);
+      if (value) expect(sealed).not.toContain(value.split("/")[0]);
+      expect(await decryptFieldForVault(e2ee, sealed)).toBe(value);
+    }
+    // Randomised: the same title twice gives two different tokens.
+    expect(await encryptFieldForVault(e2ee, "x")).not.toBe(await encryptFieldForVault(e2ee, "x"));
+  });
+
+  it("leaves standard vaults and legacy plaintext values alone", async () => {
+    expect(await encryptFieldForVault(plain, "Title")).toBe("Title");
+    vaultKeySession.set(e2ee.id, new Uint8Array(32).fill(7));
+    expect(await decryptFieldForVault(e2ee, "Old plain title")).toBe("Old plain title");
+    expect(isEncryptedField("Old plain title")).toBe(false);
+  });
+
+  it("refuses to encrypt while the vault is locked", async () => {
+    await expect(encryptFieldForVault(e2ee, "Title")).rejects.toBeInstanceOf(VaultLockedError);
   });
 });

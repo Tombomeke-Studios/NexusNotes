@@ -27,6 +27,7 @@ import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
 import { UnlockVaultDialog } from "./components/Encryption/UnlockVaultDialog";
 import { vaults as vaultsApi, notes as notesApi, stars as starsApi, getToken, auth } from "./lib/api";
 import { restoreFailureAction } from "./lib/session";
+import { sealLegacyMeta, needsMetaSeal } from "./lib/legacyMeta";
 import {
   setupVaultEncryption,
   unlockVaultKey,
@@ -37,6 +38,8 @@ import {
   isVaultLocked,
   encryptNoteForVault,
   decryptNoteForVault,
+  encryptFieldForVault,
+  decryptFieldForVault,
   type EncryptionMeta,
 } from "./lib/vaultKeys";
 import { syncClient } from "./lib/sync";
@@ -196,7 +199,15 @@ export default function App() {
     const vault = vaultOf(note.vault_id);
     if (!isE2eeVault(vault)) return { note, readable: true };
     try {
-      return { note: { ...note, content: await decryptNoteForVault(vault!, note.content) }, readable: true };
+      return {
+        note: {
+          ...note,
+          title: await decryptFieldForVault(vault!, note.title),
+          path: await decryptFieldForVault(vault!, note.path),
+          content: await decryptNoteForVault(vault!, note.content),
+        },
+        readable: true,
+      };
     } catch {
       // Locked vault or undecryptable payload: keep the ciphertext (unreadable
       // but harmless); a proper unlock reloads the vault.
@@ -227,6 +238,15 @@ export default function App() {
     (vaultId: string, plaintext: string) => encryptNoteForVault(vaultOf(vaultId), plaintext),
     [vaultOf],
   );
+  // Titles and folder paths go out sealed for e2ee vaults too (#362); state
+  // and the UI only ever hold the plaintext.
+  const sealMeta = useCallback(
+    async (vaultId: string, title: string, path: string) => ({
+      title: await encryptFieldForVault(vaultOf(vaultId), title),
+      path: await encryptFieldForVault(vaultOf(vaultId), path),
+    }),
+    [vaultOf],
+  );
 
   const {
     saveNote: handleSaveNote,
@@ -251,6 +271,7 @@ export default function App() {
     setSaveStatus,
     onSynced: () => setLastSyncAt(new Date()),
     encryptOutgoing,
+    sealMeta,
     keepsDrafts: (vaultId) => !isE2eeVault(vaultOf(vaultId)),
     // The server's version in a 409 is ciphertext for e2ee vaults. An unknown
     // vault throws, so the conflict dialog never shows unreadable text.
@@ -326,14 +347,21 @@ export default function App() {
     [conflictPrompt, resolveConflict],
   );
 
+  /** Vaults whose legacy plaintext titles are being sealed right now (#362). */
+  const sealingMeta = useRef(new Set<string>());
   const loadNotes = useCallback(async (vaultId: string) => {
     try {
       const list = await notesApi.list(vaultId);
       setNoteList(await Promise.all((list || []).map(decryptIncoming)));
+      const vault = vaultOf(vaultId);
+      if (isE2eeVault(vault) && !isVaultLocked(vault) && list?.some(needsMetaSeal) && !sealingMeta.current.has(vaultId)) {
+        sealingMeta.current.add(vaultId);
+        void sealLegacyMeta(list, vault!, notesApi.update).finally(() => sealingMeta.current.delete(vaultId));
+      }
     } catch {
       setNoteList([]);
     }
-  }, [decryptIncoming]);
+  }, [decryptIncoming, vaultOf]);
 
   const loadVaults = useCallback(async () => {
     try {
@@ -570,7 +598,8 @@ export default function App() {
     // Keep note names unique (Untitled, Untitled 1, Untitled 2, …).
     const name = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), title);
     const { content: payload, checksum } = await encryptOutgoing(vaultId, "");
-    const created = await notesApi.create(vaultId, name, "", payload, checksum);
+    const sealed = await sealMeta(vaultId, name, "");
+    const created = { ...(await notesApi.create(vaultId, sealed.title, sealed.path, payload, checksum)), title: name, path: "" };
     // The previous note stayed editable while the create was in flight; save
     // whatever was typed into it (e.g. a rename) before switching (#204).
     await flushPendingSave();
@@ -587,7 +616,7 @@ export default function App() {
     setEditorContent("");
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [encryptOutgoing, flushPendingSave]);
+  }, [encryptOutgoing, sealMeta, flushPendingSave]);
 
   const handleCreateNoteWithTitle = useCallback(async (title: string) => {
     setCreatingNote(true);
@@ -637,7 +666,8 @@ export default function App() {
       date: iso,
     });
     const { content: payload, checksum } = await encryptOutgoing(vaultId, template);
-    const created = await notesApi.create(vaultId, iso, "Daily", payload, checksum);
+    const sealed = await sealMeta(vaultId, iso, "Daily");
+    const created = { ...(await notesApi.create(vaultId, sealed.title, sealed.path, payload, checksum)), title: iso, path: "Daily" };
     await flushPendingSave();
     if (activeVaultIdRef.current !== vaultId) return;
     const note = { ...created, content: template };
@@ -649,7 +679,7 @@ export default function App() {
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [decryptIncoming, encryptOutgoing, flushPendingSave]);
+  }, [decryptIncoming, encryptOutgoing, sealMeta, flushPendingSave]);
 
   const openGraphTab = useCallback(() => {
     setTabs((prev) =>
@@ -726,16 +756,17 @@ export default function App() {
     try {
       // State content is plaintext, so re-encrypt for e2ee vaults on the way out.
       const { content: payload, checksum } = await encryptOutgoing(note.vault_id, note.content);
-      const updated = await notesApi.update(note.id, note.title, folderPath, payload, note.checksum, checksum);
+      const sealed = await sealMeta(note.vault_id, note.title, folderPath);
+      const updated = await notesApi.update(note.id, sealed.title, sealed.path, payload, note.checksum, checksum);
       if ("checksum" in updated) {
-        const u = { ...(updated as Note), content: note.content };
+        const u = { ...(updated as Note), title: note.title, path: folderPath, content: note.content };
         setNoteList((prev) => prev.map((n) => (n.id === u.id ? u : n)));
         setActiveNote((prev) => (prev?.id === u.id ? u : prev));
       }
     } catch {
       /* leave the note where it was on failure */
     }
-  }, [encryptOutgoing]);
+  }, [encryptOutgoing, sealMeta]);
 
   // Drag entry point: dragging any note that is part of a multi-selection moves
   // the whole selection; otherwise just the dragged note.
@@ -765,7 +796,8 @@ export default function App() {
     if (!src) return;
     const title = uniqueTitle(new Set(noteListRef.current.map((n) => n.title)), `${src.title} copy`);
     const { content: payload, checksum } = await encryptOutgoing(activeVaultId, src.content);
-    const created = await notesApi.create(activeVaultId, title, src.path, payload, checksum);
+    const sealed = await sealMeta(activeVaultId, title, src.path);
+    const created = { ...(await notesApi.create(activeVaultId, sealed.title, sealed.path, payload, checksum)), title, path: src.path };
     await flushPendingSave();
     const note = { ...created, content: src.content };
     setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
@@ -775,7 +807,7 @@ export default function App() {
     setEditorContent(note.content);
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
-  }, [activeVaultId, encryptOutgoing, flushPendingSave]);
+  }, [activeVaultId, encryptOutgoing, sealMeta, flushPendingSave]);
 
   const deleteOne = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
@@ -1034,8 +1066,10 @@ export default function App() {
     for (const n of welcomeNotes) {
       try {
         const { content, checksum } = await encryptNoteForVault(vault, n.content);
-        const note = await notesApi.create(vault.id, n.title, n.path, content, checksum);
-        created.push({ ...note, content: n.content });
+        const title = await encryptFieldForVault(vault, n.title);
+        const path = await encryptFieldForVault(vault, n.path);
+        const note = await notesApi.create(vault.id, title, path, content, checksum);
+        created.push({ ...note, title: n.title, path: n.path, content: n.content });
       } catch {
         /* skip a note that failed to create */
       }
@@ -1373,9 +1407,10 @@ export default function App() {
       if (newContent === note.content) continue;
       try {
         const { content: payload, checksum } = await encryptOutgoing(note.vault_id, newContent);
-        const updated = await notesApi.update(note.id, note.title, note.path, payload, note.checksum, checksum);
+        const sealed = await sealMeta(note.vault_id, note.title, note.path);
+        const updated = await notesApi.update(note.id, sealed.title, sealed.path, payload, note.checksum, checksum);
         if ("checksum" in updated) {
-          const u = { ...(updated as Note), content: newContent };
+          const u = { ...(updated as Note), title: note.title, path: note.path, content: newContent };
           setNoteList((prev) => prev.map((n) => (n.id === u.id ? u : n)));
           setActiveNote((prev) => (prev?.id === u.id ? u : prev));
           if (activeNoteRef.current?.id === u.id) setEditorContent(newContent);
@@ -1388,7 +1423,7 @@ export default function App() {
     setFilterTags((prev) =>
       prev.map((t) => (t === from || t.startsWith(`${from}/`) ? to + t.slice(from.length) : t)),
     );
-  }, [encryptOutgoing]);
+  }, [encryptOutgoing, sealMeta]);
 
   const clearFilters = useCallback(() => {
     setFilterTags([]);

@@ -215,6 +215,7 @@ it is what it exists for:
 | `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
 | `src/lib/attachmentCrypto.ts` + `attachmentClient.ts` | E2EE attachments (#238): files encrypted on the device under an opaque `e2ee.<…>.bin` name; the client lists/uploads/opens attachments through the vault's encryption (use it, not `api.attachments`, in UI code) |
 | `src/lib/vaultConvert.ts` | Converts a standard vault to e2ee (#361): new vault key, every note encrypted on the device, one atomic `POST /api/vaults/{id}/encryption/convert`, retry on 409 |
+| `src/lib/legacyMeta.ts` | One-time sealing of e2ee notes whose title/path the server still holds in plaintext (pre-#362), run when their vault is unlocked |
 | `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |
 | `src/lib/clientSearch.ts` | Client-side full-text search over decrypted in-memory notes (e2ee vaults; server search only sees ciphertext) |
 | `src/lib/remarkCallouts.ts` | remark plugin: `> [!NOTE]` blockquotes → styled callout blocks in the preview (#223) |

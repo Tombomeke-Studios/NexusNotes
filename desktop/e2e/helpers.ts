@@ -152,6 +152,19 @@ export async function waitForAutosave(page: Page) {
   await expect(page.locator(".status-indicator--saved")).toBeVisible({ timeout: 8_000 });
 }
 
+/**
+ * The id of a note shown in the sidebar. e2ee vaults store titles sealed
+ * (#362), so tests find notes through the UI rather than by server title.
+ */
+export async function noteIdByTitle(page: Page, title: string): Promise<string> {
+  const item = page.locator(".sidebar [data-note-id]").filter({ hasText: title }).first();
+  await expect(item).toBeVisible({ timeout: 10_000 });
+  return (await item.getAttribute("data-note-id"))!;
+}
+
+/** A sealed e2ee title or path: never the plaintext (#362). */
+export const SEALED_FIELD = /^e2ee:[A-Za-z0-9_-]+$/;
+
 export async function waitForSaved(page: Page) {
   await expect(page.locator(".status-indicator--saved")).toBeVisible({ timeout: 8_000 });
 }

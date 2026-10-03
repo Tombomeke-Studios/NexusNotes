@@ -9,6 +9,10 @@ import {
   unwrapKey,
   encryptNote,
   decryptNote,
+  encryptBytes,
+  decryptBytes,
+  bytesToBase64Url,
+  base64UrlToBytes,
   plaintextChecksum,
   type KdfParams,
   type WrappedKey,
@@ -123,7 +127,7 @@ export const vaultKeySession = new VaultKeySession();
 // --- Note-level helpers: encrypt/decrypt against a vault's session key ---
 
 /** The subset of the Vault model these helpers need. */
-type VaultLike = { id: string; encryption?: "none" | "e2ee" };
+export type VaultLike = { id: string; encryption?: "none" | "e2ee" };
 
 /** Thrown when an e2ee operation is attempted while the vault key is not in memory. */
 export class VaultLockedError extends Error {
@@ -183,4 +187,43 @@ export async function encryptNoteForVault(
 export async function decryptNoteForVault(vault: VaultLike, content: string): Promise<string> {
   if (!isE2eeVault(vault)) return content;
   return decryptNote(content, requireKey(vault));
+}
+
+/**
+ * Note titles and folder paths of an e2ee vault are encrypted too (#362), as
+ * "e2ee:<base64url(iv || ciphertext)>": URL- and path-safe, so the server can
+ * store it like any title. Values without the prefix are legacy plaintext.
+ */
+const FIELD_PREFIX = "e2ee:";
+
+export function isEncryptedField(value: string): boolean {
+  return value.startsWith(FIELD_PREFIX);
+}
+
+/** Seals a title or path under a raw vault key. */
+export async function sealField(value: string, vaultKey: Uint8Array): Promise<string> {
+  const sealed = await encryptBytes(new TextEncoder().encode(value), vaultKey);
+  return FIELD_PREFIX + bytesToBase64Url(sealed);
+}
+
+/** Opens a sealed title or path; a value without the prefix passes through. */
+export async function openField(value: string, vaultKey: Uint8Array): Promise<string> {
+  if (!isEncryptedField(value)) return value;
+  const plain = await decryptBytes(base64UrlToBytes(value.slice(FIELD_PREFIX.length)), vaultKey);
+  return new TextDecoder().decode(plain);
+}
+
+/** Seals a title or path for upload; standard vaults pass it through. */
+export async function encryptFieldForVault(vault: VaultLike | null | undefined, value: string): Promise<string> {
+  if (!vault || (vault.encryption !== "none" && vault.encryption !== "e2ee")) {
+    throw new UnknownVaultEncryptionError(vault?.id ?? null);
+  }
+  if (vault.encryption === "none") return value;
+  return sealField(value, requireKey(vault));
+}
+
+/** Opens a sealed title or path; plaintext (legacy or standard vault) passes through. */
+export async function decryptFieldForVault(vault: VaultLike, value: string): Promise<string> {
+  if (!isE2eeVault(vault) || !isEncryptedField(value)) return value;
+  return openField(value, requireKey(vault));
 }

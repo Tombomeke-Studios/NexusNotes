@@ -214,6 +214,7 @@ it is what it exists for:
 | `src/lib/crypto.ts` | E2EE crypto core: Argon2id derivation, AES-GCM note encryption, key wrapping, recovery codes (see docs/encryption.md) |
 | `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
 | `src/lib/attachmentCrypto.ts` + `attachmentClient.ts` | E2EE attachments (#238): files encrypted on the device under an opaque `e2ee.<…>.bin` name; the client lists/uploads/opens attachments through the vault's encryption (use it, not `api.attachments`, in UI code) |
+| `src/lib/linkedFiles.ts` | Linked files through the vault's encryption (#364): seals name/source/annotations in e2ee vaults, sends the decrypted URL to the proxy (use it, not `api.links`, in UI code) |
 | `src/lib/vaultConvert.ts` | Converts a standard vault to e2ee (#361): new vault key, every note encrypted on the device, one atomic `POST /api/vaults/{id}/encryption/convert`, retry on 409 |
 | `src/lib/legacyMeta.ts` | One-time sealing of e2ee notes whose title/path the server still holds in plaintext (pre-#362), run when their vault is unlocked |
 | `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |

@@ -58,6 +58,16 @@ plaintext from memory and drafts, and ask for the passphrase.
 A vault with attachments cannot be converted yet: its existing files were
 stored readable by the server and would have to be re-encrypted too.
 
+### Linked files (#364)
+
+A linked file's display name and source, and each member's annotations, are
+sealed on the device in the same `e2ee:` format as note titles. A URL link is
+still fetched through the server's proxy (browsers block cross-origin reads),
+so opening one sends its decrypted URL with that single request; the server
+fetches it and stores nothing. The server therefore learns which URL is opened
+at the moment it is opened, but not the links a vault holds. Links that existed
+before a vault was converted stay readable to the server until #410.
+
 ### Attachments (#238)
 
 Files attached in an e2ee vault are encrypted on the device with the Vault

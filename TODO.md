@@ -295,7 +295,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ### Loading and skeleton states
 
 - [x] Show animated shimmer placeholders in the sidebar while the vault is loading (#434)
-- [ ] Show 3 to 4 lines of shimmer text in the note area before content loads (#435)
+- [x] Show 3 to 4 lines of shimmer text in the note area before content loads (#435)
 - [ ] Show pulsing placeholder circles in the graph panel before data arrives (#436)
 - [x] Implement skeleton shimmer using CSS `@keyframes` only; no additional library needed (#437)
 

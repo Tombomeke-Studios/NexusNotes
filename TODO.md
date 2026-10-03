@@ -533,7 +533,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add a template picker; templates are notes in a `Templates` folder in the vault (#155)
 - [x] Add a `Ctrl+T` "Insert template" command in the command palette (#155)
 - [x] Support template variables: `{{date}}`, `{{time}}`, `{{title}}` (#155)
-- [ ] Add periodic notes: weekly (`YYYY-Www`) and monthly (`YYYY-MM`) with separate templates (#240)
+- [x] Add periodic notes: weekly (`YYYY-Www`) and monthly (`YYYY-MM`) with separate templates (#240)
 - [x] Write tests for template variable substitution (#155)
 
 ---

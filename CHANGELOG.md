@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Weekly and monthly notes (command palette: "Open this week's note", "Open this month's
+  note"), each in its own folder with its own template in Settings.
 - Loading placeholders: the file tree, a note that takes a moment to open and the graph show
   shimmering outlines while their content arrives.
 - Short notifications in the bottom-right corner confirm actions such as copying a link,

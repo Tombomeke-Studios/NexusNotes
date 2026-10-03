@@ -1,3 +1,4 @@
+import { DEFAULT_MONTHLY_TEMPLATE, DEFAULT_WEEKLY_TEMPLATE } from "./periodic";
 import { DEFAULT_DAILY_TEMPLATE } from "./templates";
 import { MOTION_PREFERENCES, type MotionPreference } from "./motion";
 
@@ -18,6 +19,9 @@ export interface WorkspacePrefs {
   rightTab: RightTab;
   /** Markdown used for new daily notes; supports {{date}}, {{time}}, {{title}}. */
   dailyTemplate: string;
+  /** Templates for weekly and monthly notes (#240). */
+  weeklyTemplate: string;
+  monthlyTemplate: string;
 }
 
 export const PREFS_STORAGE_KEY = "nexus_workspace_prefs";
@@ -34,6 +38,8 @@ export const DEFAULT_PREFS: WorkspacePrefs = {
   splitPct: 52,
   rightTab: "outline",
   dailyTemplate: DEFAULT_DAILY_TEMPLATE,
+  weeklyTemplate: DEFAULT_WEEKLY_TEMPLATE,
+  monthlyTemplate: DEFAULT_MONTHLY_TEMPLATE,
 };
 
 export const PREF_LIMITS = {
@@ -71,8 +77,9 @@ function sanitize(raw: Partial<WorkspacePrefs> & { reduceMotion?: unknown }): Wo
   }
   if (VIEW_MODES.includes(raw.viewMode as ViewMode)) prefs.viewMode = raw.viewMode as ViewMode;
   if (RIGHT_TABS.includes(raw.rightTab as RightTab)) prefs.rightTab = raw.rightTab as RightTab;
-  if (typeof raw.dailyTemplate === "string" && raw.dailyTemplate.trim()) {
-    prefs.dailyTemplate = raw.dailyTemplate;
+  for (const key of ["dailyTemplate", "weeklyTemplate", "monthlyTemplate"] as const) {
+    const value = raw[key];
+    if (typeof value === "string" && value.trim()) prefs[key] = value;
   }
   return prefs;
 }

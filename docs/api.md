@@ -388,6 +388,10 @@ on open through a server-side proxy (avoids browser CORS); `local_path`/`github_
 are read by the native desktop app. Each user keeps their own annotations, stored
 separately from the source so re-syncing never overwrites them (#64).
 
+In an end-to-end encrypted vault the client seals `display_name`, `source_ref`
+and annotation `content` before sending them (#364, same `e2ee:` format as note
+titles); the server stores them as opaque strings.
+
 ### GET /api/vaults/:id/links
 
 Lists a vault's linked files (`LinkedFile[]`), sorted by display name. Read access required.
@@ -406,7 +410,7 @@ Removes a link (and its annotations) → `204`; `404` when the link does not exi
 Fetches the current content of a `url` link `{ content, content_type, fetched_at }`.
 Read access required. Errors:
 
-- `422` for non-URL links, and when the URL (or any redirect it follows)
+- `422` for non-URL links, for links in an e2ee vault (use `POST`), and when the URL (or any redirect it follows)
   resolves to a loopback, private, link-local or otherwise non-public address.
   Self-hosters can lift the address check with `LINKED_FILES_ALLOW_PRIVATE=true`.
 - `400` when `source_ref` is not an `http(s)` URL.
@@ -414,6 +418,13 @@ Read access required. Errors:
   redirects more than 3 times, or is larger than 5 MiB.
 - `429` (with `Retry-After`) when the caller already has 2 fetches running, or
   the server 16 in total.
+
+### POST /api/links/:linkId/content
+
+The same fetch for a `url` link in an end-to-end encrypted vault, whose stored
+`source_ref` is sealed (#364). The client sends the decrypted URL as `{ url }`;
+the server fetches it for this request only and never stores or logs it.
+Responses and errors as for `GET`, plus `422` for a link in a standard vault.
 
 ### GET /api/links/:linkId/annotation
 

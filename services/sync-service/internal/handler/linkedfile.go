@@ -141,17 +141,61 @@ func (h *LinkedFileHandler) linkedAccess(w http.ResponseWriter, r *http.Request,
 }
 
 // Content proxies the current content of a URL-linked file (fetch on open).
-// Local/GitHub sources aren't fetchable server-side and return 422.
+// Local/GitHub sources aren't fetchable server-side and return 422, and so
+// does a link in an e2ee vault, whose stored source is sealed (FetchContent).
 func (h *LinkedFileHandler) Content(w http.ResponseWriter, r *http.Request) {
 	lf, ok := h.linkedAccess(w, r, false)
-	if !ok {
+	if !ok || !h.fetchableURL(w, r, lf, false) {
 		return
 	}
+	h.proxy(w, r, lf.SourceRef)
+}
+
+// FetchContent proxies a URL link of an e2ee vault (#364). Its stored source
+// is sealed, so the client sends the URL in the request body; the server
+// fetches it for this request only and never stores it.
+func (h *LinkedFileHandler) FetchContent(w http.ResponseWriter, r *http.Request) {
+	lf, ok := h.linkedAccess(w, r, false)
+	if !ok || !h.fetchableURL(w, r, lf, true) {
+		return
+	}
+	var req struct {
+		URL string `json:"url"`
+	}
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
+		return
+	}
+	h.proxy(w, r, req.URL)
+}
+
+// fetchableURL checks that lf is a URL link whose vault matches the endpoint:
+// sealed=true for an e2ee vault (URL from the client), false for a standard
+// one (URL from the database).
+func (h *LinkedFileHandler) fetchableURL(w http.ResponseWriter, r *http.Request, lf *model.LinkedFile, sealed bool) bool {
 	if lf.SourceType != model.LinkedSourceURL {
 		writeError(w, http.StatusUnprocessableEntity, "this link type is read on the client, not the server")
-		return
+		return false
 	}
-	if !strings.HasPrefix(lf.SourceRef, "http://") && !strings.HasPrefix(lf.SourceRef, "https://") {
+	vault, err := h.vaultRepo.GetByID(r.Context(), lf.VaultID)
+	if err != nil {
+		writeLookupError(w, err, "vault not found")
+		return false
+	}
+	if e2ee := vault.Encryption == model.VaultEncryptionE2EE; e2ee != sealed {
+		if e2ee {
+			writeError(w, http.StatusUnprocessableEntity, "this link is end-to-end encrypted; send its URL with POST")
+		} else {
+			writeError(w, http.StatusUnprocessableEntity, "this link's URL is stored on the server; use GET")
+		}
+		return false
+	}
+	return true
+}
+
+// proxy fetches ref (an http(s) URL) and writes its content as JSON.
+func (h *LinkedFileHandler) proxy(w http.ResponseWriter, r *http.Request, ref string) {
+	if !strings.HasPrefix(ref, "http://") && !strings.HasPrefix(ref, "https://") {
 		writeError(w, http.StatusBadRequest, "invalid URL")
 		return
 	}
@@ -164,7 +208,7 @@ func (h *LinkedFileHandler) Content(w http.ResponseWriter, r *http.Request) {
 	}
 	defer release()
 
-	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, lf.SourceRef, nil)
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, ref, nil)
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "failed to fetch source")
 		return

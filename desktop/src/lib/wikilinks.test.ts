@@ -178,3 +178,16 @@ describe("localGraph (#144)", () => {
     expect(localGraph(data, "nope", 3).nodes).toEqual([]);
   });
 });
+
+// Links written as code are shown as code, not followed (#454).
+describe("extractLinks and code", () => {
+  it("ignores links inside code spans and fenced blocks", () => {
+    const content =
+      "Type `[[Inline]]` to link, or ``[[Double]]``.\n\n```md\n[[Fenced]]\n```\n\n~~~\n[[Tilde]]\n~~~\n\nA real [[Target]] and `unclosed [[Also real]]";
+    expect(extractLinks(content)).toEqual(["Target", "Also real"]);
+  });
+
+  it("keeps a fence that is never closed as text", () => {
+    expect(extractLinks("```\n[[Still a link]]")).toEqual(["Still a link"]);
+  });
+});

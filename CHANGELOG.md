@@ -63,6 +63,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- `[[links]]` written as code (in backticks or a code block) no longer show up as links in
+  the graph and backlinks.
 - The web UI of the Docker stack talks to its own server again instead of to
   `localhost:8080` on the visitor's computer, so signing in works when it is not opened
   on the server itself.

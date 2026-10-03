@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- The server compresses its JSON responses and the app loads a vault's notes in pages, so
+  large vaults open faster and use less bandwidth.
 - A Files tab in the right panel lists the open note's attachments: open them, copy their
   embed, upload more or delete them.
 - Getting started: a new account's first vault holds a two-minute guide (starred), editor

@@ -95,7 +95,11 @@ export function getToken(): string | null {
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  { autoLogoutOn401 = true, isRetry = false }: { autoLogoutOn401?: boolean; isRetry?: boolean } = {},
+  {
+    autoLogoutOn401 = true,
+    isRetry = false,
+    onHeaders,
+  }: { autoLogoutOn401?: boolean; isRetry?: boolean; onHeaders?: (headers: Headers) => void } = {},
 ): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -118,7 +122,7 @@ async function request<T>(
       // refresh token and replay the request once before giving up (#49).
       const refreshed = isRetry ? "rejected" : await tryRefresh();
       if (refreshed === "ok") {
-        return request<T>(path, options, { autoLogoutOn401, isRetry: true });
+        return request<T>(path, options, { autoLogoutOn401, isRetry: true, onHeaders });
       }
       if (refreshed === "unavailable") {
         throw new ApiError(503, "server unavailable");
@@ -130,12 +134,16 @@ async function request<T>(
     throw new ApiError(res.status, body.error || "Request failed", body);
   }
 
+  if (res.headers) onHeaders?.(res.headers);
   if (res.status === 204) {
     return undefined as T;
   }
 
   return res.json();
 }
+
+/** Notes per page when listing a vault (#461); the server allows up to 1000. */
+export const NOTES_PAGE_SIZE = 500;
 
 export class ApiError extends Error {
   constructor(
@@ -341,8 +349,23 @@ export const members = {
 };
 
 export const notes = {
-  list: (vaultId: string) =>
-    request<Note[]>(`/api/vaults/${vaultId}/notes`),
+  /** Every note of the vault, fetched in pages (#461). */
+  list: async (vaultId: string) => {
+    const all: Note[] = [];
+    let after: string | null = null;
+    do {
+      let next: string | null = null;
+      const query: string = `limit=${NOTES_PAGE_SIZE}${after ? `&after=${encodeURIComponent(after)}` : ""}`;
+      const page = await request<Note[]>(`/api/vaults/${vaultId}/notes?${query}`, {}, {
+        onHeaders: (h) => {
+          next = h.get("X-Next-Cursor");
+        },
+      });
+      all.push(...(page ?? []));
+      after = next;
+    } while (after);
+    return all;
+  },
   get: (noteId: string) => request<Note>(`/api/notes/${noteId}`),
   // `checksum` is the client-computed plaintext SHA-256; only sent for e2ee
   // vaults (the server ignores it for standard vaults and hashes server-side).

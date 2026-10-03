@@ -179,6 +179,16 @@
   transition: opacity 0.15s ease;
 }
 
+/* First render (#439): nodes fade in one by one; delays are set inline. */
+.graph-node--enter {
+  animation: graphNodeIn var(--duration-slow) ease-out backwards;
+}
+
+@keyframes graphNodeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .graph-node--dim {
   opacity: 0.12;
 }

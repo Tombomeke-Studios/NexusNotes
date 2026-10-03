@@ -277,7 +277,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Graph view animations
 
-- [ ] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre (#439)
+- [x] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre (#439)
 - [x] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow (#440)
 - [ ] Fly the camera smoothly to a clicked node before opening the note (#441)
 - [ ] Animate the 2D-to-3D toggle by scattering nodes into z-space

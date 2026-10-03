@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- A Files tab in the right panel lists the open note's attachments: open them, copy their
+  embed, upload more or delete them.
 - Getting started: a new account's first vault holds a two-minute guide (starred), editor
   tips, a template and today's daily note; a checklist in the sidebar walks through the
   first steps; one-time tips explain the graph, palette, backlinks and tag filter; `?`

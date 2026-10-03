@@ -25,7 +25,7 @@ import { remarkImageEmbeds } from "../../lib/remarkImageEmbeds";
 import { remarkCallouts } from "../../lib/remarkCallouts";
 import { wikiUrlTransform } from "../../lib/markdownUrls";
 import { ApiError, type Attachment } from "../../lib/api";
-import { listAttachments, uploadAttachment } from "../../lib/attachmentClient";
+import { listAttachments, uploadAttachment, onAttachmentsChanged } from "../../lib/attachmentClient";
 import { AttachmentImage } from "./AttachmentImage";
 import "./Editor.css";
 
@@ -253,11 +253,20 @@ export function Editor({
     }
     if (!vaultRef.current) return;
     let active = true;
-    listAttachments(note.id, vaultRef.current)
-      .then((list) => active && setAttachmentList(list))
-      .catch(() => active && setAttachmentList([]));
+    const load = () => {
+      if (!vaultRef.current) return;
+      listAttachments(note.id, vaultRef.current)
+        .then((list) => active && setAttachmentList(list))
+        .catch(() => active && setAttachmentList([]));
+    };
+    load();
+    // The Files panel (#238) uploads and deletes too.
+    const unsubscribe = onAttachmentsChanged((noteId) => {
+      if (noteId === note.id) load();
+    });
     return () => {
       active = false;
+      unsubscribe();
     };
   }, [note]);
 

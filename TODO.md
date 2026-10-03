@@ -114,8 +114,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
 - [ ] Markdown syntax highlighting in the editor source pane
 - [ ] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel
-- [ ] Composed empty states with a call to action; skeleton loaders instead of spinners
-- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+- [x] Composed empty states with a call to action; skeleton loaders instead of spinners
+- [ ] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops
 - [x] Dialog focus trap and focus return audit; skip link
 
 
@@ -139,7 +139,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Three or more dashes are invisible in the editor (font ligatures) (#346)
 - [x] Graph keeps highlighting a note after its tab is closed (#347)
 - [x] Long tag names overflow the sidebar tag panel; tag list has no height limit (#348)
-- [ ] New vaults are not end-to-end encrypted by default (decide: default-on vs. keep opt-in) (#349)
+- [x] New vaults are not end-to-end encrypted by default (decide: default-on vs. keep opt-in) (#349)
 
 > Already tracked elsewhere: a "Getting Started" example vault on first run lives in
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
@@ -493,7 +493,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add Vim keybinding mode (toggle in settings)
 - [ ] Add `Ctrl+F` in-note search and replace
 - [ ] Add `Ctrl+,` settings panel with options for theme, font size, Vim mode, and sync interval
-- [ ] Add `![[image.png]]` embed syntax rendering inline images from attachments
+- [x] Add `![[image.png]]` embed syntax rendering inline images from attachments
 - [ ] Add `[[Note name#Section]]` section anchor navigation
 - [x] Add callout blocks (`> [!NOTE]`, `> [!WARNING]`, etc.) (#223)
 - [ ] Add KaTeX math rendering for inline (`$...$`) and block (`$$...$$`) expressions
@@ -562,7 +562,7 @@ This entry is retained so that existing issue references remain valid.
 - [x] For encrypted vaults, encrypt attachment bytes client-side before upload (#238)
 - [x] Build drag-and-drop (and paste) file upload into the editor (#153)
 - [x] Render uploaded images inline using `![[filename]]` embed syntax (#153)
-- [ ] Add an attachment panel in the editor sidebar (#238)
+- [x] Add an attachment panel in the editor sidebar (#238)
 - [x] Write tests for the image-embed transform + an E2E drop/upload/render test (#153)
 
 
@@ -1140,12 +1140,327 @@ Lower priority items not focused on the desktop application.
 
 
 
+
+
+
+
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 - [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
 
 
 
 
-- [ ] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops
 
 
 

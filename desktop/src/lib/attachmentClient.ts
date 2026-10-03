@@ -33,11 +33,37 @@ export async function listAttachments(noteId: string, vault: VaultLike): Promise
 }
 
 export async function uploadAttachment(noteId: string, file: File, vault: VaultLike): Promise<Attachment> {
-  if (vault.encryption !== "e2ee") return api.upload(noteId, file);
+  if (vault.encryption !== "e2ee") {
+    const att = await api.upload(noteId, file);
+    notifyChanged(noteId);
+    return att;
+  }
   const key = keyFor(vault.id);
   const stored = await api.upload(noteId, await encryptAttachment(file, key));
   e2eeVaultOf.set(stored.id, vault.id);
+  notifyChanged(noteId);
   return decryptAttachmentMeta(stored, key);
+}
+
+export async function removeAttachment(att: Attachment): Promise<void> {
+  await api.remove(att.id);
+  e2eeVaultOf.delete(att.id);
+  notifyChanged(att.note_id);
+}
+
+// The editor and the attachment panel (#238) both change a note's files;
+// each reloads its list when the other did.
+const changeListeners = new Set<(noteId: string) => void>();
+
+function notifyChanged(noteId: string) {
+  for (const l of changeListeners) l(noteId);
+}
+
+export function onAttachmentsChanged(listener: (noteId: string) => void): () => void {
+  changeListeners.add(listener);
+  return () => {
+    changeListeners.delete(listener);
+  };
 }
 
 /**

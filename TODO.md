@@ -101,7 +101,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ## `feature/frontend-quality` - Frontend quality (#266)
 
 - [ ] Decompose `App.tsx` into hooks (`useNoteSave`, `useTabs`, `useVaults`, `useStars`, `useCloseGuard`, ...) and `Workspace` / `ModalHost` components
-- [ ] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths
+- [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
 - [x] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed (#377)
 - [x] E2E: replace `waitForTimeout` waits with real signals (the two left are deliberate: proving nothing happens, and a push with no visible effect)
 - [x] Settings: show the app and server versions instead of a hard-coded string (PR #255)

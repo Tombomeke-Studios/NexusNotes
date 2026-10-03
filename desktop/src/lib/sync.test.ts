@@ -181,3 +181,104 @@ describe("SyncClient WebSocket auth (#258)", () => {
     expect(FakeWebSocket.instances).toHaveLength(1);
   });
 });
+
+describe("SyncClient messages and backoff (#266)", () => {
+  let client: SyncClient;
+
+  beforeEach(() => {
+    FakeWebSocket.instances = [];
+    vi.stubGlobal("WebSocket", FakeWebSocket);
+    setToken("session-token");
+    client = new SyncClient();
+  });
+
+  afterEach(() => {
+    client.disconnect();
+    setToken(null);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  async function connected(): Promise<FakeWebSocket> {
+    mockTicketFetch();
+    client.connect();
+    await vi.waitFor(() => expect(FakeWebSocket.instances.length).toBeGreaterThan(0));
+    const ws = FakeWebSocket.instances[FakeWebSocket.instances.length - 1];
+    ws.onopen?.({});
+    return ws;
+  }
+
+  it("hands each message to every handler, until they unsubscribe", async () => {
+    const a = vi.fn();
+    const b = vi.fn();
+    const offA = client.onMessage(a);
+    client.onMessage(b);
+    const ws = await connected();
+
+    ws.onmessage?.({ data: JSON.stringify({ type: "note:updated", payload: { id: "n1" } }) });
+    expect(a).toHaveBeenCalledWith("note:updated", { id: "n1" });
+    expect(b).toHaveBeenCalledWith("note:updated", { id: "n1" });
+
+    offA();
+    ws.onmessage?.({ data: JSON.stringify({ type: "note:deleted", payload: { id: "n2" } }) });
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores malformed messages", async () => {
+    const handler = vi.fn();
+    client.onMessage(handler);
+    const ws = await connected();
+    expect(() => ws.onmessage?.({ data: "{not json" })).not.toThrow();
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("signs out and stops reconnecting when this device is revoked", async () => {
+    const logout = vi.fn();
+    window.addEventListener("nexus:logout", logout);
+    const handler = vi.fn();
+    client.onMessage(handler);
+    const ws = await connected();
+
+    ws.onmessage?.({ data: JSON.stringify({ type: "device:revoked", payload: null }) });
+    expect(logout).toHaveBeenCalledOnce();
+    expect(handler).not.toHaveBeenCalled();
+    expect(ws.closed).toBe(true);
+    window.removeEventListener("nexus:logout", logout);
+  });
+
+  it("doubles the reconnect delay up to 30 s and resets it after a connect", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("down"));
+    vi.stubGlobal("fetch", fetchMock);
+    client.connect();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Waits of 1, 2, 4, 8, 16, 30, 30 s between attempts.
+    const waits = [1000, 2000, 4000, 8000, 16000, 30000, 30000];
+    for (const [i, ms] of waits.entries()) {
+      await vi.advanceTimersByTimeAsync(ms - 1);
+      expect(fetchMock).toHaveBeenCalledTimes(i + 1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fetchMock).toHaveBeenCalledTimes(i + 2);
+    }
+
+    // A successful connect starts over at 1 s.
+    fetchMock.mockImplementation(() => Promise.resolve(ticketResponse("t-ok")));
+    await vi.advanceTimersByTimeAsync(30000);
+    await vi.waitFor(() => expect(FakeWebSocket.instances).toHaveLength(1));
+    FakeWebSocket.instances[0].onopen?.({});
+    FakeWebSocket.instances[0].drop();
+    const before = fetchMock.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchMock.mock.calls.length).toBe(before + 1);
+  });
+
+  it("closes the socket on an error", async () => {
+    vi.useFakeTimers();
+    const ws = await connected();
+    ws.onerror?.({});
+    expect(ws.closed).toBe(true);
+  });
+});

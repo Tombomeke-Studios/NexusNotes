@@ -590,17 +590,6 @@ This entry is retained so that existing issue references remain valid.
 
 ---
 
-## `feature/version-history-ui` - Version history viewer (#226)
-
-- [x] Coalesce note versions into one snapshot per device every few minutes (#413)
-- [x] List note versions without content and fetch one version by id (#414)
-- [x] Build a version history panel listing saved versions per note (#415)
-- [x] Render a diff between any two selected versions (side-by-side or inline) (#416)
-- [x] Add a "Restore this version" action (#417)
-- [x] Add a version retention policy setting (keep last N versions or keep for X days) (#418)
-- [x] Write tests for the version repository and restore flow (#419)
-
----
 
 ## `feature/offline-support` - Offline queue and deferred sync (#227)
 
@@ -840,6 +829,16 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/version-history-ui` - Version history viewer (#226, PR #420)
+
+- [x] Coalesce note versions into one snapshot per device every few minutes (#413)
+- [x] List note versions without content and fetch one version by id (#414)
+- [x] Build a version history panel listing saved versions per note (#415)
+- [x] Render a diff between any two selected versions (side-by-side or inline) (#416)
+- [x] Add a "Restore this version" action (#417)
+- [x] Add a version retention policy setting (keep last N versions or keep for X days) (#418)
+- [x] Write tests for the version repository and restore flow (#419)
 
 ### `feature/conflict-resolution-ui` - Conflict resolution merge UI (#225, PR #325)
 

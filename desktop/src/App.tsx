@@ -21,6 +21,7 @@ import { LinkedFilesDialog } from "./components/Workspace/LinkedFilesDialog";
 import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog";
 import { ShortcutsDialog } from "./components/Help/ShortcutsDialog";
 import { isTypingTarget } from "./lib/shortcuts";
+import { addedLinks, completeStep, startChecklist } from "./lib/checklist";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
 import { SkeletonGraph, SkeletonNote } from "./components/Skeleton";
@@ -619,6 +620,23 @@ export default function App() {
     }
   }, []);
 
+  // First-launch checklist (#447): the palette step, and "link two notes"
+  // once a save adds a working [[link]] the note didn't have when opened.
+  useEffect(() => {
+    if (paletteQuery !== null) completeStep("open-palette");
+  }, [paletteQuery]);
+  const linkBaseline = useRef<{ id: string; text: string } | null>(null);
+  useEffect(() => {
+    if (!activeNote) return;
+    if (linkBaseline.current?.id !== activeNote.id) {
+      linkBaseline.current = { id: activeNote.id, text: editorContentRef.current };
+      return;
+    }
+    if (saveStatus !== "saved") return;
+    const titles = new Set(noteListRef.current.filter((n) => n.id !== activeNote.id).map((n) => n.title.toLowerCase()));
+    if (addedLinks(linkBaseline.current.text, editorContentRef.current, titles).length > 0) completeStep("link-notes");
+  }, [activeNote, saveStatus]);
+
   // Keyboard shortcut reference (#452).
   const [showShortcuts, setShowShortcuts] = useState(false);
   // Version history of the open note (#415-#417).
@@ -702,6 +720,7 @@ export default function App() {
     setCreatingNote(true);
     try {
       await createNoteWithTitle(title);
+      completeStep("create-note");
     } finally {
       setCreatingNote(false);
     }
@@ -766,6 +785,7 @@ export default function App() {
       prev.some((t) => t.key === GRAPH_TAB_KEY) ? prev : [...prev, { key: GRAPH_TAB_KEY, type: "graph" }],
     );
     setActiveTabKey(GRAPH_TAB_KEY);
+    completeStep("open-graph");
   }, []);
 
   const toggleGraphTab = useCallback(() => {
@@ -1152,6 +1172,9 @@ export default function App() {
       setNoteList([]);
       return;
     }
+
+    // A new account gets the first-launch checklist (#447).
+    startChecklist();
 
     // Seed a fresh account's first vault with example notes so it isn't empty.
     // For an e2ee vault the seeds are encrypted like any other note; state

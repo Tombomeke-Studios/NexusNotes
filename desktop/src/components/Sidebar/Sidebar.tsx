@@ -1,4 +1,5 @@
 import { SkeletonTree } from "../Skeleton";
+import { GettingStarted } from "./GettingStarted";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { foldMotion, spring } from "../../lib/motion-tokens";
@@ -501,6 +502,7 @@ export function Sidebar({
         </div>
       )}
 
+      {view === "files" && <GettingStarted />}
       {starredNotes.length > 0 && (
         <div className="sidebar-recent">
           <button className="sidebar-recent-head" onClick={() => setStarredOpen((o) => !o)}>

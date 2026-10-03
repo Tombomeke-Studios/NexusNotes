@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { register, createVault } from "./helpers";
+import { register, createVault, createNote, typeInEditor, waitForSaved } from "./helpers";
 
 test.describe("Onboarding", () => {
   test("a fresh account's first vault is seeded with welcome notes", async ({ page }) => {
@@ -22,5 +22,22 @@ test.describe("Onboarding", () => {
     await expect(page.locator('.tree-folder-label:has-text("Templates")')).toBeVisible();
     await expect(page.locator('.tree-folder-label:has-text("Daily")')).toBeVisible();
     await expect(page.locator('.tree-note:has-text("My First Note")')).toBeVisible();
+  });
+
+  test("the first-launch checklist ticks itself and goes away when done (#447)", async ({ page }) => {
+    await register(page);
+    await createVault(page, undefined, { keepSeed: true });
+    const card = page.getByRole("region", { name: "Get started" });
+    await expect(card).toContainText("0 of 4");
+    await page.keyboard.press("Control+g");
+    await expect(card).toContainText("1 of 4");
+    await page.keyboard.press("Control+Shift+P");
+    await page.keyboard.press("Escape");
+    await expect(card).toContainText("2 of 4");
+    await createNote(page, "Mine");
+    await expect(card).toContainText("3 of 4");
+    await typeInEditor(page, "Linking to [[Welcome]]");
+    await waitForSaved(page);
+    await expect(card).toHaveCount(0, { timeout: 5_000 });
   });
 });

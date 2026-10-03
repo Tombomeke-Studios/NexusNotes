@@ -28,10 +28,42 @@ export interface GraphData {
 
 const WIKI_LINK_RE = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 
+/**
+ * Blanks fenced code blocks (``` or ~~~, closed by a fence of the same
+ * character at least as long) and inline code spans (a backtick run closed by
+ * one of the same length), so their text is never read as links (#454). An
+ * unclosed span or fence stays text, as the preview renders it.
+ */
+export function stripCode(content: string): string {
+  const lines = content.split("\n");
+  const isClosing = (line: string, fence: string) => {
+    const t = line.trimStart();
+    return t.startsWith(fence) && t.replace(new RegExp(`[${fence[0]}\\s]`, "g"), "") === "";
+  };
+  let fence = "";
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trimStart();
+    if (fence) {
+      if (isClosing(lines[i], fence)) fence = "";
+      lines[i] = "";
+      continue;
+    }
+    const open = trimmed.match(/^(`{3,}|~{3,})/)?.[1];
+    if (open && lines.slice(i + 1).some((l) => isClosing(l, open))) {
+      fence = open;
+      lines[i] = "";
+      continue;
+    }
+    lines[i] = lines[i].replace(/(`+)([\s\S]*?[^`])\1(?!`)/g, "");
+  }
+  return lines.join("\n");
+}
+
 export function extractLinks(content: string): string[] {
   const links: string[] = [];
+  const text = stripCode(content);
   let match;
-  while ((match = WIKI_LINK_RE.exec(content)) !== null) {
+  while ((match = WIKI_LINK_RE.exec(text)) !== null) {
     const target = match[1].split("#")[0].trim();
     if (target && !links.includes(target)) {
       links.push(target);

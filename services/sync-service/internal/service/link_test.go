@@ -84,3 +84,12 @@ func TestParseLinks_multilineContent(t *testing.T) {
 		t.Fatalf("want 2 links, got %d", len(links))
 	}
 }
+
+// Links written as code are shown as code, not followed (#454).
+func TestParseLinks_ignoresCode(t *testing.T) {
+	content := "Type `[[Inline]]` to link, or ``[[Double]]``.\n\n```md\n[[Fenced]]\n```\n\n~~~\n[[Tilde]]\n~~~\n\nA real [[Target]] and `unclosed [[Also real]]"
+	got := ParseLinks(content)
+	if len(got) != 2 || got[0].TargetTitle != "Target" || got[1].TargetTitle != "Also real" {
+		t.Fatalf("links = %+v, want Target and Also real", got)
+	}
+}

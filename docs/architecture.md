@@ -85,8 +85,12 @@ sequenceDiagram
     end
 ```
 
-Every save stores the previous text as a version record; each note keeps its
-newest 50 versions and older ones are pruned on the next save (#387).
+Every save records the note's new text in its history. Like Obsidian's file
+recovery, a version is a snapshot: saves from the device that started it keep
+updating it for 5 minutes (#413), so autosave every second does not fill the
+history with near-identical copies. A save from another device, or after the
+window, starts a new version. Each note keeps its newest 50 versions and older
+ones are pruned on the next save (#387).
 
 The comparison and the write happen in one database transaction that holds a row lock on
 the note. Two devices saving at the same moment with the same previous checksum therefore
@@ -263,7 +267,8 @@ erDiagram
   for e2ee vaults, an opaque client-written key blob (see encryption.md).
 - **notes** — markdown content (ciphertext for e2ee vaults) with a checksum
   used for conflict detection.
-- **note_versions** — per-save history for the version-history feature.
+- **note_versions** — snapshots of a note over time for the version history
+  (one per device per 5 minutes of editing).
 - **devices** — registered sync clients and their last-seen time.
 - **starred_notes** — per-user favourite marks on notes (which user starred which note, and when).
 - **vault_members** — shared-vault membership: which user has which role (viewer/editor) on a vault they don't own.

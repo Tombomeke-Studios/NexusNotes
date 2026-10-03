@@ -295,7 +295,9 @@ when the note does not exist or is not in that vault.
 
 ### GET /api/notes/:noteId/versions
 
-List version history. Returns `NoteVersion[]` (newest first). Read access to
+List version history. Returns `NoteVersion[]` (newest first). A version is a
+snapshot: `created_at` is when it started, `updated_at` when later saves of
+the same device within 5 minutes last changed it (#413). Read access to
 the note's vault required: `404` when the note does not exist, `403` without
 access.
 

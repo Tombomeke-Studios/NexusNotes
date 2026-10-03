@@ -30,6 +30,11 @@ const pgLockNotAvailable = "55P03"
 // content the user removed long ago does not linger (#387).
 const MaxNoteVersions = 50
 
+// VersionSnapshotWindow is how long a version keeps absorbing saves of the
+// device that started it (#413). Autosave runs about every second; without
+// this, history would hold a minute of typing instead of hours.
+const VersionSnapshotWindow = 5 * time.Minute
+
 const pruneVersionsSQL = `DELETE FROM note_versions WHERE note_id = $1 AND id NOT IN (
 	SELECT id FROM note_versions WHERE note_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2)`
 
@@ -293,8 +298,8 @@ func (r *NoteRepo) CreateVersion(ctx context.Context, version *model.NoteVersion
 		return err
 	}
 	_, err = r.pool.Exec(ctx,
-		`INSERT INTO note_versions (id, note_id, content, checksum, device_id, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		`INSERT INTO note_versions (id, note_id, content, checksum, device_id, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $6)`,
 		version.ID, version.NoteID, content, version.Checksum, version.DeviceID, version.CreatedAt,
 	)
 	if err != nil {
@@ -308,8 +313,8 @@ func (r *NoteRepo) CreateVersion(ctx context.Context, version *model.NoteVersion
 
 func (r *NoteRepo) ListVersions(ctx context.Context, noteID string) ([]model.NoteVersion, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, note_id, content, checksum, device_id, created_at
-		 FROM note_versions WHERE note_id = $1 ORDER BY created_at DESC`,
+		`SELECT id, note_id, content, checksum, device_id, created_at, updated_at
+		 FROM note_versions WHERE note_id = $1 ORDER BY created_at DESC, id DESC`,
 		noteID,
 	)
 	if err != nil {
@@ -320,7 +325,7 @@ func (r *NoteRepo) ListVersions(ctx context.Context, noteID string) ([]model.Not
 	var versions []model.NoteVersion
 	for rows.Next() {
 		var v model.NoteVersion
-		if err := rows.Scan(&v.ID, &v.NoteID, &v.Content, &v.Checksum, &v.DeviceID, &v.CreatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.NoteID, &v.Content, &v.Checksum, &v.DeviceID, &v.CreatedAt, &v.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan version: %w", err)
 		}
 		if err := r.open(fieldVersionContent, &v.Content); err != nil {
@@ -347,14 +352,37 @@ func (r *NoteRepo) UpdateTx(ctx context.Context, tx pgx.Tx, note *model.Note) er
 	return nil
 }
 
+// RecordVersionTx stores the note's new state in its history (#413). When the
+// note's latest version was started by the same device less than window ago,
+// that snapshot takes the new content; otherwise a new version starts.
+func (r *NoteRepo) RecordVersionTx(ctx context.Context, tx pgx.Tx, version *model.NoteVersion, window time.Duration) error {
+	content, err := r.seal(fieldVersionContent, version.Content)
+	if err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx,
+		`UPDATE note_versions SET content = $2, checksum = $3, updated_at = $4
+		 WHERE id = (SELECT id FROM note_versions WHERE note_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1)
+		   AND device_id = $5 AND created_at > $6`,
+		version.NoteID, content, version.Checksum, version.CreatedAt, version.DeviceID, version.CreatedAt.Add(-window),
+	)
+	if err != nil {
+		return fmt.Errorf("update note snapshot: %w", err)
+	}
+	if tag.RowsAffected() > 0 {
+		return nil
+	}
+	return r.CreateVersionTx(ctx, tx, version)
+}
+
 func (r *NoteRepo) CreateVersionTx(ctx context.Context, tx pgx.Tx, version *model.NoteVersion) error {
 	content, err := r.seal(fieldVersionContent, version.Content)
 	if err != nil {
 		return err
 	}
 	_, err = tx.Exec(ctx,
-		`INSERT INTO note_versions (id, note_id, content, checksum, device_id, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		`INSERT INTO note_versions (id, note_id, content, checksum, device_id, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $6)`,
 		version.ID, version.NoteID, content, version.Checksum, version.DeviceID, version.CreatedAt,
 	)
 	if err != nil {

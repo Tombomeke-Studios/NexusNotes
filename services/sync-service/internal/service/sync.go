@@ -111,7 +111,7 @@ func (s *SyncService) CreateNote(ctx context.Context, vaultID, title, path, cont
 		DeviceID:  deviceID,
 		CreatedAt: now,
 	}
-	if err := s.noteRepo.CreateVersionTx(ctx, tx, version); err != nil {
+	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, repository.VersionSnapshotWindow); err != nil {
 		return nil, fmt.Errorf("create initial version: %w", err)
 	}
 
@@ -203,7 +203,7 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		DeviceID:  update.DeviceID,
 		CreatedAt: now,
 	}
-	if err := s.noteRepo.CreateVersionTx(ctx, tx, version); err != nil {
+	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, repository.VersionSnapshotWindow); err != nil {
 		return nil, nil, fmt.Errorf("create version: %w", err)
 	}
 

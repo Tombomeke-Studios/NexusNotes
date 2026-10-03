@@ -112,6 +112,8 @@ func main() {
 		User: cfg.SMTPUser, Pass: cfg.SMTPPass, From: cfg.SMTPFrom,
 	})
 	verifyRepo := repository.NewEmailVerificationRepo(pool)
+	deletionCancelRepo := repository.NewDeletionCancelRepo(pool)
+	deletionRequestRepo := repository.NewDeletionRequestRepo(pool)
 	resetRepo := repository.NewPasswordResetRepo(pool)
 	emailAuth := service.NewEmailAuthService(userRepo, verifyRepo, resetRepo, refreshRepo, mailer, cfg.AppBaseURL)
 	linkedFileRepo := repository.NewLinkedFileRepo(pool, crypt)
@@ -155,6 +157,11 @@ func main() {
 			} else if n > 0 {
 				slog.Info("version history cleanup removed old versions", "count", n)
 			}
+			for _, r := range []*repository.AuthTokenRepo{deletionCancelRepo, deletionRequestRepo} {
+				if _, err := r.DeleteExpired(context.Background()); err != nil {
+					slog.Error("deletion token cleanup failed", "error", err)
+				}
+			}
 			if _, err := resetRepo.DeleteExpired(context.Background()); err != nil {
 				slog.Error("reset token cleanup failed", "error", err)
 			}
@@ -163,6 +170,23 @@ func main() {
 	}()
 
 	authHandler := handler.NewAuthHandler(authService, accountService, emailAuth, userRepo)
+	// Account deletion with a 7-day grace period (#289).
+	deletionService := service.NewAccountDeletionService(userRepo, accountService,
+		deletionCancelRepo, deletionRequestRepo,
+		refreshRepo, hub, mailer, cfg.AppBaseURL)
+	deletionHandler := handler.NewDeletionHandler(deletionService)
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			if n, err := deletionService.PurgeDue(context.Background()); err != nil {
+				slog.Error("account deletion purge failed", "error", err)
+			} else if n > 0 {
+				slog.Info("erased accounts after their grace period", "count", n)
+			}
+			<-ticker.C
+		}
+	}()
 	vaultHandler := handler.NewVaultHandler(vaultRepo, userRepo, memberRepo, mailer.Enabled())
 	noteHandler := handler.NewNoteHandler(syncService, vaultRepo, memberRepo, hub)
 	memberHandler := handler.NewMemberHandler(vaultRepo, memberRepo, userRepo)
@@ -209,12 +233,16 @@ func main() {
 	mux.Handle("POST /api/auth/verify-email", authLimiter.Middleware(http.HandlerFunc(authHandler.VerifyEmail)))
 	mux.Handle("POST /api/auth/forgot-password", authLimiter.Middleware(http.HandlerFunc(authHandler.ForgotPassword)))
 	mux.Handle("POST /api/auth/reset-password", authLimiter.Middleware(http.HandlerFunc(authHandler.ResetPassword)))
+	mux.Handle("POST /api/auth/request-deletion", authLimiter.Middleware(http.HandlerFunc(deletionHandler.Request)))
+	mux.Handle("POST /api/auth/confirm-deletion", authLimiter.Middleware(http.HandlerFunc(deletionHandler.Confirm)))
+	mux.Handle("POST /api/auth/cancel-deletion", authLimiter.Middleware(http.HandlerFunc(deletionHandler.CancelWithToken)))
 
 	authMw := middleware.Auth(authService)
 
 	protectedMux := http.NewServeMux()
 	protectedMux.HandleFunc("GET /api/auth/me", authHandler.Me)
-	protectedMux.HandleFunc("DELETE /api/auth/account", authHandler.DeleteAccount)
+	protectedMux.HandleFunc("DELETE /api/auth/account", deletionHandler.Schedule)
+	protectedMux.HandleFunc("POST /api/auth/account/keep", deletionHandler.Cancel)
 	// Long transfers get their own deadlines instead of the server-wide 15 s
 	// (#332): exports and attachments can be large, and the linked-file proxy
 	// may itself wait up to 15 s for the source.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -93,12 +94,12 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	var u model.User
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at
+		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at, deletion_scheduled_at
 		 FROM users
 		 WHERE email_index = ANY($1) OR (email_index IS NULL AND lower(email) = $2)
 		 LIMIT 1`,
 		r.emailIndexes(email), normalizeEmail(email),
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt, &u.DeletionScheduledAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -141,10 +142,10 @@ func (r *UserRepo) UpdatePasswordHash(ctx context.Context, id, passwordHash stri
 func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) {
 	var u model.User
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at
+		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at, deletion_scheduled_at
 		 FROM users WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.DisplayName, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt, &u.DeletionScheduledAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -155,6 +156,37 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) 
 		return nil, err
 	}
 	return &u, nil
+}
+
+// SetDeletionScheduled schedules (at != nil) or cancels (nil) the account's
+// deletion (#289).
+func (r *UserRepo) SetDeletionScheduled(ctx context.Context, id string, at *time.Time) error {
+	tag, err := r.pool.Exec(ctx, `UPDATE users SET deletion_scheduled_at = $2, updated_at = NOW() WHERE id = $1`, id, at)
+	if err != nil {
+		return fmt.Errorf("schedule deletion: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// DeletionDue lists users whose grace period has run out.
+func (r *UserRepo) DeletionDue(ctx context.Context, now time.Time) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `SELECT id FROM users WHERE deletion_scheduled_at IS NOT NULL AND deletion_scheduled_at <= $1`, now)
+	if err != nil {
+		return nil, fmt.Errorf("list due deletions: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan due deletion: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // openUser decrypts a scanned user's encrypted fields in place.

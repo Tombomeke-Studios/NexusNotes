@@ -106,10 +106,14 @@ belonging to the user (GDPR data portability): each vault as a folder of
 
 ### DELETE /api/auth/account
 
-Requires `Authorization: Bearer <token>`. Permanently erases the account and
-all owned data (GDPR right to erasure): vaults, notes, versions, links, tags
-and devices via database cascade, plus search-index entries; all live
-WebSocket sessions are closed. The password must be re-supplied.
+Requires `Authorization: Bearer <token>`. Schedules the account for erasure
+7 days from now (#289) and signs it out everywhere (refresh tokens revoked,
+live WebSocket sessions closed); an email with a link to cancel goes out. The
+password must be re-supplied. When the grace period ends, a background job
+erases the account and all owned data (GDPR right to erasure): vaults, notes,
+versions, links, tags, devices and attachment rows via database cascade, plus
+search-index entries and attachment files. Signing in during the grace period
+works; `GET /api/auth/me` then carries `deletion_scheduled_at`.
 
 ```json
 {
@@ -117,8 +121,29 @@ WebSocket sessions are closed. The password must be re-supplied.
 }
 ```
 
-Responses: `204` on success, `401` for a wrong password, `400` when the
-password is missing.
+Responses: `202` with `{ "deletion_scheduled_at": "<RFC 3339>" }`, `401` for a
+wrong password, `400` when the password is missing.
+
+### POST /api/auth/account/keep
+
+Requires auth. Cancels the signed-in user's scheduled deletion → `204`.
+
+### POST /api/auth/cancel-deletion
+
+Public (rate-limited). Cancels a scheduled deletion from the emailed link:
+`{ "token": "..." }` → `204`; `400` for an invalid, expired or used link.
+
+### POST /api/auth/request-deletion
+
+Public (rate-limited), for someone who cannot sign in: `{ "email": "..." }` →
+always `204`, so it never reveals whether an account exists. When it does, a
+link to confirm goes to that address (valid 24 hours).
+
+### POST /api/auth/confirm-deletion
+
+Public (rate-limited). Confirms such a request: `{ "token": "..." }` → `202`
+with `{ "deletion_scheduled_at": ... }`, starting the same 7-day grace period
+(and its cancel email); `400` for a bad link.
 
 ---
 

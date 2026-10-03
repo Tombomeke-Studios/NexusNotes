@@ -74,7 +74,12 @@ func (s *AccountService) DeleteAccount(ctx context.Context, userID, password str
 	if !ok {
 		return ErrInvalidCredentials
 	}
+	return s.EraseUser(ctx, userID)
+}
 
+// EraseUser erases the account without asking for the password: the end of
+// the deletion grace period (#289) and DeleteAccount both end here.
+func (s *AccountService) EraseUser(ctx context.Context, userID string) error {
 	// Snapshot vault IDs before the cascade removes them.
 	vaults, err := s.vaults.ListByUser(ctx, userID)
 	if err != nil {

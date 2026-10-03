@@ -398,7 +398,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
         </div>
       )}
       <div className="graph-badge">
-        {noteCount} notes &middot; {data.links.length} links
+        {noteCount} {noteCount === 1 ? "note" : "notes"} &middot; {data.links.length} {data.links.length === 1 ? "link" : "links"}
       </div>
       {orphanCount > 0 && (
         <div className="graph-controls">

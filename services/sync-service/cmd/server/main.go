@@ -240,6 +240,7 @@ func main() {
 	protectedMux.HandleFunc("POST /api/vaults/{id}/links", linkHandler.Create)
 	protectedMux.HandleFunc("DELETE /api/vaults/{id}/links/{linkId}", linkHandler.Delete)
 	protectedMux.Handle("GET /api/links/{linkId}/content", middleware.Deadlines(15*time.Second, 45*time.Second)(http.HandlerFunc(linkHandler.Content)))
+	protectedMux.Handle("POST /api/links/{linkId}/content", middleware.Deadlines(15*time.Second, 45*time.Second)(http.HandlerFunc(linkHandler.FetchContent)))
 	protectedMux.HandleFunc("GET /api/links/{linkId}/annotation", linkHandler.GetAnnotation)
 	protectedMux.HandleFunc("PUT /api/links/{linkId}/annotation", linkHandler.PutAnnotation)
 	protectedMux.HandleFunc("GET /api/notes/starred", starHandler.List)

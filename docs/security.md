@@ -93,7 +93,12 @@ that feature ships.
 ### Rights fulfilment
 
 - **Erasure (Art. 17):** `DELETE /api/auth/account` (password re-confirmed)
-  removes the user row; database cascades erase vaults, notes, versions,
+  schedules erasure 7 days out (#289): the account is signed out everywhere
+  and emailed a cancel link (single-use, hashed, expires at the deletion
+  time); signing in during the grace period shows the date and can cancel.
+  Someone who cannot sign in requests it by email (`/api/auth/request-deletion`,
+  always `204` so it does not reveal accounts); the emailed confirm link
+  proves they own the address. An hourly job then removes the user row; database cascades erase vaults, notes, versions,
   links, tags, devices and attachment records. Attachment files are removed
   from object storage, search-index entries are deleted by vault filter and
   live WebSocket sessions are closed. Deleting a single vault or note also

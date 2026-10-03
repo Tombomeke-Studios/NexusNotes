@@ -28,6 +28,17 @@ func NewPasswordResetRepo(pool *pgxpool.Pool) *AuthTokenRepo {
 	return &AuthTokenRepo{pool: pool, table: "password_reset_tokens"}
 }
 
+// NewDeletionCancelRepo holds the links that cancel a scheduled account
+// deletion; NewDeletionRequestRepo the links confirming a deletion requested
+// without signing in (#289).
+func NewDeletionCancelRepo(pool *pgxpool.Pool) *AuthTokenRepo {
+	return &AuthTokenRepo{pool: pool, table: "account_deletion_cancel_tokens"}
+}
+
+func NewDeletionRequestRepo(pool *pgxpool.Pool) *AuthTokenRepo {
+	return &AuthTokenRepo{pool: pool, table: "account_deletion_request_tokens"}
+}
+
 func (r *AuthTokenRepo) Create(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
 	_, err := r.pool.Exec(ctx,
 		fmt.Sprintf(`INSERT INTO %s (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`, r.table),

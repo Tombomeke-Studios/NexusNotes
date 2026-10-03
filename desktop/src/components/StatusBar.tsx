@@ -81,7 +81,13 @@ export function StatusBar({
             <span className="status-stat">
               Ln {line}, Col {col}
             </span>
-            <span className="status-stat">{words} words</span>
+            <span className="status-stat">
+              {/* Keyed on the count: it ticks in only when the number changes (#423). */}
+              <span className="status-count" key={words}>
+                {words}
+              </span>{" "}
+              words
+            </span>
             <span className="status-stat">{content.length} chars</span>
             <button
               className="status-mode-btn"

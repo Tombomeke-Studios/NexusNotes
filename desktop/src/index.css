@@ -358,6 +358,17 @@ input:focus, textarea:focus {
 /* Autosave (#422): the dot pulses while saving, pops on "Saved", and the
    label then fades back so a finished save stops drawing the eye. */
 .status-indicator--saved .status-label { animation: savedSettle 2.8s ease forwards; }
+/* Word count (#423): a new number drops in from just above. */
+.status-count {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  animation: countTick var(--duration-fast) ease-out;
+}
+@keyframes countTick {
+  from { opacity: 0.35; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes savedSettle {
   0% { opacity: 0.5; }
   10%, 65% { opacity: 1; }

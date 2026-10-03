@@ -57,6 +57,13 @@ describe("buildGraphData", () => {
     expect(graph.nodes.find((n) => n.id === "1")?.connections).toBe(1);
   });
 
+  it("carries tags and the last update for the hover tooltip (#407)", () => {
+    const notes = [makeNote({ id: "1", title: "A", content: "#work note #ideas", updated_at: "2026-10-01T10:00:00Z" })];
+    const [node] = buildGraphData(notes).nodes;
+    expect(node.tags).toEqual(["work", "ideas"]);
+    expect(node.updatedAt).toBe("2026-10-01T10:00:00Z");
+  });
+
   it("returns empty for no notes", () => {
     const graph = buildGraphData([]);
     expect(graph.nodes).toEqual([]);

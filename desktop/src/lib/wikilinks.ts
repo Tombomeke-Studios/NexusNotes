@@ -1,4 +1,5 @@
 import type { Note } from "./types";
+import { extractTags } from "./tags";
 
 export interface GraphNode {
   id: string;
@@ -8,6 +9,9 @@ export interface GraphNode {
   folder: string;
   /** Unresolved wiki-link target: the note does not exist (yet). Clicking creates it. */
   ghost?: boolean;
+  /** Shown in the hover tooltip (#407); empty for ghosts. */
+  tags?: string[];
+  updatedAt?: string;
 }
 
 export interface GraphLink {
@@ -144,6 +148,8 @@ export function buildGraphData(notes: Note[]): GraphData {
     title: n.title,
     connections: connectionCount.get(n.id) || 0,
     folder: n.path ? n.path.split("/")[0] : "",
+    tags: extractTags(n.content),
+    updatedAt: n.updated_at,
   }));
 
   for (const [key, title] of ghosts) {

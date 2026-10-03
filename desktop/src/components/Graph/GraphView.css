@@ -151,10 +151,12 @@
   transition: opacity 0.15s ease, stroke 0.15s ease;
 }
 
-/* Hover-highlight: brighten a node's edges, fade the rest. */
+/* Hover-highlight: brighten a node's edges with a soft glow, fade the rest
+   (#440). */
 .graph-link--hi {
   stroke: var(--accent);
   opacity: 1;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 70%, transparent));
 }
 
 .graph-link--dim {
@@ -174,10 +176,14 @@
   stroke: var(--bg-crust);
   stroke-width: 2;
   cursor: pointer;
-  transition: filter 0.2s;
+  transform-box: fill-box;
+  transform-origin: center;
+  /* A slight overshoot gives the hover scale its spring (#440). */
+  transition: filter 0.2s, transform var(--duration-slow) cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .graph-node:hover circle {
+  transform: scale(1.2);
   filter: drop-shadow(0 0 8px var(--node-color, rgba(203, 166, 247, 0.8)));
 }
 

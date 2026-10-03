@@ -175,21 +175,21 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [ ] Install `react-force-graph` (wraps D3-force for 2D) and `react-force-graph-3d` (wraps Three.js/WebGL for 3D); both share the same API and allow mode toggling
 - [ ] Use WebGL rendering for all graph modes; SVG is not acceptable above 500 nodes
-- [ ] Wrap `graphData` in `useMemo` to prevent unnecessary simulation restarts on re-render
+- [x] Wrap `graphData` in `useMemo` to prevent unnecessary simulation restarts on re-render
 - [ ] Offload D3 force simulation to a Web Worker for graphs exceeding 1000 nodes to keep the UI thread responsive
 - [ ] Pre-compute graph node and edge data server-side via `GET /vaults/:id/graph`; the client renders only, it does not compute
 
 ### 2D force-directed view
 
-- [ ] Render each note as a circular node and each `[[link]]` as a directed edge
-- [ ] Scale node size by connection count so hub notes are visually prominent
-- [ ] Assign node colour by folder using a curated, distinct colour palette
-- [ ] Support zoom via scroll wheel, pan via drag, and view reset via double-click
-- [ ] Allow individual node dragging; pin nodes in place after manual repositioning
-- [ ] On node click, open the corresponding note in the editor with a slide transition
-- [ ] On node hover, display a floating tooltip showing title, tags, last updated, and link count
-- [ ] On node hover, highlight connected nodes and edges; dim all others
-- [ ] Render orphan nodes (no inbound or outbound links) in a visually distinct colour
+- [x] Render each note as a circular node and each `[[link]]` as a directed edge (arrows since #407)
+- [x] Scale node size by connection count so hub notes are visually prominent
+- [x] Assign node colour by folder using a curated, distinct colour palette
+- [x] Support zoom via scroll wheel, pan via drag, and view reset via double-click (#407)
+- [x] Allow individual node dragging; pin nodes in place after manual repositioning (#407; Re-center releases pins)
+- [x] On node click, open the corresponding note in the editor with a slide transition (opens the note; no slide transition)
+- [x] On node hover, display a floating tooltip showing title, tags, last updated, and link count (#407)
+- [x] On node hover, highlight connected nodes and edges; dim all others
+- [x] Render orphan nodes (no inbound or outbound links) in a visually distinct colour
 - [x] Show unresolved wiki-links as dashed ghost nodes and dashed edges; clicking a ghost creates the note (#147)
 - [x] Add a search field inside the graph panel; on match, highlight the node and fly the camera to it (#146)
 
@@ -217,7 +217,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add a colour-mode toggle: colour by folder, by tag, or by last-modified date (heat map)
 - [ ] Add a physics settings panel for link distance, repulsion strength, and collision radius
 - [ ] Add a minimap showing the full graph extent and the current viewport position
-- [ ] Add a toggle to show or hide orphan nodes
+- [x] Add a toggle to show or hide orphan nodes
 - [ ] Add cluster detection with a subtle convex hull overlay for tightly connected groups
 
 ### Performance
@@ -225,7 +225,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Implement level-of-detail rendering: dots at low zoom, coloured circles at mid zoom, labels at high zoom
 - [ ] Lazy-load node labels; render text only for nodes within the current viewport
 - [ ] Benchmark target: render 5000 nodes at 60 fps on a mid-range machine
-- [ ] Write snapshot tests for graph data computation including nodes, edges, and orphan detection
+- [x] Write snapshot tests for graph data computation including nodes, edges, and orphan detection (unit tests in wikilinks.test.ts)
 
 ---
 

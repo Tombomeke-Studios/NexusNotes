@@ -239,3 +239,48 @@
 .graph-view--compact .graph-node text {
   font-size: 9.5px;
 }
+
+/* Directed links (#407): a small arrowhead at the target's rim. */
+.graph-arrow {
+  fill: var(--text-faint);
+}
+
+/* A node the user dragged into place stays pinned; Re-center releases it. */
+.graph-node--pinned circle {
+  stroke: var(--text-secondary);
+  stroke-dasharray: 2 2;
+}
+
+/* Hover details (#407). */
+.graph-tooltip {
+  position: absolute;
+  z-index: 5;
+  max-width: 260px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-inner);
+  background: var(--bg-mantle);
+  box-shadow: var(--shadow-lift, 0 6px 18px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+  font-size: 12px;
+}
+
+.graph-tooltip-title {
+  color: var(--text-primary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-tooltip-meta {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.graph-tooltip-tags {
+  margin-top: 3px;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}

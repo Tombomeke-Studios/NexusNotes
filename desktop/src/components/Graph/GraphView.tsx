@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import * as d3 from "d3";
 import { findGraphNode } from "../../lib/wikilinks";
+import { relativeTimeLabel } from "../../lib/stats";
 import type { GraphData } from "../../lib/wikilinks";
 import "./GraphView.css";
 
@@ -20,7 +21,19 @@ interface SimNode extends d3.SimulationNodeDatum {
   connections: number;
   folder: string;
   ghost?: boolean;
+  tags?: string[];
+  updatedAt?: string;
 }
+
+/** What the hover tooltip shows (#407), positioned in the view's coordinates. */
+interface Hover {
+  node: SimNode;
+  x: number;
+  y: number;
+}
+
+/** A node's radius: hubs (more links) are bigger. */
+const nodeRadius = (d: { connections: number }) => 6 + Math.min(d.connections * 2, 12);
 
 interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   source: SimNode;
@@ -47,6 +60,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   const [renderKey, setRenderKey] = useState(0);
   const [showOrphans, setShowOrphans] = useState(true);
   const [search, setSearch] = useState("");
+  const [hover, setHover] = useState<Hover | null>(null);
   // Set by render(): highlights a node and flies the camera to it (#146).
   const flyToRef = useRef<(id: string | null) => void>(() => {});
 
@@ -87,6 +101,35 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
         applyLabelVisibility(event.transform.k);
       });
     svg.call(zoom as unknown as (selection: d3.Selection<SVGSVGElement | null, unknown, null, undefined>) => void);
+    // Double-click on the background resets the view instead of zooming in (#407).
+    svg.on("dblclick.zoom", null);
+    svg.on("dblclick", () => {
+      svg
+        .transition()
+        .duration(450)
+        .call(
+          zoom.transform as unknown as (
+            t: d3.Transition<SVGSVGElement | null, unknown, null, undefined>,
+            transform: d3.ZoomTransform,
+          ) => void,
+          d3.zoomIdentity,
+        );
+    });
+
+    // Arrowhead for directed links; lines end at the target's rim (see tick).
+    svg
+      .append("defs")
+      .append("marker")
+      .attr("id", "graph-arrow")
+      .attr("viewBox", "0 0 10 10")
+      .attr("refX", 9)
+      .attr("refY", 5)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,1 L9,5 L0,9 z")
+      .attr("class", "graph-arrow");
 
     // forceX/forceY gently pull every node toward the centre so the graph stays
     // contained (dragging/pinning a node no longer flings the rest off-screen),
@@ -102,22 +145,32 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("class", (d) => `graph-link${d.ghost ? " graph-link--ghost" : ""}`);
+      .attr("class", (d) => `graph-link${d.ghost ? " graph-link--ghost" : ""}`)
+      .attr("marker-end", "url(#graph-arrow)");
 
+    // A node the user dragged stays where it was put (#407); a plain click
+    // (no movement) does not pin it. Re-center lays everything out afresh.
+    let moved = false;
     const dragBehavior = d3.drag<SVGGElement, SimNode>()
       .on("start", (event, d) => {
+        moved = false;
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
       })
       .on("drag", (event, d) => {
+        moved = true;
         d.fx = event.x;
         d.fy = event.y;
       })
-      .on("end", (event, d) => {
+      .on("end", function (event, d) {
         if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
+        if (moved) {
+          d3.select(this).classed("graph-node--pinned", true);
+        } else if (!d3.select(this).classed("graph-node--pinned")) {
+          d.fx = null;
+          d.fy = null;
+        }
       });
 
     // Adjacency for hover-highlighting.
@@ -139,20 +192,24 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
         if (d.ghost) onCreateNote?.(d.title);
         else onSelectNote(d.id);
       })
-      .on("mouseover", (_, d) => {
+      .on("dblclick", (event) => event.stopPropagation()) // not the background reset
+      .on("mouseover", (event, d) => {
+        const box = svgRef.current?.getBoundingClientRect();
+        if (box && !compact) setHover({ node: d, x: event.clientX - box.left, y: event.clientY - box.top });
         const nb = neighbors.get(d.id) ?? new Set<string>();
         node.classed("graph-node--dim", (n) => n.id !== d.id && !nb.has(n.id));
         link.classed("graph-link--hi", (l) => l.source.id === d.id || l.target.id === d.id);
         link.classed("graph-link--dim", (l) => l.source.id !== d.id && l.target.id !== d.id);
       })
       .on("mouseout", () => {
+        setHover(null);
         node.classed("graph-node--dim", false);
         link.classed("graph-link--hi", false).classed("graph-link--dim", false);
       })
       .call(dragBehavior);
 
     node.append("circle")
-      .attr("r", (d) => 6 + Math.min(d.connections * 2, 12));
+      .attr("r", nodeRadius);
 
     node.filter((d) => !!d.ghost)
       .append("title")
@@ -160,7 +217,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
 
     node.append("text")
       .text((d) => d.title)
-      .attr("dy", (d) => 6 + Math.min(d.connections * 2, 12) + 15)
+      .attr("dy", (d) => nodeRadius(d) + 15)
       .attr("text-anchor", "middle");
 
     // Search fly-to (#146): emphasise the match, dim everything else, and
@@ -185,11 +242,19 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     };
 
     simulation.on("tick", () => {
+      // End each line at the target's rim so its arrowhead stays visible.
+      const end = (d: SimLink) => {
+        const dx = d.target.x! - d.source.x!;
+        const dy = d.target.y! - d.source.y!;
+        const dist = Math.hypot(dx, dy) || 1;
+        const back = (nodeRadius(d.target) + 2) / dist;
+        return { x: d.target.x! - dx * back, y: d.target.y! - dy * back };
+      };
       link
         .attr("x1", (d) => d.source.x!)
         .attr("y1", (d) => d.source.y!)
-        .attr("x2", (d) => d.target.x!)
-        .attr("y2", (d) => d.target.y!);
+        .attr("x2", (d) => end(d).x)
+        .attr("y2", (d) => end(d).y);
 
       node.attr("transform", (d) => `translate(${d.x},${d.y})`);
     });
@@ -248,6 +313,24 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           </button>
         )}
       </div>
+      {hover && (
+        <div className="graph-tooltip" style={{ left: hover.x + 14, top: hover.y + 14 }} role="tooltip">
+          <div className="graph-tooltip-title">{hover.node.title}</div>
+          {hover.node.ghost ? (
+            <div className="graph-tooltip-meta">Not created yet — click to create it</div>
+          ) : (
+            <>
+              <div className="graph-tooltip-meta">
+                {hover.node.connections} link{hover.node.connections === 1 ? "" : "s"}
+                {hover.node.updatedAt && <> &middot; updated {relativeTimeLabel(new Date(hover.node.updatedAt))}</>}
+              </div>
+              {hover.node.tags && hover.node.tags.length > 0 && (
+                <div className="graph-tooltip-tags">{hover.node.tags.map((t) => `#${t}`).join(" ")}</div>
+              )}
+            </>
+          )}
+        </div>
+      )}
       <div className="graph-badge">
         {noteCount} notes &middot; {data.links.length} links
       </div>
@@ -262,7 +345,11 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           </button>
         </div>
       )}
-      <button className="graph-recenter" onClick={() => setRenderKey((k) => k + 1)}>
+      <button
+        className="graph-recenter"
+        onClick={() => setRenderKey((k) => k + 1)}
+        title="Lay the graph out again (releases pinned notes)"
+      >
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
           <circle cx="7" cy="7" r="2" fill="currentColor" />
           <circle cx="7" cy="7" r="5.4" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2.4 2.2" />

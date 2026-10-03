@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Graph view: arrows show which note links to which, hovering a note shows its tags, links
+  and last update, a dragged note stays where you put it, and double-clicking the
+  background resets the view.
 - Files can be attached in end-to-end encrypted vaults: they are encrypted on your device,
   name and type included, before they are uploaded.
 - Existing vaults can be end-to-end encrypted afterwards (Settings → Sync → Encrypt this

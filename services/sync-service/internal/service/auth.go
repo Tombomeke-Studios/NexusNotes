@@ -67,6 +67,9 @@ func (s *AuthService) Register(ctx context.Context, email, password, displayName
 		DisplayName:  displayName,
 		CreatedAt:    now,
 		UpdatedAt:    now,
+		// The handler only registers someone who ticked the consent box.
+		TermsAcceptedAt: &now,
+		TermsVersion:    model.CurrentTermsVersion,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {

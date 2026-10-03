@@ -52,3 +52,16 @@ describe("StatusBar save indicator", () => {
     expect(screen.queryByText(/retrying/i)).toBeNull();
   });
 });
+
+describe("StatusBar autosave animation (#422)", () => {
+  it("replays the label animation for each new status", () => {
+    const view = renderBar("saving");
+    const saving = screen.getByText("Saving…");
+    view.rerender(
+      <StatusBar content="hello world" saveStatus="saved" hasNote lastSyncLabel={null} line={1} col={1} viewMode="edit" onCycleView={() => {}} />,
+    );
+    const saved = screen.getByText("Saved");
+    expect(saved).toHaveClass("status-label");
+    expect(saved).not.toBe(saving);
+  });
+});

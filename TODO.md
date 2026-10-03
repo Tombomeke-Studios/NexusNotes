@@ -268,7 +268,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ### Editor
 
 - [x] Animate the editor border with a subtle inner glow when the editor receives focus (CSS `box-shadow`) (#421)
-- [ ] Animate the autosave indicator with a pulse followed by a fade-out (#422)
+- [x] Animate the autosave indicator with a pulse followed by a fade-out (#422)
 - [ ] Animate the word count in the status bar with a smooth tick on change (#423)
 - [ ] Animate the markdown preview toggle with a crossfade between edit and preview (#424)
 - [ ] Animate `[[link]]` hover previews with a fade-in and a slight upward drift (#425)

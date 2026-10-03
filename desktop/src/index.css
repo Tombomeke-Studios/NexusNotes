@@ -355,6 +355,15 @@ input:focus, textarea:focus {
 .status-indicator--conflict { color: var(--error); }
 .status-indicator--conflict .status-dot { background: var(--error); animation: pulse 1.6s ease infinite; }
 
+/* Autosave (#422): the dot pulses while saving, pops on "Saved", and the
+   label then fades back so a finished save stops drawing the eye. */
+.status-indicator--saved .status-label { animation: savedSettle 2.8s ease forwards; }
+@keyframes savedSettle {
+  0% { opacity: 0.5; }
+  10%, 65% { opacity: 1; }
+  100% { opacity: 0.45; }
+}
+
 .status-indicator-hint {
   color: var(--warning);
 }

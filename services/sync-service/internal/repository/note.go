@@ -151,16 +151,16 @@ func (r *NoteRepo) VaultHasAttachmentsTx(ctx context.Context, tx pgx.Tx, vaultID
 	return has, nil
 }
 
-// ReplaceContentTx overwrites a note's content and checksum (the e2ee
-// conversion swaps plaintext for client ciphertext, #361).
-func (r *NoteRepo) ReplaceContentTx(ctx context.Context, tx pgx.Tx, id, vaultID, content, checksum string, at time.Time) error {
+// ReplaceSealedTx overwrites a note's title, path, content and checksum (the
+// e2ee conversion swaps plaintext for client ciphertext, #361/#362).
+func (r *NoteRepo) ReplaceSealedTx(ctx context.Context, tx pgx.Tx, id, vaultID, title, path, content, checksum string, at time.Time) error {
 	sealed, err := r.seal(fieldNoteContent, content)
 	if err != nil {
 		return err
 	}
 	tag, err := tx.Exec(ctx,
-		`UPDATE notes SET content = $3, checksum = $4, updated_at = $5 WHERE id = $1 AND vault_id = $2`,
-		id, vaultID, sealed, checksum, at,
+		`UPDATE notes SET title = $3, path = $4, content = $5, checksum = $6, updated_at = $7 WHERE id = $1 AND vault_id = $2`,
+		id, vaultID, title, path, sealed, checksum, at,
 	)
 	if err != nil {
 		return fmt.Errorf("replace note content: %w", err)

@@ -35,7 +35,7 @@ func TestConvertVault_HTTP(t *testing.T) {
 		return map[string]any{
 			"encryption_meta": map[string]int{"v": 1},
 			"notes": []map[string]string{
-				{"id": f.note.ID, "content": "iv:cipher", "checksum": "plain-sum", "base_checksum": base},
+				{"id": f.note.ID, "title": "e2ee:title", "path": "", "content": "iv:cipher", "checksum": "plain-sum", "base_checksum": base},
 			},
 		}
 	}

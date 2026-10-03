@@ -17,12 +17,16 @@ var (
 	ErrConvertNotesChanged   = errors.New("the vault's notes changed while converting; reload and try again")
 	ErrConvertHasAttachments = errors.New("vaults with attachments cannot be end-to-end encrypted yet")
 	ErrConvertMissingMeta    = errors.New("encryption_meta is required")
+	ErrConvertMissingTitle   = errors.New("every note needs its encrypted title")
 )
 
-// ConvertNote is one note re-encrypted by the client: its ciphertext, the
-// plaintext checksum, and the server checksum it was read at.
+// ConvertNote is one note re-encrypted by the client: its sealed title and
+// folder path (#362), its ciphertext, the plaintext checksum, and the server
+// checksum it was read at.
 type ConvertNote struct {
 	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Path         string `json:"path"`
 	Content      string `json:"content"`
 	Checksum     string `json:"checksum"`
 	BaseChecksum string `json:"base_checksum"`
@@ -56,6 +60,11 @@ func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID st
 	if vault.Encryption == model.VaultEncryptionE2EE {
 		return ErrConvertNotStandard
 	}
+	for _, n := range notes {
+		if n.Title == "" {
+			return ErrConvertMissingTitle
+		}
+	}
 	if has, err := s.noteRepo.VaultHasAttachmentsTx(ctx, tx, vaultID); err != nil {
 		return err
 	} else if has {
@@ -80,7 +89,7 @@ func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID st
 
 	now := time.Now().UTC()
 	for _, n := range notes {
-		if err := s.noteRepo.ReplaceContentTx(ctx, tx, n.ID, vaultID, n.Content, n.Checksum, now); err != nil {
+		if err := s.noteRepo.ReplaceSealedTx(ctx, tx, n.ID, vaultID, n.Title, n.Path, n.Content, n.Checksum, now); err != nil {
 			return err
 		}
 	}
@@ -95,7 +104,8 @@ func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID st
 	}
 
 	// Re-index without content: the vault is e2ee now, so searchDoc keeps
-	// only titles and paths, replacing the documents that held plaintext.
+	// only the sealed titles and paths, replacing the documents that held
+	// plaintext.
 	if s.indexer != nil {
 		if list, err := s.noteRepo.ListByVault(ctx, vaultID); err == nil {
 			for i := range list {

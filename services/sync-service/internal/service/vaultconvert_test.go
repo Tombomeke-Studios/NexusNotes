@@ -47,8 +47,8 @@ func TestConvertVaultToE2EE(t *testing.T) {
 	a, _ = svc.GetNote(ctx, a.ID)
 	meta := json.RawMessage(`{"v":1}`)
 	full := []ConvertNote{
-		{ID: a.ID, Content: "iv:cipher-a", Checksum: "plain-sum-a", BaseChecksum: a.Checksum},
-		{ID: b.ID, Content: "iv:cipher-b", Checksum: "plain-sum-b", BaseChecksum: b.Checksum},
+		{ID: a.ID, Title: "e2ee:title-a", Path: "e2ee:path-a", Content: "iv:cipher-a", Checksum: "plain-sum-a", BaseChecksum: a.Checksum},
+		{ID: b.ID, Title: "e2ee:title-b", Path: "e2ee:path-b", Content: "iv:cipher-b", Checksum: "plain-sum-b", BaseChecksum: b.Checksum},
 	}
 
 	// Refusals leave the vault untouched.
@@ -66,6 +66,11 @@ func TestConvertVaultToE2EE(t *testing.T) {
 	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, nil, full); !errors.Is(err, ErrConvertMissingMeta) {
 		t.Fatalf("no key material: err = %v, want ErrConvertMissingMeta", err)
 	}
+	untitled := append([]ConvertNote(nil), full...)
+	untitled[0].Title = ""
+	if err := svc.ConvertVaultToE2EE(ctx, vaultID, owner, meta, untitled); !errors.Is(err, ErrConvertMissingTitle) {
+		t.Fatalf("a note without its sealed title: err = %v, want ErrConvertMissingTitle", err)
+	}
 	if got, _ := svc.GetNote(ctx, a.ID); got.Content != "alpha v2 #tag [[B]]" {
 		t.Fatalf("a refused conversion changed the note: %q", got.Content)
 	}
@@ -77,8 +82,9 @@ func TestConvertVaultToE2EE(t *testing.T) {
 	if err != nil || vault.Encryption != "e2ee" || string(vault.EncryptionMeta) != `{"v": 1}` && string(vault.EncryptionMeta) != `{"v":1}` {
 		t.Fatalf("vault after convert: %+v, %v", vault, err)
 	}
-	if got, _ := svc.GetNote(ctx, a.ID); got.Content != "iv:cipher-a" || got.Checksum != "plain-sum-a" {
-		t.Fatalf("note A after convert: %q / %q", got.Content, got.Checksum)
+	if got, _ := svc.GetNote(ctx, a.ID); got.Content != "iv:cipher-a" || got.Checksum != "plain-sum-a" ||
+		got.Title != "e2ee:title-a" || got.Path != "e2ee:path-a" {
+		t.Fatalf("note A after convert: %+v", got)
 	}
 	for name, q := range map[string]string{
 		"versions": `SELECT count(*) FROM note_versions v JOIN notes n ON n.id = v.note_id WHERE n.vault_id = $1`,
@@ -105,7 +111,7 @@ func TestConvertVaultToE2EE_RefusesAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 	err := svc.ConvertVaultToE2EE(ctx, vaultID, vaultOwner(t, pool, vaultID), json.RawMessage(`{}`),
-		[]ConvertNote{{ID: n.ID, Content: "x", Checksum: "y", BaseChecksum: n.Checksum}})
+		[]ConvertNote{{ID: n.ID, Title: "t", Content: "x", Checksum: "y", BaseChecksum: n.Checksum}})
 	if !errors.Is(err, ErrConvertHasAttachments) {
 		t.Fatalf("err = %v, want ErrConvertHasAttachments", err)
 	}

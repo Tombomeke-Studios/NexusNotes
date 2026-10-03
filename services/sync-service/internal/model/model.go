@@ -13,6 +13,9 @@ type User struct {
 	EmailVerified bool      `json:"email_verified"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+	// DeletionScheduledAt is when the account will be erased, during the
+	// grace period after a deletion request (#289); nil otherwise.
+	DeletionScheduledAt *time.Time `json:"deletion_scheduled_at,omitempty"`
 }
 
 // Vault encryption modes. For e2ee vaults the server stores only ciphertext

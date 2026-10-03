@@ -619,6 +619,18 @@ export default function App() {
 
   // Version history of the open note (#415-#417).
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Signing out (Settings → Sign out, or deleting the account) closes every
+  // dialog, so the next account doesn't sign in to the previous one's.
+  useEffect(() => {
+    if (user) return;
+    setShowSettings(false);
+    setShowGlobalSearch(false);
+    setShowCalendar(false);
+    setShowNewVault(false);
+    setShareVaultId(null);
+    setLinksVaultId(null);
+    setHistoryOpen(false);
+  }, [user]);
   const [deviceNames, setDeviceNames] = useState<Map<string, string>>(new Map());
   const openHistory = useCallback(() => {
     if (!activeNoteRef.current) return;

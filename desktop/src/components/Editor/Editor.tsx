@@ -1,3 +1,4 @@
+import { headingSlug } from "../../lib/outline";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -487,6 +488,30 @@ export function Editor({
           >
             {children}
           </button>
+        );
+      }
+      if (href?.startsWith("#")) {
+        // A heading in this note (#426): scroll the preview to it; the
+        // preview's scroll-behavior makes that smooth unless motion is reduced.
+        return (
+          <a
+            href={href}
+            onClick={(e) => {
+              e.preventDefault();
+              let slug = href.slice(1);
+              try {
+                slug = decodeURIComponent(slug);
+              } catch {
+                /* keep it as written */
+              }
+              const heading = Array.from(previewRef.current?.querySelectorAll("h1, h2, h3, h4, h5, h6") ?? []).find(
+                (h) => headingSlug(h.textContent ?? "") === slug.toLowerCase(),
+              );
+              heading?.scrollIntoView({ block: "start" });
+            }}
+          >
+            {children}
+          </a>
         );
       }
       return (

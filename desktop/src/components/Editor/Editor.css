@@ -179,6 +179,9 @@
   padding: 24px 32px 48px;
   overflow-y: auto;
   background: var(--bg-base);
+  /* Heading navigation (outline, #links) glides; data-rm makes it instant (#426). */
+  scroll-behavior: smooth;
+  scroll-padding-top: 14px;
 }
 
 /* Switching view mode (#424): the pane that appears fades in instead of

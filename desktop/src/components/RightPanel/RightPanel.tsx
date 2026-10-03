@@ -45,12 +45,13 @@ function scrollPreviewToHeading(index: number) {
   if (!preview) return;
   const el = preview.querySelectorAll("h1, h2, h3, h4")[index];
   if (!el) return;
+  // No explicit behavior: the preview's CSS scroll-behavior makes it smooth,
+  // or instant under reduced motion (#426).
   preview.scrollTo({
     top:
       preview.scrollTop +
       (el.getBoundingClientRect().top - preview.getBoundingClientRect().top) -
       14,
-    behavior: "smooth",
   });
 }
 

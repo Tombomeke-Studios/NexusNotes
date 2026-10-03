@@ -272,7 +272,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Animate the word count in the status bar with a smooth tick on change (#423)
 - [x] Animate the markdown preview toggle with a crossfade between edit and preview (#424)
 - [ ] Animate `[[link]]` hover previews with a fade-in and a slight upward drift (#425)
-- [ ] Use `scroll-behavior: smooth` for heading anchor navigation (#426)
+- [x] Use `scroll-behavior: smooth` for heading anchor navigation (#426)
 - [x] Animate callout block borders sliding in on mount with a colour-coded glow (#427)
 
 ### Graph view animations

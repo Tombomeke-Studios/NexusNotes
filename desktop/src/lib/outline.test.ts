@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseOutline } from "./outline";
+import { parseOutline, headingSlug } from "./outline";
 
 describe("parseOutline", () => {
   it("returns empty for content without headings", () => {
@@ -24,5 +24,14 @@ describe("parseOutline", () => {
   it("ignores heading-like lines inside fenced code blocks", () => {
     const outline = parseOutline("# Real\n\n```\n# not a heading\n```\n\n## Also real");
     expect(outline.map((h) => h.text)).toEqual(["Real", "Also real"]);
+  });
+});
+
+describe("headingSlug", () => {
+  it("makes the GitHub-style anchor of a heading", () => {
+    expect(headingSlug("My Heading")).toBe("my-heading");
+    expect(headingSlug("  What's new in v2.0?  ")).toBe("whats-new-in-v20");
+    expect(headingSlug("Café & crème")).toBe("café--crème");
+    expect(headingSlug("already-slugged")).toBe("already-slugged");
   });
 });

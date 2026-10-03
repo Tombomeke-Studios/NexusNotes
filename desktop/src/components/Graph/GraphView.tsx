@@ -4,6 +4,7 @@ import { findGraphNode } from "../../lib/wikilinks";
 import { enterDelay, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
 import type { GraphData } from "../../lib/wikilinks";
+import { EmptyState } from "../EmptyState";
 import "./GraphView.css";
 
 interface GraphViewProps {
@@ -341,6 +342,20 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   return (
     <div className="graph-view">
       <svg ref={svgRef} className="graph-svg" />
+      {/* Nothing to connect yet (#450): say how links appear. */}
+      {(noteCount === 0 || data.links.length === 0) && (
+        <div className="graph-empty">
+          {noteCount === 0 ? (
+            <EmptyState art="graph" title="Nothing to graph yet">
+              Notes you write show up here as dots.
+            </EmptyState>
+          ) : (
+            <EmptyState art="graph" title="No links yet">
+              Link notes by typing <code>[[Note name]]</code>, and they connect here.
+            </EmptyState>
+          )}
+        </div>
+      )}
       <div className="graph-search">
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
           <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />

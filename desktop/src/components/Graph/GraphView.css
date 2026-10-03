@@ -324,3 +324,12 @@
   color: var(--accent);
   overflow-wrap: anywhere;
 }
+
+/* No notes or no links yet (#450): guidance below the centre, out of the way. */
+.graph-empty {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}

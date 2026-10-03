@@ -25,13 +25,34 @@ const CrumbSep = () => (
   </svg>
 );
 
-const SYNC_MAP: Record<SaveStatus, { color: string; label: string; pulse: boolean }> = {
-  saved: { color: "var(--success)", label: "Synced", pulse: false },
-  idle: { color: "var(--success)", label: "Synced", pulse: false },
-  saving: { color: "var(--warning)", label: "Syncing…", pulse: true },
-  unsaved: { color: "var(--warning)", label: "Pending", pulse: false },
-  conflict: { color: "var(--error)", label: "Conflict", pulse: false },
+// Sync indicator (#431): a spinner while syncing, a checkmark that pops in
+// once synced, and a coloured dot for anything that still needs attention.
+const SYNC_MAP: Record<SaveStatus, { color: string; label: string; icon: "spinner" | "check" | "dot" }> = {
+  saved: { color: "var(--success)", label: "Synced", icon: "check" },
+  idle: { color: "var(--success)", label: "Synced", icon: "check" },
+  saving: { color: "var(--warning)", label: "Syncing…", icon: "spinner" },
+  unsaved: { color: "var(--warning)", label: "Pending", icon: "dot" },
+  conflict: { color: "var(--error)", label: "Conflict", icon: "dot" },
 };
+
+function SyncIcon({ icon, color }: { icon: "spinner" | "check" | "dot"; color: string }) {
+  if (icon === "spinner") {
+    return (
+      <svg className="topbar-sync-spinner" width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeOpacity="0.25" strokeWidth="1.5" />
+        <path d="M6 1.5a4.5 4.5 0 0 1 4.5 4.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (icon === "check") {
+    return (
+      <svg className="topbar-sync-check" width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <path d="M2.5 6.3 5 8.6l4.5-5" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return <span className="topbar-sync-dot" style={{ background: color }} />;
+}
 
 export function TopBar({
   vaultName,
@@ -81,10 +102,8 @@ export function TopBar({
 
       <div className="topbar-right">
         <span className="topbar-sync">
-          <span
-            className={`topbar-sync-dot${sync.pulse ? " topbar-sync-dot--pulse" : ""}`}
-            style={{ background: sync.color }}
-          />
+          {/* Keyed on the icon so a finished sync replays the checkmark's pop. */}
+          <SyncIcon key={sync.icon} icon={sync.icon} color={sync.color} />
           {sync.label}
         </span>
         <span className="topbar-divider" />

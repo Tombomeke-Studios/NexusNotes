@@ -666,6 +666,20 @@ input:focus, textarea:focus {
 
 .auth-forgot-link:hover { color: var(--accent); }
 
+.auth-forgot-link--quiet {
+  margin-top: 4px;
+  font-size: 11.5px;
+  opacity: 0.7;
+}
+
+/* A line of explanation above an auth form (account deletion request, #289). */
+.auth-hint {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 .auth-footer {
   margin-top: 26px;
   padding-top: 18px;
@@ -936,4 +950,30 @@ input:focus, textarea:focus {
 
 :is(p, li, .settings-row-sub, .empty-state-body, .confirm-dialog p) {
   text-wrap: pretty;
+}
+
+.auth-button--danger {
+  background: var(--error);
+}
+
+/* A scheduled account deletion (#289): signed in during the grace period. */
+.deletion-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 7px 14px;
+  background: color-mix(in srgb, var(--error) 14%, var(--bg-base));
+  border-bottom: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.deletion-banner-btn {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--error);
+  color: var(--bg-crust);
+  font-size: 12px;
+  font-weight: 600;
 }

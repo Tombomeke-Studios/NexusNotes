@@ -253,14 +253,35 @@ export const auth = {
    * trigger the global auto-logout — the user is still validly signed in and
    * just mistyped their confirmation.
    */
-  async deleteAccount(password: string): Promise<void> {
-    await request<void>(
+  async deleteAccount(password: string): Promise<{ deletion_scheduled_at: string }> {
+    // The server schedules the deletion 7 days out and signs the account out
+    // everywhere (#289).
+    const res = await request<{ deletion_scheduled_at: string }>(
       "/api/auth/account",
       { method: "DELETE", body: JSON.stringify({ password }) },
       { autoLogoutOn401: false },
     );
     setToken(null);
+    return res;
   },
+
+  /** Keeps the signed-in account during its deletion grace period (#289). */
+  keepAccount: () => request<void>("/api/auth/account/keep", { method: "POST" }),
+
+  /** Emails a deletion confirm link (always resolves; no account probing). */
+  requestDeletion: (email: string) =>
+    request<void>("/api/auth/request-deletion", { method: "POST", body: JSON.stringify({ email }) }),
+
+  /** Confirms a deletion requested by email; starts the 7-day grace period. */
+  confirmDeletion: (token: string) =>
+    request<{ deletion_scheduled_at: string }>("/api/auth/confirm-deletion", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  /** Cancels a scheduled deletion from the emailed link. */
+  cancelDeletion: (token: string) =>
+    request<void>("/api/auth/cancel-deletion", { method: "POST", body: JSON.stringify({ token }) }),
 
   me: () => request<User>("/api/auth/me"),
 

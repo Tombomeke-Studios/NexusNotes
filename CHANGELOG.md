@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Deleting your account now waits 7 days: you are signed out, get an email with a link to
+  cancel, and can also sign in and choose "Keep my account". If you can no longer sign in,
+  "Locked out? Request account deletion" on the sign-in screen emails a confirmation link.
 - Weekly and monthly notes (command palette: "Open this week's note", "Open this month's
   note"), each in its own folder with its own template in Settings.
 - The server compresses its JSON responses and the app loads a vault's notes in pages, so

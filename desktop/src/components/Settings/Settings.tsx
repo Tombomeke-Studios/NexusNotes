@@ -1,5 +1,6 @@
 import { HistorySettings } from "./HistorySettings";
 import { SHORTCUTS } from "../../lib/shortcuts";
+import { toast } from "../../lib/toast";
 import { useEffect, useState } from "react";
 import { downloadFile } from "../../lib/export";
 import { motion, useIsPresent } from "framer-motion";
@@ -149,7 +150,12 @@ export function Settings({
     setDeleting(true);
     setDeleteError(null);
     try {
-      await auth.deleteAccount(deletePassword);
+      const { deletion_scheduled_at } = await auth.deleteAccount(deletePassword);
+      toast(
+        `Your account will be deleted on ${new Date(deletion_scheduled_at).toLocaleString()}. ` +
+          "Signing in before then, or the link we emailed, lets you keep it.",
+        { duration: 20_000 },
+      );
       onSignOut();
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {

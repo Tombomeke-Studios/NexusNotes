@@ -266,12 +266,12 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Graph view animations
 
-- [ ] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre
-- [ ] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow
-- [ ] Fly the camera smoothly to a clicked node before opening the note
+- [x] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre (#439)
+- [x] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow (#440)
+- [x] Fly the camera smoothly to a clicked node before opening the note (#441)
 - [ ] Animate the 2D-to-3D toggle by scattering nodes into z-space
-- [ ] Render edge particle flow using animated dashed lines or moving dot particles
-- [ ] Apply a slow continuous pulse to orphan nodes to draw attention
+- [x] Render edge particle flow using animated dashed lines or moving dot particles (#442)
+- [x] Apply a slow continuous pulse to orphan nodes to draw attention (#443)
 - [ ] Fade in the cluster convex hull with a gentle boundary pulse
 
 ### Toasts and notifications
@@ -784,9 +784,9 @@ Lower priority items not focused on the desktop application.
 - [ ] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
 - [ ] Store consent timestamp and policy version in the database alongside the user record
 - [ ] Add consent checkbox on any marketing / newsletter sign-up form
-- [ ] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
-- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
-- [ ] Implement account deletion confirmation email with a 7-day grace-period cancellation link
+- [x] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
+- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
+- [x] Implement account deletion confirmation email with a 7-day grace-period cancellation link
 - [x] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
 
 
@@ -1185,6 +1185,11 @@ Lower priority items not focused on the desktop application.
 
 
 
+- [ ] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre
+- [ ] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow
+- [ ] Fly the camera smoothly to a clicked node before opening the note
+- [ ] Render edge particle flow using animated dashed lines or moving dot particles
+- [ ] Apply a slow continuous pulse to orphan nodes to draw attention
 
 
 
@@ -1318,6 +1323,7 @@ Lower priority items not focused on the desktop application.
 
 
 
+- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
 
 
 
@@ -1500,11 +1506,6 @@ Lower priority items not focused on the desktop application.
 
 
 
-- [x] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre (#439)
-- [x] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow (#440)
-- [x] Fly the camera smoothly to a clicked node before opening the note (#441)
-- [x] Render edge particle flow using animated dashed lines or moving dot particles (#442)
-- [x] Apply a slow continuous pulse to orphan nodes to draw attention (#443)
 
 
 

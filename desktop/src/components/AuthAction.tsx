@@ -26,11 +26,94 @@ export function AuthAction({ action, onDone }: AuthActionProps) {
         <h1 className="auth-title">NexusNotes</h1>
         {action.kind === "verify-email" ? (
           <VerifyEmail token={action.token} onDone={onDone} />
-        ) : (
+        ) : action.kind === "reset-password" ? (
           <ResetPassword token={action.token} onDone={onDone} />
+        ) : (
+          <DeletionLink kind={action.kind} token={action.token} onDone={onDone} />
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Account deletion links (#289): confirming a deletion asked for by email
+ * (starts the 7-day grace period) or cancelling a scheduled one. Confirming
+ * waits for a click, so a link scanner opening the URL can't start it.
+ */
+function DeletionLink({
+  kind,
+  token,
+  onDone,
+}: {
+  kind: "confirm-deletion" | "cancel-deletion";
+  token: string;
+  onDone: () => void;
+}) {
+  const [status, setStatus] = useState<"ask" | "working" | "done" | "error">(kind === "cancel-deletion" ? "working" : "ask");
+  const [when, setWhen] = useState<string | null>(null);
+
+  const confirm = () => {
+    setStatus("working");
+    auth
+      .confirmDeletion(token)
+      .then((r) => {
+        setWhen(new Date(r.deletion_scheduled_at).toLocaleString());
+        setStatus("done");
+      })
+      .catch(() => setStatus("error"));
+  };
+
+  useEffect(() => {
+    if (kind !== "cancel-deletion") return;
+    auth
+      .cancelDeletion(token)
+      .then(() => setStatus("done"))
+      .catch(() => setStatus("error"));
+  }, [kind, token]);
+
+  if (kind === "cancel-deletion") {
+    return (
+      <>
+        <p className="auth-subtitle">
+          {status === "working" && "Keeping your account…"}
+          {status === "done" && "Your account is safe: the deletion is cancelled."}
+          {status === "error" && "This link is invalid, has expired or was already used."}
+        </p>
+        {status !== "working" && (
+          <button className="auth-button" onClick={onDone}>
+            Continue to sign in
+          </button>
+        )}
+      </>
+    );
+  }
+  return (
+    <>
+      <p className="auth-subtitle">
+        {status === "ask" &&
+          "Delete your NexusNotes account and everything in it? It is erased after 7 days; until then the email we send lets you cancel."}
+        {status === "working" && "Scheduling the deletion…"}
+        {status === "done" && `Your account will be deleted on ${when}. We've emailed you a link to cancel.`}
+        {status === "error" && "This link is invalid, has expired or was already used."}
+      </p>
+      {status === "ask" ? (
+        <>
+          <button className="auth-button auth-button--danger" onClick={confirm}>
+            Delete my account
+          </button>
+          <button className="auth-toggle" onClick={onDone}>
+            Keep it, take me to sign in
+          </button>
+        </>
+      ) : (
+        status !== "working" && (
+          <button className="auth-button" onClick={onDone}>
+            Back to sign in
+          </button>
+        )
+      )}
+    </>
   );
 }
 

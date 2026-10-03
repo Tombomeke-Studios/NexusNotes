@@ -1658,7 +1658,12 @@ export default function App() {
   }
 
   if (!user) {
-    return <Auth onAuth={handleAuth} reducedMotion={reducedMotion} />;
+    return (
+      <>
+        <Auth onAuth={handleAuth} reducedMotion={reducedMotion} />
+        <Toaster />
+      </>
+    );
   }
 
   const tree = buildTree(filteredNoteList, { keepNoteOrder: true, emptyFolders });
@@ -1710,6 +1715,26 @@ export default function App() {
         Skip to editor
       </a>
       <ConnectionBanner />
+      {user.deletion_scheduled_at && (
+        <div className="deletion-banner" role="alert">
+          This account and everything in it will be deleted on{" "}
+          {new Date(user.deletion_scheduled_at).toLocaleString()}.
+          <button
+            className="deletion-banner-btn"
+            onClick={() =>
+              auth
+                .keepAccount()
+                .then(() => {
+                  setUser((u) => (u ? { ...u, deletion_scheduled_at: undefined } : u));
+                  toast("Your account is kept. The deletion is cancelled.", { kind: "success" });
+                })
+                .catch(() => toast("Couldn't cancel the deletion. Try again.", { kind: "error" }))
+            }
+          >
+            Keep my account
+          </button>
+        </div>
+      )}
       <TopBar
         vaultName={activeVault?.name ?? "NexusNotes"}
         noteTitle={graphActive ? "Graph" : activeNote?.title ?? null}

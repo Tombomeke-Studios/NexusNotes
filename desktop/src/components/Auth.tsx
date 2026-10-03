@@ -16,7 +16,11 @@ interface AuthProps {
 
 export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
-  const [forgot, setForgot] = useState(false);
+  // An email-link flow instead of the sign-in form: a password reset, or a
+  // deletion request for an account the user can no longer sign in to (#289).
+  const [emailFlow, setEmailFlow] = useState<null | "reset" | "delete">(null);
+  const forgot = emailFlow !== null;
+  const setForgot = (on: boolean) => setEmailFlow(on ? "reset" : null);
   const [forgotSent, setForgotSent] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,7 +48,8 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
     setError("");
     setLoading(true);
     try {
-      await auth.forgotPassword(email);
+      if (emailFlow === "delete") await auth.requestDeletion(email);
+      else await auth.forgotPassword(email);
       // Always confirm regardless of whether the address exists (no enumeration).
       setForgotSent(true);
     } catch (err) {
@@ -101,7 +106,9 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
         <h1 className="auth-title">NexusNotes</h1>
         <p className="auth-subtitle">
           {forgot
-            ? "Reset your password"
+            ? emailFlow === "delete"
+              ? "Delete your account"
+              : "Reset your password"
             : isLogin
               ? "Welcome back to your second brain"
               : "Create your account"}
@@ -111,7 +118,9 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
           forgotSent ? (
             <>
               <p className="auth-subtitle">
-                If an account exists for that address, a reset link is on its way. Check your inbox.
+                {emailFlow === "delete"
+                  ? "If an account exists for that address, we've sent a link to confirm the deletion. Check your inbox."
+                  : "If an account exists for that address, a reset link is on its way. Check your inbox."}
               </p>
               <button
                 className="auth-toggle"
@@ -127,6 +136,12 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
           ) : (
             <>
               <form onSubmit={handleForgot} className="auth-form">
+                {emailFlow === "delete" && (
+                  <p className="auth-hint">
+                    Can&rsquo;t sign in? Enter your account&rsquo;s email. We&rsquo;ll send a link to confirm; the account
+                    and all its notes are then deleted after 7 days unless you cancel.
+                  </p>
+                )}
                 <input
                   type="email"
                   value={email}
@@ -138,7 +153,7 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
                 />
                 {error && <div className="auth-error">{error}</div>}
                 <button type="submit" className="auth-button" disabled={loading}>
-                  {loading ? "Sending…" : "Send reset link"}
+                  {loading ? "Sending…" : emailFlow === "delete" ? "Send confirmation link" : "Send reset link"}
                 </button>
               </form>
               <button
@@ -215,6 +230,18 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
             }}
           >
             Forgot password?
+          </button>
+        )}
+
+        {!forgot && isLogin && (
+          <button
+            className="auth-forgot-link auth-forgot-link--quiet"
+            onClick={() => {
+              setEmailFlow("delete");
+              setError("");
+            }}
+          >
+            Locked out? Request account deletion
           </button>
         )}
 

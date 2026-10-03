@@ -56,6 +56,20 @@
   box-shadow: none;
 }
 
+/* A completed save (#430): the title briefly picks up the success colour. */
+.editor-title-input--flash {
+  animation: titleSaved 0.9s ease-out;
+}
+
+@keyframes titleSaved {
+  0% { color: var(--text-primary); text-shadow: none; }
+  25% {
+    color: var(--success);
+    text-shadow: 0 0 14px color-mix(in srgb, var(--success) 45%, transparent);
+  }
+  100% { color: var(--text-primary); text-shadow: none; }
+}
+
 .editor-title-input:hover {
   border-color: var(--border);
 }

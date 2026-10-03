@@ -165,3 +165,36 @@ describe("Editor — replacing the open note's text (#324)", () => {
     expect(onReplaceApplied).not.toHaveBeenCalled();
   });
 });
+
+describe("Editor — heading anchors in the preview (#426)", () => {
+  it("scrolls to the heading a #link names instead of opening a tab", () => {
+    const scrolled: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      const view = render(
+        <Editor
+          note={note("n1", "[jump](#second-part)\n\n# First\n\n## Second Part\n")}
+          notes={[]}
+          mode="preview"
+          onModeChange={() => {}}
+          onSave={() => {}}
+          onLiveChange={() => {}}
+          onRename={() => {}}
+          onRenameCommit={() => {}}
+          onCreateNote={() => {}}
+          onNavigateToNote={() => {}}
+        />,
+      );
+      const link = view.getByText("jump").closest("a") as HTMLAnchorElement;
+      expect(link.getAttribute("target")).toBeNull();
+      const notCancelled = fireEvent.click(link);
+      expect(notCancelled).toBe(false);
+      expect(scrolled.map((el) => el.textContent)).toEqual(["Second Part"]);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+});

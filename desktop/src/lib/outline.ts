@@ -24,3 +24,15 @@ export function parseOutline(content: string): OutlineHeading[] {
   }
   return headings;
 }
+
+/**
+ * The anchor a heading gets, GitHub style: lower case, punctuation dropped,
+ * spaces as dashes. `[jump](#my-heading)` links to "## My Heading" (#426).
+ */
+export function headingSlug(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    .replace(/\s/g, "-");
+}

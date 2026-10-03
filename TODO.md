@@ -287,7 +287,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Toasts and notifications
 
-- [ ] Animate toast notifications sliding in from the bottom-right with auto-dismiss and a shrink exit (#429)
+- [x] Animate toast notifications sliding in from the bottom-right with auto-dismiss and a shrink exit (#429)
 - [x] Flash a brief colour highlight on the note title after a successful save (#430)
 - [x] Animate the sync status indicator in the status bar with a spinner during sync and a pop checkmark on completion (#431)
 - [x] Drop the conflict alert banner from the top of the screen with an amber background (#432)

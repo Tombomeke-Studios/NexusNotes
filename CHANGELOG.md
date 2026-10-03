@@ -6,6 +6,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Privacy Policy, Terms of Service, Cookie Policy and Refund Policy pages (templates for each
+  server's operator to complete). Signing up asks you to agree to the Terms and Privacy
+  Policy, and a one-time notice explains what the app stores in your browser, with "Cookie
+  preferences" on the sign-in screen and in Settings → Account.
 - Getting started: a new account's first vault holds a two-minute guide (starred), editor
   tips, a template and today's daily note; a checklist in the sidebar walks through the
   first steps; one-time tips explain the graph, palette, backlinks and tag filter; `?`

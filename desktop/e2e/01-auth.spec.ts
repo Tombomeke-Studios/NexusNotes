@@ -27,6 +27,7 @@ test.describe("Authentication", () => {
     await page.getByPlaceholder("Display name").fill("Test User");
     await page.getByPlaceholder("Email").fill(email);
     await page.getByPlaceholder("Password").fill("Password1!");
+    await page.getByRole("checkbox", { name: /I agree to the Terms of Service/ }).check();
     await page.getByRole("button", { name: /create account/i }).click();
 
     await expect(page.locator(".sidebar")).toBeVisible({ timeout: 10_000 });
@@ -42,6 +43,7 @@ test.describe("Authentication", () => {
     await page.getByPlaceholder("Display name").fill("Test User 2");
     await page.getByPlaceholder("Email").fill(email);
     await page.getByPlaceholder("Password").fill("Password1!");
+    await page.getByRole("checkbox", { name: /I agree to the Terms of Service/ }).check();
     await page.getByRole("button", { name: /create account/i }).click();
 
     await expect(page.locator(".auth-error")).toBeVisible({ timeout: 5_000 });
@@ -83,5 +85,19 @@ test.describe("Authentication", () => {
     await page.reload();
 
     await expect(page.locator(".auth-container").first()).toBeVisible();
+  });
+
+  test("signing up needs the Terms and Privacy Policy consent (#289)", async ({ page }) => {
+    await page.locator(".auth-toggle").click();
+    await page.getByPlaceholder("Display name").fill("No Consent");
+    await page.getByPlaceholder("Email").fill(`nc-${uid()}@nexus.test`);
+    await page.getByPlaceholder("Password").fill("Password1!");
+    await page.getByRole("button", { name: /create account/i }).click();
+    await expect(page.locator(".sidebar")).not.toBeVisible();
+    const terms = page.getByRole("link", { name: "Terms of Service" });
+    await expect(terms).toHaveAttribute("href", "/legal/terms.html");
+    const res = await page.request.get("/legal/privacy.html");
+    expect(res.ok()).toBe(true);
+    expect(await res.text()).toContain("Privacy Policy");
   });
 });

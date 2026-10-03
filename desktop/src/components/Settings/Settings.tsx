@@ -1,4 +1,5 @@
 import { HistorySettings } from "./HistorySettings";
+import { openConsentPreferences } from "../../lib/consent";
 import { SHORTCUTS } from "../../lib/shortcuts";
 import { useEffect, useState } from "react";
 import { downloadFile } from "../../lib/export";
@@ -420,6 +421,19 @@ export function Settings({
                   ))}
                 </div>
 
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Privacy and cookies</div>
+                    <div className="settings-row-sub">
+                      <a href="/legal/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> ·{" "}
+                      <a href="/legal/terms.html" target="_blank" rel="noopener">Terms of Service</a> ·{" "}
+                      <a href="/legal/cookies.html" target="_blank" rel="noopener">Cookie Policy</a>
+                    </div>
+                  </div>
+                  <button className="settings-export-btn" onClick={openConsentPreferences}>
+                    Cookie preferences
+                  </button>
+                </div>
                 <div className="settings-danger-zone">
                   <div className="settings-row-label">Delete account</div>
                   <div className="settings-row-sub">

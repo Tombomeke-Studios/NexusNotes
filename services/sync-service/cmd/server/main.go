@@ -280,13 +280,14 @@ func main() {
 		AllowedOrigins:   cfg.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		ExposedHeaders:   []string{"X-Next-Cursor"}, // the paged note list (#461)
 		AllowCredentials: true,
 	})
 
 	server := &http.Server{
 		// RealIP first, so logs, rate limits and the login throttle all see the
 		// client behind a trusted reverse proxy (#373).
-		Handler:      middleware.RealIP(cfg.TrustedProxies)(middleware.RequestID(middleware.Logging(middleware.Metrics(c.Handler(mux))))),
+		Handler:      middleware.RealIP(cfg.TrustedProxies)(middleware.RequestID(middleware.Logging(middleware.Metrics(c.Handler(middleware.Compress(mux)))))),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

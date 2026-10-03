@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/model"
@@ -97,12 +99,42 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, note)
 }
 
+// maxNotesPage caps one page of the note list (#461).
+const maxNotesPage = 1000
+
 func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	vaultID := r.PathValue("vaultId")
 
 	if !canRead(r.Context(), h.vaultRepo, vaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+
+	// Paged (#461) when the client asks for a limit; the cursor of the next
+	// page goes in X-Next-Cursor. Without one, the whole list as before.
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		limit, err := strconv.Atoi(raw)
+		if err != nil || limit < 1 || limit > maxNotesPage {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("limit must be 1-%d", maxNotesPage))
+			return
+		}
+		var after repository.NoteCursor
+		if c := r.URL.Query().Get("after"); c != "" {
+			if after, err = repository.ParseNoteCursor(c); err != nil {
+				writeError(w, http.StatusBadRequest, "invalid cursor")
+				return
+			}
+		}
+		page, next, err := h.syncService.ListNotesPage(r.Context(), vaultID, limit, after)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list notes")
+			return
+		}
+		if next != nil {
+			w.Header().Set("X-Next-Cursor", next.String())
+		}
+		writeJSON(w, http.StatusOK, page)
 		return
 	}
 

@@ -258,6 +258,11 @@ func (s *SyncService) ListNotes(ctx context.Context, vaultID string) ([]model.No
 	return s.noteRepo.ListByVault(ctx, vaultID)
 }
 
+// ListNotesPage is one page of a vault's notes (#461); next is nil after the last.
+func (s *SyncService) ListNotesPage(ctx context.Context, vaultID string, limit int, after repository.NoteCursor) ([]model.Note, *repository.NoteCursor, error) {
+	return s.noteRepo.ListPage(ctx, vaultID, limit, after)
+}
+
 func (s *SyncService) DeleteNote(ctx context.Context, noteID, vaultID string) error {
 	if err := s.noteRepo.Delete(ctx, noteID, vaultID); err != nil {
 		return err

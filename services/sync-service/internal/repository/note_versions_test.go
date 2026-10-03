@@ -146,3 +146,61 @@ func TestNoteRepo_VersionRetention(t *testing.T) {
 		t.Fatal("keep count 0 accepted")
 	}
 }
+
+// Keyset pages over a vault's notes cover each note exactly once (#461).
+func TestNoteRepo_ListPage(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	repo := NewNoteRepo(pool, testCipher(t))
+	vaultID := seedVault(t, pool)
+	now := time.Now().UTC()
+	for _, p := range []struct{ path, title string }{{"b", "1"}, {"a", "2"}, {"a", "3"}, {"", "4"}, {"c/d", "5"}} {
+		n := &model.Note{ID: uuid.NewString(), VaultID: vaultID, Path: p.path, Title: p.title, Content: "c" + p.title, Checksum: "x", CreatedAt: now, UpdatedAt: now}
+		if err := repo.Create(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var got []string
+	cursor := NoteCursor{}
+	for pages := 0; ; pages++ {
+		if pages > 5 {
+			t.Fatal("paging does not end")
+		}
+		page, next, err := repo.ListPage(ctx, vaultID, 2, cursor)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, n := range page {
+			got = append(got, n.Path+"/"+n.Title)
+			if n.Content != "c"+n.Title {
+				t.Fatalf("content not decrypted: %q", n.Content)
+			}
+		}
+		if next == nil {
+			break
+		}
+		cursor = *next
+	}
+	if got[0] != "/4" || got[len(got)-1] != "c/d/5" {
+		t.Fatalf("pages are not in path order: %v", got)
+	}
+	seen := map[string]bool{}
+	for _, g := range got {
+		if seen[g] {
+			t.Fatalf("note %s listed twice: %v", g, got)
+		}
+		seen[g] = true
+	}
+	if len(got) != 5 {
+		t.Fatalf("pages cover %d notes, want 5: %v", len(got), got)
+	}
+
+	c := NoteCursor{Path: "a/b", ID: "x\x00y"}
+	back, err := ParseNoteCursor(c.String())
+	if err != nil || back != c {
+		t.Fatalf("cursor round trip: %+v, %v", back, err)
+	}
+	if _, err := ParseNoteCursor("!!not a cursor"); err == nil {
+		t.Fatal("a malformed cursor was accepted")
+	}
+}

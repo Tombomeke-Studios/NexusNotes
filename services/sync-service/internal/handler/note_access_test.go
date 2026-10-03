@@ -342,3 +342,55 @@ func mustJSON(t *testing.T, v any) string {
 	}
 	return string(b)
 }
+
+// GET /api/vaults/{id}/notes?limit=&after= (#461).
+func TestListNotes_Paged(t *testing.T) {
+	f := newNoteAccessFixture(t)
+	ctx := context.Background()
+	for _, title := range []string{"B", "C"} {
+		if _, err := f.svc.CreateNote(ctx, f.ownerVault, title, title+".md", "x", "dev", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list := func(query string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/?"+query, nil)
+		req.SetPathValue("vaultId", f.ownerVault)
+		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, f.owner))
+		rec := httptest.NewRecorder()
+		f.h.List(rec, req)
+		return rec
+	}
+	var all []string
+	cursor := ""
+	for i := 0; i < 5; i++ {
+		q := "limit=2"
+		if cursor != "" {
+			q += "&after=" + cursor
+		}
+		rec := list(q)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("page %d: %d %s", i, rec.Code, rec.Body.String())
+		}
+		var page []model.Note
+		_ = json.Unmarshal(rec.Body.Bytes(), &page)
+		for _, n := range page {
+			all = append(all, n.Title)
+		}
+		cursor = rec.Header().Get("X-Next-Cursor")
+		if cursor == "" {
+			break
+		}
+	}
+	if len(all) != 3 {
+		t.Fatalf("paged list = %v, want the vault's 3 notes", all)
+	}
+	for _, bad := range []string{"limit=0", "limit=5000", "limit=x", "limit=2&after=%21%21"} {
+		if rec := list(bad); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want 400", bad, rec.Code)
+		}
+	}
+	// Without a limit: the whole list, no cursor.
+	if rec := list(""); rec.Code != http.StatusOK || rec.Header().Get("X-Next-Cursor") != "" {
+		t.Fatalf("unpaged: %d, cursor %q", rec.Code, rec.Header().Get("X-Next-Cursor"))
+	}
+}

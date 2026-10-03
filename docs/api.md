@@ -238,6 +238,14 @@ editor. Without the required access the API answers `403`.
 
 List all notes in a vault, sorted by path. Returns `Note[]`. Read access required.
 
+Paged (#461) with `?limit=N` (1-1000, else `400`): notes come in path order,
+and when more follow, the response carries an `X-Next-Cursor` header to pass
+back as `&after=<cursor>` (a malformed cursor is `400`). Without `limit` the
+whole list is returned in one response, as before.
+
+All JSON responses are gzip-compressed when the client sends
+`Accept-Encoding: gzip` and the body is over 1 KB.
+
 ### POST /api/vaults/:vaultId/notes
 
 ```json

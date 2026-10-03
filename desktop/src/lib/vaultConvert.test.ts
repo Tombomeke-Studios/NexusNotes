@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { convertVaultToE2ee, type ConvertNotePayload } from "./vaultConvert";
+import { convertVaultToE2ee, type ConvertNotePayload, type ConvertDeps } from "./vaultConvert";
 import { ApiError } from "./api";
 import { decryptNote, plaintextChecksum } from "./crypto";
 import { openField } from "./vaultKeys";
@@ -40,6 +40,20 @@ describe("convertVaultToE2ee", () => {
       expect(await openField(sent[i].title, out.vaultKey)).toBe(notes[i].title);
       expect(await openField(sent[i].path, out.vaultKey)).toBe(notes[i].path);
     }
+  });
+
+  it("seals the vault's linked files along with its notes (#410)", async () => {
+    const stored = [{ id: "l1", vault_id: "v1", display_name: "Docs", source_type: "url" as const, source_ref: "https://example.com", read_only: true, created_at: "" }];
+    const convert = vi.fn<ConvertDeps["convert"]>(async () => converted);
+
+    const out = await convertVaultToE2ee("v1", "a strong passphrase", { listNotes: async () => [], listLinks: async () => stored, convert }, fastKdf);
+
+    const links = convert.mock.calls[0][3];
+    expect(links).toHaveLength(1);
+    expect(links[0].id).toBe("l1");
+    expect(links[0].source_ref).not.toContain("example");
+    expect(await openField(links[0].display_name, out.vaultKey)).toBe("Docs");
+    expect(await openField(links[0].source_ref, out.vaultKey)).toBe("https://example.com");
   });
 
   it("re-reads and retries when a note changed meanwhile (409)", async () => {

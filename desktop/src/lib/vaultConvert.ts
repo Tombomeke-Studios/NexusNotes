@@ -1,6 +1,7 @@
 import { ApiError } from "./api";
 import { encryptNote, plaintextChecksum, DEFAULT_KDF, type KdfParams } from "./crypto";
 import { setupVaultEncryption, sealField, type EncryptionMeta } from "./vaultKeys";
+import type { LinkedFile } from "./api";
 import type { Note, Vault } from "./types";
 
 /** One note as sent to POST /api/vaults/{id}/encryption/convert. */
@@ -17,9 +18,18 @@ export interface ConvertNotePayload {
   base_checksum: string;
 }
 
+/** One linked file with its name and source sealed under the new key (#410). */
+export interface ConvertLinkPayload {
+  id: string;
+  display_name: string;
+  source_ref: string;
+}
+
 export interface ConvertDeps {
   listNotes: (vaultId: string) => Promise<Note[]>;
-  convert: (vaultId: string, meta: EncryptionMeta, notes: ConvertNotePayload[]) => Promise<Vault>;
+  /** The vault's linked files as stored (the server refuses a conversion that leaves one out). */
+  listLinks?: (vaultId: string) => Promise<LinkedFile[]>;
+  convert: (vaultId: string, meta: EncryptionMeta, notes: ConvertNotePayload[], links: ConvertLinkPayload[]) => Promise<Vault>;
 }
 
 /** Attempts before a vault that keeps changing is reported as a conflict. */
@@ -54,8 +64,16 @@ export async function convertVaultToE2ee(
         base_checksum: n.checksum,
       });
     }
+    const links: ConvertLinkPayload[] = [];
+    for (const l of (await deps.listLinks?.(vaultId)) ?? []) {
+      links.push({
+        id: l.id,
+        display_name: await sealField(l.display_name, vaultKey),
+        source_ref: await sealField(l.source_ref, vaultKey),
+      });
+    }
     try {
-      const vault = await deps.convert(vaultId, meta, payload);
+      const vault = await deps.convert(vaultId, meta, payload, links);
       return { vault, vaultKey, recoveryCode };
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 409) || attempt >= MAX_ATTEMPTS) throw err;

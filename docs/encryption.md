@@ -45,7 +45,8 @@ server holds that key, so it is not zero-knowledge.
 The owner of a standard vault can encrypt it later (Settings → Sync → *Encrypt
 this vault*). The client generates the Vault Key and its wrapped forms exactly
 as at creation, reads every note, encrypts each one on the device and sends all
-of them in one request, titles and folder paths sealed as well (see below).
+of them in one request, titles and folder paths sealed as well (see below),
+together with the vault's linked files.
 The server swaps them in within a single transaction,
 and only if it received exactly the vault's current notes (otherwise `409`, and
 the client reads and encrypts again). In the same transaction it deletes what it
@@ -65,8 +66,12 @@ sealed on the device in the same `e2ee:` format as note titles. A URL link is
 still fetched through the server's proxy (browsers block cross-origin reads),
 so opening one sends its decrypted URL with that single request; the server
 fetches it and stores nothing. The server therefore learns which URL is opened
-at the moment it is opened, but not the links a vault holds. Links that existed
-before a vault was converted stay readable to the server until #410.
+at the moment it is opened, but not the links a vault holds.
+
+Converting a vault seals its links' names and sources in the same transaction
+as its notes (#410). Annotations are per user, so the converting device cannot
+seal the other members' ones: each member's client seals their own the next
+time they open that link, and until then it stays readable to the server.
 
 ### Attachments (#238)
 

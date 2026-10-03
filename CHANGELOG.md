@@ -7,7 +7,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 
 ### Added
 - Linked files in end-to-end encrypted vaults: their names, addresses and your notes on
-  them are encrypted on your device.
+  them are encrypted on your device. Encrypting an existing vault now covers its linked
+  files too; each member's own notes on them are encrypted the next time they open them.
 - Graph view: arrows show which note links to which, hovering a note shows its tags, links
   and last update, a dragged note stays where you put it, and double-clicking the
   background resets the view.

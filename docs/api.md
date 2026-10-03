@@ -183,12 +183,16 @@ client generates the vault key, encrypts every note and sends them all at once:
   "encryption_meta": { ... },
   "notes": [
     { "id": "...", "title": "e2ee:...", "path": "e2ee:...", "content": "<ciphertext>", "checksum": "<plaintext sha-256>", "base_checksum": "<checksum the note was read at>" }
+  ],
+  "links": [
+    { "id": "...", "display_name": "e2ee:...", "source_ref": "e2ee:..." }
   ]
 }
 ```
 
 In one transaction the server checks it received exactly the vault's current
-notes, stores the ciphertext with the sealed title and path (#362; a note
+notes and linked files (else `409`; a link without its sealed name or source is
+`400`, #410), stores the ciphertext with the sealed title and path (#362; a note
 without a title is refused with `400`), deletes stored versions, tags, aliases and links
 (plaintext the server no longer may hold) and switches the vault to `e2ee`;
 search documents keep only the sealed titles and paths. Response (200): the `Vault`. The

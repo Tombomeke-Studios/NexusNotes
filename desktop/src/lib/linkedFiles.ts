@@ -1,5 +1,5 @@
 import { links as api, type LinkedContent, type LinkedFile } from "./api";
-import { decryptFieldForVault, encryptFieldForVault, isE2eeVault, type VaultLike } from "./vaultKeys";
+import { decryptFieldForVault, encryptFieldForVault, isE2eeVault, isEncryptedField, type VaultLike } from "./vaultKeys";
 
 /**
  * Linked files through the vault's encryption (#364): in an e2ee vault the
@@ -41,8 +41,18 @@ export function linkContent(vault: VaultLike, link: LinkedFile): Promise<LinkedC
   return isE2eeVault(vault) ? api.fetchContent(link.id, link.source_ref) : api.content(link.id);
 }
 
+/**
+ * The caller's annotation. One written before its vault became e2ee is still
+ * plaintext on the server; it is sealed now (each member's own client does
+ * this, since annotations are per user, #410). A failed re-save is retried on
+ * the next read.
+ */
 export async function getAnnotation(vault: VaultLike, linkId: string): Promise<string> {
   const { content } = await api.getAnnotation(linkId);
+  if (isE2eeVault(vault) && content !== "" && !isEncryptedField(content)) {
+    void saveAnnotation(vault, linkId, content).catch(() => {});
+    return content;
+  }
   return decryptFieldForVault(vault, content);
 }
 

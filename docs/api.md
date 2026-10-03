@@ -307,6 +307,17 @@ One version with its `content` (ciphertext for e2ee vaults; the client
 decrypts it). Same access rules; `404` when the note has no version with that
 id.
 
+### POST /api/notes/:noteId/versions/:versionId/restore
+
+Makes a stored version the note's content again (#417). Body:
+`{ "prev_checksum": "<checksum the client has>", "device_id": "..." }`.
+The version's content and checksum are copied as they are, so it works for
+e2ee vaults without the server reading the text. It is an update like a save:
+a stale `prev_checksum` returns `409` with the same conflict body, and the
+restore always starts a new version, so the text it replaces stays in the
+history. Write access required (`403` otherwise); `404` for an unknown note or
+version. Response (200): the updated `Note`; other devices get `note:updated`.
+
 ### GET /api/notes/:noteId/backlinks
 
 Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`. Read access required; `404` for an unknown note.

@@ -59,6 +59,9 @@ type NoteUpdate struct {
 	// vaults where the server cannot hash the plaintext itself.
 	Checksum string `json:"checksum"`
 	DeviceID string `json:"device_id"`
+	// NewVersion starts a new history snapshot instead of updating the
+	// device's open one (restores, #417).
+	NewVersion bool `json:"-"`
 }
 
 type ConflictInfo struct {
@@ -203,7 +206,11 @@ func (s *SyncService) UpdateNote(ctx context.Context, update NoteUpdate) (*model
 		DeviceID:  update.DeviceID,
 		CreatedAt: now,
 	}
-	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, repository.VersionSnapshotWindow); err != nil {
+	window := repository.VersionSnapshotWindow
+	if update.NewVersion {
+		window = 0
+	}
+	if err := s.noteRepo.RecordVersionTx(ctx, tx, version, window); err != nil {
 		return nil, nil, fmt.Errorf("create version: %w", err)
 	}
 
@@ -254,6 +261,32 @@ func (s *SyncService) DeleteNote(ctx context.Context, noteID, vaultID string) er
 	}
 	metrics.NoteOps.WithLabelValues("delete").Inc()
 	return nil
+}
+
+// RestoreVersion makes a stored version the note's content again (#417). It
+// is an update against prevChecksum like any save, so a note changed in the
+// meantime is a conflict, and it always starts a new version: the text it
+// replaces stays in the history. The version's checksum is reused, so e2ee
+// ciphertext restores without the server reading it.
+func (s *SyncService) RestoreVersion(ctx context.Context, noteID, versionID, prevChecksum, deviceID string) (*model.Note, *ConflictInfo, error) {
+	note, err := s.noteRepo.GetByID(ctx, noteID)
+	if err != nil {
+		return nil, nil, err
+	}
+	version, err := s.noteRepo.GetVersion(ctx, noteID, versionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return s.UpdateNote(ctx, NoteUpdate{
+		NoteID:       noteID,
+		Title:        note.Title,
+		Path:         note.Path,
+		Content:      version.Content,
+		Checksum:     version.Checksum,
+		PrevChecksum: prevChecksum,
+		DeviceID:     deviceID,
+		NewVersion:   true,
+	})
 }
 
 // GetVersions lists a note's versions without their content (#414).

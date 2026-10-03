@@ -89,8 +89,10 @@ Every save records the note's new text in its history. Like Obsidian's file
 recovery, a version is a snapshot: saves from the device that started it keep
 updating it for 5 minutes (#413), so autosave every second does not fill the
 history with near-identical copies. A save from another device, or after the
-window, starts a new version. Each note keeps its newest 50 versions and older
-ones are pruned on the next save (#387).
+window, starts a new version; so does restoring a version (#417), which the
+server does by copying the stored version back, so the text it replaces is
+kept. Each note keeps its newest 50 versions and older ones are pruned on the
+next save (#387).
 
 The comparison and the write happen in one database transaction that holds a row lock on
 the note. Two devices saving at the same moment with the same previous checksum therefore

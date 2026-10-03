@@ -18,6 +18,7 @@ import { TemplatePicker } from "./components/Workspace/TemplatePicker";
 import { RenameTagDialog } from "./components/Workspace/RenameTagDialog";
 import { SharingDialog } from "./components/Workspace/SharingDialog";
 import { LinkedFilesDialog } from "./components/Workspace/LinkedFilesDialog";
+import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -25,7 +26,17 @@ import { Logo } from "./components/Logo";
 import { CreateVaultDialog } from "./components/Encryption/CreateVaultDialog";
 import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
 import { UnlockVaultDialog } from "./components/Encryption/UnlockVaultDialog";
-import { vaults as vaultsApi, notes as notesApi, stars as starsApi, links as linksApi, getToken, auth } from "./lib/api";
+import {
+  vaults as vaultsApi,
+  notes as notesApi,
+  stars as starsApi,
+  links as linksApi,
+  devices as devicesApi,
+  getToken,
+  getDeviceId,
+  auth,
+  ApiError,
+} from "./lib/api";
 import { restoreFailureAction } from "./lib/session";
 import { sealLegacyMeta, needsMetaSeal } from "./lib/legacyMeta";
 import {
@@ -582,6 +593,46 @@ export default function App() {
     }
   }, []);
 
+  // Version history of the open note (#415-#417).
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [deviceNames, setDeviceNames] = useState<Map<string, string>>(new Map());
+  const openHistory = useCallback(() => {
+    if (!activeNoteRef.current) return;
+    setHistoryOpen(true);
+    devicesApi
+      .list()
+      .then((list) => setDeviceNames(new Map(list.map((d) => [d.id, d.name]))))
+      .catch(() => {});
+  }, []);
+
+  // Restores a version on the server (a new version, so the replaced text is
+  // kept) and shows it the way another device's save is shown. Unsaved edits
+  // are saved first, so they are in the history too. Returns why it failed.
+  const handleRestoreVersion = useCallback(async (versionId: string): Promise<string | null> => {
+    const open = activeNoteRef.current;
+    if (!open) return "No note is open.";
+    if (isDirtyStatus(saveStatusRef.current)) {
+      const outcome = await handleSaveNoteRef.current(editorContentRef.current);
+      if (!outcome.ok) return `Your latest changes aren't saved yet: ${outcome.error.message}`;
+    }
+    const base = activeNoteRef.current?.id === open.id ? activeNoteRef.current.checksum : open.checksum;
+    try {
+      const restored = await decryptIncoming(await notesApi.restoreVersion(open.id, versionId, base));
+      if (activeNoteRef.current?.id === restored.id) {
+        if (editorPresent.current) replaceEditorText(restored.id, restored.content, editorContentRef.current, restored);
+        else adoptRemote(restored);
+      }
+      setNoteList((prev) => prev.map((n) => (n.id === restored.id ? restored : n)));
+      return null;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        return "This note changed on another device since you opened its history. Close the history and try again.";
+      }
+      if (err instanceof ApiError && err.status === 403) return "You can't edit this note.";
+      return "Couldn't restore this version. Check your connection and try again.";
+    }
+  }, [decryptIncoming, replaceEditorText, adoptRemote]);
+
   // True while a new note is being created: the open note is read-only until
   // the new one replaces it, so typing meant for the new note cannot land in
   // the previous one (#403).
@@ -870,9 +921,10 @@ export default function App() {
     { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
     { id: "global-search", label: "Global search", shortcut: "Ctrl+Shift+F", action: () => setShowGlobalSearch(true) },
     { id: "focus-mode", label: "Toggle focus mode", action: toggleFocusMode },
+    { id: "version-history", label: "Show version history", shortcut: "Ctrl+Shift+H", action: openHistory },
     { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
-  ], [handleCreateNote, handleOpenDaily, openGraphTab, openTemplatePicker, cycleView, toggleFocusMode, updatePrefs, handleSignOut]);
+  ], [handleCreateNote, handleOpenDaily, openGraphTab, openTemplatePicker, cycleView, toggleFocusMode, openHistory, updatePrefs, handleSignOut]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -885,6 +937,11 @@ export default function App() {
       if (meta && e.shiftKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
         setShowGlobalSearch(true);
+        return;
+      }
+      if (meta && e.shiftKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        openHistory();
         return;
       }
       if (meta && e.key === "p") {
@@ -941,7 +998,7 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handleCreateNote, handleOpenDaily, toggleGraphTab, openTemplatePicker, cycleView, toggleFocusMode]);
+  }, [handleCreateNote, handleOpenDaily, toggleGraphTab, openTemplatePicker, cycleView, toggleFocusMode, openHistory]);
 
   const handleAuth = useCallback(
     (u: User) => {
@@ -1839,6 +1896,15 @@ export default function App() {
               { key: "open", label: "Open", onClick: () => handleSelectNote(ctxMenu.noteId) },
               { key: "duplicate", label: "Duplicate", onClick: () => handleDuplicateNote(ctxMenu.noteId) },
               {
+                key: "history",
+                label: "Version history",
+                onClick: () => {
+                  const id = ctxMenu.noteId;
+                  if (activeNoteRef.current?.id === id) openHistory();
+                  else void handleSelectNote(id).then(() => activeNoteRef.current?.id === id && openHistory());
+                },
+              },
+              {
                 key: "star",
                 label: starredSet.has(ctxMenu.noteId) ? "Remove star" : "Star",
                 onClick: () => handleToggleStar(ctxMenu.noteId),
@@ -1988,6 +2054,26 @@ export default function App() {
                   if (next) handleSelectVault(next.id);
                 }
               }}
+            />
+          );
+        })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {historyOpen && activeNote && (() => {
+          const v = vaultList.find((x) => x.id === activeNote.vault_id);
+          if (!v) return null;
+          return (
+            <VersionHistoryDialog
+              key={`history-${activeNote.id}`}
+              note={activeNote}
+              vault={v}
+              currentText={editorContent}
+              canWrite={(v.role ?? "owner") !== "viewer"}
+              thisDeviceId={getDeviceId()}
+              deviceNames={deviceNames}
+              onRestore={handleRestoreVersion}
+              onClose={() => setHistoryOpen(false)}
             />
           );
         })()}

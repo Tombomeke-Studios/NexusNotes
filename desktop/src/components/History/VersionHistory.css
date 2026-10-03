@@ -1,0 +1,207 @@
+/* Version history (#415-#417). Reuses the conflict dialog's diff table; here
+   the left side is the selected (older) version and the right side what it is
+   compared with, so "only in this version" reads as removed (red) and "only
+   in the current text" as added (green). Changed lines also carry an inset
+   bar and, inline, a −/+ sign, so colour is never the only cue. */
+.vh-dialog {
+  --conflict-mine: var(--error);
+  --conflict-theirs: var(--success);
+  width: min(1180px, calc(100vw - 48px));
+  height: min(780px, calc(100vh - 64px));
+}
+
+.vh-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vh-head .confirm-title {
+  margin: 0;
+}
+
+.vh-head .confirm-title:focus {
+  outline: none;
+}
+
+.vh-note {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vh-body {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.vh-list {
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-crust);
+}
+
+.vh-list:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.vh-day {
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.vh-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--duration-fast, 120ms) ease;
+}
+
+.vh-item:hover {
+  background: var(--bg-hover);
+}
+
+.vh-item--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text-primary);
+}
+
+.vh-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.vh-device {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vh-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.vh-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.vh-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vh-compare {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.vh-compare select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-crust);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.vh-mode {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.vh-mode-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vh-mode-btn--on {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.vh-inline {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.vh-inline-line {
+  display: block;
+  padding-left: 8px;
+}
+
+.vh-sign {
+  display: inline-block;
+  width: 1.4em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.vh-inline-line[data-changed="mine"] .vh-sign {
+  color: var(--conflict-mine);
+}
+
+.vh-inline-line[data-changed="theirs"] .vh-sign {
+  color: var(--conflict-theirs);
+}
+
+.vh-inline-fold {
+  padding: 2px 8px;
+}
+
+.vh-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 760px) {
+  .vh-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 160px minmax(0, 1fr);
+  }
+}

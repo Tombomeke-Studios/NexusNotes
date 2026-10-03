@@ -375,6 +375,12 @@ export const notes = {
     request<NoteVersionInfo[]>(`/api/notes/${noteId}/versions`),
   version: (noteId: string, versionId: string) =>
     request<NoteVersion>(`/api/notes/${noteId}/versions/${versionId}`),
+  /** Makes a version the note's content again, as a new version (#417); 409 when the note moved on. */
+  restoreVersion: (noteId: string, versionId: string, prevChecksum: string) =>
+    request<Note>(`/api/notes/${noteId}/versions/${versionId}/restore`, {
+      method: "POST",
+      body: JSON.stringify({ prev_checksum: prevChecksum, device_id: getDeviceId() }),
+    }),
   backlinks: (noteId: string) =>
     request<BacklinkNote[]>(`/api/notes/${noteId}/backlinks`),
 };

@@ -6,6 +6,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Version history (Ctrl+Shift+H, the command palette or a note's context menu): browse the
+  snapshots kept while you edit, compare any of them with the current text or with each
+  other (side by side or inline), and restore one. Restoring keeps the text it replaces in
+  the history, and works in end-to-end encrypted vaults.
 - Linked files in end-to-end encrypted vaults: their names, addresses and your notes on
   them are encrypted on your device. Encrypting an existing vault now covers its linked
   files too; each member's own notes on them are encrypted the next time they open them.

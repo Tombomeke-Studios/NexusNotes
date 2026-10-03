@@ -259,6 +259,7 @@ NexusNotes/
 | `Ctrl+D` | Open or create today's daily note |
 | `Ctrl+F` | Search in current note |
 | `Ctrl+Shift+F` | Global search across vault |
+| `Ctrl+Shift+H` | Version history of the open note |
 | `Ctrl+Shift+L` | Link existing file into vault |
 | `Ctrl+,` | Settings |
 

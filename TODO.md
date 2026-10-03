@@ -82,7 +82,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > Complements `feature/db-performance` (#220).
 
 - [x] Search fallback: `EXISTS` for tags/aliases (#354); a trigram/full-text index on content is no longer possible, as content is encrypted at rest
-- [ ] Paginate or slim the note list
+- [x] Paginate or slim the note list (#461)
 - [x] Cap and prune `note_versions` (keep the newest 50 per note) (#387)
 - [x] Indexing worker queue with retry and shutdown drain; one shared helper (#401; the shared doc builder came with #365)
 - [x] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit (#388)
@@ -266,12 +266,12 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Graph view animations
 
-- [x] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre (#439)
-- [x] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow (#440)
-- [x] Fly the camera smoothly to a clicked node before opening the note (#441)
+- [ ] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre
+- [ ] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow
+- [ ] Fly the camera smoothly to a clicked node before opening the note
 - [ ] Animate the 2D-to-3D toggle by scattering nodes into z-space
-- [x] Render edge particle flow using animated dashed lines or moving dot particles (#442)
-- [x] Apply a slow continuous pulse to orphan nodes to draw attention (#443)
+- [ ] Render edge particle flow using animated dashed lines or moving dot particles
+- [ ] Apply a slow continuous pulse to orphan nodes to draw attention
 - [ ] Fade in the cluster convex hull with a gentle boundary pulse
 
 ### Toasts and notifications
@@ -315,15 +315,15 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > The first-run experience must guide a user to their first meaningful action within
 > seconds of logging in.
 
-- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
-- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
-- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
-- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
-- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
-- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
-- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
-- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
-- [x] Write tests for welcome vault creation and checklist state persistence (#453)
+- [ ] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template
+- [ ] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start
+- [ ] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion
+- [ ] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage
+- [ ] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes
+- [ ] Add empty-state illustrations for: no notes in vault, no links in graph, no search results
+- [ ] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard
+- [ ] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu
+- [ ] Write tests for welcome vault creation and checklist state persistence
 
 
 ## `feature/startup-performance` - Sub-second startup and runtime performance (#219)
@@ -1116,6 +1116,336 @@ Lower priority items not focused on the desktop application.
 - [x] Add code syntax highlighting in markdown preview (#37)
 - [x] Add command palette (Ctrl+Shift+P) (#38)
 - [x] Polish authentication screen with logo and background (#39)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- [ ] Paginate or slim the note list
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- [x] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre (#439)
+- [x] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow (#440)
+- [x] Fly the camera smoothly to a clicked node before opening the note (#441)
+- [x] Render edge particle flow using animated dashed lines or moving dot particles (#442)
+- [x] Apply a slow continuous pulse to orphan nodes to draw attention (#443)
+
+
+
+
+
+
+
+
+
+
+
+
+- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
+- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
+- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
+- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
+- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
+- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
+- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
+- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
+- [x] Write tests for welcome vault creation and checklist state persistence (#453)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

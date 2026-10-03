@@ -232,6 +232,7 @@ it is what it exists for:
 | `src/components/History/` + `src/lib/versionHistory.ts` | Version history (#415-#417): snapshot list per day/device, diff against the current text or another version (side by side / inline), restore (server-side, as a new version); versions are decrypted on the device for e2ee vaults |
 | `src/components/Workspace/SharingDialog.tsx` | Vault sharing panel: invite by email, per-member roles, leave (#55) |
 | `src/components/Workspace/LinkedFilesDialog.tsx` | Linked files panel: link a URL, read-only viewer, per-user annotations (#60-64) |
+| `src/lib/periodic.ts` | Periodic notes (#240): daily/ISO-weekly/monthly titles, their folders and default templates |
 | `src/lib/templates.ts` | Note templates: Templates-folder discovery, {{date}}/{{time}}/{{title}} substitution, default daily template |
 | `src/lib/export.ts` | Note export (#152): front-matter strip, standalone HTML via the preview's markdown pipeline, vault zip, print-to-PDF |
 | `src/lib/zip.ts` | Dependency-free store-only ZIP writer (CRC32) used by the client-side vault export |

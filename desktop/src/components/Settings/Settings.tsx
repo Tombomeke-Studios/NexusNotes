@@ -269,6 +269,30 @@ export function Settings({
                     onChange={(e) => onUpdatePrefs({ dailyTemplate: e.target.value })}
                   />
                 </div>
+                {(
+                  [
+                    ["weeklyTemplate", "Weekly note template", "this week's note (titled like 2026-W40)"],
+                    ["monthlyTemplate", "Monthly note template", "this month's note (titled like 2026-10)"],
+                  ] as const
+                ).map(([key, label, what]) => (
+                  <div key={key} className="settings-row settings-row--stacked">
+                    <div>
+                      <div className="settings-row-label">{label}</div>
+                      <div className="settings-row-sub">
+                        Used for {what} from the command palette. Supports {"{{date}}"}, {"{{time}}"} and{" "}
+                        {"{{title}}"}.
+                      </div>
+                    </div>
+                    <textarea
+                      className="settings-template-input"
+                      rows={5}
+                      spellCheck={false}
+                      aria-label={label}
+                      value={prefs[key]}
+                      onChange={(e) => onUpdatePrefs({ [key]: e.target.value })}
+                    />
+                  </div>
+                ))}
               </>
             )}
 

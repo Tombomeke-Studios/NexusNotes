@@ -67,3 +67,16 @@ describe("prefs", () => {
     expect(prefs.rightTab).toBe(DEFAULT_PREFS.rightTab);
   });
 });
+
+describe("periodic note templates (#240)", () => {
+  it("default to the built-in weekly and monthly templates and keep custom ones", () => {
+    localStorage.clear();
+    const prefs = loadPrefs();
+    expect(prefs.weeklyTemplate).toContain("{{title}}");
+    expect(prefs.monthlyTemplate).toContain("#monthly");
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ weeklyTemplate: "# Week {{title}}", monthlyTemplate: "   " }));
+    const loaded = loadPrefs();
+    expect(loaded.weeklyTemplate).toBe("# Week {{title}}");
+    expect(loaded.monthlyTemplate).toContain("#monthly");
+  });
+});

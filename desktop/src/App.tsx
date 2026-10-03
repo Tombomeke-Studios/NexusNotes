@@ -22,6 +22,7 @@ import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog"
 import { ShortcutsDialog } from "./components/Help/ShortcutsDialog";
 import { isTypingTarget } from "./lib/shortcuts";
 import { addedLinks, completeStep, startChecklist } from "./lib/checklist";
+import { planImport } from "./lib/importNotes";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
 import { SkeletonGraph, SkeletonNote } from "./components/Skeleton";
@@ -798,6 +799,41 @@ export default function App() {
 
   // Vault export (#152): zip built client-side from in-memory notes, so e2ee
   // vaults export decrypted without their plaintext touching the server.
+  // Import existing Markdown notes (#451): a folder (keeps its structure) or
+  // loose files, created through the vault's encryption like any new note.
+  const importFolderRef = useRef<HTMLInputElement>(null);
+  const importFilesRef = useRef<HTMLInputElement>(null);
+  const handleImportFiles = useCallback(async (list: FileList | null) => {
+    const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
+    if (!list || list.length === 0 || !vault) return;
+    if (isVaultLocked(vault)) {
+      toast("Unlock the vault before importing into it.", { kind: "error" });
+      return;
+    }
+    const plan = await planImport(Array.from(list), noteListRef.current);
+    const created: Note[] = [];
+    for (const [i, n] of plan.notes.entries()) {
+      if (i % 5 === 0) toast(`Importing ${i + 1} of ${plan.notes.length}…`, { key: "import", duration: 60_000 });
+      try {
+        const { content, checksum } = await encryptNoteForVault(vault, n.content);
+        const title = await encryptFieldForVault(vault, n.title);
+        const path = await encryptFieldForVault(vault, n.path);
+        const note = await notesApi.create(vault.id, title, path, content, checksum);
+        created.push({ ...note, title: n.title, path: n.path, content: n.content });
+      } catch {
+        /* reported in the summary below */
+      }
+    }
+    const ids = new Set(created.map((n) => n.id));
+    setNoteList((prev) => [...prev.filter((n) => !ids.has(n.id)), ...created]);
+    const failed = plan.notes.length - created.length;
+    const skipped = plan.skipped.existing + plan.skipped.tooLarge;
+    const parts = [`Imported ${created.length} note${created.length === 1 ? "" : "s"}`];
+    if (skipped > 0) parts.push(`${skipped} skipped (already there or over 5 MB)`);
+    if (failed > 0) parts.push(`${failed} failed`);
+    toast(parts.join(", ") + ".", { key: "import", kind: failed > 0 ? "error" : "success" });
+  }, []);
+
   const handleExportVault = useCallback(() => {
     const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
     if (!vault || noteListRef.current.length === 0) return;
@@ -973,6 +1009,8 @@ export default function App() {
     { id: "focus-mode", label: "Toggle focus mode", action: toggleFocusMode },
     { id: "version-history", label: "Show version history", shortcut: "Ctrl+Shift+H", action: openHistory },
     { id: "shortcuts", label: "Help: keyboard shortcuts", shortcut: "?", action: () => setShowShortcuts(true) },
+    { id: "import-folder", label: "Import a folder of Markdown notes…", action: () => importFolderRef.current?.click() },
+    { id: "import-files", label: "Import Markdown files…", action: () => importFilesRef.current?.click() },
     { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
   ], [handleCreateNote, handleOpenDaily, openGraphTab, openTemplatePicker, cycleView, toggleFocusMode, openHistory, updatePrefs, handleSignOut]);
@@ -1713,6 +1751,7 @@ export default function App() {
               selectedIds={selectedIds}
               onSetSelectedIds={setSelectedIds}
               onCreateNote={handleCreateNote}
+              onImportNotes={() => importFolderRef.current?.click()}
               onCreateNoteInFolder={handleCreateNoteInFolder}
               onCreateFolder={handleCreateFolder}
               onMoveNote={handleMoveNote}
@@ -1917,6 +1956,29 @@ export default function App() {
       )}
 
       <Toaster />
+      {/* Pickers for importing notes (#451); a folder keeps its structure. */}
+      <input
+        ref={importFolderRef}
+        type="file"
+        hidden
+        multiple
+        {...{ webkitdirectory: "" }}
+        onChange={(e) => {
+          void handleImportFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={importFilesRef}
+        type="file"
+        hidden
+        multiple
+        accept=".md,.markdown,text/markdown"
+        onChange={(e) => {
+          void handleImportFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
 
       <AnimatePresence>
         {showSettings && (

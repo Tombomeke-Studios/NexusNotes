@@ -204,7 +204,34 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           onCreateNote?.(d.title);
           return;
         }
-        onSelectNote(d.id);
+        // Glide onto the node, then open it (#441). The side-panel graph and
+        // reduced motion open at once.
+        const reduced = document.documentElement.dataset.rm === "1";
+        if (compact || reduced || d.x == null || d.y == null || !svgRef.current) {
+          onSelectNote(d.id);
+          return;
+        }
+        let opened = false;
+        const open = () => {
+          if (opened) return;
+          opened = true;
+          onSelectNote(d.id);
+        };
+        const k = Math.max(d3.zoomTransform(svgRef.current).k, 1.4);
+        svg
+          .interrupt()
+          .transition()
+          .duration(380)
+          .ease(d3.easeCubicOut)
+          .call(
+            zoom.transform as unknown as (
+              t: d3.Transition<SVGSVGElement | null, unknown, null, undefined>,
+              transform: d3.ZoomTransform,
+            ) => void,
+            d3.zoomIdentity.translate(width / 2 - k * d.x, height / 2 - k * d.y).scale(k),
+          )
+          .on("end", open)
+          .on("interrupt", open);
       })
       .on("dblclick", (event) => event.stopPropagation()) // not the background reset
       .on("mouseover", (event, d) => {

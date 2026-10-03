@@ -21,7 +21,7 @@ import { LinkedFilesDialog } from "./components/Workspace/LinkedFilesDialog";
 import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
-import { SkeletonNote } from "./components/Skeleton";
+import { SkeletonGraph, SkeletonNote } from "./components/Skeleton";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -1777,12 +1777,16 @@ export default function App() {
               </div>
             </div>
           ) : graphActive ? (
-            <GraphView
-              data={graphData}
-              activeNoteId={activeNote?.id ?? null}
-              onSelectNote={handleSelectNote}
-              onCreateNote={handleCreateNoteWithTitle}
-            />
+            notesLoading && graphData.nodes.length === 0 ? (
+              <SkeletonGraph />
+            ) : (
+              <GraphView
+                data={graphData}
+                activeNoteId={activeNote?.id ?? null}
+                onSelectNote={handleSelectNote}
+                onCreateNote={handleCreateNoteWithTitle}
+              />
+            )
           ) : loadingNoteId !== null && loadingNoteId === activeTabKey ? (
             <SkeletonNote />
           ) : (

@@ -330,7 +330,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
 - [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
 - [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
-- [ ] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
+- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
 - [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
 - [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
 - [ ] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)

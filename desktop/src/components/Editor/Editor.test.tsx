@@ -248,3 +248,29 @@ describe("Editor — [[link]] hover previews (#425)", () => {
     expect(view.queryByRole("tooltip")).toBeNull();
   });
 });
+
+describe("Editor — title flash after a save (#430)", () => {
+  it("flashes the title each time a save completes", () => {
+    const props = {
+      note: note("n1", "text"),
+      notes: [],
+      mode: "edit" as const,
+      onModeChange: () => {},
+      onSave: () => {},
+      onLiveChange: () => {},
+      onRename: () => {},
+      onRenameCommit: () => {},
+      onCreateNote: () => {},
+      onNavigateToNote: () => {},
+    };
+    const view = render(<Editor {...props} savedFlash={0} />);
+    const title = view.container.querySelector(".editor-title-input") as HTMLInputElement;
+    expect(title.classList.contains("editor-title-input--flash")).toBe(false);
+    view.rerender(<Editor {...props} savedFlash={1} />);
+    expect(title.classList.contains("editor-title-input--flash")).toBe(true);
+    fireEvent.animationEnd(title);
+    expect(title.classList.contains("editor-title-input--flash")).toBe(false);
+    view.rerender(<Editor {...props} savedFlash={2} />);
+    expect(title.classList.contains("editor-title-input--flash")).toBe(true);
+  });
+});

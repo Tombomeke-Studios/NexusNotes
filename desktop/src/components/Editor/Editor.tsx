@@ -93,6 +93,8 @@ interface EditorProps {
    * to be replaced, so what is typed now must not land in it.
    */
   readOnly?: boolean;
+  /** Bumped each time a save of this note completes; the title flashes (#430). */
+  savedFlash?: number;
 }
 
 export interface ReplaceRequest {
@@ -133,7 +135,13 @@ export function Editor({
   attachmentBlockReason = null,
   vault = null,
   readOnly = false,
+  savedFlash = 0,
 }: EditorProps) {
+  // A completed save flashes the title once (#430); cleared when it ends.
+  const [titleFlash, setTitleFlash] = useState(false);
+  useEffect(() => {
+    if (savedFlash > 0) setTitleFlash(true);
+  }, [savedFlash]);
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [splitDragging, setSplitDragging] = useState(false);
@@ -564,7 +572,8 @@ export function Editor({
     <div className="editor">
       <div className="editor-toolbar">
         <input
-          className="editor-title-input"
+          className={`editor-title-input${titleFlash ? " editor-title-input--flash" : ""}`}
+          onAnimationEnd={() => setTitleFlash(false)}
           value={note.title}
           readOnly={readOnly}
           onChange={(e) => onRename(e.target.value)}

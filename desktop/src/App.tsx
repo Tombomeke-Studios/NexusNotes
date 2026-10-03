@@ -167,6 +167,18 @@ export default function App() {
   activeTabKeyRef.current = activeTabKey;
   const saveStatusRef = useRef(saveStatus);
   saveStatusRef.current = saveStatus;
+  // The title flashes when a save completes (#430), at most every 30 s:
+  // autosave runs at every pause in typing, and a flash each time would nag.
+  const [savedFlash, setSavedFlash] = useState(0);
+  const flashState = useRef({ prev: saveStatus, at: 0 });
+  useEffect(() => {
+    const s = flashState.current;
+    if (s.prev === "saving" && saveStatus === "saved" && Date.now() - s.at > 30_000) {
+      s.at = Date.now();
+      setSavedFlash((n) => n + 1);
+    }
+    s.prev = saveStatus;
+  }, [saveStatus]);
   const editorContentRef = useRef(editorContent);
   editorContentRef.current = editorContent;
 
@@ -1776,6 +1788,7 @@ export default function App() {
               attachmentBlockReason={attachmentBlockReason(activeVault)}
               vault={activeVault}
               readOnly={creatingNote}
+              savedFlash={savedFlash}
             />
           )}
         </div>

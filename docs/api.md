@@ -182,15 +182,16 @@ client generates the vault key, encrypts every note and sends them all at once:
 {
   "encryption_meta": { ... },
   "notes": [
-    { "id": "...", "content": "<ciphertext>", "checksum": "<plaintext sha-256>", "base_checksum": "<checksum the note was read at>" }
+    { "id": "...", "title": "e2ee:...", "path": "e2ee:...", "content": "<ciphertext>", "checksum": "<plaintext sha-256>", "base_checksum": "<checksum the note was read at>" }
   ]
 }
 ```
 
 In one transaction the server checks it received exactly the vault's current
-notes, stores the ciphertext, deletes stored versions, tags, aliases and links
+notes, stores the ciphertext with the sealed title and path (#362; a note
+without a title is refused with `400`), deletes stored versions, tags, aliases and links
 (plaintext the server no longer may hold) and switches the vault to `e2ee`;
-search documents keep only titles and paths. Response (200): the `Vault`. The
+search documents keep only the sealed titles and paths. Response (200): the `Vault`. The
 owner's and members' devices get a `vault:encrypted` WebSocket message
 (`{ "vault_id": "..." }`) and must reload the vault, which is now locked.
 

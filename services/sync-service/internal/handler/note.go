@@ -353,7 +353,7 @@ func (h *NoteHandler) ConvertVault(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, repository.ErrVaultNotFound):
 		writeError(w, http.StatusNotFound, "vault not found")
 		return
-	case errors.Is(err, service.ErrConvertMissingMeta):
+	case errors.Is(err, service.ErrConvertMissingMeta), errors.Is(err, service.ErrConvertMissingTitle):
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	case errors.Is(err, service.ErrConvertNotesChanged):

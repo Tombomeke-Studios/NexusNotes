@@ -14,12 +14,14 @@ export function EmptyState({
   title,
   children,
   action,
+  secondary,
   compact = false,
 }: {
   art: Art;
   title: string;
   children?: ReactNode;
   action?: { label: string; onClick: () => void };
+  secondary?: { label: string; onClick: () => void };
   compact?: boolean;
 }) {
   return (
@@ -27,10 +29,19 @@ export function EmptyState({
       <Illustration art={art} />
       <div className="empty-state-title">{title}</div>
       {children && <div className="empty-state-body">{children}</div>}
-      {action && (
-        <button className="empty-state-action" onClick={action.onClick}>
-          {action.label}
-        </button>
+      {(action || secondary) && (
+        <div className="empty-state-actions">
+          {action && (
+            <button className="empty-state-action" onClick={action.onClick}>
+              {action.label}
+            </button>
+          )}
+          {secondary && (
+            <button className="empty-state-action empty-state-action--quiet" onClick={secondary.onClick}>
+              {secondary.label}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

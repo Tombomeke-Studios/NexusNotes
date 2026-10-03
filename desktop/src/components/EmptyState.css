@@ -40,6 +40,13 @@
   font-size: 11px;
 }
 
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
 .empty-state-action {
   margin-top: 8px;
   padding: 5px 12px;
@@ -116,4 +123,10 @@
   stroke: var(--accent);
   stroke-width: 4;
   stroke-linecap: round;
+}
+
+.empty-state-action--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
 }

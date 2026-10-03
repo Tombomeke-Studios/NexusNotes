@@ -6,6 +6,12 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Getting started: a new account's first vault holds a two-minute guide (starred), editor
+  tips, a template and today's daily note; a checklist in the sidebar walks through the
+  first steps; one-time tips explain the graph, palette, backlinks and tag filter; `?`
+  lists every keyboard shortcut; and empty views say what to do next.
+- Import existing Markdown notes: pick a folder (an Obsidian vault works; its structure is
+  kept) or loose `.md` files from the command palette or an empty vault.
 - Graph view motion: the graph unfolds from the centre with nodes fading in one by one, a
   hovered note grows and its links glow with dashes flowing in the link direction, notes
   without links pulse gently, and clicking a note glides onto it before opening it. The

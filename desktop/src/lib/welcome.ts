@@ -34,6 +34,7 @@ Start here:
 - Try the editor in [[My First Note]].
 - See how notes connect in [[Project Ideas]].
 - Keep the [[Keyboard Shortcuts]] close.
+- Already have notes elsewhere? Import a folder from the command palette (\`Ctrl+Shift+P\`, "Import").
 
 Open the **graph** (\`Ctrl+G\`) to see these notes link together. 🕸️
 

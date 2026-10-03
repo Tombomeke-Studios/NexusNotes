@@ -80,6 +80,8 @@ interface SidebarProps {
   selectedIds: Set<string>;
   onSetSelectedIds: (ids: Set<string>) => void;
   onCreateNote: () => void;
+  /** Opens the folder picker to import existing Markdown notes (#451). */
+  onImportNotes?: () => void;
   /** Creates a note inside a specific folder (right-click "New note" on a folder). */
   onCreateNoteInFolder: (path: string) => void;
   onCreateFolder: (path: string) => void;
@@ -134,6 +136,7 @@ export function Sidebar({
   selectedIds,
   onSetSelectedIds,
   onCreateNote,
+  onImportNotes,
   onCreateNoteInFolder,
   onCreateFolder,
   onMoveNote,
@@ -621,7 +624,13 @@ export function Sidebar({
           hasFilter ? (
             <div className="sidebar-empty">No notes match the current filter</div>
           ) : (
-            <EmptyState compact art="notes" title="No notes yet" action={{ label: "New note", onClick: onCreateNote }}>
+            <EmptyState
+              compact
+              art="notes"
+              title="No notes yet"
+              action={{ label: "New note", onClick: onCreateNote }}
+              secondary={onImportNotes ? { label: "Import notes", onClick: onImportNotes } : undefined}
+            >
               Write your first note to get started.
             </EmptyState>
           )

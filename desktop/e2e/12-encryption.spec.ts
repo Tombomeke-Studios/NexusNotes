@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { uid, register, clearAuth } from "./helpers";
+import { uid, register, clearAuth, noteIdByTitle, SEALED_FIELD } from "./helpers";
 
 const API = "http://localhost:8080";
 const PASSPHRASE = "correct horse battery staple";
@@ -18,17 +18,12 @@ async function getNote(page: Page, vaultName: string, title: string) {
     (v) => v.name === vaultName,
   );
   if (!vault) return { vault: null, note: null };
-  const notes = await (
-    await page.request.get(`${API}/api/vaults/${vault.id}/notes`, { headers })
-  ).json();
-  const listed = (notes as Array<{ id: string; title: string }> | null)?.find(
-    (n) => n.title === title,
-  );
-  if (!listed) return { vault, note: null };
-  const note = await (
-    await page.request.get(`${API}/api/notes/${listed.id}`, { headers })
-  ).json();
-  return { vault, note: note as { id: string; content: string; checksum: string } };
+  // The server only holds the sealed title (#362): find the note via the sidebar.
+  const id = await noteIdByTitle(page, title);
+  const res = await page.request.get(`${API}/api/notes/${id}`, { headers });
+  if (!res.ok()) return { vault, note: null };
+  const note = await res.json();
+  return { vault, note: note as { id: string; title: string; path: string; content: string; checksum: string } };
 }
 
 /** Creates the account's first vault as an e2ee vault via the first-run card. */
@@ -69,8 +64,11 @@ test.describe("E2EE vaults", () => {
         timeout: 15_000,
       })
       .toMatch(CIPHERTEXT_SHAPE);
-    const { vault } = await getNote(page, vaultName, "Welcome");
+    const { vault, note: welcome } = await getNote(page, vaultName, "Welcome");
     expect(vault?.encryption).toBe("e2ee");
+    // Titles and folder paths are sealed too (#362).
+    expect(welcome!.title).toMatch(SEALED_FIELD);
+    expect(welcome!.path).toMatch(SEALED_FIELD);
 
     // ...while the editor shows readable plaintext.
     const editor = page.locator(".editor-textarea");

@@ -47,6 +47,7 @@ interface HarnessOptions {
   encryptOutgoing?: (vaultId: string, plaintext: string) => Promise<{ content: string; checksum?: string }>;
   keepsDrafts?: (vaultId: string) => boolean;
   decryptServerContent?: (vaultId: string, content: string) => Promise<string>;
+  sealMeta?: (vaultId: string, title: string, path: string) => Promise<{ title: string; path: string }>;
 }
 
 /**
@@ -75,6 +76,7 @@ function useHarness(initial: Note, opts: HarnessOptions, onSynced: () => void) {
     encryptOutgoing: opts.encryptOutgoing ?? (async (_vaultId, plaintext) => ({ content: plaintext })),
     keepsDrafts: opts.keepsDrafts ?? (() => true),
     decryptServerContent: opts.decryptServerContent,
+    sealMeta: opts.sealMeta,
     paused,
     sessionKey,
   });
@@ -178,6 +180,24 @@ describe("useNoteSave — happy path", () => {
 
     expect(update).toHaveBeenCalledWith("n1", "Note", "", "ciphertext", "c0", "plain-sha");
     expect(hook.result.current.activeNote?.content).toBe("secret");
+  });
+
+  it("sends a sealed title and path but keeps the plaintext in state (#362)", async () => {
+    update.mockResolvedValueOnce(savedNote("plain-sha", { title: "e2ee:T", path: "e2ee:P", content: "ciphertext" }));
+    const { hook } = setup(
+      {
+        encryptOutgoing: async () => ({ content: "ciphertext", checksum: "plain-sha" }),
+        sealMeta: async () => ({ title: "e2ee:T", path: "e2ee:P" }),
+        keepsDrafts: () => false,
+      },
+      makeNote({ path: "Projects" }),
+    );
+
+    await act(() => hook.result.current.saveNote("secret"));
+
+    expect(update).toHaveBeenCalledWith("n1", "e2ee:T", "e2ee:P", "ciphertext", "c0", "plain-sha");
+    expect(hook.result.current.activeNote).toMatchObject({ title: "Note", path: "Projects", content: "secret" });
+    expect(hook.result.current.noteList[0]).toMatchObject({ title: "Note", path: "Projects" });
   });
 
   it("clears the local draft once the save succeeds", async () => {

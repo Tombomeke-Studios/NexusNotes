@@ -9,6 +9,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Graph view: arrows show which note links to which, hovering a note shows its tags, links
   and last update, a dragged note stays where you put it, and double-clicking the
   background resets the view.
+- In end-to-end encrypted vaults, note titles and folder names are now encrypted on your
+  device too. Existing notes are updated the next time you unlock the vault.
 - Files can be attached in end-to-end encrypted vaults: they are encrypted on your device,
   name and type included, before they are uploaded.
 - Existing vaults can be end-to-end encrypted afterwards (Settings → Sync → Encrypt this

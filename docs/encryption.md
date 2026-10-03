@@ -45,11 +45,12 @@ server holds that key, so it is not zero-knowledge.
 The owner of a standard vault can encrypt it later (Settings → Sync → *Encrypt
 this vault*). The client generates the Vault Key and its wrapped forms exactly
 as at creation, reads every note, encrypts each one on the device and sends all
-of them in one request. The server swaps them in within a single transaction,
+of them in one request, titles and folder paths sealed as well (see below).
+The server swaps them in within a single transaction,
 and only if it received exactly the vault's current notes (otherwise `409`, and
 the client reads and encrypts again). In the same transaction it deletes what it
 derived from the plaintext (stored versions, tags, aliases, links) and its search
-documents are rebuilt with titles and paths only. The device that converted the
+documents are rebuilt with the sealed titles and paths only. The device that converted the
 vault keeps the key in its session and shows the recovery code once; its local
 drafts are deleted. Other devices receive `vault:encrypted`, drop the vault's
 plaintext from memory and drafts, and ask for the passphrase.
@@ -221,17 +222,31 @@ is imperceptible.
 
 | Field | Visible to server | Notes |
 |---|---|---|
-| Note title | Yes (plaintext) | Stored plaintext; used for sidebar rendering |
-| Note path and folder | Yes (plaintext) | Required for file tree structure |
-| Tags | Yes (plaintext) | Required for filtering |
+| Note title | No (sealed) | `e2ee:` + base64url(IV ‖ ciphertext), see below |
+| Note path and folder | No (sealed) | Same format; the file tree is built on the device |
+| Tags and aliases | No | They live inside the encrypted content; the server derives none |
 | Note content | No (ciphertext only) | |
+| Vault name | Yes | Encrypted at rest with the server key, not end to end |
+| Number of notes | Yes | One row per note |
 | SHA-256 checksum | Yes | Reveals nothing about content |
 | Approximate file size | Yes | Ciphertext length approximates plaintext length |
 | Timestamps | Yes | Created at and updated at |
 
-If the title, path, or tags are also considered sensitive, use generic identifiers
-and omit tags. A future "full stealth" mode could encrypt metadata as well, at the
-cost of server-side file tree functionality.
+### Sealed titles and paths (#362)
+
+A note's title and folder path are encrypted under the Vault Key like its
+content, with a fresh IV each time, and sent as `e2ee:<base64url(IV ‖
+ciphertext)>`. The format is URL- and path-safe, so the server stores it like
+any title; it never parses it. The sidebar, file tree, quick-open and search
+all work on the decrypted copies in memory. A sealed value is randomised, so
+the server cannot see that two notes share a title or sit in the same folder.
+
+Notes written before titles were sealed still have a plaintext title and path
+on the server. Once their vault is unlocked, the client sends each such note
+back with a sealed title and path and its stored ciphertext and checksum
+unchanged; because the checksum does not change, a save made meanwhile cannot
+conflict with it. A device that cannot write (a viewer) leaves them for the
+next device that can.
 
 ---
 

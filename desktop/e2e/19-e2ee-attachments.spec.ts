@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, clearAuth, createNote } from "./helpers";
+import { uid, register, clearAuth, createNote, noteIdByTitle } from "./helpers";
 
 const API = "http://localhost:8080";
 const PASSPHRASE = "correct horse battery staple";
@@ -46,13 +46,8 @@ test.describe("Attachments in an e2ee vault", () => {
     // The server only has an opaque name and opaque bytes.
     const token = await page.evaluate(() => localStorage.getItem("nexus_token"));
     const headers = { Authorization: `Bearer ${token}` };
-    const vaults = (await (await page.request.get(`${API}/api/vaults`, { headers })).json()) as Array<{ id: string }>;
-    const notes = (await (await page.request.get(`${API}/api/vaults/${vaults[0].id}/notes`, { headers })).json()) as Array<{
-      id: string;
-      title: string;
-    }>;
-    const note = notes.find((n) => n.title === title)!;
-    const atts = (await (await page.request.get(`${API}/api/notes/${note.id}/attachments`, { headers })).json()) as Array<{
+    const noteId = await noteIdByTitle(page, title);
+    const atts = (await (await page.request.get(`${API}/api/notes/${noteId}/attachments`, { headers })).json()) as Array<{
       id: string;
       filename: string;
       mime_type: string;

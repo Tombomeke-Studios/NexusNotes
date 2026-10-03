@@ -119,7 +119,8 @@ encrypt a standard vault later (#361; full design in
 
 - Note content is encrypted client-side with AES-256-GCM before upload; the
   server stores only `iv:ciphertext` plus opaque wrapped-key material and can
-  never decrypt it.
+  never decrypt it. Note titles and folder paths are sealed the same way
+  (#362); tags and aliases only exist inside the encrypted content.
 - The Master Key is derived from the vault passphrase with Argon2id and never
   leaves the client; the unlocked Vault Key lives in memory only and is
   dropped on lock, sign-out and 401 auto-logout.
@@ -130,7 +131,7 @@ encrypt a standard vault later (#361; full design in
   design.
 - Plaintext never touches disk on the client: e2ee vaults skip the
   localStorage draft mirror, and search runs client-side over in-memory
-  decrypted notes (the server index only carries title/path).
+  decrypted notes (the server index only carries the sealed title/path).
 - Uploads fail closed: note content is only sent unencrypted for a vault the
   client knows to be unencrypted. A vault missing from the client's list
   (e.g. a save retry firing after sign-out cleared it) is refused rather
@@ -330,7 +331,7 @@ ciphertext and is wrapped once more.
   controls the running server can read standard vaults; only end-to-end
   encrypted vaults keep content from the server itself.
 - **Search index (#365).** Meilisearch keeps its own copy of standard-vault
-  content (e2ee vaults: titles and paths only) on its `meili_data` volume,
+  content (e2ee vaults: sealed titles and paths only) on its `meili_data` volume,
   outside the field-level encryption. That volume must sit on an encrypted
   disk and stay out of backups. It is derived data: when the service starts
   with an empty index it rebuilds it from the (encrypted) database, so a

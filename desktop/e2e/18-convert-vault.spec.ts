@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { uid, register, clearAuth, createVault, createNote, typeInEditor, waitForSaved } from "./helpers";
+import { uid, register, clearAuth, createVault, createNote, typeInEditor, waitForSaved, noteIdByTitle, SEALED_FIELD } from "./helpers";
 
 const API = "http://localhost:8080";
 const PASSPHRASE = "correct horse battery staple";
@@ -19,6 +19,7 @@ test.describe("Encrypt an existing vault", () => {
     const secret = `ZEBRA-${uid()} private`;
     await typeInEditor(page, secret);
     await waitForSaved(page);
+    const noteId = await noteIdByTitle(page, title);
 
     await page.keyboard.press("Control+,");
     await page.getByRole("button", { name: /^sync$/i }).click();
@@ -43,9 +44,12 @@ test.describe("Encrypt an existing vault", () => {
     const notes = (await (await page.request.get(`${API}/api/vaults/${vault.id}/notes`, { headers })).json()) as Array<{
       id: string;
       title: string;
+      path: string;
       content: string;
     }>;
-    const stored = notes.find((n) => n.title === title)!;
+    const stored = notes.find((n) => n.id === noteId)!;
+    expect(stored.title).toMatch(SEALED_FIELD);
+    expect(stored.path).toMatch(SEALED_FIELD);
     expect(stored.content).toMatch(CIPHERTEXT_SHAPE);
     expect(stored.content).not.toContain("ZEBRA");
     const versions = await (await page.request.get(`${API}/api/notes/${stored.id}/versions`, { headers })).json();

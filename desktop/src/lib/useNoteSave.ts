@@ -93,6 +93,8 @@ export interface NoteSaveDeps {
   onSynced: () => void;
   /** Prepares plaintext for upload (ciphertext + plaintext checksum for e2ee vaults). */
   encryptOutgoing: (vaultId: string, plaintext: string) => Promise<{ content: string; checksum?: string }>;
+  /** Seals title and folder path for upload (e2ee vaults, #362); omitted: sent as they are. */
+  sealMeta?: (vaultId: string, title: string, path: string) => Promise<{ title: string; path: string }>;
   /** False when plaintext must never touch disk (e2ee vaults), so no local draft is kept. */
   keepsDrafts: (vaultId: string) => boolean;
   /**
@@ -229,7 +231,9 @@ export function useNoteSave(deps: NoteSaveDeps) {
     failures.current.delete(note.id);
     clearErrorFor(note.id);
     if (conflictsRef.current.has(note.id)) setConflictVersion(note.id, null);
-    const saved = { ...updated, content };
+    // The server echoes what was sent (sealed title/path for e2ee vaults);
+    // state keeps the plaintext the request was made from.
+    const saved = { ...updated, title: note.title, path: note.path, content };
     if (lastRequests.current.get(note.id)?.version === version) lastRequests.current.delete(note.id);
     if (versionOf(note.id) === version) {
       cancelTimer(note.id);
@@ -297,10 +301,12 @@ export function useNoteSave(deps: NoteSaveDeps) {
     }
     let payload: string;
     let checksum: string | undefined;
+    let meta = { title: note.title, path: note.path };
     try {
       // For e2ee vaults only ciphertext + the plaintext checksum go out; the
       // server echoes the ciphertext back, so state keeps the local plaintext.
       ({ content: payload, checksum } = await d.encryptOutgoing(note.vault_id, content));
+      if (d.sealMeta) meta = await d.sealMeta(note.vault_id, note.title, note.path);
     } catch (err) {
       if (!stale()) fail(req, "failed", err);
       return;
@@ -311,7 +317,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     rememberOwn(note.id, expectedChecksum(payload, checksum));
     let updated: Awaited<ReturnType<typeof notesApi.update>>;
     try {
-      updated = await notesApi.update(note.id, note.title, note.path, payload, base, checksum);
+      updated = await notesApi.update(note.id, meta.title, meta.path, payload, base, checksum);
     } catch (err) {
       if (!stale()) fail(req, classifySaveError(err), err);
       return;

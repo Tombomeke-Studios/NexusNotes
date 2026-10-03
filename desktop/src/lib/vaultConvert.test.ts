@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { convertVaultToE2ee, type ConvertNotePayload } from "./vaultConvert";
 import { ApiError } from "./api";
 import { decryptNote, plaintextChecksum } from "./crypto";
+import { openField } from "./vaultKeys";
 import type { Note, Vault } from "./types";
 
 const fastKdf = { m: 64, t: 1, p: 1 };
@@ -16,7 +17,7 @@ const converted = { id: "v1", name: "V", encryption: "e2ee" } as unknown as Vaul
 // them at once (#361).
 describe("convertVaultToE2ee", () => {
   it("encrypts every note under a new vault key and returns the recovery code", async () => {
-    const notes = [note("a", "alpha"), note("b", "beta")];
+    const notes = [note("a", "alpha"), { ...note("b", "beta"), path: "Projects/2026" }];
     let sent: ConvertNotePayload[] = [];
     const convert = vi.fn(async (_id: string, _meta: unknown, payload: ConvertNotePayload[]) => {
       sent = payload;
@@ -35,6 +36,9 @@ describe("convertVaultToE2ee", () => {
       expect(await decryptNote(sent[i].content, out.vaultKey)).toBe(plain);
       expect(sent[i].checksum).toBe(await plaintextChecksum(plain));
       expect(sent[i].base_checksum).toBe(notes[i].checksum);
+      expect(sent[i].title).not.toBe(notes[i].title);
+      expect(await openField(sent[i].title, out.vaultKey)).toBe(notes[i].title);
+      expect(await openField(sent[i].path, out.vaultKey)).toBe(notes[i].path);
     }
   });
 

@@ -233,6 +233,8 @@
 }
 
 /* Inline notice above the editor while the open note is in conflict. */
+/* Amber, not red: nothing is lost, the user only has to choose (#432). It
+   drops in from the top edge of the editor when the conflict appears. */
 .conflict-notice {
   display: flex;
   align-items: center;
@@ -240,13 +242,19 @@
   padding: 7px 14px;
   font-size: 12.5px;
   color: var(--text-primary);
-  background: color-mix(in srgb, var(--error) 8%, var(--bg-base));
-  border-bottom: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 12%, var(--bg-base));
+  border-bottom: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
+  animation: conflictDrop var(--duration-slow) var(--easing-spring);
+}
+
+@keyframes conflictDrop {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .conflict-notice-icon {
   flex-shrink: 0;
-  color: var(--error);
+  color: var(--warning);
 }
 
 .conflict-notice-text {
@@ -261,7 +269,7 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--bg-crust);
-  background: var(--error);
+  background: var(--warning);
   transition: filter var(--transition-fast);
 }
 

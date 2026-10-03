@@ -909,3 +909,31 @@ input:focus, textarea:focus {
   0%, 100% { opacity: 0.45; transform: scale(0.85); }
   50% { opacity: 1; transform: scale(1); }
 }
+
+/* Typographic polish (#267). Counters use tabular figures so they don't
+   jitter as they change; headings balance their lines and running text
+   avoids a lonely last word. */
+:is(
+  .status-stat,
+  .status-count,
+  .checklist-count,
+  .conflict-count,
+  .graph-badge,
+  .graph-tooltip-meta,
+  .sidebar-chip-count,
+  .sidebar-filter-count,
+  .sidebar-search-count,
+  .tag-tree-count,
+  .vh-time,
+  .attachments-meta
+) {
+  font-variant-numeric: tabular-nums;
+}
+
+:is(h1, h2, h3, h4, .confirm-title, .empty-state-title, .settings-section-title) {
+  text-wrap: balance;
+}
+
+:is(p, li, .settings-row-sub, .empty-state-body, .confirm-dialog p) {
+  text-wrap: pretty;
+}

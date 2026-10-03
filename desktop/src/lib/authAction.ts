@@ -7,6 +7,8 @@
 export type AuthAction =
   | { kind: "verify-email"; token: string }
   | { kind: "reset-password"; token: string }
+  | { kind: "confirm-deletion"; token: string }
+  | { kind: "cancel-deletion"; token: string }
   | null;
 
 /** Parses a pathname + query string into an auth action, or null. */
@@ -15,6 +17,8 @@ export function parseAuthAction(pathname: string, search: string): AuthAction {
   if (!token) return null;
   if (pathname.endsWith("/verify-email")) return { kind: "verify-email", token };
   if (pathname.endsWith("/reset-password")) return { kind: "reset-password", token };
+  if (pathname.endsWith("/confirm-deletion")) return { kind: "confirm-deletion", token };
+  if (pathname.endsWith("/cancel-deletion")) return { kind: "cancel-deletion", token };
   return null;
 }
 

@@ -31,7 +31,8 @@ test.describe("Sidebar navigation", () => {
 
   test("sidebar shows empty state when vault has no notes", async ({ page }) => {
     await createVault(page, `Empty-${uid()}`);
-    await expect(page.locator(".sidebar-empty").first()).toBeVisible();
+    // An empty vault shows the illustrated empty state with a New note action (#450).
+    await expect(page.locator(".sidebar .empty-state")).toContainText("No notes yet");
   });
 
   test("vault switcher button is visible in the sidebar head", async ({ page }) => {

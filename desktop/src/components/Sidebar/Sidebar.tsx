@@ -1,4 +1,5 @@
 import { SkeletonTree } from "../Skeleton";
+import { EmptyState } from "../EmptyState";
 import { GettingStarted } from "./GettingStarted";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -610,9 +611,13 @@ export function Sidebar({
         )}
         {tree.length === 0 && loading && <SkeletonTree />}
         {tree.length === 0 && !loading && !showNewFolder && (
-          <div className="sidebar-empty">
-            {hasFilter ? "No notes match the current filter" : "No notes yet. Create your first note."}
-          </div>
+          hasFilter ? (
+            <div className="sidebar-empty">No notes match the current filter</div>
+          ) : (
+            <EmptyState compact art="notes" title="No notes yet" action={{ label: "New note", onClick: onCreateNote }}>
+              Write your first note to get started.
+            </EmptyState>
+          )
         )}
         {tree.map((node) => (
           <TreeItem

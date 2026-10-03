@@ -1,3 +1,4 @@
+import { EmptyState } from "../EmptyState";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { search as searchApi } from "../../lib/api";
 import { searchDecryptedNotes } from "../../lib/clientSearch";
@@ -106,7 +107,11 @@ export function GlobalSearch({ vaultId, clientNotes, onSelect, onClose }: Global
           {loading && <div className="global-search-status">Searching…</div>}
           {error && <div className="global-search-status global-search-error">{error}</div>}
           {!loading && !error && results.length === 0 && (query || tag) && (
-            <div className="global-search-status">No results</div>
+            <EmptyState art="search" title="No matches">
+              Nothing matches {query ? <>&ldquo;{query}&rdquo;</> : null}
+              {query && tag ? " in " : null}
+              {tag ? <>#{tag.replace(/^#/, "")}</> : null}. Try other words, or fewer of them.
+            </EmptyState>
           )}
           {results.map((hit, i) => (
             <button

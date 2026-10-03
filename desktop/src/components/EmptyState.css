@@ -1,0 +1,119 @@
+/* Empty states (#450). */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 20px;
+  text-align: center;
+  animation: riseIn var(--duration-slow) var(--easing-spring);
+}
+
+.empty-state--compact {
+  padding: 18px 12px;
+}
+
+.empty-state-art {
+  margin-bottom: 6px;
+}
+
+.empty-state--compact .empty-state-art {
+  width: 64px;
+  height: 52px;
+}
+
+.empty-state-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-state-body {
+  max-width: 34ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.empty-state-body code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.empty-state-action {
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.empty-state-action:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+}
+
+.es-sheet {
+  fill: var(--bg-surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+
+.es-sheet--back {
+  fill: var(--bg-crust);
+}
+
+.es-line {
+  stroke: var(--text-faint);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.es-accent {
+  fill: var(--accent);
+}
+
+.es-accent-mark {
+  stroke: var(--bg-crust);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.es-edge {
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.es-edge--dashed {
+  stroke-dasharray: 3 4;
+}
+
+.es-node {
+  fill: var(--bg-surface);
+  stroke: var(--text-faint);
+  stroke-width: 1.5;
+}
+
+.es-node--accent {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.es-node--faint {
+  opacity: 0.5;
+}
+
+.es-lens {
+  fill: var(--bg-surface);
+  stroke: var(--text-faint);
+  stroke-width: 2;
+}
+
+.es-handle {
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+}

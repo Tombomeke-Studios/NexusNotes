@@ -198,6 +198,7 @@ it is what it exists for:
 | `src/lib/shortcuts.ts` + `src/components/Help/ShortcutsDialog.tsx` | All keyboard shortcuts in one grouped list (keep in step with App.tsx's handlers) and the `?` reference dialog (#452) |
 | `src/components/EmptyState.tsx` | Empty views with a small decorative illustration, guidance and an optional action (#450): empty vault, graph without links, search without results |
 | `src/components/Tip.tsx` + `src/lib/tips.ts` | One-time contextual tips (#448) for the graph, palette, backlinks and tag filter; dismissed ids in localStorage |
+| `public/legal/` + `src/lib/consent.ts` + `src/components/ConsentBanner.tsx` | Policy page templates (operators fill in and get reviewed), storage consent store (`hasConsent()` gate for any future optional storage) and the one-time notice / Cookie preferences (#289) |
 | `src/components/CommandPalette.tsx` | Unified palette: quick-open notes + `>` command mode |
 | `src/components/Conflict/` | Conflict resolution (#225): side-by-side comparison dialog (keep mine / use theirs / merge by hand) and the notice above the editor |
 | `src/components/Encryption/` | E2EE vault UI: encryption choice (EncryptionSetup, on by default with an opt-out warning), new-vault dialog, one-time recovery-code dialog, unlock dialog, ConvertVaultForm (encrypt an existing vault) |

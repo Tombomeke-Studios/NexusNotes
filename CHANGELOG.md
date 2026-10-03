@@ -6,6 +6,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Privacy Policy, Terms of Service, Cookie Policy and Refund Policy pages (templates for each
+  server's operator to complete). Signing up asks you to agree to the Terms and Privacy
+  Policy, and a one-time notice explains what the app stores in your browser, with "Cookie
+  preferences" on the sign-in screen and in Settings → Account.
 - Deleting your account now waits 7 days: you are signed out, get an email with a link to
   cancel, and can also sign in and choose "Keep my account". If you can no longer sign in,
   "Locked out? Request account deletion" on the sign-in screen emails a confirmation link.

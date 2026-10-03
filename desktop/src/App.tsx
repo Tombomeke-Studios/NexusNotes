@@ -67,7 +67,7 @@ import { convertVaultToE2ee } from "./lib/vaultConvert";
 import { clearDraft } from "./lib/drafts";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
-import { welcomeNotes } from "./lib/welcome";
+import { welcomeNotes, QUICK_START_TITLE } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
 import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
@@ -1147,7 +1147,7 @@ export default function App() {
     // For an e2ee vault the seeds are encrypted like any other note; state
     // keeps the plaintext so the editor and graph work on readable content.
     const created: Note[] = [];
-    for (const n of welcomeNotes) {
+    for (const n of welcomeNotes(new Date(), loadPrefs().dailyTemplate)) {
       try {
         const { content, checksum } = await encryptNoteForVault(vault, n.content);
         const title = await encryptFieldForVault(vault, n.title);
@@ -1159,6 +1159,15 @@ export default function App() {
       }
     }
     setNoteList(created);
+
+    // The quick-start guide sits in Starred (#449).
+    const guide = created.find((n) => n.title === QUICK_START_TITLE);
+    if (guide) {
+      starsApi
+        .star(guide.id)
+        .then(() => setStarredIds((prev) => (prev.includes(guide.id) ? prev : [...prev, guide.id])))
+        .catch(() => {});
+    }
 
     // Open the Welcome note so the user lands on something useful.
     const welcome = created.find((n) => n.title === "Welcome");

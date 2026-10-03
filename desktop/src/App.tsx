@@ -1168,7 +1168,10 @@ export default function App() {
         /* skip a note that failed to create */
       }
     }
-    setNoteList(created);
+    // Seeding takes a moment: keep any note the user made (or got via sync)
+    // meanwhile instead of replacing the list.
+    const seeded = new Set(created.map((n) => n.id));
+    setNoteList((prev) => [...created, ...prev.filter((n) => !seeded.has(n.id))]);
 
     // The quick-start guide sits in Starred (#449).
     const guide = created.find((n) => n.title === QUICK_START_TITLE);
@@ -1179,9 +1182,10 @@ export default function App() {
         .catch(() => {});
     }
 
-    // Open the Welcome note so the user lands on something useful.
+    // Open the Welcome note so the user lands on something useful, unless
+    // they already opened something while the notes were being created.
     const welcome = created.find((n) => n.title === "Welcome");
-    if (welcome) {
+    if (welcome && tabsRef.current.length === 0 && !activeNoteRef.current) {
       setTabs([{ key: welcome.id, type: "note" }]);
       setActiveTabKey(welcome.id);
       setActiveNote(welcome);

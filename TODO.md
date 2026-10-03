@@ -334,7 +334,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
 - [ ] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
 - [ ] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
-- [ ] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
+- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
 - [ ] Write tests for welcome vault creation and checklist state persistence (#453)
 
 ---

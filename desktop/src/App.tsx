@@ -19,6 +19,8 @@ import { RenameTagDialog } from "./components/Workspace/RenameTagDialog";
 import { SharingDialog } from "./components/Workspace/SharingDialog";
 import { LinkedFilesDialog } from "./components/Workspace/LinkedFilesDialog";
 import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog";
+import { ShortcutsDialog } from "./components/Help/ShortcutsDialog";
+import { isTypingTarget } from "./lib/shortcuts";
 import { Toaster } from "./components/Toaster";
 import { toast } from "./lib/toast";
 import { SkeletonGraph, SkeletonNote } from "./components/Skeleton";
@@ -617,6 +619,8 @@ export default function App() {
     }
   }, []);
 
+  // Keyboard shortcut reference (#452).
+  const [showShortcuts, setShowShortcuts] = useState(false);
   // Version history of the open note (#415-#417).
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deviceNames, setDeviceNames] = useState<Map<string, string>>(new Map());
@@ -948,6 +952,7 @@ export default function App() {
     { id: "global-search", label: "Global search", shortcut: "Ctrl+Shift+F", action: () => setShowGlobalSearch(true) },
     { id: "focus-mode", label: "Toggle focus mode", action: toggleFocusMode },
     { id: "version-history", label: "Show version history", shortcut: "Ctrl+Shift+H", action: openHistory },
+    { id: "shortcuts", label: "Help: keyboard shortcuts", shortcut: "?", action: () => setShowShortcuts(true) },
     { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
   ], [handleCreateNote, handleOpenDaily, openGraphTab, openTemplatePicker, cycleView, toggleFocusMode, openHistory, updatePrefs, handleSignOut]);
@@ -968,6 +973,11 @@ export default function App() {
       if (meta && e.shiftKey && e.key.toLowerCase() === "h") {
         e.preventDefault();
         openHistory();
+        return;
+      }
+      if (e.key === "?" && !meta && !e.altKey && !isTypingTarget(e.target)) {
+        e.preventDefault();
+        setShowShortcuts(true);
         return;
       }
       if (meta && e.key === "p") {
@@ -2121,6 +2131,10 @@ export default function App() {
             />
           );
         })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showShortcuts && <ShortcutsDialog key="shortcuts" onClose={() => setShowShortcuts(false)} />}
       </AnimatePresence>
 
       <AnimatePresence>

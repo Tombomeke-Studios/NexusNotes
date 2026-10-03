@@ -1,0 +1,61 @@
+/* Keyboard shortcut reference (#452). */
+.confirm-dialog.shortcuts-dialog {
+  width: min(860px, calc(100vw - 48px));
+  max-width: none;
+}
+
+.shortcuts-title {
+  margin: 0 0 14px;
+}
+
+.shortcuts-title:focus {
+  outline: none;
+}
+
+.shortcuts-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px 24px;
+}
+
+.shortcuts-group-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.shortcuts-list {
+  margin: 0;
+}
+
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.shortcuts-row dd {
+  display: flex;
+  gap: 3px;
+  margin: 0;
+}
+
+.shortcuts-key {
+  min-width: 20px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--bg-crust);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
+}

@@ -1,4 +1,5 @@
 import { HistorySettings } from "./HistorySettings";
+import { SHORTCUTS } from "../../lib/shortcuts";
 import { useEffect, useState } from "react";
 import { downloadFile } from "../../lib/export";
 import { motion, useIsPresent } from "framer-motion";
@@ -35,22 +36,6 @@ interface SettingsProps {
   onSignOut: () => void;
   onClose: () => void;
 }
-
-const SHORTCUTS: Array<[string, string]> = [
-  ["Quick open", "Ctrl+P"],
-  ["Command palette", "Ctrl+Shift+P"],
-  ["New note", "Ctrl+N"],
-  ["Open graph", "Ctrl+G"],
-  ["Daily note", "Ctrl+D"],
-  ["Insert template", "Ctrl+T"],
-  ["Cycle view", "Ctrl+E"],
-  ["Global search", "Ctrl+Shift+F"],
-  ["Version history", "Ctrl+Shift+H"],
-  ["Save", "Ctrl+S"],
-  ["Toggle sidebar", "Ctrl+B"],
-  ["Toggle side panel", "Ctrl+."],
-  ["Settings", "Ctrl+,"],
-];
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (

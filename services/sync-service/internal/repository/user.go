@@ -76,9 +76,10 @@ func (r *UserRepo) Create(ctx context.Context, user *model.User) error {
 		return err
 	}
 	_, err = r.pool.Exec(ctx,
-		`INSERT INTO users (id, email, email_index, password_hash, display_name, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		`INSERT INTO users (id, email, email_index, password_hash, display_name, created_at, updated_at, terms_accepted_at, terms_version)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''))`,
 		user.ID, email, r.emailIndex(user.Email), user.PasswordHash, displayName, user.CreatedAt, user.UpdatedAt,
+		user.TermsAcceptedAt, user.TermsVersion,
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError

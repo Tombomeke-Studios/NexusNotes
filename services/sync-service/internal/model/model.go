@@ -13,7 +13,15 @@ type User struct {
 	EmailVerified bool      `json:"email_verified"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+	// When and to which version of the Terms of Service and Privacy Policy
+	// the user agreed at signup (#289); nil for accounts from before.
+	TermsAcceptedAt *time.Time `json:"-"`
+	TermsVersion    string     `json:"-"`
 }
+
+// CurrentTermsVersion names the policy text new accounts agree to; bump it
+// whenever public/legal/terms.html or privacy.html changes materially.
+const CurrentTermsVersion = "2026-10-03"
 
 // Vault encryption modes. For e2ee vaults the server stores only ciphertext
 // and opaque key material (see docs/encryption.md).

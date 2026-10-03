@@ -271,6 +271,46 @@ func (h *NoteHandler) Version(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, v)
 }
 
+// RestoreVersion makes a stored version the note's content again (#417), as
+// a new version. Write access required; a stale prev_checksum is a 409 with
+// the same conflict body as a save.
+func (h *NoteHandler) RestoreVersion(w http.ResponseWriter, r *http.Request) {
+	existing, err := h.syncService.GetNote(r.Context(), r.PathValue("noteId"))
+	if err != nil {
+		writeLookupError(w, err, "note not found")
+		return
+	}
+	if !canWrite(r.Context(), h.vaultRepo, existing.VaultID, middleware.GetUserID(r.Context())) {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+	var req struct {
+		PrevChecksum string `json:"prev_checksum"`
+		DeviceID     string `json:"device_id"`
+	}
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeBodyError(w, err, "invalid request body")
+		return
+	}
+	note, conflict, err := h.syncService.RestoreVersion(r.Context(), existing.ID, r.PathValue("versionId"), req.PrevChecksum, req.DeviceID)
+	switch {
+	case err == nil:
+	case errors.Is(err, service.ErrConflict):
+		writeJSON(w, http.StatusConflict, conflict)
+		return
+	case errors.Is(err, service.ErrNoteBusy):
+		w.Header().Set("Retry-After", "1")
+		writeError(w, http.StatusServiceUnavailable, "note is being saved by another device, retry")
+		return
+	default:
+		writeLookupError(w, err, "version not found")
+		return
+	}
+	payload, _ := json.Marshal(note)
+	h.broadcastToVault(r, note.VaultID, ws.Message{Type: "note:updated", Payload: payload})
+	writeJSON(w, http.StatusOK, note)
+}
+
 // Versions lists a note's versions, newest first, without content.
 func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
 	note, ok := h.readableNote(w, r)

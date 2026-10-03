@@ -265,3 +265,32 @@ func TestDelete_NoteMustBelongToThePathVault(t *testing.T) {
 		t.Fatal("note should be gone after the owner deletes it")
 	}
 }
+
+// POST /api/notes/{noteId}/versions/{versionId}/restore (#417).
+func TestRestoreVersion_HTTP(t *testing.T) {
+	f := newNoteAccessFixture(t)
+	ctx := context.Background()
+	current, err := f.svc.GetNote(ctx, f.note.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	versions, _ := f.svc.GetVersions(ctx, f.note.ID)
+	path := map[string]string{"noteId": f.note.ID, "versionId": versions[0].ID}
+	body := map[string]string{"prev_checksum": current.Checksum, "device_id": "dev"}
+
+	if rec := callJSON(f.h.RestoreVersion, f.viewer, path, body); rec.Code != http.StatusForbidden {
+		t.Fatalf("viewer: status %d, want 403", rec.Code)
+	}
+	if rec := callJSON(f.h.RestoreVersion, f.owner, path, map[string]string{"prev_checksum": "stale"}); rec.Code != http.StatusConflict {
+		t.Fatalf("stale checksum: status %d, want 409", rec.Code)
+	}
+	missing := map[string]string{"noteId": f.note.ID, "versionId": uuid.New().String()}
+	if rec := callJSON(f.h.RestoreVersion, f.owner, missing, body); rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown version: status %d, want 404", rec.Code)
+	}
+	rec := callJSON(f.h.RestoreVersion, f.owner, path, body)
+	var note model.Note
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &note) != nil || note.Content != "second draft" {
+		t.Fatalf("restore: %d %s", rec.Code, rec.Body.String())
+	}
+}

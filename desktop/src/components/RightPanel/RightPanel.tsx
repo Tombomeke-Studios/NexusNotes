@@ -9,6 +9,8 @@ import { wordCount, readingTimeMinutes } from "../../lib/stats";
 import { folderOf } from "../../lib/noteFilter";
 import { buildGraphData, localGraph } from "../../lib/wikilinks";
 import { GraphView } from "../Graph";
+import { AttachmentsTab } from "./AttachmentsTab";
+import type { VaultLike } from "../../lib/vaultKeys";
 import "./RightPanel.css";
 
 interface RightPanelProps {
@@ -21,13 +23,18 @@ interface RightPanelProps {
   /** Creates a note from a ghost node in the local graph (#147). */
   onCreateNote?: (title: string) => void;
   onTagClick: (tag: string) => void;
+  /** The open note's vault, for its attachments (#238); null while unknown. */
+  vault?: VaultLike | null;
+  /** Owners and editors may upload and delete attachments. */
+  canWrite?: boolean;
 }
 
-const TABS: RightTab[] = ["outline", "links", "graph", "info"];
+const TABS: RightTab[] = ["outline", "links", "graph", "files", "info"];
 const TAB_LABELS: Record<RightTab, string> = {
   outline: "Outline",
   links: "Links",
   graph: "Graph",
+  files: "Files",
   info: "Info",
 };
 
@@ -65,6 +72,8 @@ export function RightPanel({
   onNavigateToNote,
   onCreateNote,
   onTagClick,
+  vault = null,
+  canWrite = false,
 }: RightPanelProps) {
   const [depth, setDepth] = useState(1);
   const outline = useMemo(() => (note ? parseOutline(content) : []), [note, content]);
@@ -96,7 +105,7 @@ export function RightPanel({
         ))}
         <span
           className="right-panel-indicator"
-          style={{ left: `${TABS.indexOf(tab) * (100 / TABS.length)}%` }}
+          style={{ left: `${TABS.indexOf(tab) * (100 / TABS.length)}%`, width: `${100 / TABS.length}%` }}
         />
       </div>
 
@@ -189,6 +198,15 @@ export function RightPanel({
           )}
         </div>
       )}
+
+      {tab === "files" &&
+        (note && vault ? (
+          <AttachmentsTab key={note.id} noteId={note.id} vault={vault} canWrite={canWrite} />
+        ) : (
+          <div className="right-panel-body">
+            <div className="right-panel-empty">Open a note to see its files.</div>
+          </div>
+        ))}
 
       {tab === "info" && (
         <div className="right-panel-body right-panel-body--info">

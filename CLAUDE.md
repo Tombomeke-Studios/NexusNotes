@@ -191,7 +191,7 @@ it is what it exists for:
 | `src/components/Workspace/WindowControls.tsx` | Native minimize/maximize/close controls (reused by top bar + login screen) |
 | `src/components/Editor/` | Markdown editor with live preview; `LinkPreview.tsx` + `src/lib/linkPreview.ts` show a [[link]]'s target on hover (#425) |
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
-| `src/components/RightPanel/` | Right panel: outline, backlinks, note info |
+| `src/components/RightPanel/` | Right panel: outline, backlinks, local graph, Files (attachments, #238), note info |
 | `src/components/Search/Snippet.tsx` + `src/lib/snippet.ts` | Renders search snippets as text with `<em>` highlights (snippets are raw note text; never render them as HTML) |
 | `src/components/Skeleton.tsx` | Loading placeholders (#434-#437): file tree rows, note lines, graph nodes; the shared CSS-only `.skeleton` shimmer lives in index.css |
 | `src/lib/toast.ts` + `src/components/Toaster.tsx` | Toast notifications (#429): call `toast(message, { kind, key })` from anywhere; the Toaster (mounted once in App) slides them in bottom-right, auto-dismisses (paused on hover/focus) |

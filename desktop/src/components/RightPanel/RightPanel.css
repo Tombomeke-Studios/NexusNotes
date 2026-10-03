@@ -247,3 +247,113 @@
   border-radius: 10px;
   overflow: hidden;
 }
+
+/* Files tab (#238). */
+.attachments-tab {
+  padding: 10px 12px;
+}
+
+.attachments-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.attachments-upload {
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.attachments-upload:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.attachments-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachments-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-inner);
+}
+
+.attachments-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.attachments-name:hover {
+  background: var(--bg-hover);
+}
+
+.attachments-filename {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.attachments-meta {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.attachments-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.attachments-actions button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+
+.attachments-actions button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.attachments-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0 6px 4px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.attachments-confirm button {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.attachments-confirm .attachments-danger {
+  background: color-mix(in srgb, var(--error) 18%, transparent);
+  color: var(--error);
+}

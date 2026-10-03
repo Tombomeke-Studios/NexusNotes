@@ -2,7 +2,7 @@ import { DEFAULT_DAILY_TEMPLATE } from "./templates";
 import { MOTION_PREFERENCES, type MotionPreference } from "./motion";
 
 export type ViewMode = "edit" | "split" | "preview";
-export type RightTab = "outline" | "links" | "graph" | "info";
+export type RightTab = "outline" | "links" | "graph" | "files" | "info";
 
 export interface WorkspacePrefs {
   fontSize: number;
@@ -44,7 +44,7 @@ export const PREF_LIMITS = {
 } as const;
 
 const VIEW_MODES: ViewMode[] = ["edit", "split", "preview"];
-const RIGHT_TABS: RightTab[] = ["outline", "links", "graph", "info"];
+const RIGHT_TABS: RightTab[] = ["outline", "links", "graph", "files", "info"];
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));

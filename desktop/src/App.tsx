@@ -1932,6 +1932,8 @@ export default function App() {
               onTabChange={(t) => updatePrefs({ rightTab: t })}
               onNavigateToNote={handleSelectNote}
               onCreateNote={handleCreateNoteWithTitle}
+              vault={activeNote ? vaultList.find((v) => v.id === activeNote.vault_id) ?? null : null}
+              canWrite={(vaultList.find((v) => v.id === activeNote?.vault_id)?.role ?? "owner") !== "viewer"}
               onTagClick={(tag) => {
                 setFilterTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
                 setRailView("files");

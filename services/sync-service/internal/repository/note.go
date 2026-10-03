@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -160,6 +161,70 @@ func (r *NoteRepo) ListByVault(ctx context.Context, vaultID string) ([]model.Not
 		notes = append(notes, n)
 	}
 	return notes, nil
+}
+
+// NoteCursor marks where a page of ListPage ended: notes come in (path, id)
+// order, so the next page starts after this pair (#461).
+type NoteCursor struct {
+	Path string
+	ID   string
+}
+
+// String encodes the cursor for an API response header.
+func (c NoteCursor) String() string {
+	return base64.RawURLEncoding.EncodeToString([]byte(c.Path + "\x00" + c.ID))
+}
+
+// ParseNoteCursor decodes a cursor made by String.
+func ParseNoteCursor(s string) (NoteCursor, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return NoteCursor{}, ErrInvalidCursor
+	}
+	path, id, ok := strings.Cut(string(raw), "\x00")
+	if !ok || id == "" {
+		return NoteCursor{}, ErrInvalidCursor
+	}
+	return NoteCursor{Path: path, ID: id}, nil
+}
+
+// ErrInvalidCursor is returned for a cursor ListPage did not make.
+var ErrInvalidCursor = errors.New("invalid cursor")
+
+// ListPage returns up to limit notes of the vault after the cursor (the zero
+// cursor starts at the beginning) and the cursor of the next page, nil when
+// this was the last one (#461).
+func (r *NoteRepo) ListPage(ctx context.Context, vaultID string, limit int, after NoteCursor) ([]model.Note, *NoteCursor, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
+		 FROM notes WHERE vault_id = $1 AND (path, id) > ($2, $3)
+		 ORDER BY path, id LIMIT $4`,
+		vaultID, after.Path, after.ID, limit+1,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list notes page: %w", err)
+	}
+	defer rows.Close()
+	notes := []model.Note{}
+	for rows.Next() {
+		var n model.Note
+		if err := rows.Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt); err != nil {
+			return nil, nil, fmt.Errorf("scan note: %w", err)
+		}
+		if err := r.open(fieldNoteContent, &n.Content); err != nil {
+			return nil, nil, err
+		}
+		notes = append(notes, n)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	if len(notes) <= limit {
+		return notes, nil, nil
+	}
+	notes = notes[:limit]
+	last := notes[limit-1]
+	return notes, &NoteCursor{Path: last.Path, ID: last.ID}, nil
 }
 
 // ChecksumsForUpdateTx returns every note of the vault (id -> checksum),

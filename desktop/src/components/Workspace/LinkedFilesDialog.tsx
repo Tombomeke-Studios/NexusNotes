@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { links as linksApi, type LinkedFile, type LinkedContent } from "../../lib/api";
+import { listLinks, createLink, linkContent, getAnnotation, saveAnnotation } from "../../lib/linkedFiles";
 import type { Vault } from "../../lib/types";
 import "./LinkedFilesDialog.css";
 import { OverlayMotion } from "../motion/OverlayMotion";
@@ -29,7 +30,7 @@ export function LinkedFilesDialog({ vault, canWrite, onClose }: LinkedFilesDialo
   const [open, setOpen] = useState<LinkedFile | null>(null);
 
   const reload = () =>
-    linksApi.list(vault.id).then(setList).catch(() => setError("Could not load linked files"));
+    listLinks(vault).then(setList).catch(() => setError("Could not load linked files"));
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,7 +47,7 @@ export function LinkedFilesDialog({ vault, canWrite, onClose }: LinkedFilesDialo
     setBusy(true);
     setError(null);
     try {
-      await linksApi.create(vault.id, {
+      await createLink(vault, {
         display_name: name.trim() || ref,
         source_type: "url",
         source_ref: ref,
@@ -81,7 +82,7 @@ export function LinkedFilesDialog({ vault, canWrite, onClose }: LinkedFilesDialo
         onClick={(e) => e.stopPropagation()}
       >
         {open ? (
-          <LinkedViewer link={open} onBack={() => setOpen(null)} />
+          <LinkedViewer vault={vault} link={open} onBack={() => setOpen(null)} />
         ) : (
           <>
             <div className="confirm-title">Linked files</div>
@@ -149,7 +150,7 @@ export function LinkedFilesDialog({ vault, canWrite, onClose }: LinkedFilesDialo
 }
 
 /** Read-only viewer for a linked file, with the current user's annotation (#64). */
-function LinkedViewer({ link, onBack }: { link: LinkedFile; onBack: () => void }) {
+function LinkedViewer({ vault, link, onBack }: { vault: Vault; link: LinkedFile; onBack: () => void }) {
   const [content, setContent] = useState<LinkedContent | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [annotation, setAnnotation] = useState("");
@@ -160,14 +161,15 @@ function LinkedViewer({ link, onBack }: { link: LinkedFile; onBack: () => void }
     setContent(null);
     setLoadErr(null);
     if (link.source_type === "url") {
-      linksApi.content(link.id).then(setContent).catch(() => setLoadErr("Couldn't fetch the source."));
+      linkContent(vault, link).then(setContent).catch(() => setLoadErr("Couldn't fetch the source."));
     } else {
       setLoadErr("This link opens in the native app.");
     }
-    linksApi.getAnnotation(link.id).then((a) => setAnnotation(a.content)).catch(() => {});
+    getAnnotation(vault, link.id).then(setAnnotation).catch(() => {});
     return () => {
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [link.id, link.source_type]);
 
   const onAnnotate = (value: string) => {
@@ -175,8 +177,7 @@ function LinkedViewer({ link, onBack }: { link: LinkedFile; onBack: () => void }
     setSavedNote(null);
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
-      linksApi
-        .saveAnnotation(link.id, value)
+      saveAnnotation(vault, link.id, value)
         .then(() => setSavedNote("Saved"))
         .catch(() => setSavedNote("Save failed"));
     }, 600);

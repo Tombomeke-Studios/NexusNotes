@@ -494,6 +494,12 @@ export const links = {
     request<void>(`/api/vaults/${vaultId}/links/${linkId}`, { method: "DELETE" }),
   content: (linkId: string) =>
     request<LinkedContent>(`/api/links/${linkId}/content`),
+  /** e2ee vaults (#364): the stored source is sealed, so the client sends the URL. */
+  fetchContent: (linkId: string, url: string) =>
+    request<LinkedContent>(`/api/links/${linkId}/content`, {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
   getAnnotation: (linkId: string) =>
     request<{ content: string }>(`/api/links/${linkId}/annotation`),
   saveAnnotation: (linkId: string, content: string) =>

@@ -274,6 +274,11 @@ more are refused with `429` rather than queued, so slow sources cannot tie up
 the server's outbound connections. Self-hosters who want to link LAN resources can set
 `LINKED_FILES_ALLOW_PRIVATE=true`, which lifts the address check only.
 
+In an end-to-end encrypted vault the stored source is sealed (#364): the
+client sends the URL in the body of `POST /api/links/{id}/content`, the same
+checks apply, and the URL is neither stored nor logged (request logs carry the
+path only).
+
 ## Secrets Management
 
 - `JWT_SECRET` must be set via environment variable and be at least 32 characters;

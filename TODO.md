@@ -77,7 +77,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Encrypt note titles, folder paths, tags and aliases on the client in e2ee vaults (#362)
 - [ ] Share end-to-end encrypted vaults with per-user key exchange (#363)
 - [x] End-to-end encrypt linked files and their annotations (#364)
-- [ ] Seal existing linked files when a vault becomes end-to-end encrypted (#410)
+- [x] Seal existing linked files when a vault becomes end-to-end encrypted (#410)
 
 ---
 

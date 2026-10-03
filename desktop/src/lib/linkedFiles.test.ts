@@ -74,6 +74,16 @@ describe("linked files in an e2ee vault", () => {
     expect(await getAnnotation(e2ee, "l1")).toBe("my private thoughts");
   });
 
+  it("seals an annotation written before the vault was encrypted (#410)", async () => {
+    vi.mocked(api.getAnnotation).mockResolvedValue({ content: "old plaintext note" });
+    vi.mocked(api.saveAnnotation).mockResolvedValue(undefined);
+    expect(await getAnnotation(e2ee, "l1")).toBe("old plaintext note");
+    await vi.waitFor(() => expect(api.saveAnnotation).toHaveBeenCalledOnce());
+    const [id, sent] = vi.mocked(api.saveAnnotation).mock.calls[0];
+    expect(id).toBe("l1");
+    expect(isEncryptedField(sent)).toBe(true);
+  });
+
   it("keeps an empty annotation empty", async () => {
     vi.mocked(api.getAnnotation).mockResolvedValue({ content: "" });
     expect(await getAnnotation(e2ee, "l1")).toBe("");

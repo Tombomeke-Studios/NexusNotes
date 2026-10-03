@@ -25,7 +25,7 @@ import { Logo } from "./components/Logo";
 import { CreateVaultDialog } from "./components/Encryption/CreateVaultDialog";
 import { RecoveryCodeDialog } from "./components/Encryption/RecoveryCodeDialog";
 import { UnlockVaultDialog } from "./components/Encryption/UnlockVaultDialog";
-import { vaults as vaultsApi, notes as notesApi, stars as starsApi, getToken, auth } from "./lib/api";
+import { vaults as vaultsApi, notes as notesApi, stars as starsApi, links as linksApi, getToken, auth } from "./lib/api";
 import { restoreFailureAction } from "./lib/session";
 import { sealLegacyMeta, needsMetaSeal } from "./lib/legacyMeta";
 import {
@@ -999,7 +999,8 @@ export default function App() {
     await flushPendingSave();
     const { vault: converted, vaultKey, recoveryCode: code } = await convertVaultToE2ee(vault.id, passphrase, {
       listNotes: (id) => notesApi.list(id),
-      convert: (id, meta, notes) => vaultsApi.convertToE2ee(id, meta, notes),
+      listLinks: (id) => linksApi.list(id),
+      convert: (id, meta, notes, links) => vaultsApi.convertToE2ee(id, meta, notes, links),
     });
     vaultKeySession.set(converted.id, vaultKey);
     setVaultList((prev) => prev.map((v) => (v.id === converted.id ? { ...v, ...converted } : v)));

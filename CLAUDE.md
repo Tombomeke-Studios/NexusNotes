@@ -233,6 +233,7 @@ it is what it exists for:
 | `src/lib/templates.ts` | Note templates: Templates-folder discovery, {{date}}/{{time}}/{{title}} substitution, default daily template |
 | `src/lib/export.ts` | Note export (#152): front-matter strip, standalone HTML via the preview's markdown pipeline, vault zip, print-to-PDF |
 | `src/lib/zip.ts` | Dependency-free store-only ZIP writer (CRC32) used by the client-side vault export |
+| `src/lib/checklist.ts` + `src/components/Sidebar/GettingStarted.tsx` | First-launch checklist (#447): started when a new account's first vault is seeded, ticked from App (create, link, graph, palette), localStorage per device |
 | `src/lib/welcome.ts` | Sample notes seeded into a new account's first vault (onboarding) |
 | `src/lib/version.ts` | App version (`APP_VERSION`, from package.json) and `assessHealth`: classifies the server as ok / unreachable / version-mismatch from `/health` |
 | `src/lib/connection.ts` + `useServerStatus.ts` | Server-status wording (`describeServerStatus`) and the polling hook that feeds the connection banner |

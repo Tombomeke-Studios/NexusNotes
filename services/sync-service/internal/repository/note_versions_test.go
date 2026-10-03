@@ -39,9 +39,9 @@ func TestNoteRepo_RecordVersionCoalesces(t *testing.T) {
 
 	record("a1", "laptop", t0)
 	record("a2", "laptop", t0.Add(time.Minute))
-	record("a3", "laptop", t0.Add(4*time.Minute)) // still the same snapshot
-	record("b1", "phone", t0.Add(5*time.Minute))  // another device: new snapshot
-	record("a4", "laptop", t0.Add(6*time.Minute)) // after the phone's: new snapshot
+	record("a3", "laptop", t0.Add(4*time.Minute))  // still the same snapshot
+	record("b1", "phone", t0.Add(5*time.Minute))   // another device: new snapshot
+	record("a4", "laptop", t0.Add(6*time.Minute))  // after the phone's: new snapshot
 	record("a5", "laptop", t0.Add(12*time.Minute)) // window over: new snapshot
 
 	versions, err := repo.ListVersions(ctx, note.ID)

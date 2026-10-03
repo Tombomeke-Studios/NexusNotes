@@ -256,8 +256,14 @@ func (s *SyncService) DeleteNote(ctx context.Context, noteID, vaultID string) er
 	return nil
 }
 
+// GetVersions lists a note's versions without their content (#414).
 func (s *SyncService) GetVersions(ctx context.Context, noteID string) ([]model.NoteVersion, error) {
-	return s.noteRepo.ListVersions(ctx, noteID)
+	return s.noteRepo.ListVersionInfo(ctx, noteID)
+}
+
+// GetVersion loads one version of a note, content included.
+func (s *SyncService) GetVersion(ctx context.Context, noteID, versionID string) (*model.NoteVersion, error) {
+	return s.noteRepo.GetVersion(ctx, noteID, versionID)
 }
 
 func (s *SyncService) GetBacklinks(ctx context.Context, noteID string) ([]model.BacklinkNote, error) {

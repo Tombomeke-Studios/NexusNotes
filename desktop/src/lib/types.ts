@@ -43,13 +43,20 @@ export interface Note {
   updated_at: string;
 }
 
-export interface NoteVersion {
+/** A stored snapshot of a note (#413); the list omits `content` (#414). */
+export interface NoteVersionInfo {
   id: string;
   note_id: string;
-  content: string;
   checksum: string;
   device_id: string;
+  /** When the snapshot started. */
   created_at: string;
+  /** When later saves of the same device last changed it. */
+  updated_at: string;
+}
+
+export interface NoteVersion extends NoteVersionInfo {
+  content: string;
 }
 
 export interface ConflictInfo {

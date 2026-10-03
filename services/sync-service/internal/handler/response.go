@@ -63,6 +63,7 @@ func writeBodyError(w http.ResponseWriter, err error, badRequestMessage string) 
 // isNotFound reports whether err means the requested thing does not exist.
 func isNotFound(err error) bool {
 	return errors.Is(err, repository.ErrNoteNotFound) ||
+		errors.Is(err, repository.ErrVersionNotFound) ||
 		errors.Is(err, repository.ErrVaultNotFound) ||
 		errors.Is(err, repository.ErrAttachmentNotFound) ||
 		errors.Is(err, repository.ErrLinkedFileNotFound) ||

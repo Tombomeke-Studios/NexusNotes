@@ -18,6 +18,9 @@ import (
 // ErrNoteNotFound is returned when a note does not exist.
 var ErrNoteNotFound = errors.New("note not found")
 
+// ErrVersionNotFound is returned when a note has no version with that id.
+var ErrVersionNotFound = errors.New("version not found")
+
 // ErrNoteLocked is returned when waiting for a note's row lock exceeded the
 // transaction's lock_timeout (another save is holding it).
 var ErrNoteLocked = errors.New("note is locked by another update")
@@ -309,6 +312,50 @@ func (r *NoteRepo) CreateVersion(ctx context.Context, version *model.NoteVersion
 		return fmt.Errorf("prune note versions: %w", err)
 	}
 	return nil
+}
+
+// ListVersionInfo lists a note's versions newest first without their content
+// (#414); GetVersion loads one.
+func (r *NoteRepo) ListVersionInfo(ctx context.Context, noteID string) ([]model.NoteVersion, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, note_id, checksum, device_id, created_at, updated_at
+		 FROM note_versions WHERE note_id = $1 ORDER BY created_at DESC, id DESC`,
+		noteID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list versions: %w", err)
+	}
+	defer rows.Close()
+	versions := []model.NoteVersion{}
+	for rows.Next() {
+		var v model.NoteVersion
+		if err := rows.Scan(&v.ID, &v.NoteID, &v.Checksum, &v.DeviceID, &v.CreatedAt, &v.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan version: %w", err)
+		}
+		versions = append(versions, v)
+	}
+	return versions, rows.Err()
+}
+
+// GetVersion loads one version of noteID; ErrVersionNotFound when it does not
+// exist or belongs to another note.
+func (r *NoteRepo) GetVersion(ctx context.Context, noteID, versionID string) (*model.NoteVersion, error) {
+	var v model.NoteVersion
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, note_id, content, checksum, device_id, created_at, updated_at
+		 FROM note_versions WHERE id = $1 AND note_id = $2`,
+		versionID, noteID,
+	).Scan(&v.ID, &v.NoteID, &v.Content, &v.Checksum, &v.DeviceID, &v.CreatedAt, &v.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrVersionNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get version: %w", err)
+	}
+	if err := r.open(fieldVersionContent, &v.Content); err != nil {
+		return nil, err
+	}
+	return &v, nil
 }
 
 func (r *NoteRepo) ListVersions(ctx context.Context, noteID string) ([]model.NoteVersion, error) {

@@ -593,7 +593,7 @@ This entry is retained so that existing issue references remain valid.
 ## `feature/version-history-ui` - Version history viewer (#226)
 
 - [x] Coalesce note versions into one snapshot per device every few minutes (#413)
-- [ ] List note versions without content and fetch one version by id (#414)
+- [x] List note versions without content and fetch one version by id (#414)
 - [ ] Build a version history panel listing saved versions per note (#415)
 - [ ] Render a diff between any two selected versions (side-by-side or inline) (#416)
 - [ ] Add a "Restore this version" action (#417)

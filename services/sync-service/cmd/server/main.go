@@ -232,6 +232,7 @@ func main() {
 	protectedMux.HandleFunc("PUT /api/notes/{noteId}", noteHandler.Update)
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
+	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions/{versionId}", noteHandler.Version)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
 	protectedMux.Handle("POST /api/notes/{noteId}/attachments", longTransfer(http.HandlerFunc(attachHandler.Upload)))
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/attachments", attachHandler.List)

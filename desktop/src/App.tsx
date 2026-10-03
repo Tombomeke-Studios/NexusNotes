@@ -24,6 +24,7 @@ import { isTypingTarget } from "./lib/shortcuts";
 import { addedLinks, completeStep, startChecklist } from "./lib/checklist";
 import { planImport } from "./lib/importNotes";
 import { Toaster } from "./components/Toaster";
+import { ConsentBanner } from "./components/ConsentBanner";
 import { toast } from "./lib/toast";
 import { SkeletonGraph, SkeletonNote } from "./components/Skeleton";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
@@ -2005,6 +2006,7 @@ export default function App() {
       )}
 
       <Toaster />
+      <ConsentBanner />
       {/* Pickers for importing notes (#451); a folder keeps its structure. */}
       <input
         ref={importFolderRef}

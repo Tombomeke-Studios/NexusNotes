@@ -199,6 +199,8 @@ export const auth = {
           password,
           display_name: displayName,
           device_id: getDeviceId(),
+          // The signup form only submits with its consent box ticked (#289).
+          accepted_terms: true,
         }),
       },
     );

@@ -1,4 +1,5 @@
 import { type Page, expect } from "@playwright/test";
+import { CONSENT_VERSION } from "../src/lib/consent";
 
 // Unique suffix per test run so tests don't collide on the backend
 let _counter = 0;
@@ -6,8 +7,22 @@ export function uid(): string {
   return `${Date.now()}-${++_counter}`;
 }
 
+/**
+ * Answers the storage notice (#289) before the app loads, so the banner never
+ * covers what a test clicks. The banner itself is tested in 25-consent.spec.ts.
+ */
+export async function skipConsentBanner(page: Page) {
+  await page.addInitScript((version) => {
+    localStorage.setItem(
+      "nexus_consent",
+      JSON.stringify({ version, analytics: false, marketing: false, decidedAt: new Date().toISOString() }),
+    );
+  }, CONSENT_VERSION);
+}
+
 export async function register(page: Page, email?: string, password = "Password1!") {
   const e = email ?? `test-${uid()}@nexus.test`;
+  await skipConsentBanner(page);
   await page.goto("/");
   // If already on the main app, skip
   if (await page.locator(".sidebar").isVisible().catch(() => false)) return { email: e, password };
@@ -24,6 +39,7 @@ export async function register(page: Page, email?: string, password = "Password1
   await page.getByPlaceholder("Display name").fill("Test User");
   await page.getByPlaceholder("Email").fill(e);
   await page.getByPlaceholder("Password").fill(password);
+  await page.getByRole("checkbox", { name: /I agree to the Terms of Service/ }).check();
   await page.getByRole("button", { name: /create account/i }).click();
   await expect(page.locator(".sidebar")).toBeVisible({ timeout: 10_000 });
   return { email: e, password };
@@ -181,6 +197,7 @@ export async function openPalette(page: Page, mode: "notes" | "commands" = "comm
 }
 
 export async function clearAuth(page: Page) {
+  await skipConsentBanner(page);
   await page.goto("/");
   await page.evaluate(() => {
     try {

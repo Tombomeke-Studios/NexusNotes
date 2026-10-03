@@ -315,15 +315,15 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > The first-run experience must guide a user to their first meaningful action within
 > seconds of logging in.
 
-- [ ] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template
-- [ ] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start
-- [ ] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion
-- [ ] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage
-- [ ] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes
-- [ ] Add empty-state illustrations for: no notes in vault, no links in graph, no search results
-- [ ] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard
-- [ ] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu
-- [ ] Write tests for welcome vault creation and checklist state persistence
+- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
+- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
+- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
+- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
+- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
+- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
+- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
+- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
+- [x] Write tests for welcome vault creation and checklist state persistence (#453)
 
 
 ## `feature/startup-performance` - Sub-second startup and runtime performance (#219)
@@ -766,26 +766,26 @@ Lower priority items not focused on the desktop application.
 
 ### Policy pages (static, web)
 
-- [ ] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact)
-- [ ] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
-- [ ] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
-- [ ] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
+- [x] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact) (#289: operator templates in `desktop/public/legal/`; legal review before launch)
+- [x] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
+- [x] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
+- [x] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
 
 ### Cookie consent
 
-- [ ] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
-- [ ] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
-- [ ] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
-- [ ] Link to Cookie Policy from the banner
-- [ ] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
+- [x] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
+- [x] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
+- [x] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
+- [x] Link to Cookie Policy from the banner
+- [x] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
 
 ### Form consents & data deletion
 
-- [ ] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
-- [ ] Store consent timestamp and policy version in the database alongside the user record
-- [ ] Add consent checkbox on any marketing / newsletter sign-up form
+- [x] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
+- [x] Store consent timestamp and policy version in the database alongside the user record
+- [x] Add consent checkbox on any marketing / newsletter sign-up form (N/A: NexusNotes has no marketing or newsletter forms; any future one needs an unticked consent box)
 - [x] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
-- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
+- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
 - [x] Implement account deletion confirmation email with a 7-day grace-period cancellation link
 - [x] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
 
@@ -1137,6 +1137,333 @@ Lower priority items not focused on the desktop application.
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- [ ] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template
+- [ ] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start
+- [ ] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion
+- [ ] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage
+- [ ] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes
+- [ ] Add empty-state illustrations for: no notes in vault, no links in graph, no search results
+- [ ] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard
+- [ ] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu
+- [ ] Write tests for welcome vault creation and checklist state persistence
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- [ ] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact)
+
+
+
+
+- [ ] Add consent checkbox on any marketing / newsletter sign-up form
+- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 - [x] Paginate or slim the note list (#461)
 
 
@@ -1323,7 +1650,6 @@ Lower priority items not focused on the desktop application.
 
 
 
-- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
 
 
 
@@ -1518,15 +1844,6 @@ Lower priority items not focused on the desktop application.
 
 
 
-- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
-- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
-- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
-- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
-- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
-- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
-- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
-- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
-- [x] Write tests for welcome vault creation and checklist state persistence (#453)
 
 
 

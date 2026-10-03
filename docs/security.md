@@ -90,6 +90,17 @@ single request. Attachment uploads are capped separately at 25 MiB.
 Redis holds only transient session/cache state; MinIO holds attachments once
 that feature ships.
 
+### Consent
+
+Sign-up requires ticking agreement to the Terms of Service and Privacy Policy;
+the server refuses a registration without it and stores the time and the
+policy version (`CurrentTermsVersion`) with the user (#289). NexusNotes sets no
+cookies and uses browser storage only for what it needs to work, so no consent
+is needed for it; a one-time notice explains that and offers preferences per
+category (Necessary always on; Analytics and Marketing off). Nothing optional
+exists today; anything added later must check `hasConsent()` in
+`desktop/src/lib/consent.ts`.
+
 ### Rights fulfilment
 
 - **Erasure (Art. 17):** `DELETE /api/auth/account` (password re-confirmed)

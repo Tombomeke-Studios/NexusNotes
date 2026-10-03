@@ -154,3 +154,46 @@ func (r *LinkedFileRepo) UpsertAnnotation(ctx context.Context, linkedFileID, use
 	}
 	return nil
 }
+
+// IDsForUpdateTx row-locks a vault's links until tx ends and returns their ids
+// (the e2ee conversion checks it got exactly these, #410).
+func (r *LinkedFileRepo) IDsForUpdateTx(ctx context.Context, tx pgx.Tx, vaultID string) (map[string]bool, error) {
+	rows, err := tx.Query(ctx, `SELECT id FROM linked_files WHERE vault_id = $1 FOR NO KEY UPDATE`, vaultID)
+	if err != nil {
+		return nil, fmt.Errorf("lock vault links: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan link id: %w", err)
+		}
+		out[id] = true
+	}
+	return out, rows.Err()
+}
+
+// ReplaceSealedTx overwrites a link's name and source with the client's
+// sealed values (e2ee conversion, #410).
+func (r *LinkedFileRepo) ReplaceSealedTx(ctx context.Context, tx pgx.Tx, id, vaultID, name, source string) error {
+	sealedName, err := r.seal(fieldLinkedFileName, name)
+	if err != nil {
+		return err
+	}
+	sealedSource, err := r.seal(fieldLinkedFileSource, source)
+	if err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx,
+		`UPDATE linked_files SET display_name = $3, source_ref = $4 WHERE id = $1 AND vault_id = $2`,
+		id, vaultID, sealedName, sealedSource,
+	)
+	if err != nil {
+		return fmt.Errorf("replace linked file: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrLinkedFileNotFound
+	}
+	return nil
+}

@@ -114,7 +114,8 @@ func main() {
 	verifyRepo := repository.NewEmailVerificationRepo(pool)
 	resetRepo := repository.NewPasswordResetRepo(pool)
 	emailAuth := service.NewEmailAuthService(userRepo, verifyRepo, resetRepo, refreshRepo, mailer, cfg.AppBaseURL)
-	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, indexer)
+	linkedFileRepo := repository.NewLinkedFileRepo(pool, crypt)
+	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, linkedFileRepo, indexer)
 	// Search data is derived: an empty index (new volume, restore without it)
 	// is refilled from the database in the background (#365).
 	go func() {
@@ -183,7 +184,7 @@ func main() {
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
-	linkHandler := handler.NewLinkedFileHandler(repository.NewLinkedFileRepo(pool, crypt), vaultRepo, cfg.LinkedFilesAllowPrivate)
+	linkHandler := handler.NewLinkedFileHandler(linkedFileRepo, vaultRepo, cfg.LinkedFilesAllowPrivate)
 	deviceHandler := handler.NewDeviceHandler(deviceRepo, refreshRepo, hub)
 	adminHandler := handler.NewAdminHandler(repository.NewStatsRepo(pool), cfg.AdminToken, time.Now())
 	// One origin allowlist for both CORS and the WebSocket handshake (#258);

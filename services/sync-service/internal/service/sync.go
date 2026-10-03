@@ -30,18 +30,20 @@ type SyncService struct {
 	linkRepo  *repository.LinkRepo
 	tagRepo   *repository.TagRepo
 	aliasRepo *repository.AliasRepo
+	linkFiles *repository.LinkedFileRepo
 	indexer   *search.Indexer
 	// lockTimeout bounds how long an update waits for a note another save holds.
 	lockTimeout string
 }
 
-func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, aliasRepo *repository.AliasRepo, indexer *search.Indexer) *SyncService {
+func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, aliasRepo *repository.AliasRepo, linkFiles *repository.LinkedFileRepo, indexer *search.Indexer) *SyncService {
 	return &SyncService{
 		noteRepo:    noteRepo,
 		vaultRepo:   vaultRepo,
 		linkRepo:    linkRepo,
 		tagRepo:     tagRepo,
 		aliasRepo:   aliasRepo,
+		linkFiles:   linkFiles,
 		indexer:     indexer,
 		lockTimeout: "5s",
 	}

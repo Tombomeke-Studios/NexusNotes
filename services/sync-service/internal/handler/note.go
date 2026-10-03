@@ -341,19 +341,21 @@ func (h *NoteHandler) ConvertVault(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		EncryptionMeta json.RawMessage       `json:"encryption_meta"`
 		Notes          []service.ConvertNote `json:"notes"`
+		Links          []service.ConvertLink `json:"links"`
 	}
 	if err := decodeLimited(w, r, &req, maxConvertBody); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	err := h.syncService.ConvertVaultToE2EE(r.Context(), vaultID, userID, req.EncryptionMeta, req.Notes)
+	err := h.syncService.ConvertVaultToE2EE(r.Context(), vaultID, userID, req.EncryptionMeta, req.Notes, req.Links)
 	switch {
 	case err == nil:
 	case errors.Is(err, repository.ErrVaultNotFound):
 		writeError(w, http.StatusNotFound, "vault not found")
 		return
-	case errors.Is(err, service.ErrConvertMissingMeta), errors.Is(err, service.ErrConvertMissingTitle):
+	case errors.Is(err, service.ErrConvertMissingMeta), errors.Is(err, service.ErrConvertMissingTitle),
+		errors.Is(err, service.ErrConvertMissingLinkField):
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	case errors.Is(err, service.ErrConvertNotesChanged):

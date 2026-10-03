@@ -13,11 +13,12 @@ import (
 
 // Errors of ConvertVaultToE2EE.
 var (
-	ErrConvertNotStandard    = errors.New("vault is already end-to-end encrypted")
-	ErrConvertNotesChanged   = errors.New("the vault's notes changed while converting; reload and try again")
-	ErrConvertHasAttachments = errors.New("vaults with attachments cannot be end-to-end encrypted yet")
-	ErrConvertMissingMeta    = errors.New("encryption_meta is required")
-	ErrConvertMissingTitle   = errors.New("every note needs its encrypted title")
+	ErrConvertNotStandard      = errors.New("vault is already end-to-end encrypted")
+	ErrConvertNotesChanged     = errors.New("the vault's notes or links changed while converting; reload and try again")
+	ErrConvertHasAttachments   = errors.New("vaults with attachments cannot be end-to-end encrypted yet")
+	ErrConvertMissingMeta      = errors.New("encryption_meta is required")
+	ErrConvertMissingTitle     = errors.New("every note needs its encrypted title")
+	ErrConvertMissingLinkField = errors.New("every linked file needs its encrypted name and source")
 )
 
 // ConvertNote is one note re-encrypted by the client: its sealed title and
@@ -32,6 +33,15 @@ type ConvertNote struct {
 	BaseChecksum string `json:"base_checksum"`
 }
 
+// ConvertLink is one linked file with its name and source sealed by the
+// client (#410). Annotations are per user and sealed by each member's own
+// client when they next read them.
+type ConvertLink struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"display_name"`
+	SourceRef   string `json:"source_ref"`
+}
+
 // ConvertVaultToE2EE turns a standard vault into an e2ee one (#361). The
 // client sends every note encrypted under the new vault key; in one
 // transaction the server checks it got exactly the vault's notes as they are
@@ -40,7 +50,7 @@ type ConvertNote struct {
 // vault (stored versions, tags, aliases, links) and switches the vault to
 // e2ee. Only the owner may convert; a vault with attachments is refused
 // until attachments can be end-to-end encrypted (#238).
-func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID string, meta json.RawMessage, notes []ConvertNote) error {
+func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID string, meta json.RawMessage, notes []ConvertNote, links []ConvertLink) error {
 	if len(meta) == 0 {
 		return ErrConvertMissingMeta
 	}
@@ -65,6 +75,11 @@ func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID st
 			return ErrConvertMissingTitle
 		}
 	}
+	for _, l := range links {
+		if l.DisplayName == "" || l.SourceRef == "" {
+			return ErrConvertMissingLinkField
+		}
+	}
 	if has, err := s.noteRepo.VaultHasAttachmentsTx(ctx, tx, vaultID); err != nil {
 		return err
 	} else if has {
@@ -87,9 +102,29 @@ func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID st
 		seen[n.ID] = true
 	}
 
+	currentLinks, err := s.linkFiles.IDsForUpdateTx(ctx, tx, vaultID)
+	if err != nil {
+		return err
+	}
+	if len(links) != len(currentLinks) {
+		return ErrConvertNotesChanged
+	}
+	seenLinks := make(map[string]bool, len(links))
+	for _, l := range links {
+		if !currentLinks[l.ID] || seenLinks[l.ID] {
+			return ErrConvertNotesChanged
+		}
+		seenLinks[l.ID] = true
+	}
+
 	now := time.Now().UTC()
 	for _, n := range notes {
 		if err := s.noteRepo.ReplaceSealedTx(ctx, tx, n.ID, vaultID, n.Title, n.Path, n.Content, n.Checksum, now); err != nil {
+			return err
+		}
+	}
+	for _, l := range links {
+		if err := s.linkFiles.ReplaceSealedTx(ctx, tx, l.ID, vaultID, l.DisplayName, l.SourceRef); err != nil {
 			return err
 		}
 	}

@@ -159,6 +159,18 @@
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 70%, transparent));
 }
 
+/* Particle flow (#442): dashes run from source to target along a hovered
+   node's edges, so the direction of each link reads at a glance. */
+.graph-link--hi {
+  stroke-dasharray: 6 5;
+  animation: edgeFlow 0.9s linear infinite;
+}
+
+@keyframes edgeFlow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -11; }
+}
+
 .graph-link--dim {
   opacity: 0.05;
 }

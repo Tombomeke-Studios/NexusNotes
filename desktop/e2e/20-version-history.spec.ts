@@ -77,7 +77,8 @@ test.describe("Version history settings", () => {
     await expect(count).toHaveValue("50");
     await count.selectOption("10");
     await page.getByLabel("Delete versions older than").selectOption("30");
-    await expect(page.getByText("Saved")).toBeVisible();
+    // The settings' own status, not the status bar's "Saved" label.
+    await expect(page.locator(".settings-history-note").filter({ hasText: "Saved" })).toBeVisible();
 
     const h = await headers(page);
     const vaults = await (await page.request.get(`${API}/api/vaults`, { headers: h })).json();

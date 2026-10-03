@@ -267,13 +267,13 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Editor
 
-- [ ] Animate the editor border with a subtle inner glow when the editor receives focus (CSS `box-shadow`)
-- [ ] Animate the autosave indicator with a pulse followed by a fade-out
-- [ ] Animate the word count in the status bar with a smooth tick on change
-- [ ] Animate the markdown preview toggle with a crossfade between edit and preview
-- [ ] Animate `[[link]]` hover previews with a fade-in and a slight upward drift
-- [ ] Use `scroll-behavior: smooth` for heading anchor navigation
-- [ ] Animate callout block borders sliding in on mount with a colour-coded glow
+- [x] Animate the editor border with a subtle inner glow when the editor receives focus (CSS `box-shadow`) (#421)
+- [ ] Animate the autosave indicator with a pulse followed by a fade-out (#422)
+- [ ] Animate the word count in the status bar with a smooth tick on change (#423)
+- [ ] Animate the markdown preview toggle with a crossfade between edit and preview (#424)
+- [ ] Animate `[[link]]` hover previews with a fade-in and a slight upward drift (#425)
+- [ ] Use `scroll-behavior: smooth` for heading anchor navigation (#426)
+- [ ] Animate callout block borders sliding in on mount with a colour-coded glow (#427)
 
 ### Graph view animations
 

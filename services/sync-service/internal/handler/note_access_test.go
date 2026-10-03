@@ -172,8 +172,10 @@ func TestVersions_AccessControl(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &versions); err != nil {
 			t.Fatalf("decode: %v", err)
 		}
-		if len(versions) < 2 {
-			t.Fatalf("got %d versions, want the initial version plus the edit", len(versions))
+		// The edit follows the creation on the same device within the
+		// snapshot window, so both are one version holding the edit (#413).
+		if len(versions) != 1 || versions[0].Checksum == f.note.Checksum {
+			t.Fatalf("got %+v, want one snapshot holding the edit", versions)
 		}
 	})
 

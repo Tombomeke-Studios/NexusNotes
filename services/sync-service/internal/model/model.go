@@ -93,6 +93,9 @@ type NoteVersion struct {
 	Checksum  string    `json:"checksum"`
 	DeviceID  string    `json:"device_id"`
 	CreatedAt time.Time `json:"created_at"`
+	// UpdatedAt is when the snapshot last changed: saves of the same device
+	// within VersionSnapshotWindow update it (#413).
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Device struct {

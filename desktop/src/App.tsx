@@ -19,6 +19,8 @@ import { RenameTagDialog } from "./components/Workspace/RenameTagDialog";
 import { SharingDialog } from "./components/Workspace/SharingDialog";
 import { LinkedFilesDialog } from "./components/Workspace/LinkedFilesDialog";
 import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog";
+import { Toaster } from "./components/Toaster";
+import { toast } from "./lib/toast";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
 import { Settings } from "./components/Settings/Settings";
 import { RightPanel } from "./components/RightPanel/RightPanel";
@@ -635,6 +637,7 @@ export default function App() {
         else adoptRemote(restored);
       }
       setNoteList((prev) => prev.map((n) => (n.id === restored.id ? restored : n)));
+      toast("Version restored. The text it replaced is still in the history.", { kind: "success" });
       return null;
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -765,6 +768,7 @@ export default function App() {
     const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
     if (!vault || noteListRef.current.length === 0) return;
     downloadFile(`${safeFilename(vault.name)}.zip`, "application/zip", vaultToZip(noteListRef.current));
+    toast(`Exported “${vault.name}” as a zip`, { kind: "success" });
   }, []);
 
   const signOutNow = useCallback(() => {
@@ -1838,6 +1842,8 @@ export default function App() {
         />
       )}
 
+      <Toaster />
+
       <AnimatePresence>
         {showSettings && (
           <Settings
@@ -1927,7 +1933,9 @@ export default function App() {
                 label: "Export as Markdown",
                 onClick: () => {
                   const n = noteList.find((x) => x.id === ctxMenu.noteId);
-                  if (n) downloadFile(`${safeFilename(n.title)}.md`, "text/markdown", stripFrontmatter(n.content));
+                  if (!n) return;
+                  downloadFile(`${safeFilename(n.title)}.md`, "text/markdown", stripFrontmatter(n.content));
+                  toast(`Exported “${n.title}” as Markdown`, { kind: "success" });
                 },
               },
               {
@@ -1935,7 +1943,9 @@ export default function App() {
                 label: "Export as HTML",
                 onClick: () => {
                   const n = noteList.find((x) => x.id === ctxMenu.noteId);
-                  if (n) downloadFile(`${safeFilename(n.title)}.html`, "text/html", noteToHtmlDocument(n));
+                  if (!n) return;
+                  downloadFile(`${safeFilename(n.title)}.html`, "text/html", noteToHtmlDocument(n));
+                  toast(`Exported “${n.title}” as HTML`, { kind: "success" });
                 },
               },
               {
@@ -1951,7 +1961,11 @@ export default function App() {
                 label: "Copy wikilink",
                 onClick: () => {
                   const n = noteList.find((x) => x.id === ctxMenu.noteId);
-                  if (n) navigator.clipboard?.writeText(`[[${n.title}]]`).catch(() => {});
+                  if (!n) return;
+                  navigator.clipboard
+                    ?.writeText(`[[${n.title}]]`)
+                    .then(() => toast(`Copied [[${n.title}]]`, { kind: "success", key: "copy-link" }))
+                    .catch(() => toast("Couldn't copy the link", { kind: "error", key: "copy-link" }));
                 },
               },
               {

@@ -6,6 +6,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Short notifications in the bottom-right corner confirm actions such as copying a link,
+  exporting and restoring a version.
+- The top bar shows a spinner while syncing and a checkmark once synced; the note title
+  briefly lights up when a save completes, and the conflict notice is amber and slides in.
 - Hovering a `[[link]]` in reading view shows a preview of the linked note.
 - `[text](#heading)` links jump to that heading in the note, and heading navigation scrolls
   smoothly.

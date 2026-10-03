@@ -836,3 +836,76 @@ input:focus, textarea:focus {
 .auth-card > :nth-child(5) { animation-delay: 450ms; }
 .auth-card > :nth-child(6) { animation-delay: 490ms; }
 .auth-card > :nth-child(7) { animation-delay: 530ms; }
+
+/* --- Skeletons (#434-#437) ---
+   One shimmer for every loading placeholder, CSS only. Under reduced motion
+   the data-rm rule above runs it once, instantly, which leaves it static. */
+.skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--text-muted) 9%, transparent) 25%,
+    color-mix(in srgb, var(--text-muted) 18%, transparent) 50%,
+    color-mix(in srgb, var(--text-muted) 9%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.skeleton-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 10px 14px;
+}
+
+.skeleton-tree-row {
+  height: 10px;
+}
+
+.skeleton-note {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 32px;
+}
+
+.skeleton-note-title {
+  width: 38%;
+  height: 18px;
+  margin-bottom: 10px;
+}
+
+.skeleton-note-line {
+  height: 11px;
+}
+
+.skeleton-graph {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 160px;
+}
+
+.skeleton-graph-edge {
+  stroke: color-mix(in srgb, var(--text-muted) 18%, transparent);
+  stroke-width: 1;
+}
+
+.skeleton-graph-node {
+  fill: color-mix(in srgb, var(--text-muted) 26%, transparent);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nodePulse 1.6s ease-in-out infinite both;
+}
+
+@keyframes nodePulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}

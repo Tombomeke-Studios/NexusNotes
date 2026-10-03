@@ -71,6 +71,7 @@ import { convertVaultToE2ee } from "./lib/vaultConvert";
 import { clearDraft } from "./lib/drafts";
 import { loadRecent, pushRecent } from "./lib/recent";
 import { loadFolders, addFolder, removeFolder } from "./lib/folders";
+import { PERIOD_FOLDER, periodTitle, type Period } from "./lib/periodic";
 import { welcomeNotes, QUICK_START_TITLE } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
@@ -737,10 +738,15 @@ export default function App() {
     [handleCreateNoteWithTitle],
   );
 
-  const handleOpenDaily = useCallback(async (iso: string) => {
+  // Daily, weekly and monthly notes (#240): one per period in its own folder,
+  // created from that period's template.
+  const handleOpenPeriodic = useCallback(async (period: Period, iso: string) => {
     setShowCalendar(false);
     const selection = ++selectionSeq.current;
-    const existing = noteListRef.current.find((n) => n.title === iso);
+    const folder = PERIOD_FOLDER[period];
+    const existing =
+      noteListRef.current.find((n) => n.title === iso && n.path === folder) ??
+      noteListRef.current.find((n) => n.title === iso);
     if (existing) {
       await flushPendingSave();
       if (selection !== selectionSeq.current) return;
@@ -760,14 +766,15 @@ export default function App() {
     const vaultId = activeVaultIdRef.current;
     if (!vaultId) return;
     // A note's path is its folder, so daily notes live in the "Daily" folder;
-    // the title carries the date. The template is user-configurable (#155).
-    const template = renderTemplate(loadPrefs().dailyTemplate, {
-      ...templateVars(new Date(), iso),
-      date: iso,
-    });
+    // the title carries the date. The templates are user-configurable (#155).
+    const prefsNow = loadPrefs();
+    const source =
+      period === "daily" ? prefsNow.dailyTemplate : period === "weekly" ? prefsNow.weeklyTemplate : prefsNow.monthlyTemplate;
+    const vars = templateVars(new Date(), iso);
+    const template = renderTemplate(source, period === "daily" ? { ...vars, date: iso } : vars);
     const { content: payload, checksum } = await encryptOutgoing(vaultId, template);
-    const sealed = await sealMeta(vaultId, iso, "Daily");
-    const created = { ...(await notesApi.create(vaultId, sealed.title, sealed.path, payload, checksum)), title: iso, path: "Daily" };
+    const sealed = await sealMeta(vaultId, iso, folder);
+    const created = { ...(await notesApi.create(vaultId, sealed.title, sealed.path, payload, checksum)), title: iso, path: folder };
     await flushPendingSave();
     if (activeVaultIdRef.current !== vaultId) return;
     const note = { ...created, content: template };
@@ -780,6 +787,7 @@ export default function App() {
     setSaveStatus("saved");
     setCursor({ line: 1, col: 1 });
   }, [decryptIncoming, encryptOutgoing, sealMeta, flushPendingSave]);
+  const handleOpenDaily = useCallback((iso: string) => handleOpenPeriodic("daily", iso), [handleOpenPeriodic]);
 
   const openGraphTab = useCallback(() => {
     setTabs((prev) =>
@@ -1001,6 +1009,8 @@ export default function App() {
     { id: "new-note", label: "New note", shortcut: "Ctrl+N", action: handleCreateNote },
     { id: "graph-view", label: "Open graph", shortcut: "Ctrl+G", action: openGraphTab },
     { id: "daily-note", label: "Open today's daily note", shortcut: "Ctrl+D", action: () => handleOpenDaily(toIsoDate(new Date())) },
+    { id: "weekly-note", label: "Open this week's note", action: () => handleOpenPeriodic("weekly", periodTitle("weekly", new Date())) },
+    { id: "monthly-note", label: "Open this month's note", action: () => handleOpenPeriodic("monthly", periodTitle("monthly", new Date())) },
     { id: "insert-template", label: "Insert template", shortcut: "Ctrl+T", action: openTemplatePicker },
     { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
@@ -1013,7 +1023,7 @@ export default function App() {
     { id: "import-files", label: "Import Markdown files…", action: () => importFilesRef.current?.click() },
     { id: "settings", label: "Open settings", shortcut: "Ctrl+,", action: () => setShowSettings(true) },
     { id: "logout", label: "Sign out", action: handleSignOut },
-  ], [handleCreateNote, handleOpenDaily, openGraphTab, openTemplatePicker, cycleView, toggleFocusMode, openHistory, updatePrefs, handleSignOut]);
+  ], [handleCreateNote, handleOpenDaily, handleOpenPeriodic, openGraphTab, openTemplatePicker, cycleView, toggleFocusMode, openHistory, updatePrefs, handleSignOut]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

@@ -47,12 +47,12 @@ func TestAdminStats_DisabledWhenUnconfigured(t *testing.T) {
 func TestAdminAuthorized_RequiresTheBearerScheme(t *testing.T) {
 	h := newTestAdmin("secret-token")
 	for header, want := range map[string]bool{
-		"Bearer secret-token": true,
-		"secret-token":        false,
-		"bearer secret-token": true,
+		"Bearer secret-token":  true,
+		"secret-token":         false,
+		"bearer secret-token":  true,
 		"Bearer  secret-token": false,
-		"Bearer":              false,
-		"Basic secret-token":  false,
+		"Bearer":               false,
+		"Basic secret-token":   false,
 	} {
 		req := httptest.NewRequest("GET", "/api/admin/stats", nil)
 		req.Header.Set("Authorization", header)

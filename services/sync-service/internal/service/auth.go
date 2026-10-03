@@ -32,11 +32,11 @@ type UserStore interface {
 }
 
 type AuthService struct {
-	userRepo  UserStore
-	jwtSecret []byte
-	throttle  *loginThrottle
+	userRepo     UserStore
+	jwtSecret    []byte
+	throttle     *loginThrottle
 	refreshStore RefreshStore
-	sleep     func(time.Duration) // swappable so tests don't actually wait
+	sleep        func(time.Duration) // swappable so tests don't actually wait
 }
 
 func NewAuthService(userRepo UserStore, jwtSecret string) *AuthService {

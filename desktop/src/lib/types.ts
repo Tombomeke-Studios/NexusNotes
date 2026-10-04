@@ -69,6 +69,25 @@ export interface ConflictInfo {
   client_checksum: string;
 }
 
+/** An MCP API token for AI clients (#221); its value is only seen once. */
+export interface McpToken {
+  id: string;
+  name: string;
+  scope: McpScope;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export type McpScope = "read" | "read-write";
+
+/** One request an AI client made with a token. */
+export interface McpAuditEntry {
+  token_id: string;
+  tool: string;
+  summary: string;
+  created_at: string;
+}
+
 export interface Device {
   id: string;
   user_id: string;

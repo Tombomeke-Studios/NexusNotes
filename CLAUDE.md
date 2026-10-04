@@ -241,6 +241,7 @@ it is what it exists for:
 | `src/lib/graphLayout.ts` | Graph view start layout (#439): new nodes seeded in a cloud at the centre, known nodes keep their position across re-renders, capped stagger for the fade-in |
 | `src/lib/diff.ts` | Line diff (Myers) between two versions of a note, side-by-side rows, numbering and folding of unchanged runs, and a merge draft with conflict markers (#225) |
 | `src/components/History/` + `src/lib/versionHistory.ts` | Version history (#415-#417): snapshot list per day/device, diff against the current text or another version (side by side / inline), restore (server-side, as a new version); versions are decrypted on the device for e2ee vaults |
+| `src/components/Settings/AIAccessSettings.tsx` + `src/lib/mcpConfig.ts` | Settings > AI Access (#221): MCP tokens (value shown once), copy-ready client config, last used, activity log |
 | `src/components/Workspace/SharingDialog.tsx` | Vault sharing panel: invite by email, per-member roles, leave (#55) |
 | `src/components/Workspace/LinkedFilesDialog.tsx` | Linked files panel: link a URL, read-only viewer, per-user annotations (#60-64) |
 | `src/lib/periodic.ts` | Periodic notes (#240): daily/ISO-weekly/monthly titles, their folders and default templates |

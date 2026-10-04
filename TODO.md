@@ -453,7 +453,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add `mcp_tokens` table with columns: `id`, `user_id`, `token_hash`, `name`, `scopes`, `last_used_at`, `created_at` (#483)
 - [x] Add `POST /settings/mcp-tokens` to generate named API tokens scoped to read-only or read-write (#483: `POST /api/mcp-tokens`)
 - [x] Add `DELETE /settings/mcp-tokens/:id` to revoke a token (#483: `DELETE /api/mcp-tokens/:id`)
-- [ ] Add a token management page in the desktop settings
+- [x] Add a token management page in the desktop settings (#487)
 - [x] Authenticate every MCP request via Bearer token in the Authorization header (#483, #485)
 - [x] Add `mcp_audit_log` table with columns: `token_id`, `tool`, `args_summary`, `timestamp`; log every AI action (#483)
 - [x] Rate limit MCP endpoints to 60 tool calls per minute per token (#483)
@@ -486,9 +486,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Desktop integration
 
-- [ ] Add an "AI Access" section in settings showing active tokens and the audit log
-- [ ] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients
-- [ ] Add an in-app indicator showing when a token was last used
+- [x] Add an "AI Access" section in settings showing active tokens and the audit log (#487)
+- [x] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients (#487)
+- [x] Add an in-app indicator showing when a token was last used (#487)
 - [x] Write unit tests for all MCP tool handlers (#485)
 - [ ] Write an integration test covering the full flow: connect via config, `list_vaults`, `read_note`
 

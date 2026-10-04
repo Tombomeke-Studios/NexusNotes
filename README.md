@@ -316,6 +316,8 @@ cd desktop && npm test
 | [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol (planned) |
 | [Brand](docs/brand.md) | Name, tagline, colours and logo rules |
 | [Changelog](CHANGELOG.md) | What changed in each release |
+| [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol |
+| [Resilience](docs/resilience.md) | Chaos experiments: what users see when Postgres, the backend or Redis fails |
 
 ## Concept Design
 

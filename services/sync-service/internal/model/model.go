@@ -56,6 +56,18 @@ type VersionRetention struct {
 	KeepDays  int `json:"keep_days"`
 }
 
+// VaultStorageStats is how much a vault stores (#220). Byte counts are the
+// stored sizes: note content and versions are encrypted at rest, so they are a
+// little larger than the plaintext.
+type VaultStorageStats struct {
+	Notes           int64 `json:"notes"`
+	ContentBytes    int64 `json:"content_bytes"`
+	Versions        int64 `json:"versions"`
+	VersionBytes    int64 `json:"version_bytes"`
+	Attachments     int64 `json:"attachments"`
+	AttachmentBytes int64 `json:"attachment_bytes"`
+}
+
 // Retention limits the API accepts.
 const (
 	MaxVersionKeepCount = 500

@@ -308,6 +308,11 @@ func (s *SyncService) GetVersionRetention(ctx context.Context, vaultID string) (
 	return s.vaultRepo.GetVersionRetention(ctx, vaultID)
 }
 
+// StorageStats reports how much the vault stores (#220).
+func (s *SyncService) StorageStats(ctx context.Context, vaultID string) (model.VaultStorageStats, error) {
+	return s.noteRepo.StorageStats(ctx, vaultID)
+}
+
 // SetVersionRetention changes the vault's retention and trims its notes'
 // history to it right away, rather than at the next save or daily cleanup.
 func (s *SyncService) SetVersionRetention(ctx context.Context, vaultID string, keep model.VersionRetention) error {

@@ -68,7 +68,8 @@ AI clients authenticate with named MCP tokens — not your login password.
 - Each token has a human-readable name (for example, "Claude Desktop" or "Work Cursor") and a scope:
   - `read` — list and read notes only
   - `read-write` — also create, update, and delete notes
-- Token values are shown once on creation and stored as a bcrypt hash in the database
+- Token values are shown once on creation; only a SHA-256 hash is stored (a token is 32 random
+  bytes, so a slow hash adds nothing, and the hash lets a token be looked up directly)
 - Revoke tokens at any time from the settings page
 - Every MCP call is recorded: `token_id`, `tool_name`, `timestamp`, `args_summary`
 
@@ -79,6 +80,17 @@ which token invoked which tool at what time plus a sanitised argument summary
 (paths and IDs only, never note content).
 
 ---
+
+### Status
+
+| Part | State |
+|---|---|
+| Tokens, scopes, audit log, rate limit, e2ee write guard (sync service) | Done (#221); endpoints in [api.md](api.md#mcp-tokens), model in [security.md](security.md#mcp-tokens-ai-access) |
+| `services/mcp-service` (stdio + Streamable HTTP, tools) | Planned |
+| Desktop "AI Access" settings | Planned |
+
+The MCP service talks to the sync service over its REST API with the user's token and
+names the tool it runs in an `X-MCP-Tool` header, which the audit log records.
 
 ## Tools exposed to AI clients
 
@@ -195,13 +207,9 @@ The settings page generates a ready-to-paste configuration snippet for popular A
 
 ## Rate limiting
 
-Limits are enforced using a Redis sliding window counter per token.
-
-| Scope | Limit |
-|---|---|
-| Read tools | 120 calls per minute per token |
-| Write tools | 30 calls per minute per token |
-| `delete_note` | 5 calls per minute per token |
+The sync service limits each token to 60 requests a minute (burst 30), in memory like
+its other rate limits (one instance per deployment). Beyond that it answers `429` with
+`Retry-After`.
 
 ---
 

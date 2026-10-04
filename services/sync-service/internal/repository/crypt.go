@@ -20,6 +20,7 @@ const (
 	fieldUserDisplayName  = "users.display_name"
 	fieldUserEmail        = "users.email"
 	fieldDeviceName       = "devices.name"
+	fieldMCPTokenName     = "mcp_tokens.name"
 )
 
 // cryptor seals and opens a repository's encrypted-at-rest fields, so callers

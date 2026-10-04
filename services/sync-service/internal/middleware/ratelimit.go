@@ -56,6 +56,12 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	})
 }
 
+// Allow is allow for callers that rate-limit on their own key (an MCP token,
+// say) rather than the client IP.
+func (rl *RateLimiter) Allow(key string) (bool, int) {
+	return rl.allow(key)
+}
+
 // allow reports whether the client may proceed; when denied it also returns
 // the number of whole seconds until a token becomes available.
 func (rl *RateLimiter) allow(ip string) (bool, int) {

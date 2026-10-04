@@ -443,20 +443,20 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Core server (Go - new service `services/mcp-service/`)
 
-- [ ] Write `docs/mcp.md` covering architecture, the tools list, the auth model, and the E2EE interaction model
+- [x] Write `docs/mcp.md` covering architecture, the tools list, the auth model, and the E2EE interaction model (updated with the token model in #483)
 - [ ] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk`
 - [ ] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml`
 - [ ] Implement the MCP handshake: `initialize`, capability negotiation, `initialized`
 
 ### Authentication and security
 
-- [ ] Add `mcp_tokens` table with columns: `id`, `user_id`, `token_hash`, `name`, `scopes`, `last_used_at`, `created_at`
-- [ ] Add `POST /settings/mcp-tokens` to generate named API tokens scoped to read-only or read-write
-- [ ] Add `DELETE /settings/mcp-tokens/:id` to revoke a token
+- [x] Add `mcp_tokens` table with columns: `id`, `user_id`, `token_hash`, `name`, `scopes`, `last_used_at`, `created_at` (#483)
+- [x] Add `POST /settings/mcp-tokens` to generate named API tokens scoped to read-only or read-write (#483: `POST /api/mcp-tokens`)
+- [x] Add `DELETE /settings/mcp-tokens/:id` to revoke a token (#483: `DELETE /api/mcp-tokens/:id`)
 - [ ] Add a token management page in the desktop settings
 - [ ] Authenticate every MCP request via Bearer token in the Authorization header
-- [ ] Add `mcp_audit_log` table with columns: `token_id`, `tool`, `args_summary`, `timestamp`; log every AI action
-- [ ] Rate limit MCP endpoints to 60 tool calls per minute per token
+- [x] Add `mcp_audit_log` table with columns: `token_id`, `tool`, `args_summary`, `timestamp`; log every AI action (#483)
+- [x] Rate limit MCP endpoints to 60 tool calls per minute per token (#483)
 
 ### MCP tools
 

@@ -147,6 +147,51 @@ with `{ "deletion_scheduled_at": ... }`, starting the same 7-day grace period
 
 ---
 
+## MCP Tokens
+
+Named API tokens for AI clients over MCP (#221; design in [mcp.md](mcp.md)).
+These endpoints need a signed-in session: an MCP token cannot reach them.
+
+A token is sent like a session token, `Authorization: Bearer nn_…`. It only
+reaches the routes its scope allows; every other endpoint answers `403`.
+
+| Scope | Routes |
+|---|---|
+| `read` | `GET /api/vaults`, `GET /api/vaults/:id`, `GET /api/vaults/:vaultId/notes`, `GET /api/notes/:noteId`, `GET /api/notes/:noteId/backlinks`, `GET /api/vaults/:vaultId/search`, `GET /api/vaults/:vaultId/tags` |
+| `read-write` | the above, plus `POST /api/vaults/:vaultId/notes`, `PUT /api/notes/:noteId`, `DELETE /api/vaults/:vaultId/notes/:noteId` |
+
+The token acts as its owner, with the owner's role in each vault. Writes to an
+end-to-end encrypted vault are refused (`403`): the server could not encrypt
+the text. Each token may make 60 requests a minute (burst 30; `429` with
+`Retry-After` beyond that). An optional `X-MCP-Tool: read_note` header names
+the tool in the audit log (lowercase letters, digits and `_`, otherwise `api`).
+
+### GET /api/mcp-tokens
+
+The caller's tokens, newest first, never their values:
+`[{ "id", "name", "scope", "last_used_at", "created_at" }]`. `last_used_at` is
+updated at most once a minute.
+
+### POST /api/mcp-tokens
+
+Body `{ "name": "Claude Desktop", "scope": "read" | "read-write" }`. Response
+(201): the token plus `"token": "nn_…"`, the secret value, which is shown only
+this once. `400` for a name outside 1-64 characters or an unknown scope, `409`
+when the account already has 20 tokens.
+
+### DELETE /api/mcp-tokens/:id
+
+Revokes the token at once, with its audit entries. `204`; `404` for a token
+that is not the caller's.
+
+### GET /api/mcp-tokens/audit
+
+The newest audit entries of the caller's tokens:
+`[{ "token_id", "tool", "summary": "GET /api/notes/…", "created_at" }]`.
+`?token_id=` narrows it to one token, `?limit=` 1-500 (default 100). The
+summary is the method and path only, never the query string or a body. Entries
+are kept 90 days.
+
 ## Devices
 
 Both endpoints require `Authorization: Bearer <token>` and only ever see the

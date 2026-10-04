@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 )
@@ -63,6 +64,28 @@ type Config struct {
 	// CIDRs or IPs) whose X-Forwarded-For / X-Real-IP name the real client.
 	// Empty: those headers are ignored (#373).
 	TrustedProxies []netip.Prefix
+	// DBPool sizes the Postgres connection pool (DB_MAX_CONNS, DB_MIN_CONNS,
+	// DB_MAX_CONN_LIFETIME, DB_MAX_CONN_IDLE_TIME) (#220).
+	DBPool DBPool
+}
+
+// DBPool holds the connection pool settings. Connections are recycled after
+// MaxConnLifetime so a restarted or failed-over database is picked up, and
+// idle ones beyond MinConns are closed after MaxConnIdleTime.
+type DBPool struct {
+	MaxConns        int32
+	MinConns        int32
+	MaxConnLifetime time.Duration
+	MaxConnIdleTime time.Duration
+}
+
+// DefaultDBPool suits a single self-hosted instance: Postgres allows 100
+// connections by default, which leaves room for migrations, backups and psql.
+var DefaultDBPool = DBPool{
+	MaxConns:        20,
+	MinConns:        2,
+	MaxConnLifetime: time.Hour,
+	MaxConnIdleTime: 30 * time.Minute,
 }
 
 // DefaultAllowedOrigins covers the desktop app and local development:
@@ -182,6 +205,11 @@ func Load() (*Config, error) {
 		}
 	}
 
+	dbPool, err := loadDBPool()
+	if err != nil {
+		return nil, err
+	}
+
 	trustedProxies, err := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
 	if err != nil {
 		return nil, err
@@ -215,7 +243,47 @@ func Load() (*Config, error) {
 		LinkedFilesAllowPrivate: linkedAllowPrivate,
 		MetricsAddr:             metricsAddr,
 		TrustedProxies:          trustedProxies,
+		DBPool:                  dbPool,
 	}, nil
+}
+
+func loadDBPool() (DBPool, error) {
+	pool := DefaultDBPool
+	maxConns, err := intEnv("DB_MAX_CONNS", int(pool.MaxConns))
+	if err != nil {
+		return pool, err
+	}
+	minConns, err := intEnv("DB_MIN_CONNS", int(pool.MinConns))
+	if err != nil {
+		return pool, err
+	}
+	if maxConns < 1 || maxConns > 1000 {
+		return pool, fmt.Errorf("DB_MAX_CONNS must be between 1 and 1000")
+	}
+	if minConns < 0 || minConns > maxConns {
+		return pool, fmt.Errorf("DB_MIN_CONNS must be between 0 and DB_MAX_CONNS (%d)", maxConns)
+	}
+	pool.MaxConns, pool.MinConns = int32(maxConns), int32(minConns)
+	if pool.MaxConnLifetime, err = durationEnv("DB_MAX_CONN_LIFETIME", pool.MaxConnLifetime); err != nil {
+		return pool, err
+	}
+	if pool.MaxConnIdleTime, err = durationEnv("DB_MAX_CONN_IDLE_TIME", pool.MaxConnIdleTime); err != nil {
+		return pool, err
+	}
+	return pool, nil
+}
+
+// durationEnv reads a positive Go duration ("45m", "1h") from the environment.
+func durationEnv(name string, def time.Duration) (time.Duration, error) {
+	v := os.Getenv(name)
+	if v == "" {
+		return def, nil
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("invalid %s: want a positive duration such as 30m or 1h", name)
+	}
+	return d, nil
 }
 
 // parseTrustedProxies reads TRUSTED_PROXIES: comma-separated CIDRs or single

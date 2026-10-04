@@ -19,6 +19,109 @@
   cursor: grabbing;
 }
 
+/* Legend (#267), above the counts. */
+.graph-legend {
+  position: absolute;
+  left: 14px;
+  bottom: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-width: min(520px, calc(100% - 200px));
+  padding: 6px 10px;
+  background: rgba(17, 17, 27, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-inner);
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.graph-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.graph-legend-dot--ghost {
+  border: 1.5px dashed var(--text-faint);
+}
+
+/* List view (#267): the graph as a table. */
+.graph-list {
+  position: absolute;
+  inset: 52px 14px 52px;
+  overflow: auto;
+  border: 1px solid var(--border-inner);
+  border-radius: 10px;
+  background: var(--bg-base);
+}
+
+.graph-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.graph-list th {
+  position: sticky;
+  top: 0;
+  padding: 8px 12px;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.graph-list td {
+  padding: 6px 12px;
+  border-top: 1px solid var(--border-inner);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.graph-list-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+
+.graph-list-open:hover {
+  color: var(--accent);
+}
+
+.graph-list-dot {
+  width: 8px;
+  height: 8px;
+  border: 1.5px dashed var(--text-faint);
+  border-radius: 50%;
+}
+
+.graph-list-open .graph-list-dot[style*="var"] {
+  border: none;
+}
+
+.graph-list-ghost td,
+.graph-list-note {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.graph-view-switch {
+  display: inline-flex;
+  gap: 2px;
+}
+
 .graph-badge {
   position: absolute;
   left: 14px;
@@ -231,12 +334,33 @@
   50% { transform: scale(1.14); opacity: 1; }
 }
 
+/* Labels (#267): brighter text with a halo in the background colour, so they
+   stay readable over edges and the dot grid. */
 .graph-node text {
-  fill: var(--text-muted);
+  fill: var(--text-secondary);
   font-size: 10.5px;
   font-family: var(--font-sans);
+  paint-order: stroke;
+  stroke: var(--bg-base);
+  stroke-width: 3px;
+  stroke-linejoin: round;
   pointer-events: none;
   user-select: none;
+}
+
+/* Keyboard focus on a node (#267). */
+.graph-node {
+  outline: none;
+}
+
+.graph-node:focus-visible circle {
+  stroke: var(--accent);
+  stroke-width: 3;
+  transform: scale(1.2);
+}
+
+.graph-node:focus-visible text {
+  fill: var(--text-primary);
 }
 
 .graph-node:hover text {

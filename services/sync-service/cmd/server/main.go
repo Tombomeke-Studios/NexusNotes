@@ -36,7 +36,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	pool, err := repository.NewPool(ctx, cfg.DatabaseURL)
+	pool, err := repository.NewPool(ctx, cfg.DatabaseURL, repository.PoolOptions(cfg.DBPool))
 	if err != nil {
 		slog.Error("connect database", "error", err)
 		os.Exit(1)

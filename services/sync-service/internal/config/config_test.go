@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/fieldcrypt"
 )
@@ -295,5 +296,58 @@ func TestLoad_TrustedProxies(t *testing.T) {
 	t.Setenv("TRUSTED_PROXIES", "not-a-cidr")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXIES") {
 		t.Fatalf("err = %v, want an error naming TRUSTED_PROXIES", err)
+	}
+}
+
+func TestLoad_DBPoolDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("JWT_SECRET", testSecret)
+	t.Setenv("DATA_ENCRYPTION_KEY", testDataKey)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.DBPool != DefaultDBPool {
+		t.Fatalf("DBPool = %+v, want %+v", cfg.DBPool, DefaultDBPool)
+	}
+}
+
+func TestLoad_DBPoolFromEnv(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("JWT_SECRET", testSecret)
+	t.Setenv("DATA_ENCRYPTION_KEY", testDataKey)
+	t.Setenv("DB_MAX_CONNS", "50")
+	t.Setenv("DB_MIN_CONNS", "5")
+	t.Setenv("DB_MAX_CONN_LIFETIME", "45m")
+	t.Setenv("DB_MAX_CONN_IDLE_TIME", "5m")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	want := DBPool{MaxConns: 50, MinConns: 5, MaxConnLifetime: 45 * time.Minute, MaxConnIdleTime: 5 * time.Minute}
+	if cfg.DBPool != want {
+		t.Fatalf("DBPool = %+v, want %+v", cfg.DBPool, want)
+	}
+}
+
+func TestLoad_DBPoolRejectsBadValues(t *testing.T) {
+	cases := map[string]string{
+		"DB_MAX_CONNS":          "0",
+		"DB_MIN_CONNS":          "21", // above the default maximum of 20
+		"DB_MAX_CONN_LIFETIME":  "-1m",
+		"DB_MAX_CONN_IDLE_TIME": "soon",
+	}
+	for name, value := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "postgres://example")
+			t.Setenv("JWT_SECRET", testSecret)
+			t.Setenv("DATA_ENCRYPTION_KEY", testDataKey)
+			t.Setenv(name, value)
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), name) {
+				t.Fatalf("%s=%q: err = %v, want one naming %s", name, value, err, name)
+			}
+		})
 	}
 }

@@ -41,6 +41,13 @@ watchdog restarts the sidecar itself after three failed health checks.
   backend became healthy; before this change it took 8–11 s.
 - The WebSocket reconnect triggers the same immediate retry, as does the
   browser's `online` event.
+- Drafts of notes that are not open are sent too (#227): text typed offline
+  in a note the user then left, or left from an earlier run, goes out when the
+  vault's notes load and whenever the server is reachable again, saved against
+  the version it was written on. Measured: typed offline in a note, switched
+  away, reloaded the app and restarted the backend; the server had the offline
+  text without the note being opened. A note changed elsewhere meanwhile keeps
+  its draft, and the conflict shows when the user opens it.
 
 ## C. Redis loss
 

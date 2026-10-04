@@ -97,11 +97,12 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Vault update: answer 404 when no row matched instead of 200 (delete done in #290) (#384)
 - [x] Test the `/api/auth/me` failure path (500 vs 404) (#374)
 
----
-
 ## `feature/frontend-quality` - Frontend quality (#266)
 
 - [ ] Decompose `App.tsx` into hooks (`useNoteSave`, `useTabs`, `useVaults`, `useStars`, `useCloseGuard`, ...) and `Workspace` / `ModalHost` components
+- [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
+---
+
 - [x] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed (#377)
 - [x] E2E: replace `waitForTimeout` waits with real signals (the two left are deliberate: proving nothing happens, and a push with no visible effect)
 - [x] Settings: show the app and server versions instead of a hard-coded string (PR #255)
@@ -121,6 +122,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Markdown syntax highlighting in the editor source pane (#472)
 - [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
 - [x] Composed empty states with a call to action; skeleton loaders instead of spinners
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 - [x] Dialog focus trap and focus return audit; skip link
 
 ---
@@ -335,8 +337,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
 - [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
 - [x] Write tests for welcome vault creation and checklist state persistence (#453)
-
----
 
 ## `feature/startup-performance` - Sub-second startup and runtime performance (#219)
 
@@ -822,6 +822,18 @@ Lower priority items not focused on the desktop application.
 ---
 
 ## Done
+
+### `feature/onboarding` - First-run experience and discoverability (#218, PRs #446-#457)
+
+- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
+- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
+- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
+- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
+- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
+- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
+- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
+- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
+- [x] Write tests for welcome vault creation and checklist state persistence (#453)
 
 ### `feature/version-history-ui` - Version history viewer (#226, PR #420)
 

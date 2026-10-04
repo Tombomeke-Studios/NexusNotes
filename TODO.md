@@ -475,14 +475,14 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### MCP resources
 
-- [ ] Expose vault structure as MCP Resources using the URI scheme `nexusnotes://vault/:id/note/:path`
-- [ ] Implement `resources/list` so AI clients can browse the vault file tree
-- [ ] Implement `resources/read` so AI clients can read a note by URI
+- [x] Expose vault structure as MCP Resources using the URI scheme `nexusnotes://vault/:id/note/:path` (#489)
+- [x] Implement `resources/list` so AI clients can browse the vault file tree (#489)
+- [x] Implement `resources/read` so AI clients can read a note by URI (#489)
 
 ### MCP prompts
 
-- [ ] Implement MCP Prompts (`prompts/list`, `prompts/get`): expose reusable prompt templates — `summarize_note`, `extract_tasks`, `daily_reflection` — that AI clients can invoke with vault context
-- [ ] Each prompt accepts typed arguments (e.g., `vault_id`, `note_id`) and returns a rendered messages array ready to send to the LLM
+- [x] Implement MCP Prompts (`prompts/list`, `prompts/get`): expose reusable prompt templates — `summarize_note`, `extract_tasks`, `daily_reflection` — that AI clients can invoke with vault context (#489)
+- [x] Each prompt accepts typed arguments (e.g., `vault_id`, `note_id`) and returns a rendered messages array ready to send to the LLM (#489)
 
 ### Desktop integration
 

@@ -48,6 +48,8 @@ func New(client *nexus.Client, now func() time.Time) *mcp.Server {
 	mcp.AddTool(s, &mcp.Tool{Name: "update_note", Description: `Change a note's content: "replace" it (default), or "append" / "prepend" text to it.`, Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive}}, t.updateNote)
 	mcp.AddTool(s, &mcp.Tool{Name: "append_to_note", Description: "Append a block of text to the end of a note, keeping everything already in it.", Annotations: &mcp.ToolAnnotations{DestructiveHint: &notDestructive}}, t.appendToNote)
 	mcp.AddTool(s, &mcp.Tool{Name: "delete_note", Description: "Delete a note permanently. Requires confirm: true.", Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive}}, t.deleteNote)
+	addResources(s, t)
+	addPrompts(s, t)
 	return s
 }
 

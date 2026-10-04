@@ -126,6 +126,7 @@ is the migrations directory.
 | API endpoints, request/response formats | [docs/api.md](docs/api.md) |
 | New/moved/renamed files, new commands, new gotchas | **This file** (map in section 7) |
 | Setup / how-to-run instructions | README.md |
+| Product copy, colours, logo usage | [docs/brand.md](docs/brand.md) |
 | Tasks, progress, follow-ups | [TODO.md](TODO.md) — and *only* there |
 
 ## 6. Commands

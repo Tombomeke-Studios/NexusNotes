@@ -86,11 +86,24 @@ which token invoked which tool at what time plus a sanitised argument summary
 | Part | State |
 |---|---|
 | Tokens, scopes, audit log, rate limit, e2ee write guard (sync service) | Done (#221); endpoints in [api.md](api.md#mcp-tokens), model in [security.md](security.md#mcp-tokens-ai-access) |
-| `services/mcp-service` (stdio + Streamable HTTP, tools) | Planned |
+| `services/mcp-service`: stdio + stateless Streamable HTTP, the 12 tools below | Done (#485) |
+| Resources (`nexusnotes://` URIs) and prompts | Planned |
 | Desktop "AI Access" settings | Planned |
 
 The MCP service talks to the sync service over its REST API with the user's token and
 names the tool it runs in an `X-MCP-Tool` header, which the audit log records.
+
+### Running it
+
+| Mode | How |
+|---|---|
+| stdio | `NEXUSNOTES_TOKEN=nn_… nexusnotes-mcp` (`NEXUSNOTES_API_URL` defaults to `http://localhost:8080`) |
+| HTTP | `nexusnotes-mcp --http :8081`, or the `mcp-service` container in `docker-compose.yml` |
+
+Every call goes to the sync service as the token's owner, with an `X-MCP-Tool` header
+that the audit log records. `delete_note` deletes for good (the note's history goes with
+it); `update_note` and `append_to_note` re-read and retry once when the note changed in
+between, so an edit made in the app at the same moment is kept.
 
 ## Tools exposed to AI clients
 
@@ -161,8 +174,11 @@ Zero-knowledge (E2EE) vaults cannot be decrypted by the MCP server — by design
 
 | Vault type | AI can read content | AI can search content |
 |---|---|---|
-| Standard (`encryption: none`) | Yes | Yes, via Meilisearch |
-| Encrypted (`encryption: e2ee`) | No — returns encrypted blob and metadata only | Partial — title, path, and tags only via client-side index |
+| Standard (`encryption: none`) | Yes | Yes, through the vault search |
+| Encrypted (`encryption: e2ee`) | No: the tools answer that the vault is end-to-end encrypted | No |
+
+`list_vaults` marks encrypted vaults (`"encrypted": true`), so a client can skip them.
+Writes into them are also refused by the sync service itself, whatever client sends them.
 
 > This is a feature, not a limitation. You can maintain a mixed vault setup: standard
 > vaults for notes you are comfortable sharing with AI, and encrypted vaults for sensitive
@@ -181,20 +197,29 @@ The settings page generates a ready-to-paste configuration snippet for popular A
   "mcpServers": {
     "nexusnotes": {
       "command": "nexusnotes-mcp",
-      "args": ["--token", "nn_YOUR_TOKEN_HERE"],
-      "env": {}
+      "env": {
+        "NEXUSNOTES_TOKEN": "nn_YOUR_TOKEN_HERE",
+        "NEXUSNOTES_API_URL": "http://localhost:8080"
+      }
     }
   }
 }
 ```
 
+The token goes in `env` rather than `--token`, which would show in the process list.
+Build the binary with `go build ./cmd/nexusnotes-mcp` in `services/mcp-service`.
+
 ### Cursor / HTTP mode
+
+The production stack serves Streamable HTTP through the web UI at `/mcp` (port 3000 by
+default). The server is stateless: every request carries its own token, so a session id
+can never act with another client's token. A request without a token gets `401`.
 
 ```json
 {
   "mcp": {
     "nexusnotes": {
-      "url": "http://localhost:8081/mcp",
+      "url": "http://localhost:3000/mcp",
       "headers": {
         "Authorization": "Bearer nn_YOUR_TOKEN_HERE"
       }

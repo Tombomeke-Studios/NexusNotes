@@ -153,6 +153,29 @@ encrypt a standard vault later (#361; full design in
   (e.g. a save retry firing after sign-out cleared it) is refused rather
   than treated as a plain vault.
 
+## MCP Tokens (AI access)
+
+AI clients use named API tokens instead of a password or session (#221).
+
+- **Storage.** A token is 32 random bytes with an `nn_` prefix. Only its
+  SHA-256 is stored, which is enough for a value with that much entropy and
+  lets it be looked up directly; the name is encrypted at rest. The value is
+  shown once, when it is created.
+- **Reach.** A token never reaches the full API. Its requests are served by a
+  separate router that holds only the note routes its scope allows (reading,
+  plus note create/update/delete for `read-write`), so account, session, token,
+  sharing and vault-settings endpoints answer `403` to it even if the token
+  leaks. Within those routes it acts as its owner, with the owner's vault roles.
+- **End-to-end encrypted vaults.** Reads return the ciphertext, as for any
+  client. Writes are refused, since the server could not encrypt the text and
+  it would land as plaintext among encrypted notes.
+- **Accountability.** Every request made with a token is written to an audit
+  log before it runs (tool, method and path; never search terms or note
+  content), kept 90 days. A request whose audit entry cannot be written is
+  refused.
+- **Abuse.** 60 requests a minute per token, in memory. Revoking a token takes
+  effect on its next request; an account holds at most 20.
+
 ## Device Management
 
 Each sync client registers itself (stable random device id, human-readable

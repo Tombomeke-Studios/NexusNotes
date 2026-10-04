@@ -34,6 +34,7 @@ var encryptedColumns = []encryptedColumn{
 	{"users", []string{"id"}, "display_name", fieldUserDisplayName},
 	{"users", []string{"id"}, "email", fieldUserEmail},
 	{"devices", []string{"id"}, "name", fieldDeviceName},
+	{"mcp_tokens", []string{"id"}, "name", fieldMCPTokenName},
 }
 
 // BackfillEncryption rewrites every value that is not yet encrypted under the

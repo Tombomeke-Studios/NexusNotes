@@ -66,6 +66,30 @@ type VaultStorageStats struct {
 	VersionBytes    int64 `json:"version_bytes"`
 	Attachments     int64 `json:"attachments"`
 	AttachmentBytes int64 `json:"attachment_bytes"`
+// MCP token scopes (#221): read lists and reads notes; read-write may also
+// create, update and delete them.
+const (
+	MCPScopeRead      = "read"
+	MCPScopeReadWrite = "read-write"
+)
+
+// MCPToken is a named API token an AI client uses over MCP. The token value
+// itself is only returned once, when it is created.
+type MCPToken struct {
+	ID         string     `json:"id"`
+	UserID     string     `json:"-"`
+	Name       string     `json:"name"`
+	Scope      string     `json:"scope"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+// MCPAuditEntry records one request made with an MCP token.
+type MCPAuditEntry struct {
+	TokenID   string    `json:"token_id"`
+	Tool      string    `json:"tool"`
+	Summary   string    `json:"summary"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Retention limits the API accepts.

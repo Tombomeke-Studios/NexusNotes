@@ -126,8 +126,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ## `feature/release-readiness` - Release readiness toward 1.0 (#268)
 
-- [ ] README rewrite around what ships, hero image and screenshots, docs index
-- [ ] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo
+- [x] README rewrite around what ships, hero image and screenshots, docs index (#474)
+- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters

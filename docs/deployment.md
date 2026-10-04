@@ -152,10 +152,19 @@ and never blocks the window:
   first run and kept in the `jwt-secret` file in the app's local data directory
   (`%LOCALAPPDATA%\com.tombomeke-studios.nexusnotes\` on Windows). Deleting the file
   rotates the secret on the next start; see [security.md](security.md#packaged-desktop-app).
-- The bundled backend listens on localhost only (`BIND_ADDR=127.0.0.1,::1`), and the
-  bundled compose file publishes Postgres and Redis on `127.0.0.1` only. The database
-  still uses the fixed development password (#277), so the machine itself is the trust
-  boundary.
+- The bundled backend listens on localhost only (`BIND_ADDR=127.0.0.1,::1`).
+- The app's own Postgres and Redis run in the `nexusnotes-app` compose project
+  (`docker-compose.app.yml`, ports 5433 and 6380 on `127.0.0.1`), separate from the dev
+  scripts' containers, with random per-install passwords kept in the `db-password` and
+  `redis-password` files next to `jwt-secret` (#277). MinIO is still started from the
+  dev compose file and shared with the dev scripts.
+- Upgrading from a build before #277 copies your notes from the dev scripts' database
+  (`nexusnotes_postgres_dev_data`) into the app's own once, then stops the old
+  container. The old volume is kept as a backup. Once the app shows your notes you can
+  remove it, unless you also use the dev scripts:
+  `docker compose -p nexusnotes rm -sf postgres && docker volume rm nexusnotes_postgres_dev_data`.
+  If the copy cannot run (for example port 5432 is taken by another program), the app
+  keeps retrying and shows "Waiting for the server…"; `[backend]` output says why.
 
 Backend output is written to the app's stderr with a `[backend]` prefix. To watch it,
 start the .exe from a terminal.

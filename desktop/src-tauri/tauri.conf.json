@@ -21,6 +21,7 @@
     ],
     "externalBin": ["binaries/sync-service"],
     "resources": {
+      "../../docker-compose.app.yml": "docker-compose.app.yml",
       "../../docker-compose.dev.yml": "docker-compose.dev.yml",
       "../../services/sync-service/migrations": "migrations"
     }

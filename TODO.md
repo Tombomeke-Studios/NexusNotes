@@ -364,27 +364,27 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Indexing
 
-- [ ] Add composite index `notes(vault_id, updated_at DESC)` for note listing sorted by recency
-- [ ] Add composite index `notes(vault_id, path)` for path lookups and file tree rendering
-- [ ] Add partial index `notes(vault_id) WHERE deleted_at IS NULL` to support the soft-delete pattern
-- [ ] Add index `note_tags(tag, vault_id)` for tag filtering
-- [ ] Add indexes on `note_links(source_note_id)` and `note_links(target_note_id)` for backlink queries
-- [ ] Add GIN index on `notes(content)` using `to_tsvector` as a full-text fallback before Meilisearch is available
-- [ ] Add index `note_versions(note_id, created_at DESC)` for version history listing
-- [ ] Use `CREATE INDEX CONCURRENTLY` for all production index creation to avoid table locks
-- [ ] Document the indexing strategy and rationale in prose in `docs/architecture.md` (no SQL/DDL in docs — CLAUDE.md §5)
+- [x] Add composite index `notes(vault_id, updated_at DESC)` for note listing sorted by recency (#481: used by the search fallback; the note list is in path order)
+- [x] Add composite index `notes(vault_id, path)` for path lookups and file tree rendering (initial schema; `(vault_id, path, id)` for paging since #461)
+- [x] Add partial index `notes(vault_id) WHERE deleted_at IS NULL` to support the soft-delete pattern (not applicable: notes are deleted outright, there is no soft delete)
+- [x] Add index `note_tags(tag, vault_id)` for tag filtering (not applicable: tags carry no vault column; the tag index plus the note join cover it)
+- [x] Add indexes on `note_links(source_note_id)` and `note_links(target_note_id)` for backlink queries (#66)
+- [x] Add GIN index on `notes(content)` using `to_tsvector` as a full-text fallback before Meilisearch is available (not possible: content is encrypted at rest, #354)
+- [x] Add index `note_versions(note_id, created_at DESC)` for version history listing (#418)
+- [x] Use `CREATE INDEX CONCURRENTLY` for all production index creation to avoid table locks (decided against, #481: migrations are transactional; rationale in docs/architecture.md)
+- [x] Document the indexing strategy and rationale in prose in `docs/architecture.md` (no SQL/DDL in docs — CLAUDE.md §5) (#481)
 
 ### Query patterns
 
-- [ ] Remove all `SELECT *` statements; fetch only the columns required per endpoint
+- [x] Remove all `SELECT *` statements; fetch only the columns required per endpoint (none left, checked for #481)
 - [ ] List endpoints such as `GET /vaults/:id/notes` must never load `content`; return title, path, updated_at, and tags only
-- [ ] Replace all `LIMIT/OFFSET` pagination with keyset (cursor) pagination using `WHERE updated_at < :cursor ORDER BY updated_at DESC LIMIT 50`
+- [x] Replace all `LIMIT/OFFSET` pagination with keyset (cursor) pagination using `WHERE updated_at < :cursor ORDER BY updated_at DESC LIMIT 50` (no OFFSET queries left; the note list is keyset-paged, #461)
 - [ ] Apply cursor-based pagination to: note list, version history, search results, and tag list
 - [ ] Audit all N+1 query patterns and replace with JOINs or batch queries
 
 ### Connection and caching
 
-- [ ] Configure `pgxpool` with appropriate values for `MaxConns`, `MinConns`, and `MaxConnLifetime`
+- [x] Configure `pgxpool` with appropriate values for `MaxConns`, `MinConns`, and `MaxConnLifetime` (#481)
 - [ ] Add a Redis caching layer for vault metadata, the note list per vault, and tag counts
 - [ ] Invalidate the Redis cache on WebSocket sync events (note create, update, delete)
 - [ ] Add `Cache-Control` headers to all read endpoints
@@ -392,16 +392,16 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ### Version history - storage management
 
 - [ ] Store diffs in unified diff format in `note_versions` instead of full content snapshots
-- [ ] Add a `version_retention_policy` column to the vaults table with `keep_count` (default 50) and `keep_days` (default 30)
-- [ ] Add a daily background cleanup job to delete versions outside the retention policy
+- [x] Add a `version_retention_policy` column to the vaults table with `keep_count` (default 50) and `keep_days` (default 30) (#418; `keep_days` defaults to no age limit)
+- [x] Add a daily background cleanup job to delete versions outside the retention policy (#418)
 - [ ] Partition `note_versions` by `created_at` monthly using `pg_partman` once the row count exceeds 500k
-- [ ] Add a `GET /vaults/:id/storage-stats` endpoint returning note count, total content size, and version count
+- [x] Add a `GET /vaults/:id/storage-stats` endpoint returning note count, total content size, and version count (#481)
 
 ### Tests
 
-- [ ] Test keyset pagination correctness including ordering and cursor edge cases
-- [ ] Test the version retention cleanup job
-- [ ] Benchmark the note list endpoint; it must handle 10,000 notes per vault in under 50 ms
+- [x] Test keyset pagination correctness including ordering and cursor edge cases (#461)
+- [x] Test the version retention cleanup job (#418)
+- [x] Benchmark the note list endpoint; it must handle 10,000 notes per vault in under 50 ms (#481: 16 ms for all 10,000, under 1 ms per page)
 
 ---
 

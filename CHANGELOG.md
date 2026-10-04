@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Markdown is syntax-highlighted while you write: headings, bold and italic, code, links,
+  [[links]], tags, quotes, lists and tasks each have their own colour.
 - Graph view: it fits itself to the window on open, shows a legend of folder colours, has
   easier-to-read labels, can be used with the keyboard (Tab to a note, Enter to open), and
   offers a List view of every note and its links. The side panel's local graph links to the

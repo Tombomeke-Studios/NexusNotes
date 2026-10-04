@@ -225,6 +225,7 @@ it is what it exists for:
 | `src/lib/legacyMeta.ts` | One-time sealing of e2ee notes whose title/path the server still holds in plaintext (pre-#362), run when their vault is unlocked |
 | `src/lib/passphrase.ts` | Vault passphrase validation (min length, confirm match) for the E2EE flows |
 | `src/lib/clientSearch.ts` | Client-side full-text search over decrypted in-memory notes (e2ee vaults; server search only sees ciphertext) |
+| `src/lib/mdHighlight.ts` | Source-pane syntax highlighting (#267): line tokenizer into class-named text segments, rendered behind the transparent editor textarea (no HTML strings; off above 150 k chars) |
 | `src/lib/remarkCallouts.ts` | remark plugin: `> [!NOTE]` blockquotes → styled callout blocks in the preview (#223) |
 | `src/lib/tagTree.ts` | Builds the nested tag tree (grouped on `/`) for the sidebar tag panel |
 | `src/lib/tagRename.ts` | Renames a tag across note content (inline + front-matter, cascades to nested children) |

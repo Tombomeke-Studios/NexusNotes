@@ -117,7 +117,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
-- [ ] Markdown syntax highlighting in the editor source pane
+- [x] Markdown syntax highlighting in the editor source pane (#472)
 - [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
 - [x] Composed empty states with a call to action; skeleton loaders instead of spinners
 - [x] Dialog focus trap and focus return audit; skip link

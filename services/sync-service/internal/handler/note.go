@@ -23,6 +23,26 @@ type NoteHandler struct {
 	files       noteFileCleaner // nil when attachments are disabled
 }
 
+// mcpWriteDenied refuses note writes made with an MCP token in an end-to-end
+// encrypted vault (#221): the server cannot encrypt what an AI client sends,
+// so the text would land as plaintext among ciphertext notes. Reports whether
+// it answered the request.
+func (h *NoteHandler) mcpWriteDenied(w http.ResponseWriter, r *http.Request, vaultID string) bool {
+	if middleware.MCPTokenFrom(r.Context()) == nil {
+		return false
+	}
+	vault, err := h.vaultRepo.GetByID(r.Context(), vaultID)
+	if err != nil {
+		writeLookupError(w, err, "vault not found")
+		return true
+	}
+	if vault.Encryption == model.VaultEncryptionE2EE {
+		writeError(w, http.StatusForbidden, "AI clients cannot write to end-to-end encrypted vaults")
+		return true
+	}
+	return false
+}
+
 // noteFileCleaner finds and deletes a note's attachment files in object storage.
 type noteFileCleaner interface {
 	NoteFiles(ctx context.Context, noteID string) []string
@@ -66,6 +86,9 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	if !canWrite(r.Context(), h.vaultRepo, vaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+	if h.mcpWriteDenied(w, r, vaultID) {
 		return
 	}
 
@@ -182,6 +205,9 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "access denied")
 		return
 	}
+	if h.mcpWriteDenied(w, r, existing.VaultID) {
+		return
+	}
 
 	var req struct {
 		Title        string `json:"title"`
@@ -239,6 +265,9 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if !canWrite(r.Context(), h.vaultRepo, vaultID, userID) {
 		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+	if h.mcpWriteDenied(w, r, vaultID) {
 		return
 	}
 

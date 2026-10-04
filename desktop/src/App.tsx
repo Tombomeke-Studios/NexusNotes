@@ -8,6 +8,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { StatusBar } from "./components/StatusBar";
 import { Auth } from "./components/Auth";
 import { ConnectionBanner, ServerUnavailable } from "./components/ConnectionBanner";
+import { SERVER_REACHABLE_EVENT } from "./lib/connection";
 import { AuthAction } from "./components/AuthAction";
 import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
@@ -294,6 +295,7 @@ export default function App() {
     conflictVersion,
     resolveConflict,
     saveError,
+    retryNow: retrySavesNow,
   } = useNoteSave({
     activeNoteRef,
     editorContentRef,
@@ -319,6 +321,17 @@ export default function App() {
     // Every sign-out path ends with user === null; that drops pending saves.
     sessionKey: user?.id ?? null,
   });
+  // The server is reachable again (health poll, or the browser back online):
+  // retry waiting saves at once instead of after their backoff (#333).
+  useEffect(() => {
+    const retry = () => retrySavesNow();
+    window.addEventListener(SERVER_REACHABLE_EVENT, retry);
+    window.addEventListener("online", retry);
+    return () => {
+      window.removeEventListener(SERVER_REACHABLE_EVENT, retry);
+      window.removeEventListener("online", retry);
+    };
+  }, [retrySavesNow]);
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
 
@@ -513,7 +526,9 @@ export default function App() {
           });
         } else if (type === "sync:reconnected") {
           // Updates pushed while the socket was down are gone: reload the
-          // vault list and the active vault's notes (#388).
+          // vault list and the active vault's notes (#388). Saves waiting to
+          // retry go now rather than after their backoff (#333).
+          retrySavesNow();
           loadVaultsRef.current();
           setLastSyncAt(new Date());
         } else if (type === "vault:encrypted") {
@@ -544,7 +559,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote]);
+  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);

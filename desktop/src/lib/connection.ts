@@ -1,5 +1,10 @@
 import type { ServerStatus } from "./version";
 
+/** Window event: a request failed as if the server were down; check its health now (#333). */
+export const SERVER_SUSPECT_EVENT = "nexus:server-suspect";
+/** Window event: the server answers again after an outage; retry what waits (#333). */
+export const SERVER_REACHABLE_EVENT = "nexus:server-reachable";
+
 /** Wording shared by the login form and the connection banner. */
 export function unreachableMessage(apiUrl: string): string {
   return `Can't reach the NexusNotes server at ${apiUrl}.`;

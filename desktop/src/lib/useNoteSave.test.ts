@@ -695,6 +695,31 @@ describe("useNoteSave — network failures", () => {
     expect(loadDraft("n1")).toBeNull();
   });
 
+  it("retries at once when told the server is reachable again (#333)", async () => {
+    update
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(savedNote("c1"));
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("offline text"));
+    await act(() => hook.result.current.saveNote("offline text"));
+    await advance(retryDelay(0));
+    await advance(retryDelay(1));
+    expect(update).toHaveBeenCalledTimes(3);
+
+    // The next backoff would be 4 s; the server is back now.
+    await act(async () => hook.result.current.retryNow());
+    await advance(0);
+    expect(update).toHaveBeenCalledTimes(4);
+    expect(hook.result.current.saveStatus).toBe("saved");
+
+    // Nothing pending: retrying again does nothing.
+    await act(async () => hook.result.current.retryNow());
+    await advance(10_000);
+    expect(update).toHaveBeenCalledTimes(4);
+  });
+
   it("retries with the latest text when the user kept typing while offline", async () => {
     update.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce(savedNote("c1"));
     const { hook } = setup();

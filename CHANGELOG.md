@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- `GET /api/vaults/{id}/storage-stats`: a vault's note, version and attachment counts and
+  stored sizes. The database connection pool is configurable (`DB_MAX_CONNS`,
+  `DB_MIN_CONNS`, `DB_MAX_CONN_LIFETIME`, `DB_MAX_CONN_IDLE_TIME`).
 - Markdown is syntax-highlighted while you write: headings, bold and italic, code, links,
   [[links]], tags, quotes, lists and tasks each have their own colour.
 - Graph view: it fits itself to the window on open, shows a legend of folder colours, has

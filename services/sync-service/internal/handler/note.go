@@ -359,6 +359,22 @@ func (h *NoteHandler) GetHistorySettings(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, keep)
 }
 
+// StorageStats returns the vault's note, version and attachment counts and
+// sizes (#220). Read access required.
+func (h *NoteHandler) StorageStats(w http.ResponseWriter, r *http.Request) {
+	vaultID := r.PathValue("id")
+	if !canRead(r.Context(), h.vaultRepo, vaultID, middleware.GetUserID(r.Context())) {
+		writeError(w, http.StatusForbidden, "access denied")
+		return
+	}
+	stats, err := h.syncService.StorageStats(r.Context(), vaultID)
+	if err != nil {
+		writeLookupError(w, err, "vault not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
+}
+
 // PutHistorySettings changes the vault's version retention and trims its
 // history at once. Only the owner may: it deletes history for every member.
 func (h *NoteHandler) PutHistorySettings(w http.ResponseWriter, r *http.Request) {

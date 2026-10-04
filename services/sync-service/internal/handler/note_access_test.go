@@ -334,6 +334,27 @@ func TestHistorySettings_HTTP(t *testing.T) {
 	}
 }
 
+// GET /api/vaults/{id}/storage-stats (#220).
+func TestStorageStats_HTTP(t *testing.T) {
+	f := newNoteAccessFixture(t)
+	vault := map[string]string{"id": f.ownerVault}
+
+	rec := call(f.h.StorageStats, http.MethodGet, f.viewer, vault)
+	var stats model.VaultStorageStats
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &stats) != nil {
+		t.Fatalf("member reads: %d %s", rec.Code, rec.Body.String())
+	}
+	if stats.Notes != 1 || stats.ContentBytes < int64(len("second draft")) {
+		t.Fatalf("notes: %+v", stats)
+	}
+	if stats.Versions < 1 || stats.VersionBytes <= 0 || stats.Attachments != 0 || stats.AttachmentBytes != 0 {
+		t.Fatalf("versions/attachments: %+v", stats)
+	}
+	if rec := call(f.h.StorageStats, http.MethodGet, f.outsider, vault); rec.Code != http.StatusForbidden {
+		t.Fatalf("outsider reads: status %d, want 403", rec.Code)
+	}
+}
+
 func mustJSON(t *testing.T, v any) string {
 	t.Helper()
 	b, err := json.Marshal(v)

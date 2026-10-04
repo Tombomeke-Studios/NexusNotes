@@ -591,11 +591,11 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/offline-support` - Offline queue and deferred sync (#227)
 
-- [ ] Implement a local IndexedDB queue for edits made while offline
-- [ ] Detect WebSocket disconnect and enqueue saves locally
-- [ ] Replay queued edits in order against the sync service on reconnect
-- [ ] Show an offline indicator in the status bar
-- [ ] Write tests for offline queue flush logic
+- [x] Implement a local IndexedDB queue for edits made while offline (per-note drafts in local storage hold the latest offline text; a save sends the whole note, so a queue of every keystroke is not needed)
+- [x] Detect WebSocket disconnect and enqueue saves locally (#263: failed saves keep their draft and retry with backoff)
+- [x] Replay queued edits in order against the sync service on reconnect (#477, #491: waiting saves retry and drafts of notes that are not open are sent once the server is back)
+- [x] Show an offline indicator in the status bar ("Unsaved · Offline, retrying" plus the connection banner, #333)
+- [x] Write tests for offline queue flush logic (#491)
 
 ---
 

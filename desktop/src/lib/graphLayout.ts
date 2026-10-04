@@ -52,3 +52,45 @@ export function enterDelay(index: number, count: number): number {
   if (count <= 1) return 0;
   return Math.round(Math.min(index * 24, (index / (count - 1)) * MAX_ENTER_DELAY));
 }
+
+export const MIN_FIT_SCALE = 0.25;
+export const MAX_FIT_SCALE = 1.4;
+
+/**
+ * The zoom (scale k, translation x/y) that shows every point inside a
+ * width x height view with `padding` around it (#267): the graph opens
+ * fitted instead of wherever the simulation left it.
+ */
+export function fitTransform(points: Point[], width: number, height: number, padding = 48): { k: number; x: number; y: number } {
+  if (points.length === 0) return { k: 1, x: 0, y: 0 };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  const w = Math.max(maxX - minX, 1);
+  const h = Math.max(maxY - minY, 1);
+  const k = Math.min(
+    MAX_FIT_SCALE,
+    Math.max(MIN_FIT_SCALE, Math.min((width - padding * 2) / w, (height - padding * 2) / h)),
+  );
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  return { k, x: width / 2 - k * cx, y: height / 2 - k * cy };
+}
+
+/** How many folder colours the theme defines (--graph-folder-1 ... -N). */
+export const FOLDER_COLOR_COUNT = 10;
+
+/** A folder's colour slot (1-based), stable per name; null for root notes. */
+export function folderColorIndex(folder: string): number | null {
+  if (!folder) return null;
+  let hash = 0;
+  for (let i = 0; i < folder.length; i++) hash = (hash * 31 + folder.charCodeAt(i)) | 0;
+  return (Math.abs(hash) % FOLDER_COLOR_COUNT) + 1;
+}

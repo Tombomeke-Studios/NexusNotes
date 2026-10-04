@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import * as d3 from "d3";
 import { findGraphNode } from "../../lib/wikilinks";
-import { enterDelay, seedPositions, type Point } from "../../lib/graphLayout";
+import { enterDelay, fitTransform, folderColorIndex, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
 import type { GraphData } from "../../lib/wikilinks";
 import { EmptyState } from "../EmptyState";
@@ -44,19 +44,13 @@ interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   ghost?: boolean;
 }
 
-// Distinct, on-brand colours assigned to folders; root notes stay neutral.
-const FOLDER_PALETTE = [
-  "#cba6f7", "#89b4fa", "#94e2d5", "#f9e2af", "#fab387",
-  "#f38ba8", "#a6e3a1", "#f5c2e7", "#74c7ec", "#b4befe",
-];
-const ROOT_COLOR = "#7f849c";
-
+// Folder colours come from the theme tokens (#267); root notes stay neutral.
 function folderColor(folder: string): string {
-  if (!folder) return ROOT_COLOR;
-  let hash = 0;
-  for (let i = 0; i < folder.length; i++) hash = (hash * 31 + folder.charCodeAt(i)) | 0;
-  return FOLDER_PALETTE[Math.abs(hash) % FOLDER_PALETTE.length];
+  const i = folderColorIndex(folder);
+  return i === null ? "var(--graph-root)" : `var(--graph-folder-${i})`;
 }
+
+const reducedMotion = () => document.documentElement.dataset.rm === "1";
 
 export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, compact = false }: GraphViewProps) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -70,6 +64,10 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   // and whether the first render's staggered fade-in has played.
   const positions = useRef(new Map<string, Point>());
   const entered = useRef(false);
+  // The view fits the graph once it has settled after opening, and again
+  // after Re-center (#267); saves while it is open keep the user's zoom.
+  const fitPending = useRef(true);
+  const [view, setView] = useState<"map" | "list">("map");
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current);
@@ -112,6 +110,27 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
         applyLabelVisibility(event.transform.k);
       });
     svg.call(zoom as unknown as (selection: d3.Selection<SVGSVGElement | null, unknown, null, undefined>) => void);
+    // A re-render keeps the zoom the user had (d3 stores it on the svg).
+    const kept = d3.zoomTransform(svgRef.current);
+    g.attr("transform", kept.toString());
+    const fitView = () => {
+      const t = fitTransform(
+        nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0 })),
+        width,
+        height,
+        compact ? 24 : 56,
+      );
+      svg
+        .transition()
+        .duration(reducedMotion() ? 0 : 450)
+        .call(
+          zoom.transform as unknown as (
+            t: d3.Transition<SVGSVGElement | null, unknown, null, undefined>,
+            transform: d3.ZoomTransform,
+          ) => void,
+          d3.zoomIdentity.translate(t.x, t.y).scale(t.k),
+        );
+    };
     // Double-click on the background resets the view instead of zooming in (#407).
     svg.on("dblclick.zoom", null);
     svg.on("dblclick", () => {
@@ -200,6 +219,18 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .attr("class", (d) =>
         `graph-node ${d.id === activeNoteId ? "graph-node--active" : ""} ${d.connections === 0 ? "graph-node--orphan" : ""} ${d.ghost ? "graph-node--ghost" : ""}`)
       .style("--node-color", (d) => folderColor(d.folder))
+      // Nodes are reachable by keyboard (#267): Tab to one, Enter opens it.
+      .attr("tabindex", 0)
+      .attr("role", "button")
+      .attr("aria-label", (d) =>
+        d.ghost ? `Create the note ${d.title}` : `Open ${d.title}, ${d.connections} link${d.connections === 1 ? "" : "s"}`,
+      )
+      .on("keydown", function (event: KeyboardEvent) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          (this as SVGGElement).dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        }
+      })
       .on("click", (_, d) => {
         // A ghost is an unresolved [[link]]; clicking it creates that note.
         if (d.ghost) {
@@ -310,6 +341,10 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
 
       node.attr("transform", (d) => `translate(${d.x},${d.y})`);
       for (const n of nodes) positions.current.set(n.id, { x: n.x!, y: n.y! });
+      if (fitPending.current && simulation.alpha() < 0.08 && nodes.length > 0) {
+        fitPending.current = false;
+        fitView();
+      }
     });
 
     return () => { simulation.stop(); };
@@ -340,17 +375,91 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     );
   }
 
+  // Legend (#267): the biggest folders, root notes and not-yet-created ones.
+  const folderCounts = new Map<string, number>();
+  for (const n of data.nodes) if (!n.ghost && n.folder) folderCounts.set(n.folder, (folderCounts.get(n.folder) ?? 0) + 1);
+  const legendFolders = [...folderCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const hasRoot = data.nodes.some((n) => !n.ghost && !n.folder);
+  const hasGhost = data.nodes.some((n) => n.ghost);
+
+  // List view (#267): the same graph as a table, for keyboards and screen
+  // readers, and for finding a note's connections at a glance.
+  const linksIn = new Map<string, number>();
+  const linksOut = new Map<string, number>();
+  for (const l of data.links) {
+    linksOut.set(l.source, (linksOut.get(l.source) ?? 0) + 1);
+    linksIn.set(l.target, (linksIn.get(l.target) ?? 0) + 1);
+  }
+  const listRows = [...data.nodes].sort(
+    (a, b) => Number(!!a.ghost) - Number(!!b.ghost) || a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+  );
+
   return (
     <div className="graph-view">
-      <svg ref={svgRef} className="graph-svg" />
-      {noteCount > 0 && (
+      <svg ref={svgRef} className="graph-svg" style={view === "list" ? { display: "none" } : undefined} />
+      {view === "list" && (
+        <div className="graph-list">
+          <table aria-label="Notes and their links">
+            <thead>
+              <tr>
+                <th scope="col">Note</th>
+                <th scope="col">Folder</th>
+                <th scope="col">Links out</th>
+                <th scope="col">Links in</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listRows.map((n) => (
+                <tr key={n.id} className={n.ghost ? "graph-list-ghost" : undefined}>
+                  <td>
+                    <button
+                      className="graph-list-open"
+                      onClick={() => (n.ghost ? onCreateNote?.(n.title) : onSelectNote(n.id))}
+                    >
+                      <span className="graph-list-dot" style={{ background: n.ghost ? "transparent" : folderColor(n.folder) }} />
+                      {n.title}
+                      {n.ghost && <span className="graph-list-note"> (not created yet)</span>}
+                    </button>
+                  </td>
+                  <td>{n.folder || "—"}</td>
+                  <td>{linksOut.get(n.id) ?? 0}</td>
+                  <td>{linksIn.get(n.id) ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {view === "map" && noteCount > 0 && (
+        <div className="graph-legend" aria-label="Legend">
+          {legendFolders.map(([folder]) => (
+            <span key={folder} className="graph-legend-item">
+              <span className="graph-legend-dot" style={{ background: folderColor(folder) }} />
+              {folder}
+            </span>
+          ))}
+          {hasRoot && legendFolders.length > 0 && (
+            <span className="graph-legend-item">
+              <span className="graph-legend-dot" style={{ background: "var(--graph-root)" }} />
+              No folder
+            </span>
+          )}
+          {hasGhost && (
+            <span className="graph-legend-item">
+              <span className="graph-legend-dot graph-legend-dot--ghost" />
+              Not created yet
+            </span>
+          )}
+        </div>
+      )}
+      {view === "map" && noteCount > 0 && (
         <Tip id="graph" className="graph-tip">
           Drag notes to arrange them, scroll to zoom, click a note to open it. Double-click the background to
           reset the view.
         </Tip>
       )}
       {/* Nothing to connect yet (#450): say how links appear. */}
-      {(noteCount === 0 || data.links.length === 0) && (
+      {view === "map" && (noteCount === 0 || data.links.length === 0) && (
         <div className="graph-empty">
           {noteCount === 0 ? (
             <EmptyState art="graph" title="Nothing to graph yet">
@@ -363,7 +472,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           )}
         </div>
       )}
-      <div className="graph-search">
+      <div className="graph-search" hidden={view === "list"}>
         <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
           <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />
           <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -407,8 +516,16 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       <div className="graph-badge">
         {noteCount} {noteCount === 1 ? "note" : "notes"} &middot; {data.links.length} {data.links.length === 1 ? "link" : "links"}
       </div>
-      {orphanCount > 0 && (
-        <div className="graph-controls">
+      <div className="graph-controls">
+        <div className="graph-view-switch" role="group" aria-label="Show the graph as">
+          <button className={`graph-toggle${view === "map" ? " graph-toggle--on" : ""}`} aria-pressed={view === "map"} onClick={() => setView("map")}>
+            Map
+          </button>
+          <button className={`graph-toggle${view === "list" ? " graph-toggle--on" : ""}`} aria-pressed={view === "list"} onClick={() => setView("list")}>
+            List
+          </button>
+        </div>
+        {orphanCount > 0 && view === "map" && (
           <button
             className={`graph-toggle${showOrphans ? " graph-toggle--on" : ""}`}
             onClick={() => setShowOrphans((v) => !v)}
@@ -416,13 +533,14 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           >
             {showOrphans ? "Hide" : "Show"} {orphanCount} orphan{orphanCount === 1 ? "" : "s"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
       <button
         className="graph-recenter"
         onClick={() => {
-          // Re-center lays everything out afresh.
+          // Re-center lays everything out afresh, then fits it.
           positions.current.clear();
+          fitPending.current = true;
           setRenderKey((k) => k + 1);
         }}
         title="Lay the graph out again (releases pinned notes)"

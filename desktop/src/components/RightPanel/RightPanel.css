@@ -357,3 +357,15 @@
   background: color-mix(in srgb, var(--error) 18%, transparent);
   color: var(--error);
 }
+.local-graph-open {
+  padding: 2px 8px;
+  border: 1px solid var(--border-inner);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.local-graph-open:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}

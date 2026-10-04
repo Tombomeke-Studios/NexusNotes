@@ -6,6 +6,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Graph view: it fits itself to the window on open, shows a legend of folder colours, has
+  easier-to-read labels, can be used with the keyboard (Tab to a note, Enter to open), and
+  offers a List view of every note and its links. The side panel's local graph links to the
+  full graph.
 - Privacy Policy, Terms of Service, Cookie Policy and Refund Policy pages (templates for each
   server's operator to complete). Signing up asks you to agree to the Terms and Privacy
   Policy, and a one-time notice explains what the app stores in your browser, with "Cookie

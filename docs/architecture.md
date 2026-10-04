@@ -277,3 +277,36 @@ erDiagram
 - **starred_notes** — per-user favourite marks on notes (which user starred which note, and when).
 - **vault_members** — shared-vault membership: which user has which role (viewer/editor) on a vault they don't own.
 - **attachments** — file metadata; bytes live in MinIO.
+
+### Indexing and query strategy (#220)
+
+Every hot read is scoped to one vault, so the indexes lead with the vault and
+then follow the order the query reads in:
+
+- **Note list** (the paged list the desktop app loads a vault with) walks a
+  vault's notes in path order with a keyset cursor on path plus id. An index in
+  exactly that order lets each page start where the last one ended instead of
+  skipping rows, so page 20 costs the same as page 1. Measured with 10,000
+  notes: under 1 ms per 500-note page and 16 ms for the whole vault, decryption
+  included (`BenchmarkListPage_10kNotes`).
+- **Search fallback** (when Meilisearch is down) reads a vault's notes newest
+  first and stops at 50 hits, so an index on vault plus last-updated lets it
+  stream in order instead of sorting the vault first. Content is encrypted at
+  rest and matched after decryption, so a full-text index on it is not
+  possible.
+- **Backlinks and the graph** look links up from both ends, so links are
+  indexed on their source note, their target note and their vault.
+- **Version history** lists a note's versions newest first and prunes past the
+  vault's retention; both use an index on note plus creation time.
+- **Tags and aliases** are indexed on their value, for the tag filter and for
+  resolving wiki-links by alias.
+
+Each migration runs in a transaction, so indexes are created with a plain
+create rather than concurrently (which cannot run inside one). At self-hosted
+vault sizes a brief lock during an upgrade is cheaper than a migration that can
+fail halfway.
+
+The connection pool is sized by `DB_MAX_CONNS` (default 20), `DB_MIN_CONNS` (2),
+`DB_MAX_CONN_LIFETIME` (1h) and `DB_MAX_CONN_IDLE_TIME` (30m). Recycling
+connections hourly means a restarted or failed-over database is picked up
+without restarting the service.

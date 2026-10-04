@@ -15,7 +15,7 @@ import (
 )
 
 // seedVault inserts a user and a vault directly and returns the vault id.
-func seedVault(t *testing.T, pool *pgxpool.Pool) string {
+func seedVault(t testing.TB, pool *pgxpool.Pool) string {
 	t.Helper()
 	ctx := context.Background()
 	userID, vaultID := uuid.NewString(), uuid.NewString()

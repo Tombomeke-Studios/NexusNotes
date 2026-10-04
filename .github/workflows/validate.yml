@@ -14,6 +14,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       desktop: ${{ steps.filter.outputs.desktop }}
       backend_image: ${{ steps.filter.outputs.backend_image }}
+      mcp: ${{ steps.filter.outputs.mcp }}
       desktop_image: ${{ steps.filter.outputs.desktop_image }}
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +31,9 @@ jobs:
               - 'docker-compose.yml'
             desktop_image:
               - 'desktop/**'
+              - 'docker-compose.yml'
+            mcp:
+              - 'services/mcp-service/**'
               - 'docker-compose.yml'
 
   backend:
@@ -90,6 +94,31 @@ jobs:
       - name: Build
         working-directory: services/sync-service
         run: go build -o /dev/null ./cmd/server
+
+  mcp:
+    name: MCP server (Go)
+    needs: changes
+    if: needs.changes.outputs.mcp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+          working-directory: services/mcp-service
+
+      - name: Run tests
+        working-directory: services/mcp-service
+        run: go test -race ./...
+
+      - name: Build image
+        run: docker build -t nexusnotes-mcp:ci services/mcp-service
 
   # Builds the production images (no push), so a Dockerfile that no longer
   # builds fails CI instead of a release (#331).

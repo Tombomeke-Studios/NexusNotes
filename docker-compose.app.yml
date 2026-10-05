@@ -1,0 +1,43 @@
+# Databases of the packaged desktop app (#277), in a compose project of its
+# own ("nexusnotes-app"): the app's data never shares a volume or credentials
+# with the dev scripts (docker-compose.dev.yml). The app generates both
+# passwords per install, keeps them in its local data dir and passes them as
+# NEXUS_DB_PASSWORD / NEXUS_REDIS_PASSWORD whenever it runs `docker compose`.
+# Ports are on 127.0.0.1 only and differ from the dev stack's, so both can run.
+services:
+  postgres:
+    image: postgres:16-alpine
+    # Come back with Docker Desktop so the app finds its databases ready.
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=nexus
+      # Only used when the volume is first initialised; the app re-keys the
+      # role on every start, so a lost password file is not fatal.
+      - POSTGRES_PASSWORD=${NEXUS_DB_PASSWORD:?run by the desktop app, which sets it}
+      - POSTGRES_DB=nexus_notes
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus -d nexus_notes"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      - REDIS_PASSWORD=${NEXUS_REDIS_PASSWORD:?run by the desktop app, which sets it}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\""]
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:

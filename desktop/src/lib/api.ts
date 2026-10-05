@@ -1,7 +1,7 @@
 import { APP_VERSION, assessHealth, type HealthPayload, type ServerStatus } from "./version";
 import { resolveApiBase } from "./apiBase";
 import { isTauriWindow } from "./platform";
-import type { User, Vault, Note, NoteVersion, NoteVersionInfo, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember } from "./types";
+import type { User, Vault, Note, NoteVersion, NoteVersionInfo, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember, McpToken, McpScope, McpAuditEntry } from "./types";
 
 // The packaged app has no VITE_API_URL at runtime and uses its sidecar's fixed
 // port (see src-tauri/src/lib.rs); the web UI uses its own origin (#399).
@@ -574,6 +574,18 @@ export const links = {
 };
 
 /** Sync devices registered to the account (#44, #45). */
+/** MCP API tokens for AI clients (#221). */
+export const mcpTokens = {
+  list: () => request<McpToken[]>("/api/mcp-tokens"),
+  create: (name: string, scope: McpScope) =>
+    request<McpToken & { token: string }>("/api/mcp-tokens", {
+      method: "POST",
+      body: JSON.stringify({ name, scope }),
+    }),
+  revoke: (id: string) => request<void>(`/api/mcp-tokens/${id}`, { method: "DELETE" }),
+  audit: (limit = 50) => request<McpAuditEntry[]>(`/api/mcp-tokens/audit?limit=${limit}`),
+};
+
 export const devices = {
   list: () => request<Device[]>("/api/devices"),
   revoke: (deviceId: string) =>

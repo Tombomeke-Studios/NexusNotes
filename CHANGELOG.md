@@ -6,6 +6,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Settings > AI Access: create and revoke MCP tokens, copy a ready-made config for Claude
+  Desktop or Cursor, and see when each token was last used and what it did.
 - An MCP server (`services/mcp-service`, `nexusnotes-mcp`) so Claude, Cursor and other AI
   clients can list, read, search, create and edit notes with an MCP token, over stdio or
   at `/mcp` on the web UI. End-to-end encrypted vaults stay closed to it.
@@ -103,6 +105,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- Text typed offline in a note you then left (or before closing the app) is sent as soon as
+  the server is reachable, without reopening the note.
 - `[[links]]` written as code (in backticks or a code block) no longer show up as links in
   the graph and backlinks.
 - The web UI of the Docker stack talks to its own server again instead of to
@@ -152,6 +156,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   the editor kept the old text and your next edit was saved over those changes.
 
 ### Security
+- The desktop app runs its own Postgres and Redis with random passwords generated per
+  install, instead of sharing the dev scripts' database and its well-known password.
+  Upgrading copies your notes over once, then stops the old database container (#277).
 - The desktop app runs under a strict Content Security Policy.
 - The editor font is bundled with the app instead of loaded from Google Fonts, so opening
   NexusNotes no longer sends your IP address to Google.

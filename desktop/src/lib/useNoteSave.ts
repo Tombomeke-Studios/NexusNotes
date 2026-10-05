@@ -663,8 +663,35 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Sends the drafts of notes that are not open (#227): text typed offline in
+   * a note the user then left, or left over from an earlier run, reaches the
+   * server without reopening each note. A draft is saved against the version
+   * it was written on, so a note changed elsewhere since answers 409 and keeps
+   * its draft for the user to resolve when they open it. Notes whose save is
+   * already queued, in flight or waiting to retry are left alone, as are
+   * vaults that keep no drafts (e2ee).
+   */
+  const replayDrafts = useCallback((notes: readonly Note[]) => {
+    const d = depsRef.current;
+    for (const note of notes) {
+      if (isActive(note.id) || !d.keepsDrafts(note.vault_id)) continue;
+      if (lastRequests.current.has(note.id) || timers.current.has(note.id) || workers.current.has(note.id)) continue;
+      const draft = loadDraft(note.id);
+      if (draft === null) continue;
+      if (draft === note.content) {
+        clearDraft(note.id);
+        continue;
+      }
+      void enqueue({ ...note, checksum: loadDraftBase(note.id) ?? note.checksum }, draft);
+    }
+    // enqueue only reads refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return {
     retryNow,
+    replayDrafts,
     isOwnVersion,
     conflictVersion,
     resolveConflict,

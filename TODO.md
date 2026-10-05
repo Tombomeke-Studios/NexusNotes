@@ -40,7 +40,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Graceful shutdown: drain the WebSocket hub, per-route write deadlines (#332)
 - [x] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
 - [x] Retry pending saves as soon as the server is reachable again (#477)
-- [ ] Migrate the packaged app's database password without losing data (#277)
+- [x] Migrate the packaged app's database password without losing data (#277)
 - [x] Dev scripts: random JWT secret and localhost-only binding, like the packaged app (#334)
 - [x] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces) (#335)
 - [x] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces (#336)
@@ -120,9 +120,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
 - [x] Markdown syntax highlighting in the editor source pane (#472)
-- [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
+- [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
 - [x] Composed empty states with a call to action; skeleton loaders instead of spinners
-- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 - [x] Dialog focus trap and focus return audit; skip link
 
 ---
@@ -130,7 +130,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ## `feature/release-readiness` - Release readiness toward 1.0 (#268)
 
 - [x] README rewrite around what ships, hero image and screenshots, docs index (#474)
-- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
+- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters
@@ -453,7 +453,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add `mcp_tokens` table with columns: `id`, `user_id`, `token_hash`, `name`, `scopes`, `last_used_at`, `created_at` (#483)
 - [x] Add `POST /settings/mcp-tokens` to generate named API tokens scoped to read-only or read-write (#483: `POST /api/mcp-tokens`)
 - [x] Add `DELETE /settings/mcp-tokens/:id` to revoke a token (#483: `DELETE /api/mcp-tokens/:id`)
-- [ ] Add a token management page in the desktop settings
+- [x] Add a token management page in the desktop settings (#487)
 - [x] Authenticate every MCP request via Bearer token in the Authorization header (#483, #485)
 - [x] Add `mcp_audit_log` table with columns: `token_id`, `tool`, `args_summary`, `timestamp`; log every AI action (#483)
 - [x] Rate limit MCP endpoints to 60 tool calls per minute per token (#483)
@@ -486,9 +486,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Desktop integration
 
-- [ ] Add an "AI Access" section in settings showing active tokens and the audit log
-- [ ] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients
-- [ ] Add an in-app indicator showing when a token was last used
+- [x] Add an "AI Access" section in settings showing active tokens and the audit log (#487)
+- [x] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients (#487)
+- [x] Add an in-app indicator showing when a token was last used (#487)
 - [x] Write unit tests for all MCP tool handlers (#485)
 - [ ] Write an integration test covering the full flow: connect via config, `list_vaults`, `read_note`
 
@@ -1167,7 +1167,7 @@ Lower priority items not focused on the desktop application.
 
 - [x] Paginate or slim the note list (#461)
 
-- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 
 - [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
 

@@ -216,3 +216,49 @@ Steps 5–7 can overlap; the go/no-go list in §6 is the gate for leaving the cl
 - **Key custody:** losing `DATA_ENCRYPTION_KEY` makes all hosted data unrecoverable.
 - **Version skew:** old installers talking to a newer server; mitigated by the version check
   and a stated support window.
+
+## 9. Ownership and licensing
+
+The maintainer wrote NexusNotes and keeps all rights. Self-hosters and developers may run and
+modify the code, but may not resell it or present it as their own version. This is a
+**product principle**, not only a licence detail: it applies to the app, the server code, the
+name and the logo.
+
+### Where the repository stands (verified against `LICENSE`, `README.md`, `CONTRIBUTING.md`)
+
+- The code is **source-available under the PolyForm Shield License 1.0.0**, not open source.
+  Any purpose is allowed except providing a product that competes with NexusNotes; a resold
+  copy, a rebranded fork offered to others or a competing hosted service all fall under that
+  ban. Using or modifying it for yourself or inside a company is allowed. The notice lines
+  (`Required Notice`) must be kept in every copy.
+- Contributions are accepted under the same terms, and the maintainer may offer them under
+  other terms later (CONTRIBUTING.md).
+
+### Gaps against the stated intent
+
+1. **Name and logo.** The licence text has no trademark rule, so it does not stop a fork from
+   calling itself "NexusNotes" or reusing the logo. A short branding policy is needed: forks
+   must rename and must not suggest they are the official app. `docs/brand.md` is the place to
+   start. Whether to register the name as a trademark is a question for legal review.
+2. **Who holds the rights.** The notice names "Tombomeke Studios", which is not a legal person
+   at the moment. The notice, the Terms and the Privacy Policy need a real rights holder (the
+   maintainer as a natural person, or a registered business). Same question as the data
+   controller in §6.
+3. **Contributor rights.** Contributors keep the copyright in their changes and merely license
+   them. For "I keep all rights" to hold for the whole code base, the project needs either a
+   contributor licence agreement (assignment or broad licence) or, as a lighter step, a DCO
+   sign-off plus the relicensing sentence already in CONTRIBUTING.md. Until decided, consider
+   not merging outside contributions to core code.
+4. **What self-hosters may do is not spelled out.** Running it for yourself or your own team is
+   fine; running it as a service for third parties is the competing case. Say this in the README
+   in plain words next to the licence summary.
+5. **Distributed binaries.** The installer bundles third-party components with their own
+   licences. Ship a third-party licence list with the installer; "all rights" covers only the
+   maintainer's own code.
+6. **Hosted-service terms.** The Terms of Service for the hosted instance are separate from the
+   source licence and must not contradict it.
+
+None of this is legal advice; the licence text and a professional review decide. Whether
+PolyForm Shield is the right licence for the stated intent, or whether a stricter source-available
+or custom licence is needed (for example one that forbids redistribution of modified builds
+altogether), is a decision for the legal review, not for this record.

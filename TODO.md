@@ -208,6 +208,10 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Legal review including who the data controller is (person or registered business) and whether paid plans change that
 - [ ] Data-breach and data-subject-request procedures
 - [ ] Walk the go/no-go list in `docs/hosted-service.md` §6 before opening registration
+- [ ] Ownership and licensing review (`docs/hosted-service.md` §9): is PolyForm Shield enough for "modify allowed, no resale, no claiming it as theirs", who is the named rights holder
+- [ ] Write a branding policy (name and logo for forks) in `docs/brand.md` and the README licence summary, including what self-hosters may and may not do
+- [ ] Decide the contribution model (CLA, DCO or no outside merges to core) and update CONTRIBUTING.md and the `Required Notice`
+- [ ] Ship a third-party licence list with the installer
 
 ---
 

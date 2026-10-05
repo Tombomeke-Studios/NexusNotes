@@ -111,6 +111,9 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 4])
+      // d3's default step is tuned for a mouse wheel; a trackpad sends many tiny
+      // deltas (pinch arrives as ctrl+wheel), so zoom twice as fast.
+      .wheelDelta((e: WheelEvent) => -e.deltaY * (e.deltaMode === 1 ? 0.05 : e.deltaMode ? 1 : 0.004) * (e.ctrlKey ? 10 : 1))
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
         applyLabelVisibility(event.transform.k);
@@ -578,7 +581,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       </div>
       {view === "map" && (
         <div className="graph-zoom" role="group" aria-label="Zoom">
-          <button onClick={() => zoomRef.current.to(Math.min(4, zoomK * 1.4))} aria-label="Zoom in" title="Zoom in">+</button>
+          <button onClick={() => zoomRef.current.to(Math.max(0.2, zoomK / 1.4))} aria-label="Zoom out" title="Zoom out">&minus;</button>
           <input
             type="range"
             min={Math.log(0.2)}
@@ -588,7 +591,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
             onChange={(e) => zoomRef.current.to(Math.exp(Number(e.target.value)))}
             aria-label="Zoom level"
           />
-          <button onClick={() => zoomRef.current.to(Math.max(0.2, zoomK / 1.4))} aria-label="Zoom out" title="Zoom out">&minus;</button>
+          <button onClick={() => zoomRef.current.to(Math.min(4, zoomK * 1.4))} aria-label="Zoom in" title="Zoom in">+</button>
           <button onClick={() => zoomRef.current.fit()} aria-label="Fit the graph in view" title="Fit the graph in view">Fit</button>
         </div>
       )}

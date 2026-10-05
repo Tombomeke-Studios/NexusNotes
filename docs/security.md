@@ -153,6 +153,29 @@ encrypt a standard vault later (#361; full design in
   (e.g. a save retry firing after sign-out cleared it) is refused rather
   than treated as a plain vault.
 
+## MCP Tokens (AI access)
+
+AI clients use named API tokens instead of a password or session (#221).
+
+- **Storage.** A token is 32 random bytes with an `nn_` prefix. Only its
+  SHA-256 is stored, which is enough for a value with that much entropy and
+  lets it be looked up directly; the name is encrypted at rest. The value is
+  shown once, when it is created.
+- **Reach.** A token never reaches the full API. Its requests are served by a
+  separate router that holds only the note routes its scope allows (reading,
+  plus note create/update/delete for `read-write`), so account, session, token,
+  sharing and vault-settings endpoints answer `403` to it even if the token
+  leaks. Within those routes it acts as its owner, with the owner's vault roles.
+- **End-to-end encrypted vaults.** Reads return the ciphertext, as for any
+  client. Writes are refused, since the server could not encrypt the text and
+  it would land as plaintext among encrypted notes.
+- **Accountability.** Every request made with a token is written to an audit
+  log before it runs (tool, method and path; never search terms or note
+  content), kept 90 days. A request whose audit entry cannot be written is
+  refused.
+- **Abuse.** 60 requests a minute per token, in memory. Revoking a token takes
+  effect on its next request; an account holds at most 20.
+
 ## Device Management
 
 Each sync client registers itself (stable random device id, human-readable
@@ -429,16 +452,30 @@ unused) or is missing.
 
 **Localhost only.** The bundled backend is started with `BIND_ADDR` set to the
 loopback addresses (`127.0.0.1` and `::1`, or only `127.0.0.1` when IPv6 is
-disabled), so it no longer listens on the network interfaces. The compose file
-publishes Postgres, Redis, MinIO and Meilisearch on `127.0.0.1` only. Before
+disabled), so it no longer listens on the network interfaces. The compose files
+publish Postgres, Redis, MinIO and Meilisearch on `127.0.0.1` only. Before
 #260 all of them, and the backend, were reachable from the local network.
 
-**Residual risk: fixed database credentials.** Postgres still uses the fixed
-development password and Redis has no password at all. Both are now reachable
-from the local machine only, but any process on that machine, under any user
-account, can connect with the well-known credentials and read or change every
-note. The password was left unchanged on purpose: the Postgres container and
-its volume are shared with the dev scripts, and the password is fixed when the
-volume is first initialised, so changing it without an in-place migration
-would lock existing installations out of their data. A per-install database
-password with a safe migration is tracked in #277.
+**Per-install database passwords (#277).** The app runs its own Postgres and
+Redis in a compose project of their own (`nexusnotes-app`, on ports 5433 and
+6380), apart from the dev scripts' containers. On first run it generates a
+random password for each and keeps them next to the JWT secret, in the
+owner-only files `db-password` and `redis-password`. Redis runs with
+`requirepass`. On every start the app sets the Postgres role to the stored
+password through `docker exec` (the container trusts its local socket, and the
+statement goes in on stdin, never on a command line), so a lost or replaced
+password file is repaired rather than locking the app out.
+
+Builds before #277 kept their notes in the dev scripts' database under the
+well-known `nexus_dev` password. On the first start of a newer build the app
+copies that database into its own (`pg_dump` piped into `psql`, both inside the
+containers), records the copy in `legacy-db-migrated`, and stops the old
+container. The backend is not started on the new database until the copy has
+succeeded, so an interrupted copy is simply redone. The old volume is kept as a
+backup; see [deployment.md](deployment.md#packaged-app-exe) for removing it.
+
+**Residual risk.** MinIO (attachments) is still shared with the dev scripts and
+uses their fixed credentials; attachments are encrypted at rest, so they are
+ciphertext to anyone using those credentials. Any process running as a user
+who can use Docker can still read the passwords from the containers'
+environment, but such a user already controls the machine.

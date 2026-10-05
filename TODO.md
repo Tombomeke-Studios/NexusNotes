@@ -40,7 +40,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Graceful shutdown: drain the WebSocket hub, per-route write deadlines (#332)
 - [x] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
 - [x] Retry pending saves as soon as the server is reachable again (#477)
-- [ ] Migrate the packaged app's database password without losing data (#277)
+- [x] Migrate the packaged app's database password without losing data (#277)
 - [x] Dev scripts: random JWT secret and localhost-only binding, like the packaged app (#334)
 - [x] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces) (#335)
 - [x] Packaged app supervisor: do not reuse a foreign backend on :8080 that listens on all interfaces (#336)

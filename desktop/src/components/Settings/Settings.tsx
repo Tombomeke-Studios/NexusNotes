@@ -1,4 +1,5 @@
 import { HistorySettings } from "./HistorySettings";
+import { AIAccessSettings } from "./AIAccessSettings";
 import { openConsentPreferences } from "../../lib/consent";
 import { SHORTCUTS } from "../../lib/shortcuts";
 import { toast } from "../../lib/toast";
@@ -19,7 +20,15 @@ import { spring } from "../../lib/motion-tokens";
 import "./Settings.css";
 import { OverlayMotion } from "../motion/OverlayMotion";
 
-type SettingsTab = "appearance" | "sync" | "shortcuts" | "account";
+type SettingsTab = "appearance" | "sync" | "shortcuts" | "ai" | "account";
+
+const TAB_LABELS: Record<SettingsTab, string> = {
+  appearance: "Appearance",
+  sync: "Sync",
+  shortcuts: "Shortcuts",
+  ai: "AI Access",
+  account: "Account",
+};
 
 interface SettingsProps {
   prefs: WorkspacePrefs;
@@ -184,13 +193,13 @@ export function Settings({
       <OverlayMotion preset="dialog" className="settings-modal" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="settings-nav">
           <div className="settings-nav-title">Settings</div>
-          {(["appearance", "sync", "shortcuts", "account"] as SettingsTab[]).map((t) => (
+          {(Object.keys(TAB_LABELS) as SettingsTab[]).map((t) => (
             <button
               key={t}
               className={`settings-nav-item${tab === t ? " settings-nav-item--active" : ""}`}
               onClick={() => setTab(t)}
             >
-              {t === "appearance" ? "Appearance" : t === "sync" ? "Sync" : t === "shortcuts" ? "Shortcuts" : "Account"}
+              {TAB_LABELS[t]}
             </button>
           ))}
           <div className="settings-nav-spacer" />
@@ -395,6 +404,8 @@ export function Settings({
                 ))}
               </>
             )}
+
+            {tab === "ai" && <AIAccessSettings />}
 
             {tab === "account" && (
               <>

@@ -88,7 +88,7 @@ which token invoked which tool at what time plus a sanitised argument summary
 | Tokens, scopes, audit log, rate limit, e2ee write guard (sync service) | Done (#221); endpoints in [api.md](api.md#mcp-tokens), model in [security.md](security.md#mcp-tokens-ai-access) |
 | `services/mcp-service`: stdio + stateless Streamable HTTP, the 12 tools below | Done (#485) |
 | Resources (`nexusnotes://` URIs) and prompts | Planned |
-| Desktop "AI Access" settings | Planned |
+| Desktop "AI Access" settings: tokens, copy config, last used, activity | Done (#487) |
 
 The MCP service talks to the sync service over its REST API with the user's token and
 names the tool it runs in an `X-MCP-Tool` header, which the audit log records.

@@ -453,7 +453,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add `mcp_tokens` table with columns: `id`, `user_id`, `token_hash`, `name`, `scopes`, `last_used_at`, `created_at` (#483)
 - [x] Add `POST /settings/mcp-tokens` to generate named API tokens scoped to read-only or read-write (#483: `POST /api/mcp-tokens`)
 - [x] Add `DELETE /settings/mcp-tokens/:id` to revoke a token (#483: `DELETE /api/mcp-tokens/:id`)
-- [ ] Add a token management page in the desktop settings
+- [x] Add a token management page in the desktop settings (#487)
 - [x] Authenticate every MCP request via Bearer token in the Authorization header (#483, #485)
 - [x] Add `mcp_audit_log` table with columns: `token_id`, `tool`, `args_summary`, `timestamp`; log every AI action (#483)
 - [x] Rate limit MCP endpoints to 60 tool calls per minute per token (#483)
@@ -486,9 +486,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Desktop integration
 
-- [ ] Add an "AI Access" section in settings showing active tokens and the audit log
-- [ ] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients
-- [ ] Add an in-app indicator showing when a token was last used
+- [x] Add an "AI Access" section in settings showing active tokens and the audit log (#487)
+- [x] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients (#487)
+- [x] Add an in-app indicator showing when a token was last used (#487)
 - [x] Write unit tests for all MCP tool handlers (#485)
 - [ ] Write an integration test covering the full flow: connect via config, `list_vaults`, `read_note`
 
@@ -591,11 +591,11 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/offline-support` - Offline queue and deferred sync (#227)
 
-- [x] Implement a local IndexedDB queue for edits made while offline (per-note drafts in local storage hold the latest offline text; a save sends the whole note, so a queue of every keystroke is not needed)
-- [x] Detect WebSocket disconnect and enqueue saves locally (#263: failed saves keep their draft and retry with backoff)
-- [x] Replay queued edits in order against the sync service on reconnect (#477, #491: waiting saves retry and drafts of notes that are not open are sent once the server is back)
-- [x] Show an offline indicator in the status bar ("Unsaved · Offline, retrying" plus the connection banner, #333)
-- [x] Write tests for offline queue flush logic (#491)
+- [ ] Implement a local IndexedDB queue for edits made while offline
+- [ ] Detect WebSocket disconnect and enqueue saves locally
+- [ ] Replay queued edits in order against the sync service on reconnect
+- [ ] Show an offline indicator in the status bar
+- [ ] Write tests for offline queue flush logic
 
 ---
 

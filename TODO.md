@@ -149,74 +149,74 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### `docs/hosted-service` - Documentation (this branch)
 
-- [x] Write the decision record `docs/hosted-service.md`
-- [x] Drop the mobile app and web clipper from README and architecture docs
-- [ ] Rewrite deployment.md and security.md for the final topology as each step below lands
-- [ ] Document that self-hosters build the app with their own origin until `feature/rust-transport` unlocks the server field
-- [ ] Update the codebase map in CLAUDE.md when files are removed or added
+- [x] Write the decision record `docs/hosted-service.md` (#495)
+- [x] Drop the mobile app and web clipper from README and architecture docs (#496)
+- [ ] Rewrite deployment.md and security.md for the final topology as each step below lands (#497)
+- [ ] Document that self-hosters build the app with their own origin until `feature/rust-transport` unlocks the server field (#498)
+- [ ] Update the codebase map in CLAUDE.md when files are removed or added (#499)
 
 ### `feature/server-url` - Configurable server URL, closed-beta form
 
-- [ ] Settings/login: server URL field with the hosted API as default, validated and stored in app data
-- [ ] Pin `connect-src` (and `devCsp`) to the hosted API origin (`https` + `wss`) and lock the field in the beta build
-- [ ] Accept the Tauri origin (`http://tauri.localhost`) or a missing Origin in the CORS and WebSocket allowlists
-- [ ] Version check against the configured server (extends `assessHealth`), with a support-window policy for old clients
-- [ ] Use the configured origin for the WebSocket ticket and sync client
+- [ ] Settings/login: server URL field with the hosted API as default, validated and stored in app data (#500)
+- [ ] Pin `connect-src` (and `devCsp`) to the hosted API origin (`https` + `wss`) and lock the field in the beta build (#501)
+- [ ] Accept the Tauri origin (`http://tauri.localhost`) or a missing Origin in the CORS and WebSocket allowlists (#502)
+- [ ] Version check against the configured server (extends `assessHealth`), with a support-window policy for old clients (#503)
+- [ ] Use the configured origin for the WebSocket ticket and sync client (#504)
 
 ### `feature/email-deep-links` - E-mail links without a web UI
 
-- [ ] Register `nexusnotes://` with the Tauri deep-link and single-instance plugins (Windows installer registration)
-- [ ] Static `/open` page on the reverse proxy: reads the URL fragment, builds the deep link; `Referrer-Policy: no-referrer`, strict CSP, `Cache-Control: no-store`
-- [ ] Mail templates: HTTPS link with the token in the fragment plus a copyable code; link carries the server origin
-- [ ] App flows for verify e-mail, reset password and cancel deletion (no sign-in needed), confirming a server origin that differs from the configured one
-- [ ] Tests for token handling and origin mismatch
+- [ ] Register `nexusnotes://` with the Tauri deep-link and single-instance plugins (Windows installer registration) (#505)
+- [ ] Static `/open` page on the reverse proxy: reads the URL fragment, builds the deep link; `Referrer-Policy: no-referrer`, strict CSP, `Cache-Control: no-store` (#506)
+- [ ] Mail templates: HTTPS link with the token in the fragment plus a copyable code; link carries the server origin (#507)
+- [ ] App flows for verify e-mail, reset password and cancel deletion (no sign-in needed), confirming a server origin that differs from the configured one (#508)
+- [ ] Tests for token handling and origin mismatch (#509)
 
 ### `refactor/remove-sidecar` - Thin client (only after `feature/server-url` works end to end)
 
-- [ ] Remove the sidecar, backend supervisor, per-install secrets and `docker-compose.app.yml` from the packaged app (supersedes #243, #277)
-- [ ] Remove the web-UI container (`desktop/Dockerfile`, nginx) from `docker-compose.yml`; keep a reverse proxy for TLS routing `/api`, `/ws` and (self-hosted only) `/mcp`
-- [ ] Adjust CI image builds and the Docker-images job in `docs/deployment.md`
-- [ ] Keep `dev-web.sh` and the Playwright e2e as a test harness only; stop documenting the browser as a way to use the app
-- [ ] Drop Redis from the production stack (documented as unused)
-- [ ] Remove the web-bound cookie-consent banner and the browser-only `legal` pages from the app bundle once the pages have their public home
+- [ ] Remove the sidecar, backend supervisor, per-install secrets and `docker-compose.app.yml` from the packaged app (supersedes #243, #277) (#510)
+- [ ] Remove the web-UI container (`desktop/Dockerfile`, nginx) from `docker-compose.yml`; keep a reverse proxy for TLS routing `/api`, `/ws` and (self-hosted only) `/mcp` (#511)
+- [ ] Adjust CI image builds and the Docker-images job in `docs/deployment.md` (#512)
+- [ ] Keep `dev-web.sh` and the Playwright e2e as a test harness only; stop documenting the browser as a way to use the app (#513)
+- [ ] Drop Redis from the production stack (documented as unused) (#514)
+- [ ] Remove the web-bound cookie-consent banner and the browser-only `legal` pages from the app bundle once the pages have their public home (#515)
 
 ### `feature/rust-transport` - Network through Rust (Decision C2; follows the closed beta)
 
-- [ ] Spike: runtime scope of the Tauri HTTP plugin, WebSocket and upload streaming over IPC, Origin seen by the server
-- [ ] Transport interface behind `api.ts` and `sync.ts` (browser harness keeps plain `fetch`)
-- [ ] Rust REST and WebSocket transport limited to the user-confirmed server origin
-- [ ] Remove `https:` from `img-src`; load remote images only after a click, via Rust or the server
-- [ ] Unlock the server-URL field for self-hosters; webview CSP `connect-src 'self' ipc:`
+- [ ] Spike: runtime scope of the Tauri HTTP plugin, WebSocket and upload streaming over IPC, Origin seen by the server (#516)
+- [ ] Transport interface behind `api.ts` and `sync.ts` (browser harness keeps plain `fetch`) (#517)
+- [ ] Rust REST and WebSocket transport limited to the user-confirmed server origin (#518)
+- [ ] Remove `https:` from `img-src`; load remote images only after a click, via Rust or the server (#519)
+- [ ] Unlock the server-URL field for self-hosters; webview CSP `connect-src 'self' ipc:` (#520)
 
 ### `feature/public-hosting` - Running the hosted instance
 
-- [ ] Invite-only registration (operator-created invites) for the closed beta
-- [ ] Per-account quotas: storage, vaults, attachments; a way to revoke or ban an account
-- [ ] Reverse proxy or tunnel with TLS, `TRUSTED_PROXIES`, `/mcp` not exposed in the beta
-- [ ] Encrypted off-site backups, a timed restore test from a clean machine, `DATA_ENCRYPTION_KEY` custody and recovery rehearsal
-- [ ] Transactional mail provider with SPF, DKIM and DMARC on the service's own domain
-- [ ] Monitoring and an alert path for the home server
-- [ ] Harden the home server: host firewall allowing only the proxy or tunnel, automatic OS security updates, no other service reachable from the internet (Postgres, MinIO, Meilisearch, metrics and admin stay on the internal network), SSH key-only or closed, separate low-privilege service user, disk encryption
+- [ ] Invite-only registration (operator-created invites) for the closed beta (#521)
+- [ ] Per-account quotas: storage, vaults, attachments; a way to revoke or ban an account (#522)
+- [ ] Reverse proxy or tunnel with TLS, `TRUSTED_PROXIES`, `/mcp` not exposed in the beta (#523)
+- [ ] Encrypted off-site backups, a timed restore test from a clean machine, `DATA_ENCRYPTION_KEY` custody and recovery rehearsal (#524)
+- [ ] Transactional mail provider with SPF, DKIM and DMARC on the service's own domain (#525)
+- [ ] Monitoring and an alert path for the home server (#526)
+- [ ] Harden the home server: host firewall allowing only the proxy or tunnel, automatic OS security updates, no other service reachable from the internet (Postgres, MinIO, Meilisearch, metrics and admin stay on the internal network), SSH key-only or closed, separate low-privilege service user, disk encryption (#527)
 
 ### `feature/release-pipeline` - Signed installer and updates
 
-- [ ] Start the code-signing certificate application now (validation takes calendar time)
-- [ ] Signed installer; no SmartScreen warning
-- [ ] Tauri updater with a manifest that does not depend on the home server (supersedes the item in `feature/tauri-native`)
+- [ ] Start the code-signing certificate application now (validation takes calendar time) (#528)
+- [ ] Signed installer; no SmartScreen warning (#529)
+- [ ] Tauri updater with a manifest that does not depend on the home server (supersedes the item in `feature/tauri-native`) (#530)
 
 ### `docs/legal-launch` - Legal and go/no-go
 
-- [ ] Decide where the promotion site, legal pages and downloads are hosted (deferred until the apps are finished)
-- [ ] Move the legal templates out of `desktop/public/legal/` to their public home on fixed versioned URLs; server exposes the URLs to clients
-- [ ] Legal review including who the data controller is (person or registered business) and whether paid plans change that
-- [ ] Data-breach and data-subject-request procedures
-- [ ] Walk the go/no-go list in `docs/hosted-service.md` §6 before opening registration
-- [ ] Ownership and licensing review (`docs/hosted-service.md` §9): is PolyForm Shield enough for "modify allowed, no resale, no claiming it as theirs", who is the named rights holder
-- [ ] Legal review questions: copyright in largely AI-generated code and its effect on "all rights" and dual licensing; decide licence, branding and contribution model before forks or outside contributions appear (existing copies cannot be re-licensed)
-- [ ] Update `Required Notice` and the legal pages to `Copyright (c) 2026 [full name], Tombomeke Studios` (needs the maintainer's full name)
-- [ ] Write a branding policy (name and logo for forks) in `docs/brand.md` and the README licence summary, including what self-hosters may and may not do
-- [ ] Write the CLA (relicensing and assignment-friendly, not only a DCO), update CONTRIBUTING.md; no outside merges to core until it exists
-- [ ] Ship a third-party licence list with the installer
+- [ ] Decide where the promotion site, legal pages and downloads are hosted (deferred until the apps are finished) (#531)
+- [ ] Move the legal templates out of `desktop/public/legal/` to their public home on fixed versioned URLs; server exposes the URLs to clients (#532)
+- [ ] Legal review including who the data controller is (person or registered business) and whether paid plans change that (#533)
+- [ ] Data-breach and data-subject-request procedures (#534)
+- [ ] Walk the go/no-go list in `docs/hosted-service.md` §6 before opening registration (#535)
+- [ ] Ownership and licensing review (`docs/hosted-service.md` §9): is PolyForm Shield enough for "modify allowed, no resale, no claiming it as theirs", who is the named rights holder (#536)
+- [ ] Legal review questions: copyright in largely AI-generated code and its effect on "all rights" and dual licensing; decide licence, branding and contribution model before forks or outside contributions appear (existing copies cannot be re-licensed) (#537)
+- [ ] Update `Required Notice` and the legal pages to `Copyright (c) 2026 [full name], Tombomeke Studios` (needs the maintainer's full name) (#538)
+- [ ] Write a branding policy (name and logo for forks) in `docs/brand.md` and the README licence summary, including what self-hosters may and may not do (#539)
+- [ ] Write the CLA (relicensing and assignment-friendly, not only a DCO), update CONTRIBUTING.md; no outside merges to core until it exists (#540)
+- [ ] Ship a third-party licence list with the installer (#541)
 
 ---
 

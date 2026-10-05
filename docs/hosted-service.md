@@ -71,10 +71,14 @@ Design points:
   Windows the scheme is registered by the installer, so it only works for installed builds.
 - "Cancel deletion" must work **without being signed in** (the token is the credential), so the
   app needs a small unauthenticated flow for it, same for "reset password".
-- The `/open` page is served with `Referrer-Policy: no-referrer`, a strict CSP without
-  external scripts, and `Cache-Control: no-store`. Because the fragment is never sent to a
-  server, a mail scanner that pre-fetches the link (Outlook Safe Links and similar) cannot
-  consume a single-use token.
+- Two separate protections, not to be confused:
+  - **The fragment** keeps the token out of requests. A browser never sends it to a server, so
+    a mail scanner that pre-fetches the link (Outlook Safe Links and similar) only loads the
+    static page and cannot consume a single-use token. The token is used only when the app
+    itself calls the API.
+  - **The `/open` headers** (`Referrer-Policy: no-referrer`, a strict CSP without external
+    scripts, `Cache-Control: no-store`) prevent leaks through referrers, logs and caches. They
+    do not protect against scanners.
 - Tokens stay single-use and short-lived as today; the deep link does not change their
   lifetime or storage.
 
@@ -131,7 +135,9 @@ before the Rust implementation, and C1 (broad `https: wss:`) is **never shipped*
 **Closed-beta interim (C0):** pin `connect-src` to the maintainer's API origin only
 (`https://…` and `wss://…`) and **lock the server-URL field**. The beta runs only against the
 hosted server, so the Rust layer is not needed yet and nothing is weakened. The field is
-unlocked for self-hosters only once C2 works.
+unlocked for self-hosters only once C2 works. Until then **self-hosters build the app
+themselves with their own origin** (pinned in their CSP), since the field is locked in the
+distributed beta build.
 
 To verify in a spike before committing: whether the Tauri HTTP plugin's scope can be set at
 runtime from Rust (if it can only be static, own commands over `reqwest` are the path), how
@@ -151,6 +157,10 @@ Windows, or a missing Origin from Rust, then the allowlist logic needs an explic
 - `/metrics`, `/ready` and the admin endpoint are not routed publicly; `/health` may be, for the
   app's version check.
 - `TRUSTED_PROXIES` must name the proxy (or tunnel), or the rate limiter sees one client.
+- Basic hardening of the home server: a host firewall that allows only the proxy or tunnel,
+  automatic OS security updates, and nothing else reachable from the internet (Postgres,
+  MinIO, search, metrics and the admin endpoint stay on the internal network), key-only or
+  closed SSH, a low-privilege service user and disk encryption.
 - Reachability for the hosted instance: a tunnel (no open router ports, home IP hidden) or a
   port-forwarded proxy. Check the ISP's terms for servers on a home connection first.
 
@@ -236,6 +246,15 @@ name and the logo.
 
 ### Gaps against the stated intent
 
+**Decided (2026-10-05):** PolyForm Shield stays the baseline: it already bans competing products,
+free or sold, and replacing it with a custom licence would lose a lawyer-written text. The
+effort goes into a branding policy, a plain README explanation for self-hosters, a
+third-party licence list and a contribution model. The rights holder is the maintainer
+personally for now, written as `Copyright (c) 2026 [full name], Tombomeke Studios`; if a
+company is founded later, the copyright is assigned to it in writing, which needs a **CLA**
+(not only a DCO) so that contributions can be relicensed. No outside merges to the core until
+that model exists.
+
 1. **Name and logo.** The licence text has no trademark rule, so it does not stop a fork from
    calling itself "NexusNotes" or reusing the logo. A short branding policy is needed: forks
    must rename and must not suggest they are the official app. `docs/brand.md` is the place to
@@ -257,6 +276,15 @@ name and the logo.
    maintainer's own code.
 6. **Hosted-service terms.** The Terms of Service for the hosted instance are separate from the
    source licence and must not contradict it.
+
+### Questions for the legal review
+
+- **AI-generated code:** how much copyright rests on code largely written with an AI assistant
+  (authorship needs human creative input in the EU; direction, architecture and review count),
+  and what that means for the claim to hold all rights and for any dual licensing.
+- **Timing:** a licence cannot be tightened for copies that already exist, and the repository is
+  public. Decide the licence, branding policy and contribution model **before** forks or
+  outside contributions appear.
 
 None of this is legal advice; the licence text and a professional review decide. Whether
 PolyForm Shield is the right licence for the stated intent, or whether a stricter source-available

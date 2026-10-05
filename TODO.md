@@ -152,6 +152,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Write the decision record `docs/hosted-service.md`
 - [x] Drop the mobile app and web clipper from README and architecture docs
 - [ ] Rewrite deployment.md and security.md for the final topology as each step below lands
+- [ ] Document that self-hosters build the app with their own origin until `feature/rust-transport` unlocks the server field
 - [ ] Update the codebase map in CLAUDE.md when files are removed or added
 
 ### `feature/server-url` - Configurable server URL, closed-beta form
@@ -177,6 +178,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Adjust CI image builds and the Docker-images job in `docs/deployment.md`
 - [ ] Keep `dev-web.sh` and the Playwright e2e as a test harness only; stop documenting the browser as a way to use the app
 - [ ] Drop Redis from the production stack (documented as unused)
+- [ ] Remove the web-bound cookie-consent banner and the browser-only `legal` pages from the app bundle once the pages have their public home
 
 ### `feature/rust-transport` - Network through Rust (Decision C2; follows the closed beta)
 
@@ -194,6 +196,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Encrypted off-site backups, a timed restore test from a clean machine, `DATA_ENCRYPTION_KEY` custody and recovery rehearsal
 - [ ] Transactional mail provider with SPF, DKIM and DMARC on the service's own domain
 - [ ] Monitoring and an alert path for the home server
+- [ ] Harden the home server: host firewall allowing only the proxy or tunnel, automatic OS security updates, no other service reachable from the internet (Postgres, MinIO, Meilisearch, metrics and admin stay on the internal network), SSH key-only or closed, separate low-privilege service user, disk encryption
 
 ### `feature/release-pipeline` - Signed installer and updates
 
@@ -209,8 +212,10 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Data-breach and data-subject-request procedures
 - [ ] Walk the go/no-go list in `docs/hosted-service.md` §6 before opening registration
 - [ ] Ownership and licensing review (`docs/hosted-service.md` §9): is PolyForm Shield enough for "modify allowed, no resale, no claiming it as theirs", who is the named rights holder
+- [ ] Legal review questions: copyright in largely AI-generated code and its effect on "all rights" and dual licensing; decide licence, branding and contribution model before forks or outside contributions appear (existing copies cannot be re-licensed)
+- [ ] Update `Required Notice` and the legal pages to `Copyright (c) 2026 [full name], Tombomeke Studios` (needs the maintainer's full name)
 - [ ] Write a branding policy (name and logo for forks) in `docs/brand.md` and the README licence summary, including what self-hosters may and may not do
-- [ ] Decide the contribution model (CLA, DCO or no outside merges to core) and update CONTRIBUTING.md and the `Required Notice`
+- [ ] Write the CLA (relicensing and assignment-friendly, not only a DCO), update CONTRIBUTING.md; no outside merges to core until it exists
 - [ ] Ship a third-party licence list with the installer
 
 ---
@@ -521,7 +526,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Write `docs/mcp.md` covering architecture, the tools list, the auth model, and the E2EE interaction model (updated with the token model in #483)
 - [x] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk` (#485)
-- [x] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml` (#485: production behind the web UI at `/mcp`; in development run it with `go run`, the dev compose file only holds infrastructure)
+- [x] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml` (#485: in production routed by the reverse proxy at `/mcp` on self-hosted stacks only, not exposed on the hosted instance during the closed beta; in development run it with `go run`, the dev compose file only holds infrastructure)
 - [x] Implement the MCP handshake: `initialize`, capability negotiation, `initialized` (#485, through the SDK)
 
 ### Authentication and security
@@ -758,6 +763,8 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/publishing` - Publish notes as public URLs (#231)
 
+> **Self-hosters only.** Public, server-rendered pages at `/p/:slug` are a web offering and are not exposed on the hosted instance (home server, desktop-only product). Keep the group in the backlog for self-hosted stacks or drop it; do not start it before the hosted service launches.
+
 > Notes can be published as publicly accessible, server-rendered HTML pages — no client
 > application required to view them. Publishing is opt-in per note and supports optional
 > password protection and expiry.
@@ -855,7 +862,7 @@ This entry is retained so that existing issue references remain valid.
 
 Lower priority items not focused on the desktop application.
 
-- [ ] Custom domain support for published notes (CNAME record pointing to the NexusNotes server; SSL via Let's Encrypt ACME)
+- [ ] (self-hosters only) Custom domain support for published notes (CNAME record pointing to the NexusNotes server; SSL via Let's Encrypt ACME)
 - [ ] Obsidian Sync protocol compatibility layer (optional, for users migrating from Obsidian Sync to NexusNotes self-hosted)
 
 ---
@@ -870,20 +877,16 @@ Lower priority items not focused on the desktop application.
 > database cascade, search index and live sessions cleaned). Missing: confirmation email and
 > grace period, the public request form, and attachment files in object storage (#290).
 
-### Policy pages (static, web)
+### Policy pages (static; public home decided in `docs/hosted-service.md` §3)
 
 - [x] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact) (#289: operator templates in `desktop/public/legal/`; legal review before launch)
 - [x] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
 - [x] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
 - [x] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
 
-### Cookie consent
+### Cookie consent (retired with the web UI)
 
-- [x] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
-- [x] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
-- [x] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
-- [x] Link to Cookie Policy from the banner
-- [x] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
+- [x] Cookie consent banner, storage-consent store and a "Cookie preferences" link were built for the web UI (shipped earlier). The desktop app sets no cookies, so the banner is removed together with the web UI (see `refactor/remove-sidecar`); the Cookie Policy page is dropped from the launch set unless a cookie-setting site is added.
 
 ### Form consents & data deletion
 
@@ -891,7 +894,7 @@ Lower priority items not focused on the desktop application.
 - [x] Store consent timestamp and policy version in the database alongside the user record
 - [x] Add consent checkbox on any marketing / newsletter sign-up form (N/A: NexusNotes has no marketing or newsletter forms; any future one needs an unticked consent box)
 - [x] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
-- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
+- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket; it must work through the deep-link flow in `feature/email-deep-links`)
 - [x] Implement account deletion confirmation email with a 7-day grace-period cancellation link
 - [x] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
 
@@ -1236,9 +1239,8 @@ Lower priority items not focused on the desktop application.
 - [x] Add command palette (Ctrl+Shift+P) (#38)
 - [x] Polish authentication screen with logo and background (#39)
 
-- [ ] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact)
+### Unsorted done items (stray lines, kept for history)
 
-- [ ] Add consent checkbox on any marketing / newsletter sign-up form
 - [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
 
 - [x] Paginate or slim the note list (#461)

@@ -177,7 +177,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("class", (d) => `graph-link${d.ghost ? " graph-link--ghost" : ""}`)
+      .attr("class", (d) => `graph-link${d.ghost ? " graph-link--ghost" : ""}${activeNoteId && ((d.source as SimNode).id === activeNoteId || (d.target as SimNode).id === activeNoteId) ? " graph-link--active" : ""}`)
       .attr("marker-end", "url(#graph-arrow)");
 
     // A node the user dragged stays where it was put (#407); a plain click

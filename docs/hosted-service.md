@@ -1,0 +1,186 @@
+# Hosted service and desktop-only product — decision record
+
+Status: **proposed** (open decisions are marked *Decision needed*). Owner: project maintainer.
+Written before any code changes; the work is tracked in [TODO.md](../TODO.md).
+
+## 1. Product shape
+
+NexusNotes is a **desktop app, and only a desktop app**. There is no mobile app, no
+browser extension and no web UI as a product.
+
+There are two ways to use it, and both use the **same installer**:
+
+| | Hosted | Self-hosted |
+|---|---|---|
+| Who | Everyday users | Technical users |
+| Backend | Run by the maintainer on a home server | Run by the user (Docker stack) |
+| Client | Signed installer, server URL pre-filled with the maintainer's domain | The same installer, server URL changed to their own |
+| Docker needed on the client | No | No (only on the server machine) |
+
+Consequences:
+
+- The packaged app is a **thin client**. It no longer starts Docker, a backend or a
+  database. The sidecar, the backend supervisor, the per-install secrets and the
+  app-owned Postgres/Redis stack (#243, #277) are removed — but **only after the
+  configurable server URL works** (see §7 for the order).
+- The Docker stack has **no web-UI container**. The nginx image built from `desktop/` is
+  removed from the compose files; a **reverse proxy for TLS** stays and routes `/api`,
+  `/ws` and `/mcp` to the services. Nothing else is published.
+- The web UI stops being a product. `scripts/dev-web.sh` and the Playwright e2e suite stay
+  as a **test harness only** (vite dev server in a browser); they are not documented as a
+  way to use the app.
+- A website, if there is one, is a **separate promotion page** with the download and the
+  legal pages. It is not part of the app and holds no user data.
+- Flutter and the web clipper are removed from README, architecture docs and the backlog
+  (not kept as "post-1.0").
+- Redis is unused by the backend (documented since #327) and can be dropped from the
+  production stack.
+
+## 2. Decision A — e-mail links without a web UI
+
+Today the server mails `…/verify-email?token=`, `…/reset-password?token=`,
+`…/confirm-deletion?token=` and `…/cancel-deletion?token=` built from `APP_BASE_URL`, which
+assumes a web UI that serves those routes. Without it a link must end up in the desktop app.
+
+Options considered:
+
+1. **Custom scheme directly in the mail** (`nexusnotes://…`). Many mail clients do not make
+   unknown schemes clickable and webmail often strips them. Rejected as the only path.
+2. **HTTPS link to a tiny static "open in app" page, which redirects to the deep link.**
+   Works in every mail client, and the page can say "install the app first" if the scheme
+   is not registered.
+3. **Codes instead of links** (user copies a code into the app). Most robust, no deep link
+   needed, a worse experience.
+
+**Recommendation: 2, with 3 as the fallback**, i.e. every mail contains both the link and the
+code.
+
+Design points:
+
+- The static page is served by the **reverse proxy on the same host as the API** (for
+  example `/open`), not by a promotion site. That keeps self-hosters independent of the
+  maintainer's site and keeps `APP_BASE_URL` meaningful for every deployment.
+- The token travels in the URL **fragment** (`/open#…`), never the query string, so it does
+  not reach the proxy's access logs or any referrer. The page's script reads the fragment
+  and builds the deep link.
+- The deep link carries the **server origin** next to the token. The app must compare it
+  with the configured server and ask for confirmation if it differs; otherwise a crafted
+  link could make the app send a token to a foreign server.
+- Registration: the `nexusnotes://` scheme through the Tauri deep-link plugin, plus the
+  single-instance plugin so a link opens in the running window instead of a second one. On
+  Windows the scheme is registered by the installer, so it only works for installed builds.
+- "Cancel deletion" must work **without being signed in** (the token is the credential), so the
+  app needs a small unauthenticated flow for it, same for "reset password".
+- Tokens stay single-use and short-lived as today; the deep link does not change their
+  lifetime or storage.
+
+## 3. Decision B — where the legal pages are hosted
+
+The Privacy Policy, Terms and Cookie/Refund pages currently live in
+`desktop/public/legal/` inside the web UI bundle. Without a web UI they need a public
+home, because they must be readable *before* installing and linked from every mail.
+
+**Recommendation:** host them as **static pages on the promotion site** at stable, versioned
+URLs, with the sources in the repository (moved out of `desktop/`). The app opens them in the
+system browser (the in-app window from 0b29f05 can go once the pages are public). Rules:
+
+- The sign-up form links to the URLs and keeps recording agreement and version
+  (`CurrentTermsVersion`); the server tells the client which URLs apply (self-hosters point
+  them at their own pages, so the URLs are server configuration, not app constants).
+- Keep the template/bracket workflow from `docs/deployment.md`: nothing is published with
+  placeholders, and the hosted-service pages need legal review before launch (§6).
+- If there is no promotion site yet, a static page on the same reverse proxy is the stopgap.
+
+*Decision needed:* promotion site on GitHub Pages, on the home server, or elsewhere.
+
+## 4. Decision C — webview CSP with a configurable server URL
+
+`connect-src` in `tauri.conf.json` is static and currently limited to `localhost:8080`. A
+server URL chosen at runtime cannot be listed in it.
+
+| | C1. Broad `connect-src` (`https: wss:`) | C2. Requests through Rust, scoped |
+|---|---|---|
+| Change | Allow any HTTPS/WSS origin from the webview | Webview CSP stays `connect-src 'self' ipc:`; all API and WebSocket traffic goes through Tauri commands to the one configured origin |
+| Effort | Small | Large: new transport layer for REST, uploads/downloads and the sync WebSocket; `api.ts` and `sync.ts` sit behind a transport interface |
+| Security | Weakens a core defence: script injection through rendered note content could send decrypted notes to any server, which undermines the E2EE story | Webview cannot talk to the network at all; Rust only talks to the user-confirmed server |
+| Test harness | Unchanged | Browser harness keeps a plain `fetch` transport behind the same interface |
+| Self-hosters | Works | Works; the configured origin is stored in app data and set only through a confirmation dialog |
+
+**Recommendation: C2.** Notes hold user-authored markdown rendered in a webview, and E2EE
+vaults are a headline feature, so keeping the webview off the network is worth the cost.
+To keep the time-to-first-working-build short, the transport interface (step 1 of §7) lands
+before the Rust implementation, and C1 is **not** shipped even temporarily outside dev builds.
+
+To verify in a spike before committing: whether the Tauri HTTP plugin's scope can be set at
+runtime from Rust (if it can only be static, own commands over `reqwest` are the path), how
+WebSocket frames and upload streaming behave across the IPC boundary, and the Origin the
+server sees (CORS/WS-Origin checks must accept the Tauri origin `http://tauri.localhost` on
+Windows, or a missing Origin from Rust, then the allowlist logic needs an explicit case).
+
+*Decision needed:* confirm C2 (or accept C1 for the closed beta only, with a dated removal
+item).
+
+## 5. Reverse proxy and what is exposed
+
+- Terminates TLS (`wss://` requires it) and forwards `/api`, `/ws`, `/mcp`; also serves the
+  static `/open` page from Decision A.
+- `/metrics`, `/ready` and the admin endpoint are not routed publicly; `/health` may be, for the
+  app's version check.
+- `TRUSTED_PROXIES` must name the proxy (or tunnel), or the rate limiter sees one client.
+- Reachability for the hosted instance: a tunnel (no open router ports, home IP hidden) or a
+  port-forwarded proxy. Check the ISP's terms for servers on a home connection first.
+
+## 6. Decision D — go/no-go for opening registration
+
+**Closed beta (invite-only)** comes first, with **E2EE as the default vault type**. The
+backend gets an invite mechanism (operator creates invites; registration requires one) before
+any external user signs up.
+
+Registration may be opened beyond invited users only when **all** of these hold:
+
+1. **Backups:** automated, encrypted, stored off the home server, and a **restore has been
+   performed and timed** from a clean machine. `DATA_ENCRYPTION_KEY` (and old keys) are kept
+   separately from the backups and the key's loss/recovery has been rehearsed.
+2. **Quotas:** per-account limits on storage, vaults and attachments are enforced and
+   documented; abuse can be handled without touching the host (revoke/ban an account).
+3. **Legal review:** Privacy Policy, Terms, retention and deletion handling reviewed by a
+   professional; a data-breach procedure and a data-subject-request procedure exist.
+4. **E-mail:** SMTP configured so verification is enforced, and the deep-link flows from
+   Decision A work end to end.
+5. **Installer:** signed (no SmartScreen warning) with the Tauri updater working, and the
+   app/server version-skew policy is written down (how long an old client keeps working).
+6. **Availability:** offline queue and local cache (#227) shipped, so a server outage or a
+   powered-off home PC does not lock people out of their notes. Monitoring and an alert path
+   exist.
+7. **Closed beta ran** for an agreed period without data loss and with at least one real
+   upgrade of the server.
+
+## 7. Order of work
+
+1. **Docs and backlog** (this branch): this record, README/architecture/deployment/security
+   updates, TODO.md groups with issues.
+2. **Server URL and transport** (`feature/server-url`): server field with the maintainer's
+   domain as default, transport interface, then the Rust transport (Decision C), Origin
+   handling, version check against the configured server.
+3. **Deep links** (`feature/email-deep-links`): Decision A, including unauthenticated reset and
+   cancel-deletion flows.
+4. **Remove the sidecar** (`refactor/remove-sidecar`): only once step 2 works end to end;
+   removes the supervisor, per-install secrets, `docker-compose.app.yml` and the
+   `docker-compose.yml` web container; the dev scripts remain the development path.
+5. **Public hosting** (`feature/public-hosting`): proxy/tunnel, invite-only registration,
+   quotas, backups, SMTP.
+6. **Offline support** (`feature/offline-support`, #227) — moved up from "nice to have".
+7. **Release pipeline** (`feature/release-pipeline`): signing, updater.
+8. **Legal and launch** (`docs/legal-launch`): review, hosting of the pages, go/no-go check.
+
+Steps 5–7 can overlap; the go/no-go list in §6 is the gate for leaving the closed beta.
+
+## 8. Risks
+
+- **Availability:** a home server is a single point of failure for every hosted user.
+- **Liability:** as host of non-E2EE vaults the operator can read user data and is the data
+  controller; E2EE as the default narrows but does not remove that.
+- **Abuse:** open registration lets anyone consume home bandwidth and disk; hence invite-only.
+- **Key custody:** losing `DATA_ENCRYPTION_KEY` makes all hosted data unrecoverable.
+- **Version skew:** old installers talking to a newer server; mitigated by the version check
+  and a stated support window.

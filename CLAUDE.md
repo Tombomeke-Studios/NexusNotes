@@ -223,6 +223,7 @@ it is what it exists for:
 | `src/components/Sidebar/VaultLockIcon.tsx` | Encrypted-vault lock in the sidebar header: open shackle while unlocked, wobbles on each lock/unlock |
 | `src/components/motion/OverlayMotion.tsx` | Enter/exit wrapper for anything floating above the workspace: applies an `overlayMotion` preset and stops catching the pointer while it animates out (render it under `AnimatePresence` with a key) |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`) |
+| `src/lib/serverUrl.ts` | Which server the app talks to (#500): normalises a typed address to an https origin (http only for loopback), saves and loads the choice, falls back to the build default |
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
 | `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |
 | `src/lib/stars.ts` | Starred-notes helpers: `migrateLegacyPins` moves legacy localStorage pins to server-side stars, dropping a pin only once the server took (or permanently rejected) it |

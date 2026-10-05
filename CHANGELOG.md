@@ -154,6 +154,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   the editor kept the old text and your next edit was saved over those changes.
 
 ### Security
+- The desktop app runs its own Postgres and Redis with random passwords generated per
+  install, instead of sharing the dev scripts' database and its well-known password.
+  Upgrading copies your notes over once, then stops the old database container (#277).
 - The desktop app runs under a strict Content Security Policy.
 - The editor font is bundled with the app instead of loaded from Google Fonts, so opening
   NexusNotes no longer sends your IP address to Google.

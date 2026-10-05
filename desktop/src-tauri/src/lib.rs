@@ -13,10 +13,31 @@ use tauri_plugin_shell::ShellExt;
 
 const BACKEND_PORT: u16 = 8080;
 
-/// Fixed development credentials: the Postgres container is shared with the dev
-/// scripts and its volume was initialised with them, so they cannot change without
-/// a migration. The port is published on 127.0.0.1 only (see docs/security.md).
-const DATABASE_URL: &str = "postgres://nexus:nexus_dev@localhost:5432/nexus_notes?sslmode=disable";
+/// The app's own databases (#277): compose project, file and containers. Kept
+/// apart from the dev scripts' "nexusnotes" project, with passwords per install.
+const APP_PROJECT: &str = "nexusnotes-app";
+const APP_COMPOSE_FILE: &str = "docker-compose.app.yml";
+const APP_POSTGRES: &str = "nexusnotes-app-postgres-1";
+const APP_REDIS: &str = "nexusnotes-app-redis-1";
+const APP_DB_PORT: u16 = 5433;
+const APP_REDIS_PORT: u16 = 6380;
+
+/// Files in the app's local data dir holding this install's database and Redis
+/// passwords. Either may be regenerated: the role is re-keyed on every start and
+/// Redis takes its password from the container's environment.
+const DB_PASSWORD_FILE: &str = "db-password";
+const REDIS_PASSWORD_FILE: &str = "redis-password";
+
+/// Written once the notes of the shared dev database (used by app builds before
+/// #277) were copied into the app's own database, or there were none to copy.
+const LEGACY_MIGRATED_FILE: &str = "legacy-db-migrated";
+
+/// The dev scripts' compose project, which older app builds shared: its Postgres
+/// volume holds those installs' notes under the well-known dev password.
+const LEGACY_PROJECT: &str = "nexusnotes";
+const LEGACY_COMPOSE_FILE: &str = "docker-compose.dev.yml";
+const LEGACY_POSTGRES: &str = "nexusnotes-postgres-1";
+const LEGACY_VOLUME: &str = "nexusnotes_postgres_dev_data";
 
 /// File in the app's local data dir holding this install's JWT signing secret.
 const JWT_SECRET_FILE: &str = "jwt-secret";
@@ -28,7 +49,8 @@ const DATA_KEY_FILE: &str = "data-encryption-key";
 
 /// Object storage for attachments: the MinIO service of the bundled dev compose
 /// file, bound to localhost only. The credentials are the compose file's fixed
-/// dev values, like the database password (see #277).
+/// dev values; unlike the databases (#277) MinIO is still shared with the dev
+/// scripts.
 const MINIO_PORT: u16 = 9000;
 const MINIO_ACCESS_KEY: &str = "nexus_minio";
 const MINIO_SECRET_KEY: &str = "nexus_minio_dev";
@@ -166,6 +188,36 @@ fn backend_jwt_secret(app: &tauri::AppHandle) -> io::Result<String> {
     })
 }
 
+/// This install's database and Redis passwords (#277), created on first run. If
+/// they cannot be stored the databases cannot be reached across restarts, so
+/// there is no per-run fallback: the error stops the backend from starting.
+struct DbSecrets {
+    db_password: String,
+    redis_password: String,
+}
+
+fn backend_db_secrets(app: &tauri::AppHandle) -> io::Result<DbSecrets> {
+    let dir = app.path().app_local_data_dir().map_err(io::Error::other)?;
+    Ok(DbSecrets {
+        db_password: load_or_create_secret(&dir.join(DB_PASSWORD_FILE))?,
+        redis_password: load_or_create_secret(&dir.join(REDIS_PASSWORD_FILE))?,
+    })
+}
+
+fn database_url(password: &str) -> String {
+    format!("postgres://nexus:{password}@localhost:{APP_DB_PORT}/nexus_notes?sslmode=disable")
+}
+
+fn redis_url(password: &str) -> String {
+    format!("redis://:{password}@localhost:{APP_REDIS_PORT}")
+}
+
+/// SQL that sets the role's password to the stored one. The password is a
+/// generated hex string (checked here as well), so it needs no escaping.
+fn rekey_sql(password: &str) -> Option<String> {
+    is_valid_secret(password).then(|| format!("ALTER ROLE nexus PASSWORD '{password}';\n"))
+}
+
 /// BIND_ADDR for the bundled backend: loopback only. `localhost` resolves to ::1
 /// first on most systems, so without an IPv6 listener every new connection would
 /// wait for ::1 to be refused before falling back to 127.0.0.1.
@@ -276,10 +328,15 @@ fn wait_for(timeout: Duration, interval: Duration, mut check: impl FnMut() -> bo
 }
 
 /// Environment for the bundled sync-service sidecar.
-fn sidecar_env(jwt_secret: &str, data_key: &str, bind_addrs: &str) -> Vec<(&'static str, String)> {
+fn sidecar_env(
+    jwt_secret: &str,
+    data_key: &str,
+    db: &DbSecrets,
+    bind_addrs: &str,
+) -> Vec<(&'static str, String)> {
     vec![
-        ("DATABASE_URL", DATABASE_URL.to_string()),
-        ("REDIS_URL", "redis://localhost:6379".to_string()),
+        ("DATABASE_URL", database_url(&db.db_password)),
+        ("REDIS_URL", redis_url(&db.redis_password)),
         ("JWT_SECRET", jwt_secret.to_string()),
         ("DATA_ENCRYPTION_KEY", data_key.to_string()),
         ("BIND_ADDR", bind_addrs.to_string()),
@@ -331,35 +388,183 @@ fn container_healthy(container: &str, timeout: Duration) -> bool {
     false
 }
 
-/// Starts (or reuses) the Postgres/Redis containers via `docker compose`,
-/// pinned to the same project name the dev scripts use so both share one
-/// set of containers, then MinIO on its own (see `start_object_storage`).
-/// Returns true once Postgres and Redis report healthy.
-fn start_docker_infra(compose_path: &std::path::Path) -> bool {
-    let started = docker()
-        .args(["compose", "-p", "nexusnotes", "-f"])
-        .arg(compose_path)
-        .args(["up", "-d", "postgres", "redis"])
-        .status();
+/// `docker compose` for the app's own project, with this install's passwords.
+fn app_compose(resource_dir: &Path, db: &DbSecrets) -> StdCommand {
+    let mut cmd = docker();
+    cmd.args(["compose", "-p", APP_PROJECT, "-f"])
+        .arg(resource_dir.join(APP_COMPOSE_FILE))
+        .env("NEXUS_DB_PASSWORD", &db.db_password)
+        .env("NEXUS_REDIS_PASSWORD", &db.redis_password);
+    cmd
+}
 
-    match started {
-        Ok(status) if status.success() => {}
+/// `docker compose` for the dev scripts' project (MinIO, and the legacy database).
+fn legacy_compose(resource_dir: &Path) -> StdCommand {
+    let mut cmd = docker();
+    cmd.args(["compose", "-p", LEGACY_PROJECT, "-f"])
+        .arg(resource_dir.join(LEGACY_COMPOSE_FILE));
+    cmd
+}
+
+fn run_ok(cmd: &mut StdCommand, what: &str) -> bool {
+    match cmd.status() {
+        Ok(status) if status.success() => true,
         Ok(status) => {
-            eprintln!("docker compose exited with {status}");
-            return false;
+            eprintln!("[backend] {what} exited with {status}");
+            false
         }
         Err(err) => {
-            eprintln!("could not run `docker compose`: {err}");
-            return false;
+            eprintln!("[backend] could not run {what}: {err}");
+            false
         }
     }
+}
 
-    let databases = container_healthy("nexusnotes-postgres-1", Duration::from_secs(60))
-        && container_healthy("nexusnotes-redis-1", Duration::from_secs(30));
-    if databases {
-        start_object_storage(compose_path);
+/// Runs SQL through psql inside a Postgres container. The official image trusts
+/// connections over its local socket, so no password is needed (or exposed on a
+/// command line): the statements go in on stdin.
+fn psql_in(container: &str, database: &str, sql: &str) -> bool {
+    let child = docker()
+        .args([
+            "exec", "-i", container, "psql", "-U", "nexus", "-d", database,
+        ])
+        .args(["-v", "ON_ERROR_STOP=1", "-q"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .spawn();
+    let Ok(mut child) = child else {
+        eprintln!("[backend] could not run psql in {container}");
+        return false;
+    };
+    let written = child
+        .stdin
+        .take()
+        .is_some_and(|mut stdin| stdin.write_all(sql.as_bytes()).is_ok());
+    let ok = child.wait().is_ok_and(|status| status.success());
+    written && ok
+}
+
+/// Starts (or reuses) the app's Postgres/Redis, sets the database role to this
+/// install's password, moves an older build's notes over once, then starts
+/// MinIO (see `start_object_storage`). Returns true once the databases are ready
+/// for the backend.
+fn start_docker_infra(resource_dir: &Path, db: &DbSecrets, migrated_marker: &Path) -> bool {
+    if !run_ok(
+        app_compose(resource_dir, db).args(["up", "-d", "postgres", "redis"]),
+        "docker compose",
+    ) {
+        return false;
     }
-    databases
+    if !(container_healthy(APP_POSTGRES, Duration::from_secs(60))
+        && container_healthy(APP_REDIS, Duration::from_secs(30)))
+    {
+        return false;
+    }
+    let rekeyed =
+        rekey_sql(&db.db_password).is_some_and(|sql| psql_in(APP_POSTGRES, "nexus_notes", &sql));
+    if !rekeyed {
+        eprintln!("[backend] could not set the database password");
+        return false;
+    }
+    if !migrate_legacy_database(resource_dir, migrated_marker) {
+        return false;
+    }
+    start_object_storage(resource_dir);
+    true
+}
+
+fn legacy_volume_exists() -> Option<bool> {
+    docker()
+        .args(["volume", "inspect", LEGACY_VOLUME])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .ok()
+        .map(|status| status.success())
+}
+
+/// Builds before #277 kept their notes in the dev scripts' database, under the
+/// well-known dev password. Copies them into the app's own database once
+/// (pg_dump piped into psql, both through `docker exec`), then stops the old
+/// container so those credentials no longer reach the notes. The old volume is
+/// left in place; docs/deployment.md says how to remove it.
+///
+/// Until the marker is written the backend is not started on the new database,
+/// so a failed or interrupted copy is redone from scratch on the next attempt
+/// without risking anything written since.
+fn migrate_legacy_database(resource_dir: &Path, marker: &Path) -> bool {
+    if marker.exists() {
+        return true;
+    }
+    match legacy_volume_exists() {
+        None => return false, // docker failed; try again later
+        Some(false) => return mark_migrated(marker),
+        Some(true) => {}
+    }
+    eprintln!("[backend] copying notes from the shared dev database (#277)…");
+    if !run_ok(
+        legacy_compose(resource_dir).args(["up", "-d", "postgres"]),
+        "docker compose (legacy database)",
+    ) || !container_healthy(LEGACY_POSTGRES, Duration::from_secs(60))
+    {
+        return false;
+    }
+    // Start from an empty database: an earlier attempt may have stopped halfway.
+    if !psql_in(
+        APP_POSTGRES,
+        "postgres",
+        "DROP DATABASE IF EXISTS nexus_notes WITH (FORCE);\nCREATE DATABASE nexus_notes OWNER nexus;\n",
+    ) {
+        eprintln!("[backend] could not reset the app database before the copy");
+        return false;
+    }
+    if !copy_database(LEGACY_POSTGRES, APP_POSTGRES) {
+        eprintln!("[backend] copying the notes failed; retrying later");
+        return false;
+    }
+    if !mark_migrated(marker) {
+        return false;
+    }
+    let _ = docker()
+        .args(["stop", LEGACY_POSTGRES])
+        .stdout(Stdio::null())
+        .status();
+    eprintln!("[backend] notes copied; the shared dev database is stopped");
+    true
+}
+
+/// `pg_dump` in `from` piped into `psql` in `to`; true only if both succeed.
+fn copy_database(from: &str, to: &str) -> bool {
+    let dump = docker()
+        .args(["exec", from, "pg_dump", "-U", "nexus", "-d", "nexus_notes"])
+        .args(["--no-owner", "--no-privileges"])
+        .stdout(Stdio::piped())
+        .spawn();
+    let Ok(mut dump) = dump else {
+        return false;
+    };
+    let Some(dump_out) = dump.stdout.take() else {
+        let _ = dump.kill();
+        return false;
+    };
+    let restore = docker()
+        .args(["exec", "-i", to, "psql", "-U", "nexus", "-d", "nexus_notes"])
+        .args(["-v", "ON_ERROR_STOP=1", "-q"])
+        .stdin(Stdio::from(dump_out))
+        .stdout(Stdio::null())
+        .status();
+    let dumped = dump.wait().is_ok_and(|status| status.success());
+    dumped && restore.is_ok_and(|status| status.success())
+}
+
+fn mark_migrated(marker: &Path) -> bool {
+    match write_private(marker, "done\n") {
+        Ok(()) => true,
+        Err(err) => {
+            eprintln!("[backend] cannot record the database migration ({err})");
+            false
+        }
+    }
 }
 
 /// Starts MinIO in its own `docker compose` call so that a failure (its port
@@ -367,10 +572,8 @@ fn start_docker_infra(compose_path: &std::path::Path) -> bool {
 /// the databases or the backend from starting: without MinIO only attachments
 /// are unavailable. Waits a bounded time because the backend checks object
 /// storage once at startup.
-fn start_object_storage(compose_path: &std::path::Path) {
-    let started = docker()
-        .args(["compose", "-p", "nexusnotes", "-f"])
-        .arg(compose_path)
+fn start_object_storage(resource_dir: &Path) {
+    let started = legacy_compose(resource_dir)
         .args(["up", "-d", "minio"])
         .status()
         .is_ok_and(|status| status.success());
@@ -416,6 +619,20 @@ fn supervise_backend(app: tauri::AppHandle) {
             return;
         }
     };
+    let db_secrets = match backend_db_secrets(&app) {
+        Ok(secrets) => secrets,
+        Err(err) => {
+            eprintln!("[backend] cannot store the database passwords: {err}");
+            return;
+        }
+    };
+    let migrated_marker = match app.path().app_local_data_dir() {
+        Ok(dir) => dir.join(LEGACY_MIGRATED_FILE),
+        Err(err) => {
+            eprintln!("[backend] cannot resolve the app data dir: {err}");
+            return;
+        }
+    };
     let bind_addrs = loopback_bind_addrs(ipv6_loopback_available());
     let shutting_down = || app.state::<Shutdown>().0.load(Ordering::SeqCst);
     let mut failures: u32 = 0;
@@ -442,7 +659,7 @@ fn supervise_backend(app: tauri::AppHandle) {
             failures = failures.saturating_add(1);
             continue;
         }
-        if !start_docker_infra(&resource_dir.join("docker-compose.dev.yml")) {
+        if !start_docker_infra(&resource_dir, &db_secrets, &migrated_marker) {
             eprintln!("[backend] Postgres/Redis are not ready yet, retrying…");
             std::thread::sleep(backoff(failures));
             failures = failures.saturating_add(1);
@@ -451,7 +668,7 @@ fn supervise_backend(app: tauri::AppHandle) {
 
         let spawned = app.shell().sidecar("sync-service").map(|cmd| {
             cmd.current_dir(&resource_dir)
-                .envs(sidecar_env(&jwt_secret, &data_key, bind_addrs))
+                .envs(sidecar_env(&jwt_secret, &data_key, &db_secrets, bind_addrs))
                 .spawn()
         });
         let (mut events, child) = match spawned {
@@ -572,7 +789,11 @@ mod tests {
 
     #[test]
     fn sidecar_env_configures_object_storage() {
-        let env = sidecar_env("s3cret", "d4ta", "127.0.0.1");
+        let db = DbSecrets {
+            db_password: "dbpw".into(),
+            redis_password: "rpw".into(),
+        };
+        let env = sidecar_env("s3cret", "d4ta", &db, "127.0.0.1");
         let get = |k: &str| {
             env.iter()
                 .find(|(key, _)| *key == k)
@@ -586,6 +807,32 @@ mod tests {
         assert_eq!(get("DATA_ENCRYPTION_KEY"), Some("d4ta"));
         assert_eq!(get("BIND_ADDR"), Some("127.0.0.1"));
         assert_eq!(get("PORT"), Some("8080"));
+        assert_eq!(
+            get("DATABASE_URL"),
+            Some("postgres://nexus:dbpw@localhost:5433/nexus_notes?sslmode=disable")
+        );
+        assert_eq!(get("REDIS_URL"), Some("redis://:rpw@localhost:6380"));
+    }
+
+    #[test]
+    fn rekey_sql_only_accepts_generated_passwords() {
+        let password = "ab".repeat(SECRET_BYTES);
+        assert_eq!(
+            rekey_sql(&password),
+            Some(format!("ALTER ROLE nexus PASSWORD '{password}';\n"))
+        );
+        assert_eq!(rekey_sql("nexus_dev"), None);
+        assert_eq!(
+            rekey_sql(&format!("{password}'; DROP TABLE notes; --")),
+            None
+        );
+    }
+
+    #[test]
+    fn app_compose_file_is_bundled_with_the_app() {
+        let conf = include_str!("../tauri.conf.json");
+        assert!(conf.contains(&format!("\"{APP_COMPOSE_FILE}\"")));
+        assert!(conf.contains(&format!("\"{LEGACY_COMPOSE_FILE}\"")));
     }
 
     #[test]

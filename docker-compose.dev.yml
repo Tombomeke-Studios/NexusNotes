@@ -1,4 +1,6 @@
-# Also bundled into the packaged desktop app. Every port is published on
+# Also bundled into the packaged desktop app, which starts only MinIO from it
+# (and, once, the old shared Postgres to copy notes out; see #277). The app's
+# own databases are in docker-compose.app.yml. Every port is published on
 # 127.0.0.1 only: these services use fixed development credentials (and Redis
 # none at all), so they must never be reachable from the network (#260).
 services:

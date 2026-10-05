@@ -68,6 +68,12 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   // after Re-center (#267); saves while it is open keep the user's zoom.
   const fitPending = useRef(true);
   const [view, setView] = useState<"map" | "list">("map");
+  // How links are drawn: plain lines or soft curves, with or without arrowheads.
+  const [curved, setCurved] = useState(false);
+  const [arrows, setArrows] = useState(false);
+  // Current zoom level (for the slider) and the zoom actions render() installs.
+  const [zoomK, setZoomK] = useState(1);
+  const zoomRef = useRef<{ to: (k: number) => void; fit: () => void }>({ to: () => {}, fit: () => {} });
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current);
@@ -105,9 +111,13 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 4])
+      // d3's default step is tuned for a mouse wheel; a trackpad sends many tiny
+      // deltas (pinch arrives as ctrl+wheel), so zoom twice as fast.
+      .wheelDelta((e: WheelEvent) => -e.deltaY * (e.deltaMode === 1 ? 0.05 : e.deltaMode ? 1 : 0.004) * (e.ctrlKey ? 10 : 1))
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
         applyLabelVisibility(event.transform.k);
+        setZoomK(event.transform.k);
       });
     svg.call(zoom as unknown as (selection: d3.Selection<SVGSVGElement | null, unknown, null, undefined>) => void);
     // A re-render keeps the zoom the user had (d3 stores it on the svg).
@@ -131,6 +141,15 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           d3.zoomIdentity.translate(t.x, t.y).scale(t.k),
         );
     };
+    zoomRef.current = {
+      to: (k) => {
+        svg
+          .transition()
+          .duration(reducedMotion() ? 0 : 150)
+          .call(zoom.scaleTo as unknown as (t: d3.Transition<SVGSVGElement | null, unknown, null, undefined>, k: number) => void, k);
+      },
+      fit: fitView,
+    };
     // Double-click on the background resets the view instead of zooming in (#407).
     svg.on("dblclick.zoom", null);
     svg.on("dblclick", () => {
@@ -146,7 +165,8 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
         );
     });
 
-    // Arrowhead for directed links; lines end at the target's rim (see tick).
+    // Optional arrowhead for directed links; lines stop at both nodes' rims
+    // (see tick), so the head touches the target.
     svg
       .append("defs")
       .append("marker")
@@ -154,8 +174,8 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .attr("viewBox", "0 0 10 10")
       .attr("refX", 9)
       .attr("refY", 5)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
+      .attr("markerWidth", 7)
+      .attr("markerHeight", 7)
       .attr("orient", "auto")
       .append("path")
       .attr("d", "M0,1 L9,5 L0,9 z")
@@ -174,11 +194,11 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     if (nodes.length > 0 && seeded.reused === nodes.length) simulation.alpha(0.12);
 
     const link = g.append("g")
-      .selectAll("line")
+      .selectAll("path")
       .data(links)
-      .join("line")
-      .attr("class", (d) => `graph-link${d.ghost ? " graph-link--ghost" : ""}`)
-      .attr("marker-end", "url(#graph-arrow)");
+      .join("path")
+      .attr("class", (d) => `graph-link${d.ghost ? " graph-link--ghost" : ""}${activeNoteId && ((d.source as SimNode).id === activeNoteId || (d.target as SimNode).id === activeNoteId) ? " graph-link--active" : ""}`)
+      .attr("marker-end", arrows ? "url(#graph-arrow)" : null);
 
     // A node the user dragged stays where it was put (#407); a plain click
     // (no movement) does not pin it. Re-center lays everything out afresh.
@@ -325,19 +345,23 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     };
 
     simulation.on("tick", () => {
-      // End each line at the target's rim so its arrowhead stays visible.
-      const end = (d: SimLink) => {
-        const dx = d.target.x! - d.source.x!;
-        const dy = d.target.y! - d.source.y!;
+      // Each link runs from one node's rim to the other's (circle radius plus
+      // its stroke), so it never crosses a node, even a see-through ghost.
+      link.attr("d", (d) => {
+        const sx = d.source.x!, sy = d.source.y!, tx = d.target.x!, ty = d.target.y!;
+        const dx = tx - sx;
+        const dy = ty - sy;
         const dist = Math.hypot(dx, dy) || 1;
-        const back = (nodeRadius(d.target) + 2) / dist;
-        return { x: d.target.x! - dx * back, y: d.target.y! - dy * back };
-      };
-      link
-        .attr("x1", (d) => d.source.x!)
-        .attr("y1", (d) => d.source.y!)
-        .attr("x2", (d) => end(d).x)
-        .attr("y2", (d) => end(d).y);
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const rs = nodeRadius(d.source) + 3;
+        const rt = nodeRadius(d.target) + 3;
+        const x1 = sx + ux * rs, y1 = sy + uy * rs;
+        const x2 = tx - ux * rt, y2 = ty - uy * rt;
+        if (!curved) return `M${x1},${y1}L${x2},${y2}`;
+        const bend = Math.min(dist * 0.18, 40);
+        return `M${x1},${y1}Q${(x1 + x2) / 2 - uy * bend},${(y1 + y2) / 2 + ux * bend} ${x2},${y2}`;
+      });
 
       node.attr("transform", (d) => `translate(${d.x},${d.y})`);
       for (const n of nodes) positions.current.set(n.id, { x: n.x!, y: n.y! });
@@ -348,7 +372,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     });
 
     return () => { simulation.stop(); };
-  }, [data, activeNoteId, onSelectNote, onCreateNote, showOrphans, compact]);
+  }, [data, activeNoteId, onSelectNote, onCreateNote, showOrphans, compact, curved, arrows]);
 
   useEffect(() => {
     const cleanup = render();
@@ -454,7 +478,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       )}
       {view === "map" && noteCount > 0 && (
         <Tip id="graph" className="graph-tip">
-          Drag notes to arrange them, scroll to zoom, click a note to open it. Double-click the background to
+          Drag notes to arrange them, zoom with the bar at the bottom or by scrolling, click a note to open it. Double-click the background to
           reset the view.
         </Tip>
       )}
@@ -525,6 +549,26 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
             List
           </button>
         </div>
+        {view === "map" && (
+          <>
+            <button
+              className={`graph-toggle${curved ? " graph-toggle--on" : ""}`}
+              aria-pressed={curved}
+              onClick={() => setCurved((v) => !v)}
+              title="Draw links as curves so crossing links stay apart"
+            >
+              Curved
+            </button>
+            <button
+              className={`graph-toggle${arrows ? " graph-toggle--on" : ""}`}
+              aria-pressed={arrows}
+              onClick={() => setArrows((v) => !v)}
+              title="Show which note links to which"
+            >
+              Arrows
+            </button>
+          </>
+        )}
         {orphanCount > 0 && view === "map" && (
           <button
             className={`graph-toggle${showOrphans ? " graph-toggle--on" : ""}`}
@@ -535,6 +579,22 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           </button>
         )}
       </div>
+      {view === "map" && (
+        <div className="graph-zoom" role="group" aria-label="Zoom">
+          <button onClick={() => zoomRef.current.to(Math.max(0.2, zoomK / 1.4))} aria-label="Zoom out" title="Zoom out">&minus;</button>
+          <input
+            type="range"
+            min={Math.log(0.2)}
+            max={Math.log(4)}
+            step={0.01}
+            value={Math.log(zoomK)}
+            onChange={(e) => zoomRef.current.to(Math.exp(Number(e.target.value)))}
+            aria-label="Zoom level"
+          />
+          <button onClick={() => zoomRef.current.to(Math.min(4, zoomK * 1.4))} aria-label="Zoom in" title="Zoom in">+</button>
+          <button onClick={() => zoomRef.current.fit()} aria-label="Fit the graph in view" title="Fit the graph in view">Fit</button>
+        </div>
+      )}
       <button
         className="graph-recenter"
         onClick={() => {

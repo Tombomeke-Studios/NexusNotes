@@ -1028,3 +1028,15 @@ input:focus, textarea:focus {
 .auth-legal button:hover {
   color: var(--accent);
 }
+
+/* Links to the bundled policy pages: the accent colour instead of the browser's default blue. */
+.legal-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.legal-link:hover {
+  color: var(--text-primary);
+}

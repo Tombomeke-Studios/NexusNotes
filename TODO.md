@@ -134,8 +134,80 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters
-- [ ] Signed installer and an update path
+- [ ] Signed installer and an update path (moved to `feature/release-pipeline`)
 - [x] Cut or mark the mobile app and web clipper as post-1.0 (also the MCP and GitHub services, which do not exist yet; Redis documented as unused)
+
+---
+
+## Hosted service and desktop-only product (docs/hosted-service.md)
+
+> Decision record: [docs/hosted-service.md](docs/hosted-service.md). Desktop only; the same
+> installer talks to the maintainer's hosted server or to a self-hosted Docker stack.
+> Issues are created after this structure is reviewed, so no `(#N)` refs yet.
+> Order: server URL (closed-beta form) → deep links → remove sidecar → hosting → offline →
+> release pipeline → legal. Rust transport follows the beta; it gates unlocking the field.
+
+### `docs/hosted-service` - Documentation (this branch)
+
+- [x] Write the decision record `docs/hosted-service.md`
+- [x] Drop the mobile app and web clipper from README and architecture docs
+- [ ] Rewrite deployment.md and security.md for the final topology as each step below lands
+- [ ] Update the codebase map in CLAUDE.md when files are removed or added
+
+### `feature/server-url` - Configurable server URL, closed-beta form
+
+- [ ] Settings/login: server URL field with the hosted API as default, validated and stored in app data
+- [ ] Pin `connect-src` (and `devCsp`) to the hosted API origin (`https` + `wss`) and lock the field in the beta build
+- [ ] Accept the Tauri origin (`http://tauri.localhost`) or a missing Origin in the CORS and WebSocket allowlists
+- [ ] Version check against the configured server (extends `assessHealth`), with a support-window policy for old clients
+- [ ] Use the configured origin for the WebSocket ticket and sync client
+
+### `feature/email-deep-links` - E-mail links without a web UI
+
+- [ ] Register `nexusnotes://` with the Tauri deep-link and single-instance plugins (Windows installer registration)
+- [ ] Static `/open` page on the reverse proxy: reads the URL fragment, builds the deep link; `Referrer-Policy: no-referrer`, strict CSP, `Cache-Control: no-store`
+- [ ] Mail templates: HTTPS link with the token in the fragment plus a copyable code; link carries the server origin
+- [ ] App flows for verify e-mail, reset password and cancel deletion (no sign-in needed), confirming a server origin that differs from the configured one
+- [ ] Tests for token handling and origin mismatch
+
+### `refactor/remove-sidecar` - Thin client (only after `feature/server-url` works end to end)
+
+- [ ] Remove the sidecar, backend supervisor, per-install secrets and `docker-compose.app.yml` from the packaged app (supersedes #243, #277)
+- [ ] Remove the web-UI container (`desktop/Dockerfile`, nginx) from `docker-compose.yml`; keep a reverse proxy for TLS routing `/api`, `/ws` and (self-hosted only) `/mcp`
+- [ ] Adjust CI image builds and the Docker-images job in `docs/deployment.md`
+- [ ] Keep `dev-web.sh` and the Playwright e2e as a test harness only; stop documenting the browser as a way to use the app
+- [ ] Drop Redis from the production stack (documented as unused)
+
+### `feature/rust-transport` - Network through Rust (Decision C2; follows the closed beta)
+
+- [ ] Spike: runtime scope of the Tauri HTTP plugin, WebSocket and upload streaming over IPC, Origin seen by the server
+- [ ] Transport interface behind `api.ts` and `sync.ts` (browser harness keeps plain `fetch`)
+- [ ] Rust REST and WebSocket transport limited to the user-confirmed server origin
+- [ ] Remove `https:` from `img-src`; load remote images only after a click, via Rust or the server
+- [ ] Unlock the server-URL field for self-hosters; webview CSP `connect-src 'self' ipc:`
+
+### `feature/public-hosting` - Running the hosted instance
+
+- [ ] Invite-only registration (operator-created invites) for the closed beta
+- [ ] Per-account quotas: storage, vaults, attachments; a way to revoke or ban an account
+- [ ] Reverse proxy or tunnel with TLS, `TRUSTED_PROXIES`, `/mcp` not exposed in the beta
+- [ ] Encrypted off-site backups, a timed restore test from a clean machine, `DATA_ENCRYPTION_KEY` custody and recovery rehearsal
+- [ ] Transactional mail provider with SPF, DKIM and DMARC on the service's own domain
+- [ ] Monitoring and an alert path for the home server
+
+### `feature/release-pipeline` - Signed installer and updates
+
+- [ ] Start the code-signing certificate application now (validation takes calendar time)
+- [ ] Signed installer; no SmartScreen warning
+- [ ] Tauri updater with a manifest that does not depend on the home server (supersedes the item in `feature/tauri-native`)
+
+### `docs/legal-launch` - Legal and go/no-go
+
+- [ ] Decide where the promotion site, legal pages and downloads are hosted (deferred until the apps are finished)
+- [ ] Move the legal templates out of `desktop/public/legal/` to their public home on fixed versioned URLs; server exposes the URLs to clients
+- [ ] Legal review including who the data controller is (person or registered business) and whether paid plans change that
+- [ ] Data-breach and data-subject-request procedures
+- [ ] Walk the go/no-go list in `docs/hosted-service.md` §6 before opening registration
 
 ---
 
@@ -500,8 +572,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add Tauri wrapper for native desktop app (#31)
 - [ ] Implement system tray icon with a quick-capture shortcut opening a lightweight input window in under 500 ms
 - [ ] Add native OS notifications for sync events and conflicts
-- [ ] Add deep-link support via the `nexusnotes://` protocol handler
-- [ ] Add an auto-update mechanism using the Tauri updater plugin
+- [ ] Add deep-link support via the `nexusnotes://` protocol handler (moved to `feature/email-deep-links`)
+- [ ] Add an auto-update mechanism using the Tauri updater plugin (moved to `feature/release-pipeline`)
 
 ---
 
@@ -590,6 +662,8 @@ This entry is retained so that existing issue references remain valid.
 ---
 
 ## `feature/offline-support` - Offline queue and deferred sync (#227)
+
+> Now required for the hosted service (a server outage must not lock users out of their notes). Part of the go/no-go list in `docs/hosted-service.md`.
 
 - [ ] Implement a local IndexedDB queue for edits made while offline
 - [ ] Detect WebSocket disconnect and enqueue saves locally
@@ -777,8 +851,6 @@ This entry is retained so that existing issue references remain valid.
 
 Lower priority items not focused on the desktop application.
 
-- [ ] Phase 4 - Mobile Flutter app (file browser, editor, search, graph, share sheet, camera-to-note, speech-to-text, home widget)
-- [ ] Phase 6 - Browser extension / web clipper (Manifest V3, full-page markdown capture, selection capture, quick-capture popup)
 - [ ] Custom domain support for published notes (CNAME record pointing to the NexusNotes server; SSL via Let's Encrypt ACME)
 - [ ] Obsidian Sync protocol compatibility layer (optional, for users migrating from Obsidian Sync to NexusNotes self-hosted)
 

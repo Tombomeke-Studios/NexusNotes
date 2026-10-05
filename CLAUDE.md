@@ -141,6 +141,7 @@ is the migrations directory.
 | Run desktop dev | `cd desktop && npm run dev` |
 | Run desktop tests | `cd desktop && npm test` |
 | Lint Go | `cd services/sync-service && golangci-lint run` |
+| MCP server: test / run | `cd services/mcp-service && go test ./...` / `NEXUSNOTES_TOKEN=nn_… go run ./cmd/nexusnotes-mcp` |
 | Lint desktop | `cd desktop && npm run lint` |
 | Build desktop | `cd desktop && npm run build` |
 | DB migrations | `cd services/sync-service && go run cmd/migrate/main.go` |
@@ -180,6 +181,13 @@ it is what it exists for:
 | `internal/buildinfo/` | Build version (`-ldflags`-injected, `dev` locally) and the `/health` (liveness) and `/ready` (database reachable) handlers |
 | `internal/mail/` | SMTP mailer with a log-only fallback for transactional auth emails |
 | `migrations/` | SQL migration files |
+
+### services/mcp-service (Go, #221)
+| Path | Contents |
+|---|---|
+| `cmd/nexusnotes-mcp/main.go` | Entry point: stdio (token from `NEXUSNOTES_TOKEN`) or stateless Streamable HTTP (`--http`, token per request) |
+| `internal/nexus/` | REST client for the sync service; sends the MCP token and the `X-MCP-Tool` audit header |
+| `internal/server/` | The MCP tools (list/read/search/graph/tags/daily/create/update/append/delete), e2ee refusal, wiki-link graph |
 
 ### desktop (Tauri + React)
 | Path | Contents |
@@ -233,6 +241,7 @@ it is what it exists for:
 | `src/lib/graphLayout.ts` | Graph view start layout (#439): new nodes seeded in a cloud at the centre, known nodes keep their position across re-renders, capped stagger for the fade-in |
 | `src/lib/diff.ts` | Line diff (Myers) between two versions of a note, side-by-side rows, numbering and folding of unchanged runs, and a merge draft with conflict markers (#225) |
 | `src/components/History/` + `src/lib/versionHistory.ts` | Version history (#415-#417): snapshot list per day/device, diff against the current text or another version (side by side / inline), restore (server-side, as a new version); versions are decrypted on the device for e2ee vaults |
+| `src/components/Settings/AIAccessSettings.tsx` + `src/lib/mcpConfig.ts` | Settings > AI Access (#221): MCP tokens (value shown once), copy-ready client config, last used, activity log |
 | `src/components/Workspace/SharingDialog.tsx` | Vault sharing panel: invite by email, per-member roles, leave (#55) |
 | `src/components/Workspace/LinkedFilesDialog.tsx` | Linked files panel: link a URL, read-only viewer, per-user annotations (#60-64) |
 | `src/lib/periodic.ts` | Periodic notes (#240): daily/ISO-weekly/monthly titles, their folders and default templates |

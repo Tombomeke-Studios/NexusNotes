@@ -120,9 +120,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
 - [x] Markdown syntax highlighting in the editor source pane (#472)
-- [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
+- [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
 - [x] Composed empty states with a call to action; skeleton loaders instead of spinners
-- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 - [x] Dialog focus trap and focus return audit; skip link
 
 ---
@@ -130,7 +130,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ## `feature/release-readiness` - Release readiness toward 1.0 (#268)
 
 - [x] README rewrite around what ships, hero image and screenshots, docs index (#474)
-- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
+- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters
@@ -444,52 +444,52 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ### Core server (Go - new service `services/mcp-service/`)
 
 - [x] Write `docs/mcp.md` covering architecture, the tools list, the auth model, and the E2EE interaction model (updated with the token model in #483)
-- [ ] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk`
-- [ ] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml`
-- [ ] Implement the MCP handshake: `initialize`, capability negotiation, `initialized`
+- [x] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk` (#485)
+- [x] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml` (#485: production behind the web UI at `/mcp`; in development run it with `go run`, the dev compose file only holds infrastructure)
+- [x] Implement the MCP handshake: `initialize`, capability negotiation, `initialized` (#485, through the SDK)
 
 ### Authentication and security
 
 - [x] Add `mcp_tokens` table with columns: `id`, `user_id`, `token_hash`, `name`, `scopes`, `last_used_at`, `created_at` (#483)
 - [x] Add `POST /settings/mcp-tokens` to generate named API tokens scoped to read-only or read-write (#483: `POST /api/mcp-tokens`)
 - [x] Add `DELETE /settings/mcp-tokens/:id` to revoke a token (#483: `DELETE /api/mcp-tokens/:id`)
-- [ ] Add a token management page in the desktop settings
-- [ ] Authenticate every MCP request via Bearer token in the Authorization header
+- [x] Add a token management page in the desktop settings (#487)
+- [x] Authenticate every MCP request via Bearer token in the Authorization header (#483, #485)
 - [x] Add `mcp_audit_log` table with columns: `token_id`, `tool`, `args_summary`, `timestamp`; log every AI action (#483)
 - [x] Rate limit MCP endpoints to 60 tool calls per minute per token (#483)
 
 ### MCP tools
 
-- [ ] `list_vaults` - list all vaults accessible to the token (name, id, encryption status)
-- [ ] `list_notes` - list notes in a vault or folder returning title, path, updated_at, and tags; never returns content
-- [ ] `read_note` - read the full content of a note by path or ID; encrypted vaults return metadata and the encrypted blob only
-- [ ] `search_notes` - full-text search across a vault; delegates to Meilisearch for standard vaults
-- [ ] `create_note` - create a new note with title, path, content, and optional tags
-- [ ] `update_note` - update note content using append, prepend, or full replace mode
-- [ ] `delete_note` - soft-delete a note; requires an explicit `confirm: true` parameter as a safety guard
-- [ ] `get_backlinks` - return all notes that link to a given note via wiki-links
-- [ ] `get_graph` - return graph nodes and edges for a vault
-- [ ] `list_tags` - return all tags in a vault with note counts
-- [ ] `get_daily_note` - get or create the daily note for today
-- [ ] `append_to_note` - append a text block to an existing note; non-destructive write
+- [x] `list_vaults` - list all vaults accessible to the token (name, id, encryption status) (#485)
+- [x] `list_notes` - list notes in a vault or folder returning title, path, updated_at, and tags; never returns content (#485; tags via `list_tags`)
+- [x] `read_note` - read the full content of a note by path or ID; encrypted vaults return metadata and the encrypted blob only (#485; encrypted vaults are refused with an explanation)
+- [x] `search_notes` - full-text search across a vault; delegates to Meilisearch for standard vaults (#485)
+- [x] `create_note` - create a new note with title, path, content, and optional tags (#485)
+- [x] `update_note` - update note content using append, prepend, or full replace mode (#485)
+- [x] `delete_note` - soft-delete a note; requires an explicit `confirm: true` parameter as a safety guard (#485; notes have no soft delete, so the description says it is permanent)
+- [x] `get_backlinks` - return all notes that link to a given note via wiki-links (#485)
+- [x] `get_graph` - return graph nodes and edges for a vault (#485)
+- [x] `list_tags` - return all tags in a vault with note counts (#485)
+- [x] `get_daily_note` - get or create the daily note for today (#485)
+- [x] `append_to_note` - append a text block to an existing note; non-destructive write (#485)
 
 ### MCP resources
 
-- [ ] Expose vault structure as MCP Resources using the URI scheme `nexusnotes://vault/:id/note/:path`
-- [ ] Implement `resources/list` so AI clients can browse the vault file tree
-- [ ] Implement `resources/read` so AI clients can read a note by URI
+- [x] Expose vault structure as MCP Resources using the URI scheme `nexusnotes://vault/:id/note/:path` (#489)
+- [x] Implement `resources/list` so AI clients can browse the vault file tree (#489)
+- [x] Implement `resources/read` so AI clients can read a note by URI (#489)
 
 ### MCP prompts
 
-- [ ] Implement MCP Prompts (`prompts/list`, `prompts/get`): expose reusable prompt templates — `summarize_note`, `extract_tasks`, `daily_reflection` — that AI clients can invoke with vault context
-- [ ] Each prompt accepts typed arguments (e.g., `vault_id`, `note_id`) and returns a rendered messages array ready to send to the LLM
+- [x] Implement MCP Prompts (`prompts/list`, `prompts/get`): expose reusable prompt templates — `summarize_note`, `extract_tasks`, `daily_reflection` — that AI clients can invoke with vault context (#489)
+- [x] Each prompt accepts typed arguments (e.g., `vault_id`, `note_id`) and returns a rendered messages array ready to send to the LLM (#489)
 
 ### Desktop integration
 
-- [ ] Add an "AI Access" section in settings showing active tokens and the audit log
-- [ ] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients
-- [ ] Add an in-app indicator showing when a token was last used
-- [ ] Write unit tests for all MCP tool handlers
+- [x] Add an "AI Access" section in settings showing active tokens and the audit log (#487)
+- [x] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients (#487)
+- [x] Add an in-app indicator showing when a token was last used (#487)
+- [x] Write unit tests for all MCP tool handlers (#485)
 - [ ] Write an integration test covering the full flow: connect via config, `list_vaults`, `read_note`
 
 ---
@@ -591,11 +591,11 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/offline-support` - Offline queue and deferred sync (#227)
 
-- [x] Implement a local IndexedDB queue for edits made while offline (per-note drafts in local storage hold the latest offline text; a save sends the whole note, so a queue of every keystroke is not needed)
-- [x] Detect WebSocket disconnect and enqueue saves locally (#263: failed saves keep their draft and retry with backoff)
-- [x] Replay queued edits in order against the sync service on reconnect (#477, #491: waiting saves retry and drafts of notes that are not open are sent once the server is back)
-- [x] Show an offline indicator in the status bar ("Unsaved · Offline, retrying" plus the connection banner, #333)
-- [x] Write tests for offline queue flush logic (#491)
+- [ ] Implement a local IndexedDB queue for edits made while offline
+- [ ] Detect WebSocket disconnect and enqueue saves locally
+- [ ] Replay queued edits in order against the sync service on reconnect
+- [ ] Show an offline indicator in the status bar
+- [ ] Write tests for offline queue flush logic
 
 ---
 
@@ -1167,7 +1167,7 @@ Lower priority items not focused on the desktop application.
 
 - [x] Paginate or slim the note list (#461)
 
-- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 
 - [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
 

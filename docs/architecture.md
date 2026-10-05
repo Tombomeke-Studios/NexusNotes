@@ -1,13 +1,13 @@
 # Architecture — NexusNotes
 
+> NexusNotes is a desktop-only product. The target topology (thin client, no sidecar, no web-UI container, a TLS reverse proxy in front of `/api` and `/ws`) is in [hosted-service.md](hosted-service.md); sections below describe the current state until that work lands.
+
 ## System Overview
 
 ```mermaid
 graph TB
     subgraph Clients
         DESK["Desktop App<br/><small>Tauri v2 + React</small>"]
-        MOB["Mobile App<br/><small>Flutter</small>"]
-        CLIP["Web Clipper<br/><small>Browser Extension</small>"]
         AI["AI Clients<br/><small>Claude Desktop · Cursor</small>"]
     end
 
@@ -26,7 +26,7 @@ graph TB
         MINIO["MinIO<br/><small>Attachments (S3)</small>"]
     end
 
-    DESK & MOB & CLIP --> NGINX
+    DESK --> NGINX
     AI --> MCP
     NGINX --> SYNC & SEARCH & GH
     SYNC --> PG & REDIS & MINIO
@@ -35,8 +35,6 @@ graph TB
     GH --> PG
 
     style DESK fill:#ffc131,stroke:#ffc131,color:#000
-    style MOB fill:#02569b,stroke:#02569b,color:#fff
-    style CLIP fill:#374151,stroke:#374151,color:#fff
     style AI fill:#7c3aed,stroke:#7c3aed,color:#fff
     style SYNC fill:#7c3aed,stroke:#7c3aed,color:#fff
     style MCP fill:#7c3aed,stroke:#7c3aed,color:#fff
@@ -54,9 +52,7 @@ graph TB
 | MCP Service | Go | AI client access via Model Context Protocol — *planned, after 1.0* |
 | Search Service | Meilisearch 1.x | Full-text search, fuzzy matching, tag and folder filters |
 | GitHub Service | Go | OAuth, repository import, webhook-driven sync — *planned, after 1.0* |
-| Desktop App | Tauri v2 + React + TypeScript | Primary editor — markdown preview, graph view, offline-first |
-| Mobile App | Flutter | Mobile editor with simplified graph view — *planned, after 1.0* |
-| Web Clipper | Browser Extension (JS) | Save web pages and selections to a vault — *planned, after 1.0* |
+| Desktop App | Tauri v2 + React + TypeScript | The only client — markdown preview, graph view; connects to a hosted or self-hosted server (see [hosted-service.md](hosted-service.md)) |
 | Database | PostgreSQL 16 | Structured data (users, vaults, notes, versions) |
 | Cache | Redis 7 | Part of the stack but not used by the sync service yet: sessions, WebSocket state and rate limits are in-process (one instance, see Real-time Sync) |
 | Storage | MinIO | S3-compatible attachment storage |

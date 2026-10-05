@@ -23,7 +23,7 @@ vaults end-to-end encrypted unless you choose otherwise.
 - **Organise** with folders, nested tags, stars, daily, weekly and monthly notes, and
   templates; attach files; import a folder of markdown (an Obsidian vault works).
 - **Share a vault** with others as viewer or editor; export everything as markdown.
-- **Desktop app** (Tauri) for Windows, macOS and Linux, or the web UI from the Docker stack.
+- **Desktop app** (Tauri) for Windows, macOS and Linux, and nothing else: no mobile app, no browser extension. It connects to a hosted server or to one you run yourself. The browser web UI from the Docker stack is being retired, see [docs/hosted-service.md](docs/hosted-service.md).
 
 | Graph view | Command palette |
 |---|---|
@@ -257,7 +257,6 @@ the `meilisearch` service: `docker compose -f docker-compose.dev.yml up -d meili
 | MCP Service | Go — Model Context Protocol (planned, after 1.0) |
 | Search | Meilisearch 1.x |
 | Desktop App | Tauri v2 + React + TypeScript |
-| Mobile App | Flutter (planned, after 1.0) |
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 (part of the stack; not used by the sync service yet) |
 | Attachments | MinIO (S3-compatible) |

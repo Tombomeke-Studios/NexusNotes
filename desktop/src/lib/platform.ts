@@ -35,3 +35,23 @@ export function deviceDescription(
     ? { name: `NexusNotes on ${os}`, platform: "desktop" }
     : { name: `${browserFromUserAgent(ua)} on ${os}`, platform: "web" };
 }
+
+/**
+ * Opens a page bundled with the app (the policy pages under /legal). A native
+ * webview ignores `target="_blank"`, so the packaged app opens its own small
+ * window; a browser opens a tab.
+ */
+export async function openBundledPage(path: string, title: string): Promise<void> {
+  if (!isTauriWindow) {
+    window.open(path, "_blank", "noopener");
+    return;
+  }
+  const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+  const label = `legal-${path.replace(/[^a-z0-9]/gi, "-").replace(/^-+|-+$/g, "")}`;
+  const existing = await WebviewWindow.getByLabel(label);
+  if (existing) {
+    await existing.setFocus();
+    return;
+  }
+  new WebviewWindow(label, { url: path, title, width: 760, height: 820, center: true });
+}

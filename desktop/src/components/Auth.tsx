@@ -1,4 +1,5 @@
 import { openConsentPreferences } from "../lib/consent";
+import { LegalLink } from "./LegalLink";
 import { ConsentBanner } from "./ConsentBanner";
 import { useRef, useState } from "react";
 import { Logo } from "./Logo";
@@ -205,13 +206,9 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required />
               <span>
                 I agree to the{" "}
-                <a href="/legal/terms.html" target="_blank" rel="noopener">
-                  Terms of Service
-                </a>{" "}
+                <LegalLink href="/legal/terms.html">Terms of Service</LegalLink>{" "}
                 and{" "}
-                <a href="/legal/privacy.html" target="_blank" rel="noopener">
-                  Privacy Policy
-                </a>
+                <LegalLink href="/legal/privacy.html">Privacy Policy</LegalLink>
               </span>
             </label>
           )}
@@ -271,8 +268,8 @@ export function Auth({ onAuth, reducedMotion = false }: AuthProps) {
         </div>
         <ConsentBanner />
         <nav className="auth-legal" aria-label="Legal">
-          <a href="/legal/privacy.html" target="_blank" rel="noopener">Privacy</a>
-          <a href="/legal/terms.html" target="_blank" rel="noopener">Terms</a>
+          <LegalLink href="/legal/privacy.html">Privacy</LegalLink>
+          <LegalLink href="/legal/terms.html">Terms</LegalLink>
           <button type="button" onClick={openConsentPreferences}>Cookie preferences</button>
         </nav>
       </div>

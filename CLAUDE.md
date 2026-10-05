@@ -268,6 +268,7 @@ it is what it exists for:
 - PostgreSQL is the primary data store; Redis for caching and WebSocket session state.
 - MinIO provides S3-compatible attachment storage — accessed via standard AWS SDK.
 - Checksums are SHA-256, computed server-side — never trust client-provided checksums.
+- MCP API tokens (`nn_…`, #221) never reach `protectedMux`: `middleware.Auth` serves them from the `mcpRead` / `mcpWrite` allowlists in `cmd/server/main.go`. Adding a route there exposes it to AI clients; note writes from a token are refused in e2ee vaults (`mcpWriteDenied`).
 - WebSocket connections are authenticated with a short-lived, single-use ticket from `POST /api/ws/ticket` (never the JWT in the URL), and the Origin must be on the same allowlist as CORS.
 - All timestamps are UTC, stored as `TIMESTAMPTZ` in PostgreSQL.
 - Note content is stored in PostgreSQL (not as files on disk), encrypted at rest by `NoteRepo` (versions too): never read or match `notes.content` / `note_versions.content` in SQL, always go through the repository.

@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- MCP API tokens for AI clients (`/api/mcp-tokens`): named, read or read-write, limited to
+  the note routes their scope allows, refused writes in end-to-end encrypted vaults, and
+  every request recorded in an audit log.
 - `GET /api/vaults/{id}/storage-stats`: a vault's note, version and attachment counts and
   stored sizes. The database connection pool is configurable (`DB_MAX_CONNS`,
   `DB_MIN_CONNS`, `DB_MAX_CONN_LIFETIME`, `DB_MAX_CONN_IDLE_TIME`).

@@ -129,6 +129,8 @@ func main() {
 	hub := ws.NewHub()
 	accountService := service.NewAccountService(userRepo, vaultRepo, noteRepo, indexer, hub)
 	deviceRepo := repository.NewDeviceRepo(pool, crypt)
+	mcpTokenRepo := repository.NewMCPTokenRepo(pool, crypt)
+	mcpTokens := service.NewMCPTokenService(mcpTokenRepo)
 	memberRepo := repository.NewVaultMemberRepo(pool, crypt)
 
 	// Daily cleanup (#46): forget devices that haven't been seen in 90 days.
@@ -161,6 +163,10 @@ func main() {
 				if _, err := r.DeleteExpired(context.Background()); err != nil {
 					slog.Error("deletion token cleanup failed", "error", err)
 				}
+			}
+			// The MCP audit log keeps 90 days (#221).
+			if _, err := mcpTokenRepo.PruneAudit(context.Background(), 90*24*time.Hour); err != nil {
+				slog.Error("mcp audit log cleanup failed", "error", err)
 			}
 			if _, err := resetRepo.DeleteExpired(context.Background()); err != nil {
 				slog.Error("reset token cleanup failed", "error", err)
@@ -237,7 +243,37 @@ func main() {
 	mux.Handle("POST /api/auth/confirm-deletion", authLimiter.Middleware(http.HandlerFunc(deletionHandler.Confirm)))
 	mux.Handle("POST /api/auth/cancel-deletion", authLimiter.Middleware(http.HandlerFunc(deletionHandler.CancelWithToken)))
 
-	authMw := middleware.Auth(authService)
+	// MCP API tokens (#221) reach only these routes: reading for the read
+	// scope, plus note writes for read-write. Everything else (account,
+	// tokens, sharing, vault settings) answers 403 to them.
+	mcpRead, mcpWrite := http.NewServeMux(), http.NewServeMux()
+	for _, route := range []struct {
+		pattern string
+		handler http.HandlerFunc
+		write   bool
+	}{
+		{"GET /api/vaults", vaultHandler.List, false},
+		{"GET /api/vaults/{id}", vaultHandler.Get, false},
+		{"GET /api/vaults/{vaultId}/notes", noteHandler.List, false},
+		{"GET /api/notes/{noteId}", noteHandler.Get, false},
+		{"GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks, false},
+		{"GET /api/vaults/{vaultId}/search", noteHandler.Search, false},
+		{"GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags, false},
+		{"POST /api/vaults/{vaultId}/notes", noteHandler.Create, true},
+		{"PUT /api/notes/{noteId}", noteHandler.Update, true},
+		{"DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete, true},
+	} {
+		if !route.write {
+			mcpRead.HandleFunc(route.pattern, route.handler)
+		}
+		mcpWrite.HandleFunc(route.pattern, route.handler)
+	}
+	authMw := middleware.Auth(authService, middleware.MCPAccess{
+		Auth:    mcpTokens,
+		Read:    mcpRead,
+		Write:   mcpWrite,
+		Limiter: middleware.NewRateLimiter(60, 30),
+	})
 
 	protectedMux := http.NewServeMux()
 	protectedMux.HandleFunc("GET /api/auth/me", authHandler.Me)
@@ -293,6 +329,11 @@ func main() {
 	protectedMux.HandleFunc("GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags)
 	protectedMux.HandleFunc("GET /api/search", searchHandler.Search)
 	protectedMux.HandleFunc("POST /api/ws/ticket", wsHandler.IssueTicket)
+	mcpTokenHandler := handler.NewMCPTokenHandler(mcpTokens)
+	protectedMux.HandleFunc("GET /api/mcp-tokens", mcpTokenHandler.List)
+	protectedMux.HandleFunc("POST /api/mcp-tokens", mcpTokenHandler.Create)
+	protectedMux.HandleFunc("DELETE /api/mcp-tokens/{id}", mcpTokenHandler.Revoke)
+	protectedMux.HandleFunc("GET /api/mcp-tokens/audit", mcpTokenHandler.Audit)
 
 	mux.Handle("/api/", authMw(protectedMux))
 	mux.HandleFunc("/ws", wsHandler.HandleConnect)

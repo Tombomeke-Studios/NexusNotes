@@ -87,7 +87,7 @@ which token invoked which tool at what time plus a sanitised argument summary
 |---|---|
 | Tokens, scopes, audit log, rate limit, e2ee write guard (sync service) | Done (#221); endpoints in [api.md](api.md#mcp-tokens), model in [security.md](security.md#mcp-tokens-ai-access) |
 | `services/mcp-service`: stdio + stateless Streamable HTTP, the 12 tools below | Done (#485) |
-| Resources (`nexusnotes://` URIs) and prompts | Planned |
+| Resources (`nexusnotes://` URIs) and prompts | Done (#489) |
 | Desktop "AI Access" settings: tokens, copy config, last used, activity | Done (#487) |
 
 The MCP service talks to the sync service over its REST API with the user's token and
@@ -144,11 +144,15 @@ Clients that implement `resources/list` and `resources/read` — like Claude Des
 navigate the vault tree the same way you use the sidebar.
 
 ```
-nexusnotes://vault/{vault_id}/                   -> vault root listing
-nexusnotes://vault/{vault_id}/note/{path}        -> note content
-nexusnotes://vault/{vault_id}/canvas/{canvas_id} -> canvas data
-nexusnotes://vault/{vault_id}/tags               -> tag list
+nexusnotes://vaults                              -> the vaults you can open (resources/list)
+nexusnotes://vault/{vault_id}/                   -> the vault's notes by folder, each with its URI
+nexusnotes://vault/{vault_id}/note/{path}        -> note content; path is "Folder/Title"
+nexusnotes://vault/{vault_id}/tags               -> tag list with counts
 ```
+
+All of them are Markdown. Path segments are URL-escaped (`My%20Folder/A%20note`).
+Encrypted vaults are listed under `nexusnotes://vaults` but cannot be opened. Canvas
+resources follow once canvases exist.
 
 ---
 

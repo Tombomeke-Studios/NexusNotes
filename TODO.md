@@ -120,9 +120,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
 - [x] Markdown syntax highlighting in the editor source pane (#472)
-- [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
+- [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
 - [x] Composed empty states with a call to action; skeleton loaders instead of spinners
-- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 - [x] Dialog focus trap and focus return audit; skip link
 
 ---
@@ -130,7 +130,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ## `feature/release-readiness` - Release readiness toward 1.0 (#268)
 
 - [x] README rewrite around what ships, hero image and screenshots, docs index (#474)
-- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
+- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters
@@ -475,14 +475,14 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### MCP resources
 
-- [ ] Expose vault structure as MCP Resources using the URI scheme `nexusnotes://vault/:id/note/:path`
-- [ ] Implement `resources/list` so AI clients can browse the vault file tree
-- [ ] Implement `resources/read` so AI clients can read a note by URI
+- [x] Expose vault structure as MCP Resources using the URI scheme `nexusnotes://vault/:id/note/:path` (#489)
+- [x] Implement `resources/list` so AI clients can browse the vault file tree (#489)
+- [x] Implement `resources/read` so AI clients can read a note by URI (#489)
 
 ### MCP prompts
 
-- [ ] Implement MCP Prompts (`prompts/list`, `prompts/get`): expose reusable prompt templates — `summarize_note`, `extract_tasks`, `daily_reflection` — that AI clients can invoke with vault context
-- [ ] Each prompt accepts typed arguments (e.g., `vault_id`, `note_id`) and returns a rendered messages array ready to send to the LLM
+- [x] Implement MCP Prompts (`prompts/list`, `prompts/get`): expose reusable prompt templates — `summarize_note`, `extract_tasks`, `daily_reflection` — that AI clients can invoke with vault context (#489)
+- [x] Each prompt accepts typed arguments (e.g., `vault_id`, `note_id`) and returns a rendered messages array ready to send to the LLM (#489)
 
 ### Desktop integration
 
@@ -1167,7 +1167,7 @@ Lower priority items not focused on the desktop application.
 
 - [x] Paginate or slim the note list (#461)
 
-- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 
 - [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
 

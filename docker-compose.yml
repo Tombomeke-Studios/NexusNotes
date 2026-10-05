@@ -80,6 +80,21 @@ services:
         limits:
           memory: 512M
 
+  # MCP server for AI clients (#221), reached through the web UI at /mcp.
+  # It holds no secrets: each request carries the user's MCP token, which it
+  # passes on to the sync service.
+  mcp-service:
+    build:
+      context: ./services/mcp-service
+      dockerfile: Dockerfile
+    environment:
+      - NEXUSNOTES_API_URL=http://sync-service:8080
+      - MCP_HTTP_ADDR=:8081
+    depends_on:
+      - sync-service
+    restart: unless-stopped
+    <<: *small
+
   postgres:
     image: postgres:16.14-alpine
     volumes:

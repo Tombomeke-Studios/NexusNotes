@@ -233,6 +233,11 @@ recycled after an hour. Tune it with `DB_MAX_CONNS`, `DB_MIN_CONNS`,
 `DB_MAX_CONN_LIFETIME` and `DB_MAX_CONN_IDLE_TIME` (durations such as `45m`);
 keep `DB_MAX_CONNS` well below Postgres' `max_connections` (100 by default)
 when several instances share one database.
+The `mcp-service` container is the MCP server for AI clients (#221). It is not
+published: the web UI proxies `/mcp` to it, so clients use
+`http(s)://<your host>/mcp` with an MCP token from Settings > AI Access (see
+[mcp.md](mcp.md)). It keeps no state and no secrets. Remove the service from
+the compose file if you do not want AI access; `/mcp` then answers `502`.
 
 `BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the

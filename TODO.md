@@ -444,9 +444,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ### Core server (Go - new service `services/mcp-service/`)
 
 - [x] Write `docs/mcp.md` covering architecture, the tools list, the auth model, and the E2EE interaction model (updated with the token model in #483)
-- [ ] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk`
-- [ ] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml`
-- [ ] Implement the MCP handshake: `initialize`, capability negotiation, `initialized`
+- [x] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk` (#485)
+- [x] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml` (#485: production behind the web UI at `/mcp`; in development run it with `go run`, the dev compose file only holds infrastructure)
+- [x] Implement the MCP handshake: `initialize`, capability negotiation, `initialized` (#485, through the SDK)
 
 ### Authentication and security
 
@@ -454,24 +454,24 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add `POST /settings/mcp-tokens` to generate named API tokens scoped to read-only or read-write (#483: `POST /api/mcp-tokens`)
 - [x] Add `DELETE /settings/mcp-tokens/:id` to revoke a token (#483: `DELETE /api/mcp-tokens/:id`)
 - [ ] Add a token management page in the desktop settings
-- [ ] Authenticate every MCP request via Bearer token in the Authorization header
+- [x] Authenticate every MCP request via Bearer token in the Authorization header (#483, #485)
 - [x] Add `mcp_audit_log` table with columns: `token_id`, `tool`, `args_summary`, `timestamp`; log every AI action (#483)
 - [x] Rate limit MCP endpoints to 60 tool calls per minute per token (#483)
 
 ### MCP tools
 
-- [ ] `list_vaults` - list all vaults accessible to the token (name, id, encryption status)
-- [ ] `list_notes` - list notes in a vault or folder returning title, path, updated_at, and tags; never returns content
-- [ ] `read_note` - read the full content of a note by path or ID; encrypted vaults return metadata and the encrypted blob only
-- [ ] `search_notes` - full-text search across a vault; delegates to Meilisearch for standard vaults
-- [ ] `create_note` - create a new note with title, path, content, and optional tags
-- [ ] `update_note` - update note content using append, prepend, or full replace mode
-- [ ] `delete_note` - soft-delete a note; requires an explicit `confirm: true` parameter as a safety guard
-- [ ] `get_backlinks` - return all notes that link to a given note via wiki-links
-- [ ] `get_graph` - return graph nodes and edges for a vault
-- [ ] `list_tags` - return all tags in a vault with note counts
-- [ ] `get_daily_note` - get or create the daily note for today
-- [ ] `append_to_note` - append a text block to an existing note; non-destructive write
+- [x] `list_vaults` - list all vaults accessible to the token (name, id, encryption status) (#485)
+- [x] `list_notes` - list notes in a vault or folder returning title, path, updated_at, and tags; never returns content (#485; tags via `list_tags`)
+- [x] `read_note` - read the full content of a note by path or ID; encrypted vaults return metadata and the encrypted blob only (#485; encrypted vaults are refused with an explanation)
+- [x] `search_notes` - full-text search across a vault; delegates to Meilisearch for standard vaults (#485)
+- [x] `create_note` - create a new note with title, path, content, and optional tags (#485)
+- [x] `update_note` - update note content using append, prepend, or full replace mode (#485)
+- [x] `delete_note` - soft-delete a note; requires an explicit `confirm: true` parameter as a safety guard (#485; notes have no soft delete, so the description says it is permanent)
+- [x] `get_backlinks` - return all notes that link to a given note via wiki-links (#485)
+- [x] `get_graph` - return graph nodes and edges for a vault (#485)
+- [x] `list_tags` - return all tags in a vault with note counts (#485)
+- [x] `get_daily_note` - get or create the daily note for today (#485)
+- [x] `append_to_note` - append a text block to an existing note; non-destructive write (#485)
 
 ### MCP resources
 
@@ -489,7 +489,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add an "AI Access" section in settings showing active tokens and the audit log
 - [ ] Add a "Copy MCP config" button that generates the JSON snippet for `claude_desktop_config.json`, Cursor settings, and similar clients
 - [ ] Add an in-app indicator showing when a token was last used
-- [ ] Write unit tests for all MCP tool handlers
+- [x] Write unit tests for all MCP tool handlers (#485)
 - [ ] Write an integration test covering the full flow: connect via config, `list_vaults`, `read_note`
 
 ---

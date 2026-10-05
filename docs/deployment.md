@@ -1,5 +1,7 @@
 # Deployment — NexusNotes
 
+> Until `feature/rust-transport`, the server field is locked in the distributed build: self-hosters build the app themselves with their own origin in the CSP. See [hosted-service.md](hosted-service.md) §4.
+
 > Direction: the Docker stack will lose its web-UI container and keep a TLS reverse proxy for `/api` and `/ws` (`/mcp` on self-hosted stacks); the desktop installer becomes a thin client with a configurable server URL. See [hosted-service.md](hosted-service.md). Sections below describe the current state until that work lands.
 
 ## Local Development

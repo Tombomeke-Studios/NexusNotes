@@ -213,7 +213,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Walk the go/no-go list in `docs/hosted-service.md` §6 before opening registration (#535)
 - [ ] Ownership and licensing review (`docs/hosted-service.md` §9): is PolyForm Shield enough for "modify allowed, no resale, no claiming it as theirs", who is the named rights holder (#536)
 - [ ] Legal review questions: copyright in largely AI-generated code and its effect on "all rights" and dual licensing; decide licence, branding and contribution model before forks or outside contributions appear (existing copies cannot be re-licensed) (#537)
-- [ ] Update `Required Notice` and the legal pages to `Copyright (c) 2026 [full name], Tombomeke Studios` (needs the maintainer's full name) (#538)
+- [ ] Update the legal pages to name the maintainer as rights holder: `Copyright (c) 2026 Tom Dekoning, Tombomeke Studios` (`LICENSE` Required Notice done; pages need the legal review first) (#538)
 - [ ] Write a branding policy (name and logo for forks) in `docs/brand.md` and the README licence summary, including what self-hosters may and may not do (#539)
 - [ ] Write the CLA (relicensing and assignment-friendly, not only a DCO), update CONTRIBUTING.md; no outside merges to core until it exists (#540)
 - [ ] Ship a third-party licence list with the installer (#541)

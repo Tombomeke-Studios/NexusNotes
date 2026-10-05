@@ -1,8 +1,33 @@
 # NexusNotes
 
-A markdown-first note-taking platform with cross-device sync, full-text search, graph view, and native GitHub integration. Self-hostable via Docker.
+**Your notes, linked like your thoughts, and private by default.** NexusNotes is a
+markdown-first note-taking app you host yourself: write in plain markdown, connect notes
+with `[[links]]`, see how they relate in a graph, and keep every device in sync, with your
+vaults end-to-end encrypted unless you choose otherwise.
+
+![The NexusNotes editor: markdown source with syntax highlighting next to its rendered preview](docs/images/editor.png)
 
 > **AI transparency notice:** This project was built with significant AI assistance (Claude Code). All generated code was reviewed and tested by the developer — AI produced the output, a human directed and verified it. The architecture, feature decisions, and final quality bar are human-owned.
+
+## What it does
+
+- **Write in markdown** with a live preview, syntax highlighting, callouts, tasks, tables and
+  code blocks; switch between Edit, Split and Read.
+- **Link notes** with `[[wikilinks]]` and see them connect: backlinks, hover previews and
+  an interactive graph (with a list view for keyboards and screen readers).
+- **Find anything**: quick open, a command palette and full-text search with tag filters.
+- **Never lose text**: autosave, version history with diffs and restore, conflict
+  resolution when two devices edit the same note.
+- **Stay private**: vaults are end-to-end encrypted by default (titles, folders, files and
+  linked files included); everything else is encrypted at rest on the server.
+- **Organise** with folders, nested tags, stars, daily, weekly and monthly notes, and
+  templates; attach files; import a folder of markdown (an Obsidian vault works).
+- **Share a vault** with others as viewer or editor; export everything as markdown.
+- **Desktop app** (Tauri) for Windows, macOS and Linux, or the web UI from the Docker stack.
+
+| Graph view | Command palette |
+|---|---|
+| ![Graph view with link arrows and a hover card](docs/images/graph.png) | ![Command palette running a command](docs/images/palette.png) |
 
 ## Quick Start
 
@@ -19,15 +44,19 @@ docker compose up -d
 
 Open `http://localhost:3000` in your browser. The stack has no built-in passwords:
 see [docs/deployment.md](docs/deployment.md#production-docker-compose) for the
-settings, upgrading an existing installation and optional monitoring.
+settings, upgrading an existing installation and optional monitoring. Before others sign up,
+complete the policy pages in `desktop/public/legal/`
+([why](docs/deployment.md#legal-pages-required-before-opening-a-server-to-others)).
 
 ### First use
 
-1. Click **Create Account** (email + password, min 8 characters)
-2. Click **+** next to "Vaults" to create a vault
-3. Click **+** next to "Notes" to create a note (or press `Ctrl+N`)
-4. Write markdown — live preview updates in split view
-5. Notes auto-save after 1 second, or press `Ctrl+S`
+1. **Create an account** (email and a password of at least 8 characters).
+2. **Name your first vault.** It is end-to-end encrypted unless you untick that; keep the
+   recovery code it shows you somewhere safe.
+3. Your vault starts with a short **Getting Started** guide and a few linked example notes;
+   the checklist in the sidebar walks you through the first steps.
+4. Press `Ctrl+N` for a new note, `Ctrl+G` for the graph and `?` for every shortcut.
+5. Notes save themselves a second after you stop typing.
 
 ### Stop
 
@@ -248,19 +277,19 @@ NexusNotes/
 
 ## Keyboard Shortcuts
 
+Press `?` in the app for the full list. The most used:
+
 | Shortcut | Action |
 |---|---|
-| `Ctrl+P` | Quick switcher (search notes) |
+| `Ctrl+P` | Quick open a note |
 | `Ctrl+Shift+P` | Command palette |
-| `Ctrl+N` | Create new note |
-| `Ctrl+S` | Save current note |
-| `Ctrl+E` | Toggle edit / preview / split mode |
-| `Ctrl+G` | Open graph view |
-| `Ctrl+D` | Open or create today's daily note |
-| `Ctrl+F` | Search in current note |
-| `Ctrl+Shift+F` | Global search across vault |
+| `Ctrl+N` | New note |
+| `Ctrl+E` | Cycle edit / split / read |
+| `Ctrl+G` | Graph view |
+| `Ctrl+D` | Today's daily note |
+| `Ctrl+T` | Insert a template |
+| `Ctrl+Shift+F` | Search across the vault |
 | `Ctrl+Shift+H` | Version history of the open note |
-| `Ctrl+Shift+L` | Link existing file into vault |
 | `Ctrl+,` | Settings |
 
 ## Testing
@@ -284,7 +313,11 @@ cd desktop && npm test
 | [Security policy](SECURITY.md) | How to report a vulnerability privately; supported versions |
 | [Contributing](CONTRIBUTING.md) | Branches, commit format, TDD, test and lint commands |
 | [Encryption](docs/encryption.md) | E2EE design, key hierarchy, threat model |
+| [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol (planned) |
+| [Brand](docs/brand.md) | Name, tagline, colours and logo rules |
+| [Changelog](CHANGELOG.md) | What changed in each release |
 | [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol |
+| [Resilience](docs/resilience.md) | Chaos experiments: what users see when Postgres, the backend or Redis fails |
 
 ## Concept Design
 

@@ -16,7 +16,7 @@ import (
 // newIsolatedDB connects to DATABASE_URL and returns a pool whose search_path
 // points at a throwaway schema with all migrations applied, so the test never
 // touches real data. Skipped when no database is configured (plain `go test`).
-func newIsolatedDB(t *testing.T) *pgxpool.Pool {
+func newIsolatedDB(t testing.TB) *pgxpool.Pool {
 	t.Helper()
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
@@ -64,6 +64,6 @@ func newIsolatedDB(t *testing.T) *pgxpool.Pool {
 }
 
 // testCipher is a field cipher under a fixed test key.
-func testCipher(t *testing.T) *fieldcrypt.Cipher {
+func testCipher(t testing.TB) *fieldcrypt.Cipher {
 	return fieldcrypttest.Cipher(t)
 }

@@ -8,6 +8,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { StatusBar } from "./components/StatusBar";
 import { Auth } from "./components/Auth";
 import { ConnectionBanner, ServerUnavailable } from "./components/ConnectionBanner";
+import { SERVER_REACHABLE_EVENT } from "./lib/connection";
 import { AuthAction } from "./components/AuthAction";
 import { TopBar } from "./components/Workspace/TopBar";
 import { Rail } from "./components/Workspace/Rail";
@@ -24,6 +25,7 @@ import { isTypingTarget } from "./lib/shortcuts";
 import { addedLinks, completeStep, startChecklist } from "./lib/checklist";
 import { planImport } from "./lib/importNotes";
 import { Toaster } from "./components/Toaster";
+import { ConsentBanner } from "./components/ConsentBanner";
 import { toast } from "./lib/toast";
 import { SkeletonGraph, SkeletonNote } from "./components/Skeleton";
 import { FirstRunVault } from "./components/Workspace/FirstRunVault";
@@ -293,6 +295,8 @@ export default function App() {
     conflictVersion,
     resolveConflict,
     saveError,
+    retryNow: retrySavesNow,
+    replayDrafts,
   } = useNoteSave({
     activeNoteRef,
     editorContentRef,
@@ -318,6 +322,21 @@ export default function App() {
     // Every sign-out path ends with user === null; that drops pending saves.
     sessionKey: user?.id ?? null,
   });
+  // The server is reachable again (health poll, or the browser back online):
+  // retry waiting saves at once instead of after their backoff (#333), and
+  // send drafts left in notes that are not open (#227).
+  useEffect(() => {
+    const retry = () => {
+      retrySavesNow();
+      replayDrafts(noteListRef.current);
+    };
+    window.addEventListener(SERVER_REACHABLE_EVENT, retry);
+    window.addEventListener("online", retry);
+    return () => {
+      window.removeEventListener(SERVER_REACHABLE_EVENT, retry);
+      window.removeEventListener("online", retry);
+    };
+  }, [retrySavesNow, replayDrafts]);
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
 
@@ -390,7 +409,11 @@ export default function App() {
     setNotesLoading(true);
     try {
       const list = await notesApi.list(vaultId);
-      setNoteList(await Promise.all((list || []).map(decryptIncoming)));
+      const decrypted = await Promise.all((list || []).map(decryptIncoming));
+      setNoteList(decrypted);
+      // Drafts typed offline in notes that are not open, maybe in an earlier
+      // run, go out now rather than when each note is reopened (#227).
+      replayDrafts(decrypted);
       const vault = vaultOf(vaultId);
       if (isE2eeVault(vault) && !isVaultLocked(vault) && list?.some(needsMetaSeal) && !sealingMeta.current.has(vaultId)) {
         sealingMeta.current.add(vaultId);
@@ -401,7 +424,7 @@ export default function App() {
     } finally {
       if (seq === notesLoadSeq.current) setNotesLoading(false);
     }
-  }, [decryptIncoming, vaultOf]);
+  }, [decryptIncoming, vaultOf, replayDrafts]);
 
   const loadVaults = useCallback(async () => {
     try {
@@ -512,7 +535,10 @@ export default function App() {
           });
         } else if (type === "sync:reconnected") {
           // Updates pushed while the socket was down are gone: reload the
-          // vault list and the active vault's notes (#388).
+          // vault list and the active vault's notes (#388). Saves waiting to
+          // retry go now rather than after their backoff (#333).
+          retrySavesNow();
+          replayDrafts(noteListRef.current);
           loadVaultsRef.current();
           setLastSyncAt(new Date());
         } else if (type === "vault:encrypted") {
@@ -543,7 +569,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote]);
+  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -1981,6 +2007,7 @@ export default function App() {
               onCreateNote={handleCreateNoteWithTitle}
               vault={activeNote ? vaultList.find((v) => v.id === activeNote.vault_id) ?? null : null}
               canWrite={(vaultList.find((v) => v.id === activeNote?.vault_id)?.role ?? "owner") !== "viewer"}
+              onOpenGraph={openGraphTab}
               onTagClick={(tag) => {
                 setFilterTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
                 setRailView("files");
@@ -2005,6 +2032,7 @@ export default function App() {
       )}
 
       <Toaster />
+      <ConsentBanner />
       {/* Pickers for importing notes (#451); a folder keeps its structure. */}
       <input
         ref={importFolderRef}

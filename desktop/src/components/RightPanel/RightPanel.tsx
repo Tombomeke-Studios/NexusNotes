@@ -27,6 +27,8 @@ interface RightPanelProps {
   vault?: VaultLike | null;
   /** Owners and editors may upload and delete attachments. */
   canWrite?: boolean;
+  /** Opens the full graph view (#267). */
+  onOpenGraph?: () => void;
 }
 
 const TABS: RightTab[] = ["outline", "links", "graph", "files", "info"];
@@ -74,6 +76,7 @@ export function RightPanel({
   onTagClick,
   vault = null,
   canWrite = false,
+  onOpenGraph,
 }: RightPanelProps) {
   const [depth, setDepth] = useState(1);
   const outline = useMemo(() => (note ? parseOutline(content) : []), [note, content]);
@@ -184,6 +187,11 @@ export function RightPanel({
                     onChange={(e) => setDepth(Number(e.target.value))}
                   />
                 </label>
+                {onOpenGraph && (
+                  <button className="local-graph-open" onClick={onOpenGraph} title="Open the full graph (Ctrl+G)">
+                    Full graph
+                  </button>
+                )}
               </div>
               <div className="local-graph-canvas">
                 <GraphView

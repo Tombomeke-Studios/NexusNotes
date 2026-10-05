@@ -354,6 +354,14 @@ Changes it from the same body and trims the vault's history right away.
 only (`403` for members), since it deletes history for everyone in the vault.
 Response (200): the new settings.
 
+### GET /api/vaults/:id/storage-stats
+
+How much the vault stores (#220):
+`{ "notes": 120, "content_bytes": 480000, "versions": 900, "version_bytes": 3100000, "attachments": 4, "attachment_bytes": 2200000 }`.
+Byte counts are the stored sizes: note content and versions are encrypted at
+rest, so they run a little above the plaintext. Read access required (`403`
+otherwise).
+
 ### POST /api/notes/:noteId/versions/:versionId/restore
 
 Makes a stored version the note's content again (#417). Body:

@@ -695,6 +695,31 @@ describe("useNoteSave — network failures", () => {
     expect(loadDraft("n1")).toBeNull();
   });
 
+  it("retries at once when told the server is reachable again (#333)", async () => {
+    update
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(savedNote("c1"));
+    const { hook } = setup();
+    act(() => hook.result.current.liveChange("offline text"));
+    await act(() => hook.result.current.saveNote("offline text"));
+    await advance(retryDelay(0));
+    await advance(retryDelay(1));
+    expect(update).toHaveBeenCalledTimes(3);
+
+    // The next backoff would be 4 s; the server is back now.
+    await act(async () => hook.result.current.retryNow());
+    await advance(0);
+    expect(update).toHaveBeenCalledTimes(4);
+    expect(hook.result.current.saveStatus).toBe("saved");
+
+    // Nothing pending: retrying again does nothing.
+    await act(async () => hook.result.current.retryNow());
+    await advance(10_000);
+    expect(update).toHaveBeenCalledTimes(4);
+  });
+
   it("retries with the latest text when the user kept typing while offline", async () => {
     update.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce(savedNote("c1"));
     const { hook } = setup();
@@ -1269,5 +1294,67 @@ describe("isDirtyStatus", () => {
     expect(isDirtyStatus("conflict")).toBe(true);
     expect(isDirtyStatus("saved")).toBe(false);
     expect(isDirtyStatus("idle")).toBe(false);
+  });
+});
+
+describe("useNoteSave — replaying drafts of notes that are not open (#227)", () => {
+  const other = makeNote({ id: "n2", title: "Other", content: "server text", checksum: "s0" });
+
+  it("saves a left-behind draft against the version it was written on", async () => {
+    saveDraft("n2", "typed offline", "s0");
+    update.mockResolvedValueOnce(savedNote("s1", { id: "n2" }));
+    const { hook } = setup();
+    await act(async () => hook.result.current.replayDrafts([other]));
+    await flush();
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(update.mock.calls[0][0]).toBe("n2");
+    expect(update.mock.calls[0][3]).toBe("typed offline");
+    expect(prevChecksumOfCall(0)).toBe("s0");
+    expect(loadDraft("n2")).toBeNull();
+  });
+
+  it("keeps the draft when the note changed elsewhere in the meantime", async () => {
+    saveDraft("n2", "typed offline", "s-old");
+    update.mockRejectedValueOnce(new ApiError(409, "conflict"));
+    const { hook } = setup();
+    await act(async () => hook.result.current.replayDrafts([other]));
+    await flush();
+    expect(prevChecksumOfCall(0)).toBe("s-old");
+    expect(loadDraft("n2")).toBe("typed offline");
+    expect(loadDraftBase("n2")).toBe("s-old");
+    // The open note's status is not touched by another note's conflict.
+    expect(hook.result.current.saveStatus).toBe("saved");
+  });
+
+  it("skips the open note, notes without a draft, drafts equal to the server text and e2ee vaults", async () => {
+    saveDraft("n1", "open note draft", "c0");
+    saveDraft("n3", "same", "x0");
+    saveDraft("n4", "secret", "e0");
+    const { hook } = setup({ keepsDrafts: (vaultId) => vaultId !== "e2ee" });
+    await act(async () =>
+      hook.result.current.replayDrafts([
+        makeNote(), // the open note: its own save flow owns it
+        makeNote({ id: "n5", checksum: "z0" }), // no draft
+        makeNote({ id: "n3", content: "same", checksum: "x0" }),
+        makeNote({ id: "n4", vault_id: "e2ee", checksum: "e0" }),
+      ]),
+    );
+    await flush();
+    expect(update).not.toHaveBeenCalled();
+    expect(loadDraft("n3")).toBeNull(); // nothing left to send
+    expect(loadDraft("n1")).toBe("open note draft");
+  });
+
+  it("does not send a note twice while its save is still out", async () => {
+    saveDraft("n2", "typed offline", "s0");
+    const pending = deferred<Note>();
+    update.mockReturnValueOnce(pending.promise);
+    const { hook } = setup();
+    await act(async () => hook.result.current.replayDrafts([other]));
+    await act(async () => hook.result.current.replayDrafts([other]));
+    expect(update).toHaveBeenCalledTimes(1);
+    pending.resolve(savedNote("s1", { id: "n2" }));
+    await flush();
+    expect(loadDraft("n2")).toBeNull();
   });
 });

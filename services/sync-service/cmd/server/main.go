@@ -36,7 +36,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	pool, err := repository.NewPool(ctx, cfg.DatabaseURL)
+	pool, err := repository.NewPool(ctx, cfg.DatabaseURL, repository.PoolOptions(cfg.DBPool))
 	if err != nil {
 		slog.Error("connect database", "error", err)
 		os.Exit(1)
@@ -271,6 +271,7 @@ func main() {
 	protectedMux.HandleFunc("POST /api/notes/{noteId}/versions/{versionId}/restore", noteHandler.RestoreVersion)
 	protectedMux.HandleFunc("GET /api/vaults/{id}/history-settings", noteHandler.GetHistorySettings)
 	protectedMux.HandleFunc("PUT /api/vaults/{id}/history-settings", noteHandler.PutHistorySettings)
+	protectedMux.HandleFunc("GET /api/vaults/{id}/storage-stats", noteHandler.StorageStats)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/backlinks", noteHandler.Backlinks)
 	protectedMux.Handle("POST /api/notes/{noteId}/attachments", longTransfer(http.HandlerFunc(attachHandler.Upload)))
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/attachments", attachHandler.List)

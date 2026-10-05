@@ -228,6 +228,12 @@ the service; if another proxy (a TLS terminator, say) sits in front of the web U
 add its address too and make it append `X-Forwarded-For`. Without the right value
 all users share one rate limit.
 
+The Postgres connection pool defaults to at most 20 connections (2 kept open),
+recycled after an hour. Tune it with `DB_MAX_CONNS`, `DB_MIN_CONNS`,
+`DB_MAX_CONN_LIFETIME` and `DB_MAX_CONN_IDLE_TIME` (durations such as `45m`);
+keep `DB_MAX_CONNS` well below Postgres' `max_connections` (100 by default)
+when several instances share one database.
+
 `BIND_ADDR` (optional) limits the addresses the sync service listens on, as a
 comma-separated list such as `127.0.0.1,::1`. Leave it unset inside Docker: the
 container must listen on every interface or its published port cannot reach it.
@@ -453,6 +459,21 @@ The sync service image runs as an unprivileged user (uid 10001) and declares a
 Docker `HEALTHCHECK` on `GET /ready`, so `docker compose ps` shows it as healthy
 only while it can reach Postgres. The operator stats endpoint (`GET /api/admin/stats`) is enabled
 by `ADMIN_TOKEN` in `.env` and disabled while it is empty.
+
+## Legal pages (required before opening a server to others)
+
+The web UI serves a Privacy Policy, Terms of Service, Cookie Policy and Refund
+Policy from `desktop/public/legal/` (`/legal/privacy.html` and so on). The
+sign-up form links to the Terms and Privacy Policy and records when each user
+agreed and to which version (#289).
+
+Whoever runs a server is the data controller for its users, so these pages
+are templates: replace every `[bracketed]` item (operator, contact, hosting
+and email providers, retention, governing law) and have them reviewed by a
+legal professional before letting anyone else sign up. When the Terms or
+Privacy Policy change materially, bump `CurrentTermsVersion` in
+`internal/model/model.go`; when the Cookie Policy's categories change, bump
+`CONSENT_VERSION` in `desktop/src/lib/consent.ts` so users are asked again.
 
 ## Email (optional)
 

@@ -30,6 +30,18 @@
   --text-ghost: #6c7086;
 
   --accent: #cba6f7;
+  /* Graph folder colours (#267): distinct, on-brand, one per folder slot. */
+  --graph-folder-1: #cba6f7;
+  --graph-folder-2: #89b4fa;
+  --graph-folder-3: #94e2d5;
+  --graph-folder-4: #f9e2af;
+  --graph-folder-5: #fab387;
+  --graph-folder-6: #f38ba8;
+  --graph-folder-7: #a6e3a1;
+  --graph-folder-8: #f5c2e7;
+  --graph-folder-9: #74c7ec;
+  --graph-folder-10: #b4befe;
+  --graph-root: #7f849c;
   --accent-hover: #b4befe;
   --accent-glow: rgba(203, 166, 247, 0.15);
   --accent-border: rgba(203, 166, 247, 0.25);
@@ -976,4 +988,43 @@ input:focus, textarea:focus {
   color: var(--bg-crust);
   font-size: 12px;
   font-weight: 600;
+}
+
+/* Signup consent and the legal links under the auth card (#289). */
+.auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.auth-consent input {
+  margin-top: 2px;
+}
+
+.auth-consent a {
+  color: var(--accent);
+}
+
+.auth-legal {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 11.5px;
+}
+
+.auth-legal a,
+.auth-legal button {
+  color: var(--text-muted);
+  font-size: inherit;
+  text-decoration: none;
+}
+
+.auth-legal a:hover,
+.auth-legal button:hover {
+  color: var(--accent);
 }

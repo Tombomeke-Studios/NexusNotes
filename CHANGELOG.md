@@ -6,6 +6,19 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- `GET /api/vaults/{id}/storage-stats`: a vault's note, version and attachment counts and
+  stored sizes. The database connection pool is configurable (`DB_MAX_CONNS`,
+  `DB_MIN_CONNS`, `DB_MAX_CONN_LIFETIME`, `DB_MAX_CONN_IDLE_TIME`).
+- Markdown is syntax-highlighted while you write: headings, bold and italic, code, links,
+  [[links]], tags, quotes, lists and tasks each have their own colour.
+- Graph view: it fits itself to the window on open, shows a legend of folder colours, has
+  easier-to-read labels, can be used with the keyboard (Tab to a note, Enter to open), and
+  offers a List view of every note and its links. The side panel's local graph links to the
+  full graph.
+- Privacy Policy, Terms of Service, Cookie Policy and Refund Policy pages (templates for each
+  server's operator to complete). Signing up asks you to agree to the Terms and Privacy
+  Policy, and a one-time notice explains what the app stores in your browser, with "Cookie
+  preferences" on the sign-in screen and in Settings → Account.
 - Deleting your account now waits 7 days: you are signed out, get an email with a link to
   cancel, and can also sign in and choose "Keep my account". If you can no longer sign in,
   "Locked out? Request account deletion" on the sign-in screen emails a confirmation link.
@@ -84,6 +97,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- Text typed offline in a note you then left (or before closing the app) is sent as soon as
+  the server is reachable, without reopening the note.
 - `[[links]]` written as code (in backticks or a code block) no longer show up as links in
   the graph and backlinks.
 - The web UI of the Docker stack talks to its own server again instead of to

@@ -26,6 +26,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add settings modal with appearance, sync, and shortcuts tabs (#103)
 - [x] Convert graph view to a workspace tab with redesigned styling (#104)
 
+---
 
 ## `fix/production-hardening` - Production hardening (#264)
 
@@ -37,7 +38,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Tauri supervisor follow-ups: no compose polling while a foreign backend is healthy, handle `RunEvent::Exit`, re-check shutdown after spawn, restart on failing health (#330)
 - [x] CI: build both Dockerfiles so an unbuildable image is caught (#331)
 - [x] Graceful shutdown: drain the WebSocket hub, per-route write deadlines (#332)
-- [ ] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
+- [x] Run and document the chaos experiments (Postgres restart mid-sync, Redis loss, sidecar crash) (#333)
+- [x] Retry pending saves as soon as the server is reachable again (#477)
 - [x] Migrate the packaged app's database password without losing data (#277)
 - [x] Dev scripts: random JWT secret and localhost-only binding, like the packaged app (#334)
 - [x] `BIND_ADDR`: refuse a value that is set but lists no addresses (today it falls back to all interfaces) (#335)
@@ -47,6 +49,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] DB-backed tests for `RefreshRepo.Rotate` (rollback, double rotate, concurrent rotate) (#338)
 - [x] Fix the web UI Docker image build (#339)
 
+---
 
 ## `feature/encryption-at-rest` - Server-side encryption at rest (#352)
 
@@ -62,6 +65,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Serialise concurrent migration runs (fresh-database CI race) (#368)
 - [x] Keep note content in the search index encrypted at rest: encrypted volume, out of backups, rebuilt on startup (#365)
 
+---
 
 ## `feature/e2ee-default` - End-to-end encryption by default (#359)
 
@@ -76,13 +80,14 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] End-to-end encrypt linked files and their annotations (#364)
 - [x] Seal existing linked files when a vault becomes end-to-end encrypted (#410)
 
+---
 
 ## `feature/backend-scalability` - Backend scalability (#265)
 
 > Complements `feature/db-performance` (#220).
 
 - [x] Search fallback: `EXISTS` for tags/aliases (#354); a trigram/full-text index on content is no longer possible, as content is encrypted at rest
-- [ ] Paginate or slim the note list
+- [x] Paginate or slim the note list (#461)
 - [x] Cap and prune `note_versions` (keep the newest 50 per note) (#387)
 - [x] Indexing worker queue with retry and shutdown drain; one shared helper (#401; the shared doc builder came with #365)
 - [x] WebSocket hub: resync/evict slow clients, close `Send` on unregister, document or remove the single-instance limit (#388)
@@ -92,11 +97,12 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Vault update: answer 404 when no row matched instead of 200 (delete done in #290) (#384)
 - [x] Test the `/api/auth/me` failure path (500 vs 404) (#374)
 
-
 ## `feature/frontend-quality` - Frontend quality (#266)
 
 - [ ] Decompose `App.tsx` into hooks (`useNoteSave`, `useTabs`, `useVaults`, `useStars`, `useCloseGuard`, ...) and `Workspace` / `ModalHost` components
-- [ ] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths
+- [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
+---
+
 - [x] Stars: cancel the load effect on logout; drain legacy pins only after the POSTs succeed (#377)
 - [x] E2E: replace `waitForTimeout` waits with real signals (the two left are deliberate: proving nothing happens, and a push with no visible effect)
 - [x] Settings: show the app and server versions instead of a hard-coded string (PR #255)
@@ -104,6 +110,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Attachment download chip: delay `revokeObjectURL` so WebKit downloads are not cancelled (also the account and vault exports) (#392)
 - [x] Two windows refreshing at once trip refresh-token reuse detection; add a cross-window lock or a short grace period (#393)
 
+---
 
 ## `feature/design-polish` - Design polish (#267)
 
@@ -112,23 +119,25 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Raise muted text tokens and the focus ring to accessible contrast, keeping the Catppuccin identity (#313)
 - [ ] Move the 105 hard-coded hex literals to tokens; add z-index, spacing, type and radius scales; drop legacy aliases
-- [ ] Markdown syntax highlighting in the editor source pane
-- [ ] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel
+- [x] Markdown syntax highlighting in the editor source pane (#472)
+- [x] Graph view: fit to view on open, legend (folder colours, unresolved node), higher-contrast labels, token colours, keyboard/list alternative, graph controls in the right panel (#470)
 - [x] Composed empty states with a call to action; skeleton loaders instead of spinners
-- [ ] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops
+- [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 - [x] Dialog focus trap and focus return audit; skip link
 
+---
 
 ## `feature/release-readiness` - Release readiness toward 1.0 (#268)
 
-- [ ] README rewrite around what ships, hero image and screenshots, docs index
-- [ ] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo
+- [x] README rewrite around what ships, hero image and screenshots, docs index (#474)
+- [x] `docs/brand.md`: name spelling, tagline, palette, logo rules; check the Tauri icons against the logo (#475)
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters
 - [ ] Signed installer and an update path
 - [x] Cut or mark the mobile app and web clipper as post-1.0 (also the MCP and GitHub services, which do not exist yet; Redis documented as unused)
 
+---
 
 ## Reported issues (triage) - not yet started
 
@@ -145,6 +154,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > `feature/onboarding`; inline images (`![[image.png]]`) and drag-drop image upload
 > live in `feature/attachments` and `feature/editor-enhancements`.
 
+---
 
 ## `feature/devcontainer` - Reproducible dev environment
 
@@ -155,6 +165,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Install Claude Code automatically in the dev container and keep its (and `gh`'s) login across rebuilds (#344)
 - [x] Vite picks up file changes in the dev container on a Windows host (polling) (#367)
 
+---
 
 ## `feature/graph-view` - Graph view (2D and 3D interactive knowledge map) (#216)
 
@@ -218,6 +229,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Benchmark target: render 5000 nodes at 60 fps on a mid-range machine
 - [x] Write snapshot tests for graph data computation including nodes, edges, and orphan detection (unit tests in wikilinks.test.ts)
 
+---
 
 ## `feature/animations-and-ux` - Animations, transitions, and micro-interactions (#217)
 
@@ -308,6 +320,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Implement dark/light mode by swapping CSS variables with a 200ms transition
 - [x] Write tests for animation token exports and reduced-motion conditional logic (#296)
 
+---
 
 ## `feature/onboarding` - First-run experience and discoverability (#218)
 
@@ -315,16 +328,15 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > The first-run experience must guide a user to their first meaningful action within
 > seconds of logging in.
 
-- [ ] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template
-- [ ] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start
-- [ ] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion
-- [ ] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage
-- [ ] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes
-- [ ] Add empty-state illustrations for: no notes in vault, no links in graph, no search results
-- [ ] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard
-- [ ] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu
-- [ ] Write tests for welcome vault creation and checklist state persistence
-
+- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
+- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
+- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
+- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
+- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
+- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
+- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
+- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
+- [x] Write tests for welcome vault creation and checklist state persistence (#453)
 
 ## `feature/startup-performance` - Sub-second startup and runtime performance (#219)
 
@@ -343,6 +355,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Target memory usage below 150 MB with 5000 notes loaded
 - [ ] Add performance regression tests; CI must fail if the startup benchmark exceeds 2 seconds
 
+---
 
 ## `feature/db-performance` - Database performance and indexing (#220)
 
@@ -351,27 +364,27 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Indexing
 
-- [ ] Add composite index `notes(vault_id, updated_at DESC)` for note listing sorted by recency
-- [ ] Add composite index `notes(vault_id, path)` for path lookups and file tree rendering
-- [ ] Add partial index `notes(vault_id) WHERE deleted_at IS NULL` to support the soft-delete pattern
-- [ ] Add index `note_tags(tag, vault_id)` for tag filtering
-- [ ] Add indexes on `note_links(source_note_id)` and `note_links(target_note_id)` for backlink queries
-- [ ] Add GIN index on `notes(content)` using `to_tsvector` as a full-text fallback before Meilisearch is available
-- [ ] Add index `note_versions(note_id, created_at DESC)` for version history listing
-- [ ] Use `CREATE INDEX CONCURRENTLY` for all production index creation to avoid table locks
-- [ ] Document the indexing strategy and rationale in prose in `docs/architecture.md` (no SQL/DDL in docs — CLAUDE.md §5)
+- [x] Add composite index `notes(vault_id, updated_at DESC)` for note listing sorted by recency (#481: used by the search fallback; the note list is in path order)
+- [x] Add composite index `notes(vault_id, path)` for path lookups and file tree rendering (initial schema; `(vault_id, path, id)` for paging since #461)
+- [x] Add partial index `notes(vault_id) WHERE deleted_at IS NULL` to support the soft-delete pattern (not applicable: notes are deleted outright, there is no soft delete)
+- [x] Add index `note_tags(tag, vault_id)` for tag filtering (not applicable: tags carry no vault column; the tag index plus the note join cover it)
+- [x] Add indexes on `note_links(source_note_id)` and `note_links(target_note_id)` for backlink queries (#66)
+- [x] Add GIN index on `notes(content)` using `to_tsvector` as a full-text fallback before Meilisearch is available (not possible: content is encrypted at rest, #354)
+- [x] Add index `note_versions(note_id, created_at DESC)` for version history listing (#418)
+- [x] Use `CREATE INDEX CONCURRENTLY` for all production index creation to avoid table locks (decided against, #481: migrations are transactional; rationale in docs/architecture.md)
+- [x] Document the indexing strategy and rationale in prose in `docs/architecture.md` (no SQL/DDL in docs — CLAUDE.md §5) (#481)
 
 ### Query patterns
 
-- [ ] Remove all `SELECT *` statements; fetch only the columns required per endpoint
+- [x] Remove all `SELECT *` statements; fetch only the columns required per endpoint (none left, checked for #481)
 - [ ] List endpoints such as `GET /vaults/:id/notes` must never load `content`; return title, path, updated_at, and tags only
-- [ ] Replace all `LIMIT/OFFSET` pagination with keyset (cursor) pagination using `WHERE updated_at < :cursor ORDER BY updated_at DESC LIMIT 50`
+- [x] Replace all `LIMIT/OFFSET` pagination with keyset (cursor) pagination using `WHERE updated_at < :cursor ORDER BY updated_at DESC LIMIT 50` (no OFFSET queries left; the note list is keyset-paged, #461)
 - [ ] Apply cursor-based pagination to: note list, version history, search results, and tag list
 - [ ] Audit all N+1 query patterns and replace with JOINs or batch queries
 
 ### Connection and caching
 
-- [ ] Configure `pgxpool` with appropriate values for `MaxConns`, `MinConns`, and `MaxConnLifetime`
+- [x] Configure `pgxpool` with appropriate values for `MaxConns`, `MinConns`, and `MaxConnLifetime` (#481)
 - [ ] Add a Redis caching layer for vault metadata, the note list per vault, and tag counts
 - [ ] Invalidate the Redis cache on WebSocket sync events (note create, update, delete)
 - [ ] Add `Cache-Control` headers to all read endpoints
@@ -379,17 +392,18 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 ### Version history - storage management
 
 - [ ] Store diffs in unified diff format in `note_versions` instead of full content snapshots
-- [ ] Add a `version_retention_policy` column to the vaults table with `keep_count` (default 50) and `keep_days` (default 30)
-- [ ] Add a daily background cleanup job to delete versions outside the retention policy
+- [x] Add a `version_retention_policy` column to the vaults table with `keep_count` (default 50) and `keep_days` (default 30) (#418; `keep_days` defaults to no age limit)
+- [x] Add a daily background cleanup job to delete versions outside the retention policy (#418)
 - [ ] Partition `note_versions` by `created_at` monthly using `pg_partman` once the row count exceeds 500k
-- [ ] Add a `GET /vaults/:id/storage-stats` endpoint returning note count, total content size, and version count
+- [x] Add a `GET /vaults/:id/storage-stats` endpoint returning note count, total content size, and version count (#481)
 
 ### Tests
 
-- [ ] Test keyset pagination correctness including ordering and cursor edge cases
-- [ ] Test the version retention cleanup job
-- [ ] Benchmark the note list endpoint; it must handle 10,000 notes per vault in under 50 ms
+- [x] Test keyset pagination correctness including ordering and cursor edge cases (#461)
+- [x] Test the version retention cleanup job (#418)
+- [x] Benchmark the note list endpoint; it must handle 10,000 notes per vault in under 50 ms (#481: 16 ms for all 10,000, under 1 ms per page)
 
+---
 
 ## `feature/vault-file-linking` - Link existing files and documentation into a vault
 
@@ -419,6 +433,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > left for verification on the real desktop build. The URL/annotation foundation (#64) is
 > merged and verified.
 
+---
 
 ## `feature/mcp-server` - NexusNotes MCP server (#221)
 
@@ -477,6 +492,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Write unit tests for all MCP tool handlers
 - [ ] Write an integration test covering the full flow: connect via config, `list_vaults`, `read_note`
 
+---
 
 ## `feature/tauri-native` - Tauri native desktop wrapper (#222)
 
@@ -487,6 +503,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add deep-link support via the `nexusnotes://` protocol handler
 - [ ] Add an auto-update mechanism using the Tauri updater plugin
 
+---
 
 ## `feature/editor-enhancements` - Editor quality of life (#223)
 
@@ -506,6 +523,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add sandboxed metadata query blocks (equivalent to `dataview`-style queries)
 - [ ] Write tests for all markdown parser extensions
 
+---
 
 ## `feature/daily-notes-and-templates` - Daily notes and note templates
 
@@ -517,6 +535,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Add periodic notes: weekly (`YYYY-Www`) and monthly (`YYYY-MM`) with separate templates (#240)
 - [x] Write tests for template variable substitution (#155)
 
+---
 
 ## `feature/full-text-search` - Full-text search (Meilisearch)
 
@@ -531,6 +550,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Index backlinks so that searching a note title surfaces its inbound references (#88)
 - [x] Write integration tests for the search indexer and search handler (#89)
 
+---
 
 ## `feature/canvas` - Canvas (infinite visual workspace) (#224)
 
@@ -547,12 +567,14 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Persist canvas layout to the backend on change
 - [ ] Write tests for the canvas repository
 
+---
 
 ## `feature/graph-view-enhancements` - Merged into `feature/graph-view`
 
 All graph work is tracked in the `feature/graph-view` branch above.
 This entry is retained so that existing issue references remain valid.
 
+---
 
 ## `feature/attachments` - Attachment upload and management
 
@@ -565,16 +587,17 @@ This entry is retained so that existing issue references remain valid.
 - [x] Add an attachment panel in the editor sidebar (#238)
 - [x] Write tests for the image-embed transform + an E2E drop/upload/render test (#153)
 
-
+---
 
 ## `feature/offline-support` - Offline queue and deferred sync (#227)
 
-- [ ] Implement a local IndexedDB queue for edits made while offline
-- [ ] Detect WebSocket disconnect and enqueue saves locally
-- [ ] Replay queued edits in order against the sync service on reconnect
-- [ ] Show an offline indicator in the status bar
-- [ ] Write tests for offline queue flush logic
+- [x] Implement a local IndexedDB queue for edits made while offline (per-note drafts in local storage hold the latest offline text; a save sends the whole note, so a queue of every keystroke is not needed)
+- [x] Detect WebSocket disconnect and enqueue saves locally (#263: failed saves keep their draft and retry with backoff)
+- [x] Replay queued edits in order against the sync service on reconnect (#477, #491: waiting saves retry and drafts of notes that are not open are sent once the server is back)
+- [x] Show an offline indicator in the status bar ("Unsaved · Offline, retrying" plus the connection banner, #333)
+- [x] Write tests for offline queue flush logic (#491)
 
+---
 
 ## `feature/github-integration` - GitHub OAuth and repository import (#228)
 
@@ -590,6 +613,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Add a personal annotation layer on top of read-only imported files
 - [ ] Write unit tests for OAuth token exchange, the import job, and the webhook handler
 
+---
 
 ## `feature/starred-and-recent` - Starred notes and recent files
 
@@ -600,7 +624,7 @@ This entry is retained so that existing issue references remain valid.
 - [x] Add a collapsible "Recent files" section in the sidebar (#151)
 - [x] Write an E2E test for starring, persistence across reload, and unstarring (#151)
 
-
+---
 
 ## `feature/ai-intelligence` - AI and semantic intelligence (#229)
 
@@ -637,6 +661,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Add an "Auto-summarise" command palette action that generates a summary callout at the top of the note
 - [ ] Write tests for the suggestion and tagging logic
 
+---
 
 ## `feature/task-management` - Task management and GTD (#230)
 
@@ -651,6 +676,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Add `Ctrl+Enter` shortcut to toggle the checkbox on the current line
 - [ ] Write tests for the task parser and task repository
 
+---
 
 ## `feature/publishing` - Publish notes as public URLs (#231)
 
@@ -670,6 +696,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Track and display the view count per published note in settings
 - [ ] Write tests for the publish endpoint, slug generation, and HTML renderer
 
+---
 
 ## `feature/pdf-and-media` - PDF viewer and media handling (#232)
 
@@ -681,6 +708,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Add an OCR action for attached images using Tesseract.js; append extracted text as a note block
 - [ ] Write tests for PDF annotation storage and media attachment handling
 
+---
 
 ## `feature/spaced-repetition` - Flashcards and spaced repetition (#233)
 
@@ -693,6 +721,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Export flashcards as an Anki-compatible `.apkg` file
 - [ ] Write tests for the SM-2 scheduler and review session logic
 
+---
 
 ## `feature/writing-experience` - Writing quality of life (#234)
 
@@ -706,6 +735,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Add line spacing presets: compact, normal, and relaxed
 - [ ] Write tests for word count calculation and streak logic
 
+---
 
 ## `feature/structured-data` - Note properties and database views (#235)
 
@@ -716,6 +746,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Add saved views: allow users to save a filter and sort combination as a named view pinned in the sidebar
 - [ ] Write tests for the property parser and table view query logic
 
+---
 
 ## `feature/themes-and-customization` - Themes and visual customisation (#236)
 
@@ -727,6 +758,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Build a theme registry for community CSS themes installable from a curated list
 - [ ] Write tests for CSS variable injection and shortcut binding logic
 
+---
 
 ## `feature/import-and-migration` - Import from other applications (#237)
 
@@ -739,10 +771,7 @@ This entry is retained so that existing issue references remain valid.
 - [ ] Implement Bear import: parse the `.bearbak` export format
 - [ ] Write tests for each import format parser
 
-
-
-
-
+---
 
 ## Backlog (#239)
 
@@ -753,6 +782,7 @@ Lower priority items not focused on the desktop application.
 - [ ] Custom domain support for published notes (CNAME record pointing to the NexusNotes server; SSL via Let's Encrypt ACME)
 - [ ] Obsidian Sync protocol compatibility layer (optional, for users migrating from Obsidian Sync to NexusNotes self-hosted)
 
+---
 
 ## `feature/legal-compliance` - Legal & Compliance (must-haves) (#289)
 
@@ -766,31 +796,44 @@ Lower priority items not focused on the desktop application.
 
 ### Policy pages (static, web)
 
-- [ ] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact)
-- [ ] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
-- [ ] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
-- [ ] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
+- [x] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact) (#289: operator templates in `desktop/public/legal/`; legal review before launch)
+- [x] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
+- [x] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
+- [x] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
 
 ### Cookie consent
 
-- [ ] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
-- [ ] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
-- [ ] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
-- [ ] Link to Cookie Policy from the banner
-- [ ] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
+- [x] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
+- [x] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
+- [x] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
+- [x] Link to Cookie Policy from the banner
+- [x] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
 
 ### Form consents & data deletion
 
-- [ ] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
-- [ ] Store consent timestamp and policy version in the database alongside the user record
-- [ ] Add consent checkbox on any marketing / newsletter sign-up form
+- [x] Add explicit consent checkbox on signup form ("I agree to the Terms of Service and Privacy Policy")
+- [x] Store consent timestamp and policy version in the database alongside the user record
+- [x] Add consent checkbox on any marketing / newsletter sign-up form (N/A: NexusNotes has no marketing or newsletter forms; any future one needs an unticked consent box)
 - [x] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
-- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
+- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
 - [x] Implement account deletion confirmation email with a 7-day grace-period cancellation link
 - [x] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
 
+---
 
 ## Done
+
+### `feature/onboarding` - First-run experience and discoverability (#218, PRs #446-#457)
+
+- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
+- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
+- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
+- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
+- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
+- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
+- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
+- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
+- [x] Write tests for welcome vault creation and checklist state persistence (#453)
 
 ### `feature/version-history-ui` - Version history viewer (#226, PR #420)
 
@@ -1117,1280 +1160,14 @@ Lower priority items not focused on the desktop application.
 - [x] Add command palette (Ctrl+Shift+P) (#38)
 - [x] Polish authentication screen with logo and background (#39)
 
+- [ ] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- [ ] Add consent checkbox on any marketing / newsletter sign-up form
+- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
 
 - [x] Paginate or slim the note list (#461)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- [ ] Fade nodes in with a staggered delay on initial graph load; start the physics simulation from the centre
-- [ ] Animate node hover with a spring scale from 1.0 to 1.2 and a connected-edge glow
-- [ ] Fly the camera smoothly to a clicked node before opening the note
-- [ ] Render edge particle flow using animated dashed lines or moving dot particles
-- [ ] Apply a slow continuous pulse to orphan nodes to draw attention
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- [x] Auto-create a "Getting Started" welcome vault on first login; populate it with sample notes, example wiki-links, a working graph, and a daily note template (#445)
-- [x] Include `Welcome.md`, `My First Note.md` (with editor tips), and `Project Ideas.md` (linked to `Welcome.md`) in the welcome vault so the graph is populated from the start (#446)
-- [x] Add a first-launch checklist in the sidebar: create a note, link two notes, open the graph view, open the command palette; dismiss the checklist on completion (#447)
-- [x] Add contextual tooltips for the graph view, command palette, backlink panel, and tag filter; show each tooltip once and store the dismissed state in localStorage (#448)
-- [x] Include a pinned quick-start guide note in the welcome vault that can be read in under two minutes (#449)
-- [x] Add empty-state illustrations for: no notes in vault, no links in graph, no search results (#450)
-- [x] Add an "Import your existing notes" call-to-action on the welcome screen linking to the import wizard (#451)
-- [x] Add a keyboard shortcut reference panel accessible via the `?` key or the Help menu (#452)
-- [x] Write tests for welcome vault creation and checklist state persistence (#453)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 - [x] Button press feedback, `tabular-nums` counters, `text-wrap: balance/pretty`, one overlay enter/exit motion pair, OS `prefers-reduced-motion` for infinite loops (#468)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 - [x] Tests for `lib/sync.ts` (fake WebSocket + timers) and the save/decrypt/encrypt paths (#466)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

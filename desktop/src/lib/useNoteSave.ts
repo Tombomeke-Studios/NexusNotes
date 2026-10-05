@@ -3,6 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { notes as notesApi, ApiError } from "./api";
+import { SERVER_SUSPECT_EVENT } from "./connection";
 import { saveDraft, loadDraft, loadDraftBase, rebaseDraft, clearDraft } from "./drafts";
 import type { Note } from "./types";
 
@@ -171,6 +172,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
     });
 
   const versions = useRef(new Map<string, number>());
+  /** The request each waiting network retry would resend (#333). */
+  const pendingRetries = useRef(new Map<string, SaveRequest>());
   /** Version of the most recent save requested per note (queued or sent). */
   const requested = useRef(new Map<string, number>());
   /** The next save to send per note, waiting for the in-flight one. */
@@ -229,6 +232,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     savedVersions.current.set(note.id, version);
     lastErrors.current.delete(note.id);
     failures.current.delete(note.id);
+    pendingRetries.current.delete(note.id);
     clearErrorFor(note.id);
     if (conflictsRef.current.has(note.id)) setConflictVersion(note.id, null);
     // The server echoes what was sent (sealed title/path for e2ee vaults);
@@ -287,7 +291,11 @@ export function useNoteSave(deps: NoteSaveDeps) {
     if (kind === "network") {
       const attempt = failures.current.get(id) ?? 0;
       failures.current.set(id, attempt + 1);
+      pendingRetries.current.set(id, req);
       schedule(id, retryDelay(attempt), req);
+      // The health poll is slow while all is well: have it look now, so the
+      // banner shows and the server's return is noticed within seconds.
+      window.dispatchEvent(new CustomEvent(SERVER_SUSPECT_EVENT));
     }
   };
 
@@ -376,6 +384,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
       id,
       setTimeout(() => {
         timers.current.delete(id);
+        if (retry) pendingRetries.current.delete(id);
         const d = depsRef.current;
         if (d.paused) {
           schedule(id, delay, retry);
@@ -442,6 +451,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     requested.current.clear();
     transitions.current.clear();
     failures.current.clear();
+    pendingRetries.current.clear();
     savedVersions.current.clear();
     lastErrors.current.clear();
     resolvedUpTo.current.clear();
@@ -641,7 +651,47 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Runs every waiting network retry now (#333): the app calls this when the
+   * server is reachable again, instead of waiting out the backoff (up to 30 s).
+   */
+  const retryNow = useCallback(() => {
+    for (const [id, req] of [...pendingRetries.current]) {
+      if (timers.current.has(id)) schedule(id, 0, req);
+    }
+    // schedule only reads refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Sends the drafts of notes that are not open (#227): text typed offline in
+   * a note the user then left, or left over from an earlier run, reaches the
+   * server without reopening each note. A draft is saved against the version
+   * it was written on, so a note changed elsewhere since answers 409 and keeps
+   * its draft for the user to resolve when they open it. Notes whose save is
+   * already queued, in flight or waiting to retry are left alone, as are
+   * vaults that keep no drafts (e2ee).
+   */
+  const replayDrafts = useCallback((notes: readonly Note[]) => {
+    const d = depsRef.current;
+    for (const note of notes) {
+      if (isActive(note.id) || !d.keepsDrafts(note.vault_id)) continue;
+      if (lastRequests.current.has(note.id) || timers.current.has(note.id) || workers.current.has(note.id)) continue;
+      const draft = loadDraft(note.id);
+      if (draft === null) continue;
+      if (draft === note.content) {
+        clearDraft(note.id);
+        continue;
+      }
+      void enqueue({ ...note, checksum: loadDraftBase(note.id) ?? note.checksum }, draft);
+    }
+    // enqueue only reads refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return {
+    retryNow,
+    replayDrafts,
     isOwnVersion,
     conflictVersion,
     resolveConflict,

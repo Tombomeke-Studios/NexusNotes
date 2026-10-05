@@ -16,7 +16,15 @@ type User struct {
 	// DeletionScheduledAt is when the account will be erased, during the
 	// grace period after a deletion request (#289); nil otherwise.
 	DeletionScheduledAt *time.Time `json:"deletion_scheduled_at,omitempty"`
+	// When and to which version of the Terms of Service and Privacy Policy
+	// the user agreed at signup (#289); nil for accounts from before.
+	TermsAcceptedAt *time.Time `json:"-"`
+	TermsVersion    string     `json:"-"`
 }
+
+// CurrentTermsVersion names the policy text new accounts agree to; bump it
+// whenever public/legal/terms.html or privacy.html changes materially.
+const CurrentTermsVersion = "2026-10-03"
 
 // Vault encryption modes. For e2ee vaults the server stores only ciphertext
 // and opaque key material (see docs/encryption.md).
@@ -46,6 +54,18 @@ type Vault struct {
 type VersionRetention struct {
 	KeepCount int `json:"keep_count"`
 	KeepDays  int `json:"keep_days"`
+}
+
+// VaultStorageStats is how much a vault stores (#220). Byte counts are the
+// stored sizes: note content and versions are encrypted at rest, so they are a
+// little larger than the plaintext.
+type VaultStorageStats struct {
+	Notes           int64 `json:"notes"`
+	ContentBytes    int64 `json:"content_bytes"`
+	Versions        int64 `json:"versions"`
+	VersionBytes    int64 `json:"version_bytes"`
+	Attachments     int64 `json:"attachments"`
+	AttachmentBytes int64 `json:"attachment_bytes"`
 }
 
 // Retention limits the API accepts.

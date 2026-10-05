@@ -1,6 +1,7 @@
 import { headingSlug } from "../../lib/outline";
+import { highlightMarkdown } from "../../lib/mdHighlight";
 import { LinkPreview } from "./LinkPreview";
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import hljs from "highlight.js/lib/core";
@@ -164,6 +165,8 @@ export function Editor({
   }, [uploadNotice, uploading]);
   const contentRowRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLPreElement>(null);
+  const highlighted = useMemo(() => highlightMarkdown(content), [content]);
   // [[link]] hover preview (#425): opens after a short hover, like a tooltip.
   const [hoverLink, setHoverLink] = useState<{ noteId: string; rect: DOMRect } | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -625,16 +628,43 @@ export function Editor({
         className={`editor-content editor-content--${mode}`}
       >
         {(mode === "edit" || mode === "split") && (
-          <textarea
-            ref={textareaRef}
-            className="editor-textarea"
-            readOnly={readOnly}
+          <div
+            className="editor-source"
             style={{
-              fontSize,
               width: mode === "split" ? `${splitPct}%` : "100%",
               flex: mode === "split" ? "0 0 auto" : "1 1 auto",
             }}
+          >
+          {/* Syntax highlighting (#267): the same text, styled, behind the
+              transparent textarea, scrolled along with it. */}
+          {highlighted && (
+            <pre ref={highlightRef} className="editor-highlight" aria-hidden="true" style={{ fontSize }}>
+              {highlighted.map((line, i) => (
+                <Fragment key={i}>
+                  {line.map((seg, j) =>
+                    seg.cls ? (
+                      <span key={j} className={seg.cls}>
+                        {seg.text}
+                      </span>
+                    ) : (
+                      seg.text
+                    ),
+                  )}
+                  {"\n"}
+                </Fragment>
+              ))}
+              {" "}
+            </pre>
+          )}
+          <textarea
+            ref={textareaRef}
+            className={`editor-textarea${highlighted ? " editor-textarea--highlighted" : ""}`}
+            readOnly={readOnly}
+            style={{ fontSize }}
             value={content}
+            onScroll={(e) => {
+              if (highlightRef.current) highlightRef.current.scrollTop = e.currentTarget.scrollTop;
+            }}
             onChange={(e) => {
               handleChange(e.target.value);
               reportCursor(e.target);
@@ -659,6 +689,7 @@ export function Editor({
             spellCheck={false}
             placeholder="Start writing..."
           />
+          </div>
         )}
         {uploading && (
           <div className="editor-uploading">Uploading…</div>

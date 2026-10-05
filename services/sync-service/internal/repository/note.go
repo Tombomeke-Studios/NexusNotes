@@ -659,3 +659,24 @@ func firstRunes(s string, n int) string {
 	}
 	return s
 }
+
+// StorageStats counts a vault's notes, versions and attachments and their
+// stored sizes (#220). Sizes are measured on the stored (encrypted) values;
+// nothing is decrypted.
+func (r *NoteRepo) StorageStats(ctx context.Context, vaultID string) (model.VaultStorageStats, error) {
+	var s model.VaultStorageStats
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			(SELECT count(*) FROM notes WHERE vault_id = $1),
+			(SELECT coalesce(sum(octet_length(content)), 0) FROM notes WHERE vault_id = $1),
+			(SELECT count(*) FROM note_versions nv JOIN notes n ON n.id = nv.note_id WHERE n.vault_id = $1),
+			(SELECT coalesce(sum(octet_length(nv.content)), 0) FROM note_versions nv JOIN notes n ON n.id = nv.note_id WHERE n.vault_id = $1),
+			(SELECT count(*) FROM attachments WHERE vault_id = $1),
+			(SELECT coalesce(sum(size_bytes), 0) FROM attachments WHERE vault_id = $1)`,
+		vaultID,
+	).Scan(&s.Notes, &s.ContentBytes, &s.Versions, &s.VersionBytes, &s.Attachments, &s.AttachmentBytes)
+	if err != nil {
+		return s, fmt.Errorf("vault storage stats: %w", err)
+	}
+	return s, nil
+}

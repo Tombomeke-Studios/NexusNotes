@@ -66,6 +66,8 @@ type VaultStorageStats struct {
 	VersionBytes    int64 `json:"version_bytes"`
 	Attachments     int64 `json:"attachments"`
 	AttachmentBytes int64 `json:"attachment_bytes"`
+}
+
 // MCP token scopes (#221): read lists and reads notes; read-write may also
 // create, update and delete them.
 const (

@@ -100,6 +100,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- Text typed offline in a note you then left (or before closing the app) is sent as soon as
+  the server is reachable, without reopening the note.
 - `[[links]]` written as code (in backticks or a code block) no longer show up as links in
   the graph and backlinks.
 - The web UI of the Docker stack talks to its own server again instead of to

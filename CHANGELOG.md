@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Graph: links stop at the rim of both notes (no more lines through nodes), arrowheads and
+  curved links are optional toggles, and a zoom bar (buttons, slider, Fit) sits next to
+  scroll-zoom.
 - MCP API tokens for AI clients (`/api/mcp-tokens`): named, read or read-write, limited to
   the note routes their scope allows, refused writes in end-to-end encrypted vaults, and
   every request recorded in an audit log.

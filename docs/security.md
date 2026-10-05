@@ -1,5 +1,7 @@
 # Security — NexusNotes
 
+> Direction: the webview CSP, the Origin allowlist, e-mail links (deep links) and the legal-page hosting change with the move to a desktop-only hosted service. The decisions, including why remote images must also be restricted, are in [hosted-service.md](hosted-service.md). Sections below describe the current state.
+
 ## Authentication
 
 - Passwords hashed with **Argon2id** (OWASP parameters: 19 MiB memory, t=2, p=1),

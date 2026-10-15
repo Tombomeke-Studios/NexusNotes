@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { members as membersApi } from "../../lib/api";
+import { isE2eeVault } from "../../lib/vaultKeys";
 import type { Vault, VaultMember } from "../../lib/types";
 import "./SharingDialog.css";
 import { OverlayMotion } from "../motion/OverlayMotion";
@@ -33,20 +34,36 @@ export function SharingDialog({ vault, currentUserId, isOwner, onClose, onLeft }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vault.id]);
 
-  const invite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || busy) return;
+  // An e2ee vault's members need its passphrase until key exchange exists
+  // (#363), so inviting to one is explained and confirmed first (#546).
+  const encrypted = isE2eeVault(vault);
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  const sendInvite = async (address: string) => {
     setBusy(true);
     setError(null);
     try {
-      await membersApi.invite(vault.id, email.trim(), role);
+      await membersApi.invite(vault.id, address, role);
       setEmail("");
+      setConfirming(null);
       await reload();
     } catch {
       setError("Couldn't invite that person. Check the email is a registered account.");
     } finally {
       setBusy(false);
     }
+  };
+
+  const invite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const address = email.trim();
+    if (!address || busy) return;
+    if (encrypted) {
+      setError(null);
+      setConfirming(address);
+      return;
+    }
+    await sendInvite(address);
   };
 
   const changeRole = async (userId: string, next: "viewer" | "editor") => {
@@ -95,10 +112,34 @@ export function SharingDialog({ vault, currentUserId, isOwner, onClose, onLeft }
               <option value="viewer">Viewer</option>
               <option value="editor">Editor</option>
             </select>
-            <button className="confirm-btn confirm-btn--primary" disabled={!email.trim() || busy}>
+            <button className="confirm-btn confirm-btn--primary" disabled={!email.trim() || busy || confirming !== null}>
               Invite
             </button>
           </form>
+        )}
+
+        {confirming !== null && (
+          <div className="share-e2ee-warning" role="group" aria-label="Before you invite">
+            <p>
+              &ldquo;{vault.name}&rdquo; is end-to-end encrypted. {confirming} will see the vault, but can&rsquo;t
+              read its notes until you give them the vault&rsquo;s passphrase yourself, outside NexusNotes (in
+              person, for example). NexusNotes can&rsquo;t share the key for you yet.
+            </p>
+            <p>Anyone with the passphrase can read every note in this vault.</p>
+            <div className="share-e2ee-actions">
+              <button className="confirm-btn" type="button" onClick={() => setConfirming(null)} disabled={busy} autoFocus>
+                Cancel
+              </button>
+              <button
+                className="confirm-btn confirm-btn--primary"
+                type="button"
+                onClick={() => void sendInvite(confirming)}
+                disabled={busy}
+              >
+                Invite anyway
+              </button>
+            </div>
+          </div>
         )}
 
         {error && <div className="enc-error">{error}</div>}

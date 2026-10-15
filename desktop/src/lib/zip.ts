@@ -28,7 +28,8 @@ export function crc32(bytes: Uint8Array): number {
 export interface ZipEntry {
   /** Forward-slash relative path inside the archive. */
   path: string;
-  content: string;
+  /** Text is stored as UTF-8; bytes (an attachment, #550) as they are. */
+  content: string | Uint8Array;
 }
 
 /** DOS date/time fields for the given moment (zip's timestamp format). */
@@ -39,7 +40,7 @@ function dosDateTime(d: Date): { date: number; time: number } {
   };
 }
 
-/** Builds a complete ZIP archive from UTF-8 text entries. */
+/** Builds a complete ZIP archive from text (stored as UTF-8) and byte entries. */
 export function buildZip(entries: ZipEntry[], now: Date = new Date()): Uint8Array {
   const encoder = new TextEncoder();
   const { date, time } = dosDateTime(now);
@@ -52,7 +53,7 @@ export function buildZip(entries: ZipEntry[], now: Date = new Date()): Uint8Arra
 
   for (const entry of entries) {
     const name = encoder.encode(entry.path);
-    const data = encoder.encode(entry.content);
+    const data = typeof entry.content === "string" ? encoder.encode(entry.content) : entry.content;
     const crc = crc32(data);
 
     // Local file header: signature, version, flags (bit 11 = UTF-8 names),

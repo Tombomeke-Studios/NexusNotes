@@ -304,7 +304,13 @@ caller's role on *that* vault; routes that also name a vault in the path
 additionally require the resource to belong to it. Missing resources answer
 `404`, resources the caller cannot access answer `403`. E2EE
 note: a shared e2ee vault's passphrase is out of band — the server never holds
-the key, so collaborators must share the passphrase themselves.
+the key, so collaborators must share the passphrase themselves. Until per-user
+key exchange exists (#363) the client says so: inviting someone to an e2ee
+vault first explains, naming the vault, that the invitee needs its passphrase
+from the owner and that anyone holding it can read every note (Cancel is the
+default), and a member's unlock prompt asks them to get the passphrase from
+the owner and offers no recovery-code reset, which would change the
+passphrase for everyone.
 
 ## Linked-File URL Proxy
 

@@ -14,6 +14,11 @@ interface UnlockVaultDialogProps {
    */
   onRecover: (recoveryCode: string, newPassphrase: string) => Promise<void>;
   onCancel: () => void;
+  /**
+   * The vault is shared with the user, not theirs (#546): they need the
+   * owner's passphrase, and the owner's recovery code is not theirs to use.
+   */
+  shared?: boolean;
 }
 
 /**
@@ -22,7 +27,7 @@ interface UnlockVaultDialogProps {
  * (Argon2id), so the dialog shows a busy state while deriving. Unlocked keys
  * live in memory only (vaultKeySession).
  */
-export function UnlockVaultDialog({ vaultName, onUnlock, onRecover, onCancel }: UnlockVaultDialogProps) {
+export function UnlockVaultDialog({ vaultName, onUnlock, onRecover, onCancel, shared = false }: UnlockVaultDialogProps) {
   const [mode, setMode] = useState<"passphrase" | "recovery">("passphrase");
   const [passphrase, setPassphrase] = useState("");
   const [code, setCode] = useState("");
@@ -83,8 +88,17 @@ export function UnlockVaultDialog({ vaultName, onUnlock, onRecover, onCancel }: 
         {mode === "passphrase" ? (
           <>
             <div className="confirm-body">
-              This vault is end-to-end encrypted. Enter its passphrase to decrypt
-              your notes on this device.
+              {shared ? (
+                <>
+                  This vault is end-to-end encrypted and shared with you. Ask the owner for this
+                  vault&apos;s passphrase, then enter it here to read its notes on this device.
+                </>
+              ) : (
+                <>
+                  This vault is end-to-end encrypted. Enter its passphrase to decrypt
+                  your notes on this device.
+                </>
+              )}
             </div>
             <input
               className="enc-input"
@@ -144,13 +158,15 @@ export function UnlockVaultDialog({ vaultName, onUnlock, onRecover, onCancel }: 
 
         {(error || validation) && <div className="enc-error enc-unlock-error">{error ?? validation}</div>}
 
-        <button
-          className="enc-mode-link"
-          disabled={busy}
-          onClick={() => switchMode(mode === "passphrase" ? "recovery" : "passphrase")}
-        >
-          {mode === "passphrase" ? "Forgot the passphrase? Use your recovery code" : "Back to passphrase unlock"}
-        </button>
+        {!shared && (
+          <button
+            className="enc-mode-link"
+            disabled={busy}
+            onClick={() => switchMode(mode === "passphrase" ? "recovery" : "passphrase")}
+          >
+            {mode === "passphrase" ? "Forgot the passphrase? Use your recovery code" : "Back to passphrase unlock"}
+          </button>
+        )}
 
         <div className="confirm-actions">
           <button className="confirm-btn" onClick={onCancel} disabled={busy}>

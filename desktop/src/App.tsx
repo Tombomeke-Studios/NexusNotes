@@ -2262,6 +2262,7 @@ export default function App() {
           <UnlockVaultDialog
             key="unlock-vault"
             vaultName={vaultList.find((v) => v.id === unlockVaultId)?.name ?? "Vault"}
+            shared={(vaultList.find((v) => v.id === unlockVaultId)?.role ?? "owner") !== "owner"}
             onUnlock={handleUnlockVault}
             onRecover={handleRecoverVault}
             onCancel={() => setUnlockVaultId(null)}

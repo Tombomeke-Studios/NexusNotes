@@ -97,3 +97,17 @@ func TestAuth_BlankEmailRejected(t *testing.T) {
 		}
 	}
 }
+
+// #342: so do the public forms that take only an email.
+func TestEmailOnlyForms_BlankEmailRejected(t *testing.T) {
+	auth := NewAuthHandler(nil, nil, nil, nil)
+	deletion := NewDeletionHandler(nil)
+	for name, fn := range map[string]http.HandlerFunc{"forgot-password": auth.ForgotPassword, "request-deletion": deletion.Request} {
+		b, _ := json.Marshal(map[string]any{"email": " \t "})
+		rec := httptest.NewRecorder()
+		fn(rec, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(b)))
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("%s with a blank email: status %d, want 400", name, rec.Code)
+		}
+	}
+}

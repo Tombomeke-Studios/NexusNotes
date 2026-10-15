@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
@@ -80,7 +81,9 @@ func (h *DeletionHandler) Request(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
 	}
-	if err := decodeSmallJSON(w, r, &req); err != nil || req.Email == "" {
+	err := decodeSmallJSON(w, r, &req)
+	req.Email = strings.TrimSpace(req.Email)
+	if err != nil || req.Email == "" {
 		writeBodyError(w, err, "email is required")
 		return
 	}

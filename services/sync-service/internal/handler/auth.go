@@ -198,7 +198,9 @@ func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email string `json:"email"`
 	}
-	if err := decodeSmallJSON(w, r, &req); err != nil || req.Email == "" {
+	err := decodeSmallJSON(w, r, &req)
+	req.Email = strings.TrimSpace(req.Email)
+	if err != nil || req.Email == "" {
 		writeBodyError(w, err, "email is required")
 		return
 	}

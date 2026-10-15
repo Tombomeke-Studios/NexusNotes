@@ -13,7 +13,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 > ticks only its own line. Merge order matters where two lines touch the same files.
 
 ### Desktop developer (in order)
-- [ ] `fix/graph-link-contrast`: visible graph links, zoom bar, link-style toggles (#543)
+- [x] `fix/graph-link-contrast`: visible graph links, zoom bar, link-style toggles (#543)
 - [ ] `fix/legal-links-desktop`: policy-page links open in the packaged app, bundled `/legal/` pages only (#544)
 - [ ] `feature/vault-lock`: lock an encrypted vault manually and auto-lock it when idle (#545)
 - [ ] `feature/e2ee-share-warning`: warn before inviting someone to an encrypted vault (#546)

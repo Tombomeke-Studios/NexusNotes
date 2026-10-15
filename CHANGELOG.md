@@ -6,8 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
-- Graph: links stop at the rim of both notes (no more lines through nodes), arrowheads and
-  curved links are optional toggles, and a zoom bar (buttons, slider, Fit) sits next to
+- Graph: links are drawn in a clearly visible grey (at least 3:1 contrast, green for the
+  open note) and stop at the rim of both notes, arrowheads and curved links are optional
+  toggles that the app remembers, and a zoom bar (buttons, slider, Fit) sits next to
   scroll-zoom.
 - Settings > AI Access: create and revoke MCP tokens, copy a ready-made config for Claude
   Desktop or Cursor, and see when each token was last used and what it did.

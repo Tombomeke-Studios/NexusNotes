@@ -213,6 +213,7 @@ it is what it exists for:
 | `src/components/Encryption/` | E2EE vault UI: encryption choice (EncryptionSetup, on by default with an opt-out warning), new-vault dialog, one-time recovery-code dialog, unlock dialog, ConvertVaultForm (encrypt an existing vault) |
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
+| `src/lib/syncEvents.ts` | Checks for pushed sync events before they touch state: does a note belong to the open vault (#562), is a note-list load still the latest (#563), what to do when the open note is deleted elsewhere (#561) |
 | `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror |
 | `src/lib/useCloseGuard.ts` | Closing a tab/window or signing out with unsaved text (in any note): waits for the save result, keeps the dialog open with the reason on failure (#283) |
 | `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing) |

@@ -47,6 +47,7 @@ import {
   ApiError,
 } from "./lib/api";
 import { restoreFailureAction } from "./lib/session";
+import { isForVault } from "./lib/syncEvents";
 import { sealLegacyMeta, needsMetaSeal } from "./lib/legacyMeta";
 import {
   setupVaultEncryption,
@@ -487,8 +488,13 @@ export default function App() {
       syncClient.connect();
       const unsub = syncClient.onMessage((type, payload) => {
         if (type === "note:created" || type === "note:updated") {
+          // Notes of other vaults (shared with this account, open elsewhere)
+          // never join the open vault's list (#562), not even after a vault
+          // switch during the decryption below.
+          if (!isForVault(payload as Note, activeVaultIdRef.current)) return;
           // E2ee payloads arrive as ciphertext; state only holds plaintext.
           decryptIncomingChecked(payload as Note).then(({ note: incoming, readable }) => {
+            if (!isForVault(incoming, activeVaultIdRef.current)) return;
             // Text that could not be decrypted never reaches the open note:
             // not the editor, not a conflict comparison (it would be saved
             // back as the note's content).

@@ -47,7 +47,7 @@ import {
   ApiError,
 } from "./lib/api";
 import { restoreFailureAction } from "./lib/session";
-import { isForVault } from "./lib/syncEvents";
+import { createLoadSequence, isForVault } from "./lib/syncEvents";
 import { sealLegacyMeta, needsMetaSeal } from "./lib/legacyMeta";
 import {
   setupVaultEncryption,
@@ -406,13 +406,20 @@ export default function App() {
   const [loadingNoteId, setLoadingNoteId] = useState<string | null>(null);
   // True while a vault's note list is on its way (#434); only the latest load counts.
   const [notesLoading, setNotesLoading] = useState(false);
-  const notesLoadSeq = useRef(0);
+  const notesLoad = useRef(createLoadSequence());
+  /** A locked vault was selected: a load still running for the previous one must not land (#563). */
+  const cancelNoteLoads = useCallback(() => {
+    notesLoad.current.invalidate();
+    setNotesLoading(false);
+  }, []);
   const loadNotes = useCallback(async (vaultId: string) => {
-    const seq = ++notesLoadSeq.current;
+    const seq = notesLoad.current.begin();
     setNotesLoading(true);
     try {
       const list = await notesApi.list(vaultId);
       const decrypted = await Promise.all((list || []).map(decryptIncoming));
+      // Another vault was selected meanwhile: its list (and drafts) win (#563).
+      if (!notesLoad.current.isCurrent(seq)) return;
       setNoteList(decrypted);
       // Drafts typed offline in notes that are not open, maybe in an earlier
       // run, go out now rather than when each note is reopened (#227).
@@ -423,9 +430,9 @@ export default function App() {
         void sealLegacyMeta(list, vault!, notesApi.update).finally(() => sealingMeta.current.delete(vaultId));
       }
     } catch {
-      setNoteList([]);
+      if (notesLoad.current.isCurrent(seq)) setNoteList([]);
     } finally {
-      if (seq === notesLoadSeq.current) setNotesLoading(false);
+      if (notesLoad.current.isCurrent(seq)) setNotesLoading(false);
     }
   }, [decryptIncoming, vaultOf, replayDrafts]);
 
@@ -439,6 +446,7 @@ export default function App() {
           // A locked e2ee vault prompts for its passphrase instead of loading
           // notes we couldn't decrypt anyway.
           if (isVaultLocked(list.find((v) => v.id === id))) {
+            cancelNoteLoads();
             setUnlockVaultId(id);
           } else {
             loadNotes(id);
@@ -450,7 +458,7 @@ export default function App() {
       auth.logout();
       setUser(null);
     }
-  }, [loadNotes]);
+  }, [loadNotes, cancelNoteLoads]);
   const loadVaultsRef = useRef(loadVaults);
   loadVaultsRef.current = loadVaults;
 
@@ -556,6 +564,7 @@ export default function App() {
           const { vault_id } = payload as { vault_id: string };
           if (vaultKeySession.get(vault_id)) return; // converted here
           if (activeVaultIdRef.current === vault_id) {
+            cancelNoteLoads();
             for (const n of noteListRef.current) clearDraft(n.id);
             setTabs([]);
             setActiveTabKey(null);
@@ -577,7 +586,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts]);
+  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -1177,13 +1186,14 @@ export default function App() {
       setFilterFolder(null);
       setSearchQuery("");
       if (isVaultLocked(vaultListRef.current.find((v) => v.id === id))) {
+        cancelNoteLoads();
         setNoteList([]);
         setUnlockVaultId(id);
       } else {
         loadNotes(id);
       }
     },
-    [loadNotes],
+    [loadNotes, cancelNoteLoads],
   );
 
   /**

@@ -106,7 +106,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 
 ### Fixed
 - An email address typed with spaces around it now signs up and logs in as the same account
-  as without them; an address of only spaces is refused.
+  as without them; an address of only spaces is refused, also on the password-reset and
+  account-deletion forms, and their emails go to the address on the account.
 - Text typed offline in a note you then left (or before closing the app) is sent as soon as
   the server is reachable, without reopening the note.
 - `[[links]]` written as code (in backticks or a code block) no longer show up as links in

@@ -225,10 +225,11 @@ export async function planImport<F extends ImportFile>(
         taken.add(name.toLowerCase());
         attachments.push({ file, name });
       }
-      const lines = attachments.map((a) =>
-        IMAGE.test(a.name) || a.file.type?.startsWith("image/") ? `- ![[${a.name}]]` : `- [[${a.name}]]`,
+      // One paragraph each: an image in a list item renders beside its bullet.
+      const blocks = attachments.map((a) =>
+        IMAGE.test(a.name) || a.file.type?.startsWith("image/") ? `![[${a.name}]]` : `[[${a.name}]]`,
       );
-      const content = `Imported files that no note linked to.\n\n${lines.join("\n")}\n`;
+      const content = `Imported files that no note linked to.\n\n${blocks.join("\n\n")}\n`;
       plan.notes.push({ title, path: "", content, attachments });
     }
   }

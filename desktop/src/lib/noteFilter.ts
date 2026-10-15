@@ -58,11 +58,18 @@ export function searchNotes(notes: Note[], query: string): SearchHit[] {
   return hits;
 }
 
-export function uniqueTitle(existing: Set<string>, base: string): string {
-  if (!existing.has(base)) return base;
+/**
+ * A title no other note has. Titles compare case-insensitively (#567): wiki
+ * links and the file names of an export ignore case, so "Plan" and "plan"
+ * would be the same note there.
+ */
+export function uniqueTitle(existing: ReadonlySet<string>, base: string): string {
+  const taken = new Set([...existing].map((t) => t.toLowerCase()));
+  const free = (title: string) => !taken.has(title.toLowerCase());
+  if (free(base)) return base;
   // Fill the lowest free number: base, base 1, base 2, …
   let i = 1;
-  while (existing.has(`${base} ${i}`)) i++;
+  while (!free(`${base} ${i}`)) i++;
   return `${base} ${i}`;
 }
 

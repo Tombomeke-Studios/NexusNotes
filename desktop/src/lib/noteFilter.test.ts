@@ -108,6 +108,12 @@ describe("uniqueTitle", () => {
     const titles = new Set(["Untitled", "Untitled 2"]);
     expect(uniqueTitle(titles, "Untitled")).toBe("Untitled 1");
   });
+
+  it("compares titles case-insensitively (#567)", () => {
+    expect(uniqueTitle(new Set(["plan"]), "Plan")).toBe("Plan 1");
+    expect(uniqueTitle(new Set(["PLAN", "plan 1"]), "Plan")).toBe("Plan 2");
+    expect(uniqueTitle(new Set(["Other"]), "Plan")).toBe("Plan");
+  });
 });
 
 describe("searchNotes", () => {

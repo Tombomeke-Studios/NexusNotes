@@ -64,28 +64,146 @@ ${noteBodyToHtml(note.content)}
 `;
 }
 
+/** An attachment's decrypted bytes, for the vault zip (#550). */
+export interface ExportAttachment {
+  noteId: string;
+  /** The attachment's file name, as the note's `![[name]]` embeds refer to it. */
+  name: string;
+  bytes: Uint8Array;
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function numberedName(name: string, n: number): string {
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? `${name.slice(0, dot)} ${n}${name.slice(dot)}` : `${name} ${n}`;
+}
+
+/** Points a note's `![[name]]` / `[[name]]` links at `path` (a vault-root path, as Obsidian reads it). */
+function relinkAttachment(content: string, name: string, path: string): string {
+  return content.replace(/(!?)\[\[([^\]|#]+)((?:#[^\]|]*)?)((?:\|[^\]]*)?)\]\]/g, (match, bang, target: string, sub, alias) =>
+    target.trim() === name ? `${bang}[[${path}${sub}${alias}]]` : match,
+  );
+}
+
 /**
  * Obsidian-compatible zip entries for a vault: one `.md` file per note named
  * by its title, nested in its folder path; title collisions inside the same
  * folder get a numeric suffix so no entry is silently overwritten.
+ *
+ * Attachments (#550) go next to their note, where `![[name]]` resolves in
+ * Obsidian and similar tools. The same file attached to two notes of a folder
+ * is stored once; a different file whose name is taken goes to a
+ * "<note> files" folder, and only then is that note's link to it rewritten
+ * to the new path.
  */
-export function vaultToZipEntries(notes: Note[]): ZipEntry[] {
-  const used = new Set<string>();
-  return notes.map((n) => {
+export function vaultToZipEntries(notes: Note[], attachments: ExportAttachment[] = []): ZipEntry[] {
+  const used = new Map<string, Uint8Array | null>(); // lowercased path → bytes (null for a note)
+  const notePaths = notes.map((n) => {
     const dir = n.path ? `${n.path}/` : "";
     const base = safeFilename(n.title);
     let path = `${dir}${base}.md`;
     for (let i = 2; used.has(path.toLowerCase()); i++) {
       path = `${dir}${base} ${i}.md`;
     }
-    used.add(path.toLowerCase());
-    return { path, content: n.content };
+    used.set(path.toLowerCase(), null);
+    return path;
   });
+
+  const byNote = new Map(notes.map((n) => [n.id, n]));
+  const content = new Map(notes.map((n) => [n.id, n.content]));
+  const files: ZipEntry[] = [];
+  const place = (path: string, bytes: Uint8Array): "new" | "same" | "taken" => {
+    const held = used.get(path.toLowerCase());
+    if (held === undefined) {
+      used.set(path.toLowerCase(), bytes);
+      files.push({ path, content: bytes });
+      return "new";
+    }
+    return held && sameBytes(held, bytes) ? "same" : "taken";
+  };
+  for (const att of attachments) {
+    const n = byNote.get(att.noteId);
+    if (!n) continue;
+    const dir = n.path ? `${n.path}/` : "";
+    const name = safeFilename(att.name);
+    let path = `${dir}${name}`;
+    if (place(path, att.bytes) === "taken") {
+      const own = `${dir}${safeFilename(n.title)} files/`;
+      path = `${own}${name}`;
+      for (let i = 2; place(path, att.bytes) === "taken"; i++) path = `${own}${numberedName(name, i)}`;
+    }
+    if (path !== `${dir}${att.name}`) content.set(n.id, relinkAttachment(content.get(n.id)!, att.name, path));
+  }
+
+  return [...notes.map((n, i) => ({ path: notePaths[i], content: content.get(n.id)! })), ...files];
 }
 
 /** Builds the vault zip bytes. */
-export function vaultToZip(notes: Note[], now?: Date): Uint8Array {
-  return buildZip(vaultToZipEntries(notes), now);
+export function vaultToZip(notes: Note[], now?: Date, attachments: ExportAttachment[] = []): Uint8Array {
+  return buildZip(vaultToZipEntries(notes, attachments), now);
+}
+
+/** The toast after a vault export: how many files went in, and which could not be downloaded. */
+export function describeExport(
+  vaultName: string,
+  files: number,
+  failed: string[],
+): { message: string; kind: "success" | "error" } {
+  const withFiles = files > 0 ? ` with ${files} attached file${files === 1 ? "" : "s"}` : "";
+  const message = `Exported “${vaultName}” as a zip${withFiles}.`;
+  if (failed.length === 0) return { message, kind: "success" };
+  const shown = failed.slice(0, 5).join(", ") + (failed.length > 5 ? ` and ${failed.length - 5} more` : "");
+  return { message: `${message} Not included (download failed): ${shown}.`, kind: "error" };
+}
+
+/** Where the vault export gets each note's attachments (through the vault's encryption). */
+export interface AttachmentSource<A extends { filename: string }> {
+  list(noteId: string): Promise<A[]>;
+  /** The attachment's plaintext bytes. */
+  read(att: A): Promise<Uint8Array>;
+  onProgress?(done: number, total: number): void;
+}
+
+/**
+ * Downloads every note's attachments for the vault zip (#550), a few notes
+ * at a time. Nothing is skipped silently: an attachment that fails to
+ * download, or a note whose list fails, is named in `failed`.
+ */
+export async function collectAttachments<A extends { filename: string }>(
+  notes: Note[],
+  source: AttachmentSource<A>,
+  concurrency = 4,
+): Promise<{ attachments: ExportAttachment[]; failed: string[] }> {
+  const perNote: ExportAttachment[][] = notes.map(() => []);
+  const failed: string[][] = notes.map(() => []);
+  let next = 0;
+  let done = 0;
+  const worker = async () => {
+    while (next < notes.length) {
+      const i = next++;
+      const n = notes[i];
+      try {
+        for (const att of await source.list(n.id)) {
+          try {
+            perNote[i].push({ noteId: n.id, name: att.filename, bytes: await source.read(att) });
+          } catch {
+            failed[i].push(att.filename);
+          }
+        }
+      } catch {
+        failed[i].push(`the files of “${n.title}”`);
+      }
+      source.onProgress?.(++done, notes.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, notes.length) }, worker));
+  // Note order, not finishing order, so the zip is the same on every run.
+  return { attachments: perNote.flat(), failed: failed.flat() };
 }
 
 /** How long a download's object URL stays valid after the click. */

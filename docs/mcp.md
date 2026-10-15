@@ -89,6 +89,7 @@ which token invoked which tool at what time plus a sanitised argument summary
 | `services/mcp-service`: stdio + stateless Streamable HTTP, the 12 tools below | Done (#485) |
 | Resources (`nexusnotes://` URIs) and prompts | Done (#489) |
 | Desktop "AI Access" settings: tokens, copy config, last used, activity | Done (#487) |
+| Tests: the sync-service client (`internal/nexus`) and a full flow over Streamable HTTP (connect with a token, `list_vaults`, `read_note`) against a stub | Done (#552) |
 
 The MCP service talks to the sync service over its REST API with the user's token and
 names the tool it runs in an `X-MCP-Tool` header, which the audit log records.

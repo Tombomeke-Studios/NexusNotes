@@ -42,7 +42,9 @@ cp .env.production.example .env   # then fill in the REQUIRED secrets
 docker compose up -d
 ```
 
-Open `http://localhost:3000` in your browser. The stack has no built-in passwords:
+This starts a self-hosted server. The desktop app is the client; until it can be pointed at
+another server (#500), the stack also serves the browser UI at `http://localhost:3000`, which
+is being retired ([why](docs/hosted-service.md)). The stack has no built-in passwords:
 see [docs/deployment.md](docs/deployment.md#production-docker-compose) for the
 settings, upgrading an existing installation and optional monitoring. Before others sign up,
 complete the policy pages in `desktop/public/legal/`
@@ -211,7 +213,7 @@ with the OS frame disabled, `decorations: false`).
 > `VITE_API_URL` must be set in the terminal *before* `npm run tauri dev`, so the
 > Vite dev server it spawns knows where the backend is.
 
-### 2b. Or run the UI in a browser (lightweight, no Rust) — for quick UI work
+### 2b. Or run the UI in a browser (lightweight, no Rust) — a test harness only
 
 ```powershell
 # Windows (PowerShell)
@@ -221,11 +223,10 @@ $env:VITE_API_URL = "http://localhost:8080"
 npm run dev
 ```
 
-Open **http://localhost:1420**. Hot-reload; everything works — editor, tabs,
-command palette, graph, daily notes, right panel, settings, global search. The
-**only** difference from the native window: the title-bar window buttons
-(minimize / maximize / close) are inert in a browser, because they call native
-Tauri APIs. Harmless — use this when you don't want to wait on Rust compiles.
+Open **http://localhost:1420**. This is how the Playwright tests drive the UI and a quick
+way to check UI changes without waiting on Rust compiles; it is not a way to use the app.
+Native features (window buttons, policy windows, the bundled backend) do nothing in a
+browser.
 
 Either way, register an account on the first screen, create a vault, and start
 testing.

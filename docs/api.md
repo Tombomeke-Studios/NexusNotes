@@ -15,6 +15,11 @@ JSON request bodies are capped: 64 KiB on the authentication endpoints and 8 MiB
 all other JSON endpoints (note content included). Reading stops at the cap and a larger body
 is rejected with `413 Request Entity Too Large` and `{"error":"request body too large"}`. Attachment uploads have their own 25 MiB limit.
 
+## Caching
+
+Responses under `/api/` carry `Cache-Control: private, no-store` unless the endpoint says
+otherwise; attachment downloads are `private, max-age=31536000, immutable`.
+
 ## Authentication
 
 ### POST /api/auth/register

@@ -25,7 +25,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] `test/email-normalisation`: acceptance tests for email normalisation, then close (#342)
 - [ ] `feature/export-attachments`: include attachments in the vault export (#550)
 - [ ] `feature/import-attachments`: import non-markdown files as attachments; merges before `feature/vault-lock` (#551)
-- [ ] `fix/no-store-api`: `Cache-Control: no-store` on authenticated API responses (#553)
+- [x] `fix/no-store-api`: `Cache-Control: no-store` on authenticated API responses (#553)
 - [ ] `fix/mcp-origin`: check the Origin header on the MCP HTTP transport (#556)
 - [ ] `test/mcp-client`: MCP client tests and a full-flow integration test (#552)
 - [ ] `feature/version-paging`: paginate the version history, History panel loads more on scroll (#555)

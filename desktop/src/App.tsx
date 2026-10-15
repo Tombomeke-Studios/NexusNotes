@@ -23,7 +23,8 @@ import { VersionHistoryDialog } from "./components/History/VersionHistoryDialog"
 import { ShortcutsDialog } from "./components/Help/ShortcutsDialog";
 import { isTypingTarget } from "./lib/shortcuts";
 import { addedLinks, completeStep, startChecklist } from "./lib/checklist";
-import { planImport } from "./lib/importNotes";
+import { planImport, runImport, summarizeImport } from "./lib/importNotes";
+import { uploadAttachment } from "./lib/attachmentClient";
 import { Toaster } from "./components/Toaster";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { toast } from "./lib/toast";
@@ -924,28 +925,24 @@ export default function App() {
       toast("Unlock the vault before importing into it.", { kind: "error" });
       return;
     }
+    // Other files become attachments of the notes that embed them (#551).
     const plan = await planImport(Array.from(list), noteListRef.current);
-    const created: Note[] = [];
-    for (const [i, n] of plan.notes.entries()) {
-      if (i % 5 === 0) toast(`Importing ${i + 1} of ${plan.notes.length}…`, { key: "import", duration: 60_000 });
-      try {
+    const { created, ...result } = await runImport(plan, {
+      createNote: async (n): Promise<Note> => {
         const { content, checksum } = await encryptNoteForVault(vault, n.content);
         const title = await encryptFieldForVault(vault, n.title);
         const path = await encryptFieldForVault(vault, n.path);
         const note = await notesApi.create(vault.id, title, path, content, checksum);
-        created.push({ ...note, title: n.title, path: n.path, content: n.content });
-      } catch {
-        /* reported in the summary below */
-      }
-    }
+        return { ...note, title: n.title, path: n.path, content: n.content };
+      },
+      uploadAttachment: (noteId, file) => uploadAttachment(noteId, file, vault),
+      onProgress: (done, total) =>
+        done % 5 === 0 && toast(`Importing ${done + 1} of ${total}…`, { key: "import", duration: 60_000 }),
+    });
     const ids = new Set(created.map((n) => n.id));
     setNoteList((prev) => [...prev.filter((n) => !ids.has(n.id)), ...created]);
-    const failed = plan.notes.length - created.length;
-    const skipped = plan.skipped.existing + plan.skipped.tooLarge;
-    const parts = [`Imported ${created.length} note${created.length === 1 ? "" : "s"}`];
-    if (skipped > 0) parts.push(`${skipped} skipped (already there or over 5 MB)`);
-    if (failed > 0) parts.push(`${failed} failed`);
-    toast(parts.join(", ") + ".", { key: "import", kind: failed > 0 ? "error" : "success" });
+    const { message, kind } = summarizeImport({ created, ...result });
+    toast(message, { key: "import", kind, duration: message.length > 60 ? 12_000 : undefined });
   }, []);
 
   const handleExportVault = useCallback(async () => {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -91,5 +92,25 @@ func TestParseLinks_ignoresCode(t *testing.T) {
 	got := ParseLinks(content)
 	if len(got) != 2 || got[0].TargetTitle != "Target" || got[1].TargetTitle != "Also real" {
 		t.Fatalf("links = %+v, want Target and Also real", got)
+	}
+}
+
+// Attachment embeds and links to attached files are not note links (#565).
+func TestParseLinks_ignoresAttachments(t *testing.T) {
+	content := "![[beach.png]] ![[photo.JPG|300]] ![[Diagram]] [[report.pdf]] [[assets/song.mp3|listen]] [[Real note]] [[v2.0 plan]]"
+	var titles []string
+	for _, l := range ParseLinks(content) {
+		titles = append(titles, l.TargetTitle)
+	}
+	if strings.Join(titles, ",") != "Real note,v2.0 plan" {
+		t.Fatalf("links = %q, want Real note and v2.0 plan", titles)
+	}
+}
+
+func TestIsAttachmentName(t *testing.T) {
+	for name, want := range map[string]bool{"a/b/Scan.PDF": true, "Meeting 2026.10.15": false, ".png": false, "Notes": false} {
+		if got := isAttachmentName(name); got != want {
+			t.Errorf("isAttachmentName(%q) = %v, want %v", name, got, want)
+		}
 	}
 }

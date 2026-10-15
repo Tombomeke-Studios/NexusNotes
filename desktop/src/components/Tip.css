@@ -44,11 +44,8 @@
 }
 
 /* Placement per feature. */
+/* In the graph's top area, below the search box and toolbar (GraphView.css). */
 .graph-tip {
-  position: absolute;
-  top: 60px;
-  left: 14px;
-  z-index: 2;
   max-width: 300px;
 }
 

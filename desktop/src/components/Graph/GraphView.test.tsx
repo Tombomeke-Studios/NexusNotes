@@ -39,6 +39,18 @@ describe("GraphView", () => {
     expect(row!.querySelector(".graph-zoom")).not.toBeNull();
   });
 
+  it("puts the search box, then the toolbar, then the tip in one top row that wraps (#580)", () => {
+    const { container } = renderGraph(twoNotes);
+    const top = container.querySelector(".graph-top");
+    expect(top).not.toBeNull();
+    const row = top!.querySelector(".graph-top-row");
+    expect(row).not.toBeNull();
+    // Search first, so on a narrow pane the toolbar wraps below it.
+    expect([...row!.children].map((el) => el.className.split(" ")[0])).toEqual(["graph-search", "graph-controls"]);
+    // The tip follows the row instead of sitting at a fixed offset under it.
+    expect(top!.lastElementChild).toHaveClass("graph-tip");
+  });
+
   it("remembers the Curved and Arrows choices", () => {
     renderGraph(twoNotes);
     fireEvent.click(screen.getByRole("button", { name: "Curved" }));

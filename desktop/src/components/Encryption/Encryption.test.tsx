@@ -208,6 +208,20 @@ describe("UnlockVaultDialog", () => {
     render(<UnlockVaultDialog vaultName="Secret" onUnlock={vi.fn()} onRecover={vi.fn()} onCancel={() => {}} />);
     expect(screen.getByRole("button", { name: "Unlock" })).toHaveProperty("disabled", true);
   });
+
+  it("tells a member of a shared vault to ask the owner for the passphrase (#546)", () => {
+    render(<UnlockVaultDialog vaultName="Work" shared onUnlock={vi.fn()} onRecover={vi.fn()} onCancel={() => {}} />);
+    const dialog = screen.getByRole("dialog", { name: "Unlock Work" });
+    expect(dialog.textContent).toMatch(/Ask the owner for this vault's passphrase/);
+    // The recovery code belongs to the owner; recovering would also change the passphrase for everyone.
+    expect(screen.queryByText(/use your recovery code/i)).toBeNull();
+  });
+
+  it("keeps the owner's wording and recovery link", () => {
+    render(<UnlockVaultDialog vaultName="Work" onUnlock={vi.fn()} onRecover={vi.fn()} onCancel={() => {}} />);
+    expect(screen.queryByText(/ask the owner/i)).toBeNull();
+    expect(screen.getByText(/use your recovery code/i)).toBeTruthy();
+  });
 });
 
 describe("ChangePassphraseForm", () => {

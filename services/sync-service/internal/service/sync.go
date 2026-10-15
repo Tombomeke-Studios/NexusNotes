@@ -331,6 +331,12 @@ func (s *SyncService) GetVersions(ctx context.Context, noteID string) ([]model.N
 	return s.noteRepo.ListVersionInfo(ctx, noteID)
 }
 
+// GetVersionsPage lists one page of a note's versions, newest first, below
+// the cursor (nil = from the newest), and the next page's cursor (#555).
+func (s *SyncService) GetVersionsPage(ctx context.Context, noteID string, limit int, before *repository.VersionCursor) ([]model.NoteVersion, *repository.VersionCursor, error) {
+	return s.noteRepo.ListVersionInfoPage(ctx, noteID, limit, before)
+}
+
 // GetVersion loads one version of a note, content included.
 func (s *SyncService) GetVersion(ctx context.Context, noteID, versionID string) (*model.NoteVersion, error) {
 	return s.noteRepo.GetVersion(ctx, noteID, versionID)

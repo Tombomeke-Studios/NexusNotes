@@ -433,6 +433,76 @@ func (r *NoteRepo) ListVersionInfo(ctx context.Context, noteID string) ([]model.
 	return versions, rows.Err()
 }
 
+// VersionCursor marks where a page of ListVersionInfoPage ended: versions
+// come newest first in (created_at, id) order, so the next page starts
+// below this pair (#555).
+type VersionCursor struct {
+	CreatedAt time.Time
+	ID        string
+}
+
+// String encodes the cursor for an API response header.
+func (c VersionCursor) String() string {
+	return base64.RawURLEncoding.EncodeToString([]byte(c.CreatedAt.UTC().Format(time.RFC3339Nano) + "\x00" + c.ID))
+}
+
+// ParseVersionCursor decodes a cursor made by String.
+func ParseVersionCursor(s string) (VersionCursor, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return VersionCursor{}, ErrInvalidCursor
+	}
+	at, id, ok := strings.Cut(string(raw), "\x00")
+	if !ok || id == "" {
+		return VersionCursor{}, ErrInvalidCursor
+	}
+	t, err := time.Parse(time.RFC3339Nano, at)
+	if err != nil {
+		return VersionCursor{}, ErrInvalidCursor
+	}
+	return VersionCursor{CreatedAt: t, ID: id}, nil
+}
+
+// ListVersionInfoPage returns up to limit of the note's versions (without
+// content), newest first, below the cursor (nil = from the newest), and the
+// cursor of the next page, nil when this was the last one (#555).
+func (r *NoteRepo) ListVersionInfoPage(ctx context.Context, noteID string, limit int, before *VersionCursor) ([]model.NoteVersion, *VersionCursor, error) {
+	// No cursor: start above every version.
+	var at *time.Time
+	id := ""
+	if before != nil {
+		at, id = &before.CreatedAt, before.ID
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, note_id, checksum, device_id, created_at, updated_at
+		 FROM note_versions
+		 WHERE note_id = $1 AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3))
+		 ORDER BY created_at DESC, id DESC LIMIT $4`,
+		noteID, at, id, limit+1,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list versions page: %w", err)
+	}
+	defer rows.Close()
+	versions := []model.NoteVersion{}
+	for rows.Next() {
+		var v model.NoteVersion
+		if err := rows.Scan(&v.ID, &v.NoteID, &v.Checksum, &v.DeviceID, &v.CreatedAt, &v.UpdatedAt); err != nil {
+			return nil, nil, fmt.Errorf("scan version: %w", err)
+		}
+		versions = append(versions, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	if len(versions) <= limit {
+		return versions, nil, nil
+	}
+	versions = versions[:limit]
+	last := versions[limit-1]
+	return versions, &VersionCursor{CreatedAt: last.CreatedAt, ID: last.ID}, nil
+}
+
 // GetVersion loads one version of noteID; ErrVersionNotFound when it does not
 // exist or belongs to another note.
 func (r *NoteRepo) GetVersion(ctx context.Context, noteID, versionID string) (*model.NoteVersion, error) {

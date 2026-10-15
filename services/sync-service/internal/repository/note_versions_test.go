@@ -204,3 +204,90 @@ func TestNoteRepo_ListPage(t *testing.T) {
 		t.Fatal("a malformed cursor was accepted")
 	}
 }
+
+// #555: version pages come newest first and cover every version once, also
+// when two versions share a creation time.
+func TestNoteRepo_ListVersionInfoPage(t *testing.T) {
+	pool := newIsolatedDB(t)
+	ctx := context.Background()
+	repo := NewNoteRepo(pool, testCipher(t))
+	vaultID := seedVault(t, pool)
+	t0 := time.Now().UTC().Add(-24 * time.Hour).Truncate(time.Microsecond)
+	note := &model.Note{ID: uuid.NewString(), VaultID: vaultID, Title: "t", Content: "c", Checksum: "c", CreatedAt: t0, UpdatedAt: t0}
+	if err := repo.Create(ctx, note); err != nil {
+		t.Fatal(err)
+	}
+	record := func(device string, at time.Time) {
+		t.Helper()
+		tx, err := repo.BeginTx(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		v := &model.NoteVersion{ID: uuid.NewString(), NoteID: note.ID, Content: device, Checksum: device, DeviceID: device, CreatedAt: at}
+		if err := repo.RecordVersionTx(ctx, tx, v, VersionSnapshotWindow, model.VersionRetention{KeepCount: 50}); err != nil {
+			t.Fatal(err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for i := 0; i < 6; i++ {
+		record(fmt.Sprintf("d%d", i), t0.Add(time.Duration(i)*time.Hour))
+	}
+	record("tie", t0.Add(3*time.Hour)) // same creation time as d3
+
+	full, err := repo.ListVersionInfo(ctx, note.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(full) != 7 {
+		t.Fatalf("%d versions, want 7", len(full))
+	}
+	var paged []string
+	var before *VersionCursor
+	for pages := 0; ; pages++ {
+		if pages > 7 {
+			t.Fatal("paging does not end")
+		}
+		page, next, err := repo.ListVersionInfoPage(ctx, note.ID, 2, before)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range page {
+			if v.Content != "" {
+				t.Fatal("a page carries version content")
+			}
+			paged = append(paged, v.ID)
+		}
+		if next == nil {
+			break
+		}
+		// The cursor survives its text form, as it does in the API.
+		parsed, err := ParseVersionCursor(next.String())
+		if err != nil {
+			t.Fatal(err)
+		}
+		before = &parsed
+	}
+	if len(paged) != len(full) {
+		t.Fatalf("pages cover %d versions, want %d", len(paged), len(full))
+	}
+	for i := range full {
+		if paged[i] != full[i].ID {
+			t.Fatalf("page order %v differs from %v at %d", paged, full, i)
+		}
+	}
+}
+
+func TestVersionCursor_RoundTrip(t *testing.T) {
+	c := VersionCursor{CreatedAt: time.Date(2026, 10, 16, 8, 30, 1, 123456000, time.UTC), ID: "a-b"}
+	back, err := ParseVersionCursor(c.String())
+	if err != nil || !back.CreatedAt.Equal(c.CreatedAt) || back.ID != c.ID {
+		t.Fatalf("round trip: %+v, %v", back, err)
+	}
+	for _, bad := range []string{"!!", "", "bm8tbnVsbA", "bm90LWEtdGltZQB4"} {
+		if _, err := ParseVersionCursor(bad); err == nil {
+			t.Errorf("ParseVersionCursor(%q) accepted", bad)
+		}
+	}
+}

@@ -801,6 +801,37 @@ input:focus, textarea:focus {
   color: var(--error);
 }
 
+/* The confirming button of a destructive dialog (delete, #586): red at rest. */
+.confirm-btn--danger-solid {
+  background: var(--error);
+  border-color: var(--error);
+  color: var(--bg-crust);
+}
+
+.confirm-btn--danger-solid:not(:disabled):hover {
+  background: color-mix(in srgb, var(--error) 85%, white);
+  color: var(--bg-crust);
+}
+
+/* Titles of a multi-delete, before "and N more". */
+.delete-confirm-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--text-primary);
+}
+
+.delete-confirm-list li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-confirm-more {
+  list-style: none;
+  margin-left: -18px;
+  color: var(--text-muted);
+}
+
 /* ---------- Micro-interactions ----------
    Shared feedback so every control answers the pointer the same way. All of it
    collapses to instant under reduced motion (data-rm, above). */

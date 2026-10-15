@@ -49,7 +49,7 @@ graph TB
 | Component | Technology | Role |
 |---|---|---|
 | Sync Service | Go 1.23 | Note storage, versioning, conflict resolution, real-time sync |
-| MCP Service | Go | AI client access via Model Context Protocol — *planned, after 1.0* |
+| MCP Service | Go | AI client access via Model Context Protocol: stdio for local clients, Streamable HTTP at `/mcp` on a self-hosted server (see [mcp.md](mcp.md)) |
 | Search Service | Meilisearch 1.x | Full-text search, fuzzy matching, tag and folder filters |
 | GitHub Service | Go | OAuth, repository import, webhook-driven sync — *planned, after 1.0* |
 | Desktop App | Tauri v2 + React + TypeScript | The only client — markdown preview, graph view; connects to a hosted or self-hosted server (see [hosted-service.md](hosted-service.md)) |

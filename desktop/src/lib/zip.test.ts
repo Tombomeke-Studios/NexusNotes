@@ -47,4 +47,14 @@ describe("buildZip", () => {
     const size = zip[18] | (zip[19] << 8);
     expect(size).toBe(5);
   });
+
+  it("stores byte entries as they are (#550)", () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 255]);
+    const zip = buildZip([{ path: "a.png", content: bytes }]);
+    const size = zip[18] | (zip[19] << 8);
+    const crc = (zip[14] | (zip[15] << 8) | (zip[16] << 16) | (zip[17] << 24)) >>> 0;
+    expect(size).toBe(6);
+    expect(crc).toBe(crc32(bytes));
+    expect(Array.from(zip.subarray(30 + "a.png".length, 30 + "a.png".length + 6))).toEqual(Array.from(bytes));
+  });
 });

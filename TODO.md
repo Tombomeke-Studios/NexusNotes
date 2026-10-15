@@ -41,7 +41,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ### Scout findings (approved by the client and the middleman)
 - [x] `fix/task-toggle`: ticking a checkbox in reading view can toggle the wrong line; backend and data developer, after #342 (#560)
-- [ ] `fix/embed-ghost-links`: attachment embeds create ghost links in the graph; backend and data developer (#565)
+- [x] `fix/embed-ghost-links`: attachment embeds create ghost links in the graph; backend and data developer (#565)
 - [ ] Case-insensitive unique note titles, inside `feature/import-attachments` (#567)
 - [ ] `fix/sync-event-handling`: one PR, one commit per bug; desktop developer, after `feature/vault-lock` (#561, #562, #563)
 - [ ] `fix/delete-confirm`: confirm before deleting with the Delete key or a multi-select; desktop developer, after `fix/sync-event-handling` (#568)

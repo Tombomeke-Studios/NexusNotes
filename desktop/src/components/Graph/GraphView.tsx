@@ -4,6 +4,7 @@ import { findGraphNode } from "../../lib/wikilinks";
 import { enterDelay, fitTransform, folderColorIndex, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
 import { rafThrottle } from "../../lib/rafThrottle";
+import { loadPrefs, savePrefs } from "../../lib/prefs";
 import type { GraphData } from "../../lib/wikilinks";
 import { EmptyState } from "../EmptyState";
 import { Tip } from "../Tip";
@@ -69,9 +70,12 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   // after Re-center (#267); saves while it is open keep the user's zoom.
   const fitPending = useRef(true);
   const [view, setView] = useState<"map" | "list">("map");
-  // How links are drawn: plain lines or soft curves, with or without arrowheads.
-  const [curved, setCurved] = useState(false);
-  const [arrows, setArrows] = useState(false);
+  // How links are drawn: plain lines or soft curves, with or without
+  // arrowheads. Remembered across sessions in the workspace prefs.
+  const [curved, setCurved] = useState(() => loadPrefs().graphCurved);
+  const [arrows, setArrows] = useState(() => loadPrefs().graphArrows);
+  const toggleCurved = () => setCurved(savePrefs({ graphCurved: !curved }).graphCurved);
+  const toggleArrows = () => setArrows(savePrefs({ graphArrows: !arrows }).graphArrows);
   // Current zoom level (for the slider) and the zoom actions render() installs.
   // d3 fires a zoom event per wheel tick and per animation frame; the slider
   // only needs the latest level once per frame.
@@ -562,7 +566,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
             <button
               className={`graph-toggle${curved ? " graph-toggle--on" : ""}`}
               aria-pressed={curved}
-              onClick={() => setCurved((v) => !v)}
+              onClick={toggleCurved}
               title="Draw links as curves so crossing links stay apart"
             >
               Curved
@@ -570,7 +574,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
             <button
               className={`graph-toggle${arrows ? " graph-toggle--on" : ""}`}
               aria-pressed={arrows}
-              onClick={() => setArrows((v) => !v)}
+              onClick={toggleArrows}
               title="Show which note links to which"
             >
               Arrows

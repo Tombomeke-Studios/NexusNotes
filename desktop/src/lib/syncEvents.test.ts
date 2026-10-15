@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isForVault } from "./syncEvents";
+import { createLoadSequence, isForVault } from "./syncEvents";
 
 describe("isForVault", () => {
   it("accepts a note of the open vault", () => {
@@ -17,5 +17,33 @@ describe("isForVault", () => {
   it("rejects a payload without a vault id", () => {
     expect(isForVault({} as { vault_id: string }, "v1")).toBe(false);
     expect(isForVault(null as unknown as { vault_id: string }, "v1")).toBe(false);
+  });
+});
+
+describe("createLoadSequence", () => {
+  it("treats only the latest load as current", () => {
+    const seq = createLoadSequence();
+    const first = seq.begin();
+    expect(seq.isCurrent(first)).toBe(true);
+    const second = seq.begin();
+    expect(seq.isCurrent(first)).toBe(false);
+    expect(seq.isCurrent(second)).toBe(true);
+  });
+
+  it("makes every running load stale on invalidate (a locked vault was selected)", () => {
+    const seq = createLoadSequence();
+    const running = seq.begin();
+    seq.invalidate();
+    expect(seq.isCurrent(running)).toBe(false);
+    expect(seq.isCurrent(seq.begin())).toBe(true);
+  });
+
+  it("keeps separate sequences apart", () => {
+    const a = createLoadSequence();
+    const b = createLoadSequence();
+    const tokenA = a.begin();
+    b.begin();
+    b.invalidate();
+    expect(a.isCurrent(tokenA)).toBe(true);
   });
 });

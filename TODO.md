@@ -43,7 +43,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] `fix/task-toggle`: ticking a checkbox in reading view can toggle the wrong line; backend and data developer, after #342 (#560)
 - [x] `fix/embed-ghost-links`: attachment embeds create ghost links in the graph; backend and data developer (#565)
 - [ ] Case-insensitive unique note titles, inside `feature/import-attachments` (#567)
-- [ ] `fix/sync-event-handling`: one PR, one commit per bug; desktop developer, after `feature/vault-lock` (#561, #562, #563)
+- [x] `fix/sync-event-handling`: one PR, one commit per bug; desktop developer, after `feature/vault-lock` (#561, #562, #563)
 - [x] `fix/delete-confirm`: confirm before deleting with the Delete key or a multi-select; desktop developer, after `fix/sync-event-handling` (#568)
 - [x] `fix/delete-confirm-polish`: delete dialog follow-ups: a 404 counts as deleted, untitled notes, listed titles, red button, error wording; desktop developer (#586)
 - [x] `fix/graph-narrow-toolbar`: in a narrow graph pane the toolbar moves below the search box and the tip below both; desktop developer, after `fix/sync-event-handling` (#580)

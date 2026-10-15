@@ -128,6 +128,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Embedded images and links to attached files (`![[photo.png]]`, `[[report.pdf]]`) no longer
   show up as missing notes in the graph, backlinks or the MCP graph; existing ones go away
   when the note is saved again.
+- A note deleted on another device while you had unsaved text in it no longer vanishes with
+  that text: you can keep the text as a new note or discard it. Notes from other vaults no
+  longer appear in the open vault's list, and switching vaults quickly no longer shows the
+  previous vault's notes.
 - Text typed offline in a note you then left (or before closing the app) is sent as soon as
   the server is reachable, without reopening the note.
 - `[[links]]` written as code (in backticks or a code block) no longer show up as links in

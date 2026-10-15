@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { createLoadSequence, isForVault } from "./syncEvents";
+import { createLoadSequence, deletedNoteAction, isForVault } from "./syncEvents";
+
+describe("deletedNoteAction", () => {
+  const base = { deletedId: "n1", openNoteId: "n1", ownDelete: false, unsavedText: true };
+
+  it("keeps the open note on screen when it holds text the server doesn't have", () => {
+    expect(deletedNoteAction(base)).toBe("ask");
+  });
+
+  it("closes the open note when all its text is saved", () => {
+    expect(deletedNoteAction({ ...base, unsavedText: false })).toBe("close");
+  });
+
+  it("closes a note that isn't open", () => {
+    expect(deletedNoteAction({ ...base, openNoteId: "n2" })).toBe("close");
+    expect(deletedNoteAction({ ...base, openNoteId: null })).toBe("close");
+  });
+
+  it("closes the note when this device deleted it", () => {
+    expect(deletedNoteAction({ ...base, ownDelete: true })).toBe("close");
+  });
+});
 
 describe("isForVault", () => {
   it("accepts a note of the open vault", () => {

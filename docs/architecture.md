@@ -128,6 +128,16 @@ conflict. While no editor is on screen (the graph view) it takes the version
 at once, as long as the note is still saved and its text unchanged. The editor
 always starts from the app's text for the open note, unsaved edits included. An e2ee push that cannot be decrypted never reaches the open note. Signing out drops every queued save, retry and in-flight result.
 
+Note pushes go to every device of every member of the note's vault, whichever
+vault that device has open, so the client drops `note:created` and
+`note:updated` for any vault other than the open one. Only the latest
+note-list load may write the list or replay drafts; switching to a locked
+vault cancels the running load. A `note:deleted` for the open note while it
+holds unsaved or unconfirmed text does not close it: the editor turns
+read-only and the user chooses between keeping the text as a new note (same
+vault and folder, sent through the vault's encryption) and discarding it. The
+echo of a delete this device sent is recognised and closes the note as before.
+
 Closing a tab or the window with unsaved text (the close button, or an
 OS-level close in the native app) never closes until the server has
 confirmed the save. If the save fails, the close dialog stays open, explains

@@ -81,7 +81,8 @@ import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
 import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
 import { DeleteConfirmDialog } from "./components/Workspace/DeleteConfirmDialog";
 import { useDeleteConfirm } from "./lib/useDeleteConfirm";
-import { ConflictDialog, ConflictNotice } from "./components/Conflict";
+import { ConflictDialog, ConflictNotice, DeletedElsewhereDialog } from "./components/Conflict";
+import { useDeletedElsewhere } from "./lib/useDeletedElsewhere";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
 import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
@@ -343,6 +344,32 @@ export default function App() {
   const handleSaveNoteRef = useRef(handleSaveNote);
   handleSaveNoteRef.current = handleSaveNote;
 
+  // The open note was deleted on another device while it held unsaved text
+  // (#561): it stays open until the user keeps the text as a new note or
+  // discards it.
+  const deletedElsewhere = useDeletedElsewhere({
+    activeNoteRef,
+    editorContentRef,
+    noteListRef,
+    encryptOutgoing,
+    sealMeta,
+    createNote: notesApi.create,
+    discardUnsaved,
+    openReplacement: (deletedId, note) => {
+      setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
+      setTabs((prev) => prev.map((t) => (t.key === deletedId ? { key: note.id, type: "note" } : t)));
+      setActiveTabKey(note.id);
+      setActiveNote(note);
+      setEditorContent(note.content);
+      setSaveStatus("saved");
+      toast(`Your text is kept as the new note "${note.title}".`, { kind: "success" });
+    },
+    closeNote: (noteId) => closeTabRef.current(noteId),
+  });
+  const { onRemoteDelete, markOwnDelete, forgetOwnDelete, reset: resetDeletedElsewhere } = deletedElsewhere;
+  // While that question is open nothing may be saved to the deleted note.
+  const ignoreSave = useCallback(() => {}, []);
+
   // The open note moves to another device's version. The ref is updated at
   // once so a second push right after this one compares with the new text.
   const adoptRemote = useCallback((note: Note) => {
@@ -576,6 +603,13 @@ export default function App() {
         } else if (type === "note:deleted") {
           const { note_id } = payload as { note_id: string };
           setNoteList((prev) => prev.filter((n) => n.id !== note_id));
+          // Unsaved or unconfirmed text in the open note is never dropped
+          // here: the note stays open and the user is asked (#561).
+          const unsavedText = isDirtyStatus(saveStatusRef.current) || unconfirmedNoteIds().includes(note_id);
+          if (onRemoteDelete(note_id, unsavedText)) {
+            setLastSyncAt(new Date());
+            return;
+          }
           setActiveNote((prev) => (prev?.id === note_id ? null : prev));
           closeTabRef.current(note_id);
           setLastSyncAt(new Date());
@@ -586,7 +620,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads]);
+  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, unconfirmedNoteIds]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -697,7 +731,8 @@ export default function App() {
     setShareVaultId(null);
     setLinksVaultId(null);
     setHistoryOpen(false);
-  }, [user]);
+    resetDeletedElsewhere();
+  }, [user, resetDeletedElsewhere]);
   const [deviceNames, setDeviceNames] = useState<Map<string, string>>(new Map());
   const openHistory = useCallback(() => {
     if (!activeNoteRef.current) return;
@@ -1011,10 +1046,17 @@ export default function App() {
 
   const deleteOne = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
-    await notesApi.delete(activeVaultId, noteId);
+    // The server pushes note:deleted back to this device before it answers.
+    markOwnDelete(noteId);
+    try {
+      await notesApi.delete(activeVaultId, noteId);
+    } catch (err) {
+      forgetOwnDelete(noteId);
+      throw err;
+    }
     setNoteList((prev) => prev.filter((n) => n.id !== noteId));
     closeTabRef.current(noteId);
-  }, [activeVaultId]);
+  }, [activeVaultId, markOwnDelete, forgetOwnDelete]);
   // Deleting is permanent, so every delete is asked first (#568).
   const deleteConfirm = useDeleteConfirm({
     deleteOne,
@@ -1177,6 +1219,7 @@ export default function App() {
 
   const handleSelectVault = useCallback(
     (id: string) => {
+      resetDeletedElsewhere();
       setActiveVaultId(id);
       setActiveNote(null);
       setTabs([]);
@@ -1193,7 +1236,7 @@ export default function App() {
         loadNotes(id);
       }
     },
-    [loadNotes, cancelNoteLoads],
+    [loadNotes, cancelNoteLoads, resetDeletedElsewhere],
   );
 
   /**
@@ -1722,7 +1765,11 @@ export default function App() {
   const activeVault = vaultList.find((v) => v.id === activeVaultId);
   const tabItems = tabs.map((t) => ({
     ...t,
-    title: t.type === "graph" ? "Graph" : noteList.find((n) => n.id === t.key)?.title ?? "Untitled",
+    // A note deleted elsewhere is gone from the list but may still be open (#561).
+    title:
+      t.type === "graph"
+        ? "Graph"
+        : noteList.find((n) => n.id === t.key)?.title ?? (activeNote?.id === t.key ? activeNote.title : "Untitled"),
   }));
   const activeTab = tabs.find((t) => t.key === activeTabKey) ?? null;
   const graphActive = activeTab?.type === "graph";
@@ -1738,7 +1785,8 @@ export default function App() {
     showNewVault || recoveryCode !== null || unlockVaultId !== null ||
     showTemplatePicker || renameTag !== null || shareVaultId !== null ||
     linksVaultId !== null || ctxMenu !== null || workspaceMenu !== null ||
-    deleteConfirm.pending !== null;
+    deleteConfirm.pending !== null ||
+    deletedElsewhere.deleted !== null;
 
   return (
     <div
@@ -1990,12 +2038,12 @@ export default function App() {
                 setRailView("files");
                 updatePrefs({ leftOpen: true });
               }}
-              onSave={handleSaveNote}
+              onSave={deletedElsewhere.deleted ? ignoreSave : handleSaveNote}
               onRename={handleRenameNote}
               onRenameCommit={handleRenameCommit}
               onCreateNote={handleCreateNoteWithTitle}
               onNavigateToNote={handleSelectNote}
-              paused={closePrompt !== null}
+              paused={closePrompt !== null || deletedElsewhere.deleted !== null}
               insertRequest={insertRequest}
               replaceRequest={replaceRequest}
               onReplaceApplied={handleReplaceApplied}
@@ -2004,7 +2052,7 @@ export default function App() {
               initialText={editorContent}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
               vault={activeVault}
-              readOnly={creatingNote}
+              readOnly={creatingNote || deletedElsewhere.deleted !== null}
               savedFlash={savedFlash}
             />
           )}
@@ -2123,6 +2171,16 @@ export default function App() {
             error={deleteConfirm.error}
             onCancel={deleteConfirm.cancel}
             onConfirm={() => void deleteConfirm.confirm()}
+          />
+        )}
+        {deletedElsewhere.deleted && (
+          <DeletedElsewhereDialog
+            key="deleted-elsewhere"
+            noteTitle={activeNote?.id === deletedElsewhere.deleted.id ? activeNote.title : deletedElsewhere.deleted.title}
+            busy={deletedElsewhere.busy}
+            error={deletedElsewhere.error}
+            onKeep={() => void deletedElsewhere.keepAsNew()}
+            onDiscard={deletedElsewhere.discard}
           />
         )}
       </AnimatePresence>

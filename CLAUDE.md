@@ -209,7 +209,8 @@ it is what it exists for:
 | `src/components/Tip.tsx` + `src/lib/tips.ts` | One-time contextual tips (#448) for the graph, palette, backlinks and tag filter; dismissed ids in localStorage |
 | `public/legal/` + `src/lib/consent.ts` + `src/components/ConsentBanner.tsx` | Policy page templates (operators fill in and get reviewed), storage consent store (`hasConsent()` gate for any future optional storage) and the one-time notice / Cookie preferences (#289) |
 | `src/components/CommandPalette.tsx` | Unified palette: quick-open notes + `>` command mode |
-| `src/components/Conflict/` | Conflict resolution (#225): side-by-side comparison dialog (keep mine / use theirs / merge by hand) and the notice above the editor |
+| `src/components/Conflict/` | Conflict resolution (#225): side-by-side comparison dialog (keep mine / use theirs / merge by hand) and the notice above the editor; `DeletedElsewhereDialog` asks keep-as-new-note / discard when the open note with unsaved text was deleted on another device (#561) |
+| `src/lib/useDeletedElsewhere.ts` | State and actions behind that dialog: recognises this device's own deletes, creates the replacement note through the vault's encryption, discards only on request |
 | `src/components/Encryption/` | E2EE vault UI: encryption choice (EncryptionSetup, on by default with an opt-out warning), new-vault dialog, one-time recovery-code dialog, unlock dialog, ConvertVaultForm (encrypt an existing vault) |
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |

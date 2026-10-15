@@ -14,6 +14,24 @@ export function isForVault(note: { vault_id?: string } | null | undefined, openV
 }
 
 /**
+ * What to do when the server reports a note deleted (#561). The open note
+ * stays on screen and the user is asked ("ask") when it holds text the server
+ * never confirmed and the delete came from elsewhere; closing it then would
+ * silently drop that text. Everything else simply closes ("close").
+ */
+export function deletedNoteAction(input: {
+  deletedId: string;
+  openNoteId: string | null;
+  /** This device sent the delete (its own echo). */
+  ownDelete: boolean;
+  /** Unsaved, in-flight, failed or conflicting text in the open note. */
+  unsavedText: boolean;
+}): "ask" | "close" {
+  const { deletedId, openNoteId, ownDelete, unsavedText } = input;
+  return deletedId === openNoteId && !ownDelete && unsavedText ? "ask" : "close";
+}
+
+/**
  * Orders a vault's note-list loads (#563): only the latest may write the list
  * or replay drafts. Selecting a locked vault starts no load but must still
  * stop the running one, so it invalidates the sequence.

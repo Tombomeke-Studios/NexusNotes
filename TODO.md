@@ -22,7 +22,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] `feature/server-url`: server URL field, default unchanged, no CSP change in this sprint (#500, #504)
 
 ### Backend and data developer (in order)
-- [ ] `test/email-normalisation`: acceptance tests for email normalisation, then close (#342)
+- [x] `test/email-normalisation`: acceptance tests for email normalisation, then close (#342)
 - [ ] `feature/export-attachments`: include attachments in the vault export (#550)
 - [ ] `feature/import-attachments`: import non-markdown files as attachments; merges before `feature/vault-lock` (#551)
 - [ ] `fix/no-store-api`: `Cache-Control: no-store` on authenticated API responses (#553)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Tombomeke-Studios/NexusNotes/services/sync-service/internal/middleware"
@@ -85,6 +86,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Email = strings.TrimSpace(req.Email)
 	if req.Email == "" || req.Password == "" {
 		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
@@ -141,6 +143,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.Email = strings.TrimSpace(req.Email)
 	if req.Email == "" || req.Password == "" {
 		writeError(w, http.StatusBadRequest, "email and password are required")
 		return

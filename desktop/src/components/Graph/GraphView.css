@@ -20,15 +20,27 @@
   cursor: grabbing;
 }
 
-/* Legend (#267), above the counts. */
-.graph-legend {
+/* Legend and zoom bar share one row above the counts. It wraps on a narrow
+   panel (wrap-reverse puts the zoom bar on the upper line), so they never
+   overlap. */
+.graph-bottom {
   position: absolute;
   left: 14px;
+  right: 14px;
   bottom: 44px;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+/* Legend (#267). */
+.graph-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 12px;
-  max-width: min(520px, calc(100% - 200px));
+  max-width: min(520px, 100%);
   padding: 6px 10px;
   background: rgba(17, 17, 27, 0.75);
   backdrop-filter: blur(8px);
@@ -473,9 +485,8 @@
 
 /* Zoom bar: buttons and a slider, for mice and trackpads that do not scroll. */
 .graph-zoom {
-  position: absolute;
-  right: 14px;
-  bottom: 48px;
+  margin-left: auto;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 6px;

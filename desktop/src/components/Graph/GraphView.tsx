@@ -467,28 +467,6 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
         </div>
       )}
       {view === "map" && noteCount > 0 && (
-        <div className="graph-legend" aria-label="Legend">
-          {legendFolders.map(([folder]) => (
-            <span key={folder} className="graph-legend-item">
-              <span className="graph-legend-dot" style={{ background: folderColor(folder) }} />
-              {folder}
-            </span>
-          ))}
-          {hasRoot && legendFolders.length > 0 && (
-            <span className="graph-legend-item">
-              <span className="graph-legend-dot" style={{ background: "var(--graph-root)" }} />
-              No folder
-            </span>
-          )}
-          {hasGhost && (
-            <span className="graph-legend-item">
-              <span className="graph-legend-dot graph-legend-dot--ghost" />
-              Not created yet
-            </span>
-          )}
-        </div>
-      )}
-      {view === "map" && noteCount > 0 && (
         <Tip id="graph" className="graph-tip">
           Drag notes to arrange them, zoom with the bar at the bottom or by scrolling, click a note to open it. Double-click the background to
           reset the view.
@@ -591,20 +569,44 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           </button>
         )}
       </div>
-      {view === "map" && (
-        <div className="graph-zoom" role="group" aria-label="Zoom">
-          <button onClick={() => zoomRef.current.to(Math.max(0.2, zoomK / 1.4))} aria-label="Zoom out" title="Zoom out">&minus;</button>
-          <input
-            type="range"
-            min={Math.log(0.2)}
-            max={Math.log(4)}
-            step={0.01}
-            value={Math.log(zoomK)}
-            onChange={(e) => zoomRef.current.to(Math.exp(Number(e.target.value)))}
-            aria-label="Zoom level"
-          />
-          <button onClick={() => zoomRef.current.to(Math.min(4, zoomK * 1.4))} aria-label="Zoom in" title="Zoom in">+</button>
-          <button onClick={() => zoomRef.current.fit()} aria-label="Fit the graph in view" title="Fit the graph in view">Fit</button>
+      {/* Legend and zoom bar share one row that wraps (zoom bar on top) on a
+          narrow panel, so the two never overlap. */}
+      {view === "map" && noteCount > 0 && (
+        <div className="graph-bottom">
+          <div className="graph-legend" aria-label="Legend">
+            {legendFolders.map(([folder]) => (
+              <span key={folder} className="graph-legend-item">
+                <span className="graph-legend-dot" style={{ background: folderColor(folder) }} />
+                {folder}
+              </span>
+            ))}
+            {hasRoot && legendFolders.length > 0 && (
+              <span className="graph-legend-item">
+                <span className="graph-legend-dot" style={{ background: "var(--graph-root)" }} />
+                No folder
+              </span>
+            )}
+            {hasGhost && (
+              <span className="graph-legend-item">
+                <span className="graph-legend-dot graph-legend-dot--ghost" />
+                Not created yet
+              </span>
+            )}
+          </div>
+          <div className="graph-zoom" role="group" aria-label="Zoom">
+            <button onClick={() => zoomRef.current.to(Math.max(0.2, zoomK / 1.4))} aria-label="Zoom out" title="Zoom out">&minus;</button>
+            <input
+              type="range"
+              min={Math.log(0.2)}
+              max={Math.log(4)}
+              step={0.01}
+              value={Math.log(zoomK)}
+              onChange={(e) => zoomRef.current.to(Math.exp(Number(e.target.value)))}
+              aria-label="Zoom level"
+            />
+            <button onClick={() => zoomRef.current.to(Math.min(4, zoomK * 1.4))} aria-label="Zoom in" title="Zoom in">+</button>
+            <button onClick={() => zoomRef.current.fit()} aria-label="Fit the graph in view" title="Fit the graph in view">Fit</button>
+          </div>
         </div>
       )}
       <button

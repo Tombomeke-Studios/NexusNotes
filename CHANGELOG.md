@@ -99,6 +99,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   other device's, or merge them by hand.
 
 ### Changed
+- The MCP server's client for the sync service and its full HTTP flow (connect with a
+  token, list vaults, read a note) are covered by tests.
 - Keyboard users stay inside open dialogs (Tab cycles within them) and return to where they
   were when a dialog closes; a "Skip to editor" link is the first Tab stop.
 - Each note keeps its 50 most recent versions; older ones are removed on the next save.

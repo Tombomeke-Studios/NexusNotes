@@ -425,7 +425,7 @@ version. Response (200): the updated `Note`; other devices get `note:updated`.
 
 ### GET /api/notes/:noteId/backlinks
 
-Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`. Read access required; `404` for an unknown note.
+Returns notes that contain a `[[wiki-link]]` pointing to this note. Returns `BacklinkNote[]`. Read access required; `404` for an unknown note. Attachment embeds (`![[file]]`) and links to attached files (`[[report.pdf]]`, recognised by their file extension) are not note links and never appear here or in the graph.
 
 ---
 

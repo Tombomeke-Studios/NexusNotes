@@ -5,8 +5,31 @@ import (
 	"strings"
 )
 
-// linkRe matches Obsidian-style [[wikilinks]] including optional #anchor and |alias parts.
-var linkRe = regexp.MustCompile(`\[\[([^\[\]\|#]+?)(?:#([^\[\]\|]+?))?(?:\|[^\[\]]+?)?\]\]`)
+// linkRe matches Obsidian-style [[wikilinks]] including optional #anchor and
+// |alias parts; group 1 is the "!" of an ![[embed]].
+var linkRe = regexp.MustCompile(`(!?)\[\[([^\[\]\|#]+?)(?:#([^\[\]\|]+?))?(?:\|[^\[\]]+?)?\]\]`)
+
+// attachmentExtensions are the file extensions of attachments (#565): a
+// [[name.pdf]] link points at a note's attached file, not at a note. The
+// desktop app (lib/wikilinks.ts) and the MCP server keep the same list.
+var attachmentExtensions = func() map[string]bool {
+	set := map[string]bool{}
+	for _, ext := range strings.Fields(`png jpg jpeg gif webp bmp avif svg ico tif tiff heic
+		pdf doc docx xls xlsx ppt pptx odt ods odp rtf txt csv epub
+		mp3 wav ogg oga m4a flac aac opus mp4 webm mov mkv avi m4v
+		zip rar 7z tar gz`) {
+		set[ext] = true
+	}
+	return set
+}()
+
+// isAttachmentName reports whether a link target names an attached file (by
+// its extension) rather than a note.
+func isAttachmentName(target string) bool {
+	base := target[strings.LastIndex(target, "/")+1:]
+	dot := strings.LastIndex(base, ".")
+	return dot > 0 && attachmentExtensions[strings.ToLower(base[dot+1:])]
+}
 
 // ParsedLink holds the parts of a [[wikilink]].
 type ParsedLink struct {
@@ -22,8 +45,13 @@ func ParseLinks(content string) []ParsedLink {
 	seen := make(map[string]bool)
 
 	for _, m := range matches {
-		title := strings.TrimSpace(m[1])
-		anchor := strings.TrimSpace(m[2])
+		title := strings.TrimSpace(m[2])
+		anchor := strings.TrimSpace(m[3])
+		// An ![[embed]] shows an attachment and [[file.pdf]] links one (#565);
+		// neither is a link to a note.
+		if m[1] == "!" || isAttachmentName(title) {
+			continue
+		}
 		key := title + "\x00" + anchor
 		if seen[key] {
 			continue

@@ -251,14 +251,14 @@
   border-color: var(--accent-bg-strong);
 }
 
-/* Edges are a mid grey that clears the background in every theme (Obsidian
-   style); links of the open note are drawn green so its neighbourhood stands
-   out. The old bg-surface stroke was nearly invisible. */
+/* Edges are a mid grey with at least 3:1 contrast on every panel background
+   (WCAG 1.4.11, checked by graphContrast.test.ts); links of the open note are
+   drawn green so its neighbourhood stands out. */
 .graph-link {
   fill: none;
   stroke: var(--text-faint);
   stroke-width: 1.2;
-  opacity: 0.55;
+  opacity: 0.85;
   transition: opacity 0.15s ease, stroke 0.15s ease;
 }
 
@@ -385,7 +385,6 @@
    Clicking one creates the note. */
 .graph-link--ghost {
   stroke-dasharray: 4 4;
-  opacity: 0.55;
 }
 
 .graph-node--ghost circle {

@@ -8,20 +8,44 @@ import (
 )
 
 var (
-	// [[Target]], [[Target#Heading]], [[Target|label]].
-	wikiLink   = regexp.MustCompile(`\[\[([^\]|#\n]+)(?:#[^\]|\n]*)?(?:\|[^\]\n]*)?\]\]`)
+	// [[Target]], [[Target#Heading]], [[Target|label]]; group 1 is the "!"
+	// of an ![[embed]].
+	wikiLink   = regexp.MustCompile(`(!?)\[\[([^\]|#\n]+)(?:#[^\]|\n]*)?(?:\|[^\]\n]*)?\]\]`)
 	fencedCode = regexp.MustCompile("(?ms)^\\s*(```|~~~).*?^\\s*(```|~~~)\\s*$")
 	inlineCode = regexp.MustCompile("`[^`\n]*`")
 )
 
+// attachmentExtensions are the file extensions of attachments (#565): a
+// [[name.pdf]] link points at a note's attached file, not at a note. The sync
+// service (service/link.go) and the desktop app keep the same list.
+var attachmentExtensions = func() map[string]bool {
+	set := map[string]bool{}
+	for _, ext := range strings.Fields(`png jpg jpeg gif webp bmp avif svg ico tif tiff heic
+		pdf doc docx xls xlsx ppt pptx odt ods odp rtf txt csv epub
+		mp3 wav ogg oga m4a flac aac opus mp4 webm mov mkv avi m4v
+		zip rar 7z tar gz`) {
+		set[ext] = true
+	}
+	return set
+}()
+
+// isAttachmentName reports whether a link target names an attached file (by
+// its extension) rather than a note.
+func isAttachmentName(target string) bool {
+	base := target[strings.LastIndex(target, "/")+1:]
+	dot := strings.LastIndex(base, ".")
+	return dot > 0 && attachmentExtensions[strings.ToLower(base[dot+1:])]
+}
+
 // linkTargets returns the targets of the note's wiki-links, ignoring links
-// inside code, which the app does not treat as links either.
+// inside code, which the app does not treat as links either, and attachment
+// embeds and links to attached files, which point at files, not notes.
 func linkTargets(content string) []string {
 	content = fencedCode.ReplaceAllString(content, "")
 	content = inlineCode.ReplaceAllString(content, "")
 	var out []string
 	for _, m := range wikiLink.FindAllStringSubmatch(content, -1) {
-		if t := strings.TrimSpace(m[1]); t != "" {
+		if t := strings.TrimSpace(m[2]); t != "" && m[1] != "!" && !isAttachmentName(t) {
 			out = append(out, t)
 		}
 	}

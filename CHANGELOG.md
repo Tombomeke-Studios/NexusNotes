@@ -116,6 +116,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   account-deletion forms, and their emails go to the address on the account.
 - Ticking a checkbox in reading view ticks that task in the note, also when the note has
   `- [ ]` in running text or in a code block, `[X]` boxes or numbered task lists.
+- Embedded images and links to attached files (`![[photo.png]]`, `[[report.pdf]]`) no longer
+  show up as missing notes in the graph, backlinks or the MCP graph; existing ones go away
+  when the note is saved again.
 - Text typed offline in a note you then left (or before closing the app) is sent as soon as
   the server is reachable, without reopening the note.
 - `[[links]]` written as code (in backticks or a code block) no longer show up as links in

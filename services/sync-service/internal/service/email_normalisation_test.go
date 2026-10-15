@@ -56,3 +56,29 @@ func TestLogin_ThrottleIgnoresEmailCaseAndSpaces(t *testing.T) {
 		}
 	}
 }
+
+// #342: the reset link goes to the address on the account, not to however
+// the requester spelled it.
+func TestRequestPasswordReset_MailsStoredAddress(t *testing.T) {
+	users := newFakeEmailUsers()
+	users.byEmail[" Alice@Example.COM "] = &model.User{ID: "u1", Email: "alice@example.com"}
+	mailer := &captureMailer{enabled: true}
+	svc := newEmailAuth(users, newFakeTokenStore(), newFakeTokenStore(), &fakeRevoker{}, mailer)
+
+	svc.RequestPasswordReset(context.Background(), " Alice@Example.COM ")
+
+	if mailer.to != "alice@example.com" {
+		t.Fatalf("reset mailed to %q, want the stored address", mailer.to)
+	}
+}
+
+// #342: the same for a deletion request.
+func TestAccountDeletionRequest_MailsStoredAddress(t *testing.T) {
+	svc, _, _, mailer, _, _, _ := deletionFixture(t)
+
+	svc.Request(context.Background(), "  A@Example.com ")
+
+	if len(mailer.sent) != 1 || mailer.sent[0].to != "a@example.com" {
+		t.Fatalf("deletion request mailed %+v, want one mail to the stored address", mailer.sent)
+	}
+}

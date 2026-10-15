@@ -22,8 +22,9 @@ func (f *fakeDeletionUsers) GetByID(_ context.Context, id string) (*model.User, 
 	return nil, repository.ErrUserNotFound
 }
 func (f *fakeDeletionUsers) GetByEmail(_ context.Context, email string) (*model.User, error) {
+	// Like the repository: case and surrounding spaces are ignored.
 	for _, u := range f.users {
-		if u.Email == email {
+		if strings.EqualFold(u.Email, strings.TrimSpace(email)) {
 			return u, nil
 		}
 	}

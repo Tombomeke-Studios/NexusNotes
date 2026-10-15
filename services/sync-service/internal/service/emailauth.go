@@ -134,7 +134,8 @@ func (s *EmailAuthService) RequestPasswordReset(ctx context.Context, email strin
 	}
 	link := fmt.Sprintf("%s/reset-password?token=%s", s.baseURL, raw)
 	body := fmt.Sprintf("A password reset was requested for your NexusNotes account.\n\nReset it here:\n%s\n\nThe link expires in 1 hour. If you didn't request this, ignore this email.", link)
-	if err := s.mailer.Send(email, "Reset your NexusNotes password", body); err != nil {
+	// The account's own address, not the requester's spelling of it (#342).
+	if err := s.mailer.Send(user.Email, "Reset your NexusNotes password", body); err != nil {
 		slog.Error("send password reset email", "error", err)
 	}
 }

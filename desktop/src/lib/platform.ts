@@ -37,21 +37,40 @@ export function deviceDescription(
 }
 
 /**
- * Opens a page bundled with the app (the policy pages under /legal). A native
- * webview ignores `target="_blank"`, so the packaged app opens its own small
- * window; a browser opens a tab.
+ * The policy pages bundled with the app live in `public/legal/` as flat
+ * `name.html` files. Returns the path when it names one of them, otherwise
+ * null: nothing outside `/legal/`, no other directories, no query or fragment,
+ * and no absolute or remote URL ever reaches a window or tab.
  */
-export async function openBundledPage(path: string, title: string): Promise<void> {
-  if (!isTauriWindow) {
-    window.open(path, "_blank", "noopener");
+const LEGAL_PAGE = /^\/legal\/[a-z0-9][a-z0-9-]*\.html$/;
+
+export function legalPagePath(path: string): string | null {
+  return typeof path === "string" && LEGAL_PAGE.test(path) ? path : null;
+}
+
+/**
+ * Opens one of the bundled policy pages (see legalPagePath). A native webview
+ * ignores `target="_blank"`, so the packaged app opens its own small window,
+ * labelled `legal-<name>`; no capability lists those labels, so the page gets
+ * no access to the app's commands. A browser opens a tab. Any other path is
+ * refused and nothing opens.
+ */
+export async function openBundledPage(path: string, title: string, tauri: boolean = isTauriWindow): Promise<void> {
+  const page = legalPagePath(path);
+  if (!page) {
+    console.warn("openBundledPage: not a bundled policy page", path);
+    return;
+  }
+  if (!tauri) {
+    window.open(page, "_blank", "noopener");
     return;
   }
   const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-  const label = `legal-${path.replace(/[^a-z0-9]/gi, "-").replace(/^-+|-+$/g, "")}`;
+  const label = `legal-${page.slice("/legal/".length, -".html".length)}`;
   const existing = await WebviewWindow.getByLabel(label);
   if (existing) {
     await existing.setFocus();
     return;
   }
-  new WebviewWindow(label, { url: path, title, width: 760, height: 820, center: true });
+  new WebviewWindow(label, { url: page, title, width: 760, height: 820, center: true });
 }

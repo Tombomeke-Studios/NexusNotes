@@ -446,6 +446,13 @@ third-party host is contacted. `devCsp` only adds the Vite dev server. The
 webview holds no shell permission at all: only the Rust side starts the
 bundled sync-service sidecar, so page script cannot spawn processes.
 
+**Policy-page windows (#544).** The Privacy, Terms and Cookie pages ship with
+the app (`public/legal/`) and open in a window of their own, labelled
+`legal-<name>`. The capability files list only the main window, so these
+windows get no Tauri permissions at all. The app opens only flat `.html` pages
+directly under `/legal/` this way (`legalPagePath` in `src/lib/platform.ts`);
+any other path, and every absolute or remote URL, opens nothing.
+
 **Supervisor (#330, #336).** The app reuses a backend that already answers on
 localhost:8080 (a dev script, a previous run) without polling Docker. It also
 checks whether that backend accepts connections on this machine's network

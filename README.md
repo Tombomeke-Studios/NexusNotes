@@ -254,7 +254,7 @@ the `meilisearch` service: `docker compose -f docker-compose.dev.yml up -d meili
 | Component | Technology |
 |---|---|
 | Sync Service | Go 1.23 |
-| MCP Service | Go — Model Context Protocol (planned, after 1.0) |
+| MCP Service | Go — Model Context Protocol server for AI clients (stdio or `/mcp`) |
 | Search | Meilisearch 1.x |
 | Desktop App | Tauri v2 + React + TypeScript |
 | Database | PostgreSQL 16 |
@@ -312,7 +312,6 @@ cd desktop && npm test
 | [Security policy](SECURITY.md) | How to report a vulnerability privately; supported versions |
 | [Contributing](CONTRIBUTING.md) | Branches, commit format, TDD, test and lint commands |
 | [Encryption](docs/encryption.md) | E2EE design, key hierarchy, threat model |
-| [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol (planned) |
 | [Brand](docs/brand.md) | Name, tagline, colours and logo rules |
 | [Changelog](CHANGELOG.md) | What changed in each release |
 | [MCP Server](docs/mcp.md) | AI client access via Model Context Protocol |

@@ -3,6 +3,7 @@ import * as d3 from "d3";
 import { findGraphNode } from "../../lib/wikilinks";
 import { enterDelay, fitTransform, folderColorIndex, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
+import { rafThrottle } from "../../lib/rafThrottle";
 import type { GraphData } from "../../lib/wikilinks";
 import { EmptyState } from "../EmptyState";
 import { Tip } from "../Tip";
@@ -72,7 +73,14 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
   const [curved, setCurved] = useState(false);
   const [arrows, setArrows] = useState(false);
   // Current zoom level (for the slider) and the zoom actions render() installs.
+  // d3 fires a zoom event per wheel tick and per animation frame; the slider
+  // only needs the latest level once per frame.
   const [zoomK, setZoomK] = useState(1);
+  const zoomKUpdate = useRef(rafThrottle(setZoomK));
+  useEffect(() => {
+    const throttled = zoomKUpdate.current;
+    return () => throttled.cancel();
+  }, []);
   const zoomRef = useRef<{ to: (k: number) => void; fit: () => void }>({ to: () => {}, fit: () => {} });
 
   const render = useCallback(() => {
@@ -117,7 +125,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
         applyLabelVisibility(event.transform.k);
-        setZoomK(event.transform.k);
+        zoomKUpdate.current.push(event.transform.k);
       });
     svg.call(zoom as unknown as (selection: d3.Selection<SVGSVGElement | null, unknown, null, undefined>) => void);
     // A re-render keeps the zoom the user had (d3 stores it on the svg).

@@ -78,6 +78,8 @@ import { welcomeNotes, QUICK_START_TITLE } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
 import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
+import { DeleteConfirmDialog } from "./components/Workspace/DeleteConfirmDialog";
+import { useDeleteConfirm } from "./lib/useDeleteConfirm";
 import { ConflictDialog, ConflictNotice } from "./components/Conflict";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
@@ -998,17 +1000,22 @@ export default function App() {
     setNoteList((prev) => prev.filter((n) => n.id !== noteId));
     closeTabRef.current(noteId);
   }, [activeVaultId]);
-  const deleteOneRef = useRef(deleteOne);
-  deleteOneRef.current = deleteOne;
+  // Deleting is permanent, so every delete is asked first (#568).
+  const deleteConfirm = useDeleteConfirm({
+    deleteOne,
+    onDeleted: (ids) =>
+      setSelectedIds((prev) => (ids.some((id) => prev.has(id)) ? new Set([...prev].filter((id) => !ids.includes(id))) : prev)),
+  });
+  const requestDelete = deleteConfirm.request;
+  const requestDeleteRef = useRef(requestDelete);
+  requestDeleteRef.current = requestDelete;
 
   // Deletes the whole multi-selection when the target note is part of it,
   // otherwise just the one note.
-  const handleDeleteNote = useCallback(async (noteId: string) => {
+  const handleDeleteNote = useCallback((noteId: string) => {
     const sel = selectedIdsRef.current;
-    const ids = sel.has(noteId) && sel.size > 1 ? [...sel] : [noteId];
-    for (const id of ids) await deleteOne(id);
-    if (ids.length > 1) setSelectedIds(new Set());
-  }, [deleteOne]);
+    requestDelete(sel.has(noteId) && sel.size > 1 ? [...sel] : [noteId]);
+  }, [requestDelete]);
 
   const cycleView = useCallback(() => {
     setPrefs((p) => {
@@ -1127,8 +1134,7 @@ export default function App() {
         const editable = t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable;
         if (!editable) {
           e.preventDefault();
-          for (const id of [...selectedIdsRef.current]) deleteOneRef.current(id);
-          setSelectedIds(new Set());
+          requestDeleteRef.current([...selectedIdsRef.current]);
         }
       }
       if (e.key === "Escape") {
@@ -1711,7 +1717,8 @@ export default function App() {
     paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
     showNewVault || recoveryCode !== null || unlockVaultId !== null ||
     showTemplatePicker || renameTag !== null || shareVaultId !== null ||
-    linksVaultId !== null || ctxMenu !== null || workspaceMenu !== null;
+    linksVaultId !== null || ctxMenu !== null || workspaceMenu !== null ||
+    deleteConfirm.pending !== null;
 
   return (
     <div
@@ -2086,6 +2093,16 @@ export default function App() {
             error={conflictPrompt.error}
             onResolve={handleResolveConflict}
             onCancel={() => setConflictPrompt(null)}
+          />
+        )}
+        {deleteConfirm.pending && (
+          <DeleteConfirmDialog
+            key="delete-confirm"
+            noteTitles={deleteConfirm.pending.map((id) => noteList.find((n) => n.id === id)?.title ?? "")}
+            busy={deleteConfirm.busy}
+            error={deleteConfirm.error}
+            onCancel={deleteConfirm.cancel}
+            onConfirm={() => void deleteConfirm.confirm()}
           />
         )}
       </AnimatePresence>

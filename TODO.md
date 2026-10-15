@@ -143,7 +143,6 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 > Decision record: [docs/hosted-service.md](docs/hosted-service.md). Desktop only; the same
 > installer talks to the maintainer's hosted server or to a self-hosted Docker stack.
-> Issues are created after this structure is reviewed, so no `(#N)` refs yet.
 > Order: server URL (closed-beta form) → deep links → remove sidecar → hosting → offline →
 > release pipeline → legal. Rust transport follows the beta; it gates unlocking the field.
 

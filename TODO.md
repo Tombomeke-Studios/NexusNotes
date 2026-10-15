@@ -7,6 +7,40 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 
 ---
 
+## Sprint 1 (from 2026-10-15) - client requirements R1-R8
+
+> Agreed between the client and the middleman. Each line is one branch and one PR; a PR
+> ticks only its own line. Merge order matters where two lines touch the same files.
+
+### Desktop developer (in order)
+- [ ] `fix/graph-link-contrast`: visible graph links, zoom bar, link-style toggles (#543)
+- [ ] `fix/legal-links-desktop`: policy-page links open in the packaged app, bundled `/legal/` pages only (#544)
+- [ ] `feature/vault-lock`: lock an encrypted vault manually and auto-lock it when idle (#545)
+- [ ] `feature/e2ee-share-warning`: warn before inviting someone to an encrypted vault (#546)
+- [ ] `feature/find-replace`: Ctrl+F find and replace in the open note (#547)
+- [ ] `feature/link-autocomplete`: autocomplete wiki-links while typing `[[` (#548)
+- [ ] `feature/server-url`: server URL field, default unchanged, no CSP change in this sprint (#500, #504)
+
+### Backend and data developer (in order)
+- [ ] `test/email-normalisation`: acceptance tests for email normalisation, then close (#342)
+- [ ] `feature/export-attachments`: include attachments in the vault export (#550)
+- [ ] `feature/import-attachments`: import non-markdown files as attachments; merges before `feature/vault-lock` (#551)
+- [ ] `fix/no-store-api`: `Cache-Control: no-store` on authenticated API responses (#553)
+- [ ] `fix/mcp-origin`: check the Origin header on the MCP HTTP transport (#556)
+- [ ] `test/mcp-client`: MCP client tests and a full-flow integration test (#552)
+- [ ] `feature/version-paging`: paginate the version history, History panel loads more on scroll (#555)
+- [ ] `ci/release-workflow`: Windows installer and checksums on version tags, unsigned until #529 (#557)
+- [ ] `feature/e2ee-drafts`: encrypted local drafts in encrypted vaults; starts after `feature/vault-lock` merges (#549)
+
+### Sprint 2 candidates (agreed)
+- [ ] Offline read access first: it gates opening registration (#227)
+- [ ] Click-to-load remote images, no `https:` in `img-src` (#519)
+- [ ] Invite-only registration (#521), drop Redis from production (#514)
+- [ ] Navigate to `[[Note#Section]]` across notes (#558)
+- [ ] Serve admin stats on the internal metrics listener (#554)
+
+---
+
 ## `feature/desktop-redesign` - Workspace redesign (NexusNotes Redesign.dc.html)
 
 > Full desktop UI overhaul implementing the approved Claude Design mockup

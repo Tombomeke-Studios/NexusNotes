@@ -283,6 +283,14 @@ as the desktop webview (#382), with `connect-src` limited to its own origin (the
 `/api` and `/ws` proxies), plus `frame-ancestors 'none'` against clickjacking,
 `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
 
+## API Response Caching
+
+Every `/api/` response from the sync service, including errors and the
+sign-in responses that carry tokens, is sent with
+`Cache-Control: private, no-store` (`middleware.NoStore`, #553), so no browser
+or proxy cache keeps account data. A handler may set its own policy instead:
+attachment downloads, whose bytes never change, are `private` and `immutable`.
+
 ## Vault Sharing and Authorization
 
 Vaults can be shared with other users as viewer (read) or editor (read/write);

@@ -384,6 +384,12 @@ when it started, `updated_at` when later saves of the same device within 5
 minutes last changed it (#413). Read access to the note's vault required:
 `404` when the note does not exist, `403` without access.
 
+Optional paging (#555): `?limit=N` (1-500) returns at most N versions, and when older
+ones follow, the response carries an `X-Next-Cursor` header; pass it back as
+`?before=<cursor>` for the next page (`before` alone pages 50 at a time). An invalid
+`limit` or cursor is `400`. Without either parameter the whole history comes back, as
+before.
+
 ### GET /api/notes/:noteId/versions/:versionId
 
 One version with its `content` (ciphertext for e2ee vaults; the client

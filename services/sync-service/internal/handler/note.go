@@ -125,6 +125,13 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 // maxNotesPage caps one page of the note list (#461).
 const maxNotesPage = 1000
 
+// One page of a note's version list (#555): the default when only a cursor
+// is given, and the most a client may ask for.
+const (
+	defaultVersionsPage = 50
+	maxVersionsPage     = 500
+)
+
 func (h *NoteHandler) List(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
 	vaultID := r.PathValue("vaultId")
@@ -439,6 +446,41 @@ func (h *NoteHandler) Versions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	noteID := note.ID
+
+	// Paged (#555) when the client asks for a limit or passes a cursor; the
+	// next page's cursor goes in X-Next-Cursor, as for the note list. Without
+	// either, the whole history as before.
+	q := r.URL.Query()
+	if q.Has("limit") || q.Has("before") {
+		limit := defaultVersionsPage
+		if raw := q.Get("limit"); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil || n < 1 || n > maxVersionsPage {
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("limit must be 1-%d", maxVersionsPage))
+				return
+			}
+			limit = n
+		}
+		var before *repository.VersionCursor
+		if c := q.Get("before"); c != "" {
+			cursor, err := repository.ParseVersionCursor(c)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "invalid cursor")
+				return
+			}
+			before = &cursor
+		}
+		page, next, err := h.syncService.GetVersionsPage(r.Context(), noteID, limit, before)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to get versions")
+			return
+		}
+		if next != nil {
+			w.Header().Set("X-Next-Cursor", next.String())
+		}
+		writeJSON(w, http.StatusOK, page)
+		return
+	}
 
 	versions, err := h.syncService.GetVersions(r.Context(), noteID)
 	if err != nil {

@@ -129,7 +129,7 @@ describe("planImport attachments (#551)", () => {
     expect(loose.title).toBe("Files from V");
     expect(loose.path).toBe("");
     expect(loose.attachments.map((a) => a.name)).toEqual(["scan.pdf", "photo.JPG", "scan 2.pdf"]);
-    expect(loose.content).toContain("- [[scan.pdf]]\n- ![[photo.JPG]]\n- [[scan 2.pdf]]");
+    expect(loose.content).toContain("[[scan.pdf]]\n\n![[photo.JPG]]\n\n[[scan 2.pdf]]\n");
   });
 
   it("calls the catch-all note Imported files for loose picks, and skips it when it exists", async () => {

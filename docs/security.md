@@ -28,6 +28,9 @@
 - Locked logins return `429` regardless of whether the account exists, and the
   submitted email is throttled either way — no user-enumeration signal
 - A successful login clears both the email+IP lock and the cross-IP counter
+- Emails are normalised (surrounding spaces trimmed, case ignored) before they
+  are counted, looked up or checked for duplicates, so `Alice@Example.com` and
+  ` alice@example.com ` are one account and share one counter
 - State is in-memory (`internal/service/throttle.go`), matching the
   single-instance self-hosted deployment model
 

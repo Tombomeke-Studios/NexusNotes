@@ -54,6 +54,9 @@ type Claims struct {
 }
 
 func (s *AuthService) Register(ctx context.Context, email, password, displayName string) (*model.User, string, error) {
+	// Stored without surrounding spaces; the case is kept for display, the
+	// repository compares addresses case-insensitively (#342).
+	email = strings.TrimSpace(email)
 	hash, err := hashPassword(password)
 	if err != nil {
 		return nil, "", fmt.Errorf("hash password: %w", err)
@@ -92,7 +95,9 @@ func (s *AuthService) Login(ctx context.Context, email, password, clientIP strin
 	// lockout response carries no user-enumeration signal. Hard locks are
 	// scoped to email+IP; distributed cross-IP guessing gets a constant
 	// tarpit delay instead so an attacker cannot lock the real owner out.
-	emailKey := strings.ToLower(email)
+	// Keyed on the normalised address, so other spellings of the same
+	// address share one counter (#342).
+	emailKey := strings.ToLower(strings.TrimSpace(email))
 	locked, tarpit := s.throttle.check(emailKey, clientIP)
 	if locked > 0 {
 		return nil, "", ErrTooManyAttempts

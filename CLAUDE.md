@@ -216,6 +216,7 @@ it is what it exists for:
 | `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror |
 | `src/lib/useCloseGuard.ts` | Closing a tab/window or signing out with unsaved text (in any note): waits for the save result, keeps the dialog open with the reason on failure (#283) |
 | `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing) |
+| `src/components/Workspace/DeleteConfirmDialog.tsx` + `src/lib/useDeleteConfirm.ts` | Every note delete is asked first (#568): names the note or gives the count, Cancel is the default; a failed delete keeps the rest in the dialog with the reason |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/motion.ts` | Reduced motion, single source of truth: resolves the OS `prefers-reduced-motion` + the Motion setting (System/Reduced/Full) and applies it to CSS (`data-rm` on `<html>`) and framer-motion (`skipAnimations`) |

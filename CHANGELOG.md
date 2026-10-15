@@ -109,6 +109,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- Deleting notes (the Delete key, the context menu, a multi-selection) asks first, naming the
+  note or giving the count; Cancel is the default.
 - An email address typed with spaces around it now signs up and logs in as the same account
   as without them; an address of only spaces is refused, also on the password-reset and
   account-deletion forms, and their emails go to the address on the account.

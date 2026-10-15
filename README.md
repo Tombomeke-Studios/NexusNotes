@@ -24,6 +24,9 @@ vaults end-to-end encrypted unless you choose otherwise.
   templates; attach files; import a folder of markdown (an Obsidian vault works).
 - **Share a vault** with others as viewer or editor; export everything as markdown, attached
   files included.
+  templates; attach files; import a folder of markdown with its images and other files
+  (an Obsidian vault works).
+- **Share a vault** with others as viewer or editor; export everything as markdown.
 - **Desktop app** (Tauri) for Windows, macOS and Linux, and nothing else: no mobile app, no browser extension. It connects to a hosted server or to one you run yourself. The browser web UI from the Docker stack is being retired, see [docs/hosted-service.md](docs/hosted-service.md).
 
 | Graph view | Command palette |

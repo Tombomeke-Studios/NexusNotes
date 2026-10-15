@@ -21,6 +21,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   open note) and stop at the rim of both notes, arrowheads and curved links are optional
   toggles that the app remembers, and a zoom bar (buttons, slider, Fit) sits next to
   scroll-zoom.
+- Importing a folder brings its images and other files along as attachments of the notes
+  that embed or link them, so `![[image.png]]` shows the image; files no note links to get a
+  "Files from …" note. The summary counts what was imported and skipped and names files over
+  the size limit. New and renamed notes no longer get a title that differs from another
+  only in case.
 - Settings > AI Access: create and revoke MCP tokens, copy a ready-made config for Claude
   Desktop or Cursor, and see when each token was last used and what it did.
 - An MCP server (`services/mcp-service`, `nexusnotes-mcp`) so Claude, Cursor and other AI

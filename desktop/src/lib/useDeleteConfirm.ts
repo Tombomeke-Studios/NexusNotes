@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { ApiError } from "./api";
 
 interface DeleteConfirmDeps {
   /** Deletes one note on the server and drops it from the workspace. */
@@ -39,14 +40,20 @@ export function useDeleteConfirm(deps: DeleteConfirmDeps) {
     const done: string[] = [];
     try {
       for (const id of pending) {
-        await depsRef.current.deleteOne(id);
+        try {
+          await depsRef.current.deleteOne(id);
+        } catch (err) {
+          // Deleted elsewhere while the dialog was open: that is the goal (#586).
+          if (!(err instanceof ApiError && err.status === 404)) throw err;
+        }
         done.push(id);
       }
       setPending(null);
     } catch (err) {
       const reason = err instanceof Error && err.message ? ` (${err.message})` : "";
+      const left = pending.length - done.length;
       setPending(pending.filter((id) => !done.includes(id)));
-      setError(`Couldn't delete ${pending.length - done.length === 1 ? "the note" : "every note"}${reason}. Try again or cancel.`);
+      setError(`Couldn't delete ${left === 1 ? "this note" : `${left} notes`}${reason}. Try again or cancel.`);
     } finally {
       if (done.length > 0) depsRef.current.onDeleted(done);
       setBusy(false);

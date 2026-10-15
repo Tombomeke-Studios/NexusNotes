@@ -93,7 +93,7 @@ UI.
 
 | Piece | Port | Purpose |
 |---|---|---|
-| Docker infra (Postgres + Redis) | 5432 / 6379 | Data + cache/sessions |
+| Docker infra (Postgres + Redis) | 5432 / 6379 | Data (Redis is started but not used yet) |
 | Backend (Go sync-service) | 8080 | REST + WebSocket API |
 | Desktop app (Tauri, or Vite in a browser) | 1420 | The UI |
 

@@ -1003,8 +1003,12 @@ export default function App() {
   // Deleting is permanent, so every delete is asked first (#568).
   const deleteConfirm = useDeleteConfirm({
     deleteOne,
-    onDeleted: (ids) =>
-      setSelectedIds((prev) => (ids.some((id) => prev.has(id)) ? new Set([...prev].filter((id) => !ids.includes(id))) : prev)),
+    onDeleted: (ids) => {
+      setSelectedIds((prev) => (ids.some((id) => prev.has(id)) ? new Set([...prev].filter((id) => !ids.includes(id))) : prev));
+      // Notes found already gone (404) skipped deleteOne's own cleanup (#586).
+      setNoteList((prev) => (prev.some((n) => ids.includes(n.id)) ? prev.filter((n) => !ids.includes(n.id)) : prev));
+      for (const id of ids) closeTabRef.current(id);
+    },
   });
   const requestDelete = deleteConfirm.request;
   const requestDeleteRef = useRef(requestDelete);

@@ -100,6 +100,12 @@ names the tool it runs in an `X-MCP-Tool` header, which the audit log records.
 | stdio | `NEXUSNOTES_TOKEN=nn_… nexusnotes-mcp` (`NEXUSNOTES_API_URL` defaults to `http://localhost:8080`) |
 | HTTP | `nexusnotes-mcp --http :8081`, or the `mcp-service` container in `docker-compose.yml` |
 
+Over HTTP, `/mcp` checks the `Origin` header (#556): a request without one (every
+desktop AI client, which is not a browser) is accepted, and a request from a web page
+is accepted only when its origin is listed in `MCP_ALLOWED_ORIGINS` (or
+`--allowed-origins`), a comma-separated list such as `https://notes.example.com`.
+Anything else gets `403` before the token is looked at. The list is empty by default.
+
 Every call goes to the sync service as the token's owner, with an `X-MCP-Tool` header
 that the audit log records. `delete_note` deletes for good (the note's history goes with
 it); `update_note` and `append_to_note` re-read and retry once when the note changed in

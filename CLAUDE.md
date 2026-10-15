@@ -185,7 +185,7 @@ it is what it exists for:
 ### services/mcp-service (Go, #221)
 | Path | Contents |
 |---|---|
-| `cmd/nexusnotes-mcp/main.go` | Entry point: stdio (token from `NEXUSNOTES_TOKEN`) or stateless Streamable HTTP (`--http`, token per request) |
+| `cmd/nexusnotes-mcp/main.go` | Entry point: stdio (token from `NEXUSNOTES_TOKEN`) or stateless Streamable HTTP (`--http`, token per request; `Origin` checked against `MCP_ALLOWED_ORIGINS`, none = non-browser client = allowed) |
 | `internal/nexus/` | REST client for the sync service; sends the MCP token and the `X-MCP-Tool` audit header |
 | `internal/server/` | The MCP tools (list/read/search/graph/tags/daily/create/update/append/delete), e2ee refusal, wiki-link graph |
 

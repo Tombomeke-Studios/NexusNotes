@@ -169,6 +169,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ### Security
 - API responses tell browsers and proxies not to cache them (`Cache-Control: private,
   no-store`); attachment downloads keep their long-lived cache header.
+- The MCP server's HTTP transport checks the `Origin` header: AI clients that send none
+  are accepted, web pages only from origins listed in `MCP_ALLOWED_ORIGINS`.
 - The desktop app runs its own Postgres and Redis with random passwords generated per
   install, instead of sharing the dev scripts' database and its well-known password.
   Upgrading copies your notes over once, then stops the old database container (#277).

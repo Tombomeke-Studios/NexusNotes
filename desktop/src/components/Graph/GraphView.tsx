@@ -466,12 +466,6 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           </table>
         </div>
       )}
-      {view === "map" && noteCount > 0 && (
-        <Tip id="graph" className="graph-tip">
-          Drag notes to arrange them, zoom with the bar at the bottom or by scrolling, click a note to open it. Double-click the background to
-          reset the view.
-        </Tip>
-      )}
       {/* Nothing to connect yet (#450): say how links appear. */}
       {view === "map" && (noteCount === 0 || data.links.length === 0) && (
         <div className="graph-empty">
@@ -486,27 +480,79 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           )}
         </div>
       )}
-      <div className="graph-search" hidden={view === "list"}>
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />
-          <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setSearch("");
-            e.stopPropagation();
-          }}
-          placeholder="Find note in graph..."
-          spellCheck={false}
-        />
-        {search && (
-          <button className="graph-search-clear" onClick={() => setSearch("")} title="Clear">
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-              <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {/* Search box, then the toolbar, then the tip, in normal flow (#580): on a
+          narrow pane the toolbar wraps below the search box and the tip below
+          both, so nothing covers anything. */}
+      <div className="graph-top">
+        <div className="graph-top-row">
+          <div className="graph-search" hidden={view === "list"}>
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-          </button>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setSearch("");
+                e.stopPropagation();
+              }}
+              placeholder="Find note in graph..."
+              spellCheck={false}
+            />
+            {search && (
+              <button className="graph-search-clear" onClick={() => setSearch("")} title="Clear">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="graph-controls">
+            <div className="graph-view-switch" role="group" aria-label="Show the graph as">
+              <button className={`graph-toggle${view === "map" ? " graph-toggle--on" : ""}`} aria-pressed={view === "map"} onClick={() => setView("map")}>
+                Map
+              </button>
+              <button className={`graph-toggle${view === "list" ? " graph-toggle--on" : ""}`} aria-pressed={view === "list"} onClick={() => setView("list")}>
+                List
+              </button>
+            </div>
+            {view === "map" && (
+              <>
+                <button
+                  className={`graph-toggle${curved ? " graph-toggle--on" : ""}`}
+                  aria-pressed={curved}
+                  onClick={toggleCurved}
+                  title="Draw links as curves so crossing links stay apart"
+                >
+                  Curved
+                </button>
+                <button
+                  className={`graph-toggle${arrows ? " graph-toggle--on" : ""}`}
+                  aria-pressed={arrows}
+                  onClick={toggleArrows}
+                  title="Show which note links to which"
+                >
+                  Arrows
+                </button>
+              </>
+            )}
+            {orphanCount > 0 && view === "map" && (
+              <button
+                className={`graph-toggle${showOrphans ? " graph-toggle--on" : ""}`}
+                onClick={() => setShowOrphans((v) => !v)}
+                title={showOrphans ? "Hide notes with no links" : "Show notes with no links"}
+              >
+                {showOrphans ? "Hide" : "Show"} {orphanCount} orphan{orphanCount === 1 ? "" : "s"}
+              </button>
+            )}
+          </div>
+        </div>
+        {view === "map" && noteCount > 0 && (
+          <Tip id="graph" className="graph-tip">
+            Drag notes to arrange them, zoom with the bar at the bottom or by scrolling, click a note to open it. Double-click the background to
+            reset the view.
+          </Tip>
         )}
       </div>
       {hover && (
@@ -529,45 +575,6 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       )}
       <div className="graph-badge">
         {noteCount} {noteCount === 1 ? "note" : "notes"} &middot; {data.links.length} {data.links.length === 1 ? "link" : "links"}
-      </div>
-      <div className="graph-controls">
-        <div className="graph-view-switch" role="group" aria-label="Show the graph as">
-          <button className={`graph-toggle${view === "map" ? " graph-toggle--on" : ""}`} aria-pressed={view === "map"} onClick={() => setView("map")}>
-            Map
-          </button>
-          <button className={`graph-toggle${view === "list" ? " graph-toggle--on" : ""}`} aria-pressed={view === "list"} onClick={() => setView("list")}>
-            List
-          </button>
-        </div>
-        {view === "map" && (
-          <>
-            <button
-              className={`graph-toggle${curved ? " graph-toggle--on" : ""}`}
-              aria-pressed={curved}
-              onClick={toggleCurved}
-              title="Draw links as curves so crossing links stay apart"
-            >
-              Curved
-            </button>
-            <button
-              className={`graph-toggle${arrows ? " graph-toggle--on" : ""}`}
-              aria-pressed={arrows}
-              onClick={toggleArrows}
-              title="Show which note links to which"
-            >
-              Arrows
-            </button>
-          </>
-        )}
-        {orphanCount > 0 && view === "map" && (
-          <button
-            className={`graph-toggle${showOrphans ? " graph-toggle--on" : ""}`}
-            onClick={() => setShowOrphans((v) => !v)}
-            title={showOrphans ? "Hide notes with no links" : "Show notes with no links"}
-          >
-            {showOrphans ? "Hide" : "Show"} {orphanCount} orphan{orphanCount === 1 ? "" : "s"}
-          </button>
-        )}
       </div>
       {/* Legend and zoom bar share one row that wraps (zoom bar on top) on a
           narrow panel, so the two never overlap. */}

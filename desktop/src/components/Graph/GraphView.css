@@ -177,10 +177,36 @@
 }
 
 /* In-graph search (#146): matches get highlighted and the camera flies over. */
-.graph-search {
+/* Search box, toolbar and tip share the top area (#580). The row wraps on a
+   narrow pane, the toolbar moving below the search box, and the tip follows
+   both instead of sitting at a fixed offset. Only the controls take clicks. */
+.graph-top {
   position: absolute;
-  left: 14px;
   top: 12px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.graph-top-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.graph-top-row > *,
+.graph-top > .graph-tip {
+  pointer-events: auto;
+}
+
+.graph-search {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -191,6 +217,11 @@
   border-radius: 8px;
   color: var(--text-muted);
   transition: border-color var(--transition-fast);
+}
+
+/* display: flex above would otherwise beat the hidden attribute (list view). */
+.graph-search[hidden] {
+  display: none;
 }
 
 .graph-search:focus-within {
@@ -231,14 +262,11 @@
 }
 
 .graph-controls {
-  position: absolute;
-  right: 14px;
-  top: 12px;
+  margin-left: auto;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
-  max-width: 70%;
 }
 
 .graph-toggle {

@@ -69,7 +69,7 @@ describe("legalPagePath", () => {
       "/legal/../index.html",
       "/legal/%2e%2e/index.html",
       "/legal/sub/../../index.html",
-      "/legal\..\index.html",
+      "/legal\\..\\index.html",
       "/legal/terms.html?x=1",
       "/legal/terms.html#top",
       "/legal/ terms.html",

@@ -44,7 +44,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] `fix/embed-ghost-links`: attachment embeds create ghost links in the graph; backend and data developer (#565)
 - [ ] Case-insensitive unique note titles, inside `feature/import-attachments` (#567)
 - [ ] `fix/sync-event-handling`: one PR, one commit per bug; desktop developer, after `feature/vault-lock` (#561, #562, #563)
-- [ ] `fix/delete-confirm`: confirm before deleting with the Delete key or a multi-select; desktop developer, after `fix/sync-event-handling` (#568)
+- [x] `fix/delete-confirm`: confirm before deleting with the Delete key or a multi-select; desktop developer, after `fix/sync-event-handling` (#568)
 - [ ] `fix/rename-echo`: tag rename and note moves go through the save path; backend and data developer, after `feature/e2ee-drafts` (#564)
 - [ ] Sprint 2: Trash with 30-day restore, first after offline (#569)
 - [ ] Sprint 2: links to attached files open the file (#566), update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)

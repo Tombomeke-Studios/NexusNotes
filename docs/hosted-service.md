@@ -90,7 +90,7 @@ home, because they must be readable *before* installing and linked from every ma
 
 **Recommendation:** host them as **static pages on the promotion site** at stable, versioned
 URLs, with the sources in the repository (moved out of `desktop/`). The app opens them in the
-system browser (the in-app window from 0b29f05 can go once the pages are public). Rules:
+system browser (any in-app policy window can go once the pages are public). Rules:
 
 - The sign-up form links to the URLs and keeps recording agreement and version
   (`CurrentTermsVersion`); the server tells the client which URLs apply (self-hosters point

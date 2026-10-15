@@ -14,6 +14,29 @@
   flex: 1;
 }
 
+/* Before inviting to an e2ee vault (#546): the passphrase must be handed over. */
+.share-e2ee-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.share-e2ee-warning p {
+  margin: 0 0 6px;
+}
+
+.share-e2ee-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .share-role {
   padding: 0 8px;
   border-radius: 8px;

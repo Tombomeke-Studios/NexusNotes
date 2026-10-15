@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractLinks, buildGraphData, findGraphNode, localGraph } from "./wikilinks";
+import { extractLinks, buildGraphData, findGraphNode, localGraph, isAttachmentName } from "./wikilinks";
 import type { GraphNode } from "./wikilinks";
 import type { Note } from "./types";
 
@@ -180,6 +180,31 @@ describe("localGraph (#144)", () => {
 });
 
 // Links written as code are shown as code, not followed (#454).
+describe("extractLinks and attachments (#565)", () => {
+  it("does not read embeds or links to attached files as note links", () => {
+    const content =
+      "![[beach.png]] ![[photo.JPG|300]] ![[Diagram]] [[report.pdf]] [[assets/song.mp3|listen]] [[Real note]] [[v2.0 plan]]";
+    expect(extractLinks(content)).toEqual(["Real note", "v2.0 plan"]);
+  });
+
+  it("leaves no ghost nodes for attachments in the graph", () => {
+    const notes = [
+      { id: "1", title: "Trip", content: "![[beach.png]] and [[itinerary.pdf]] and [[Packing]]" },
+      { id: "2", title: "Packing", content: "" },
+    ].map(makeNote);
+    const graph = buildGraphData(notes);
+    expect(graph.nodes.map((n) => n.title).sort()).toEqual(["Packing", "Trip"]);
+    expect(graph.nodes.some((n) => n.ghost)).toBe(false);
+  });
+
+  it("recognises attachment names by extension", () => {
+    expect(isAttachmentName("a/b/Scan.PDF")).toBe(true);
+    expect(isAttachmentName("Meeting 2026.10.15")).toBe(false);
+    expect(isAttachmentName(".png")).toBe(false);
+    expect(isAttachmentName("Notes")).toBe(false);
+  });
+});
+
 describe("extractLinks and code", () => {
   it("ignores links inside code spans and fenced blocks", () => {
     const content =

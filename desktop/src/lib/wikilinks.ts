@@ -26,7 +26,28 @@ export interface GraphData {
   links: GraphLink[];
 }
 
-const WIKI_LINK_RE = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+const WIKI_LINK_RE = /(!?)\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+
+/**
+ * File extensions of attachments (#565). A `[[name.pdf]]` link points at a
+ * note's attached file, not at a note; the sync service (`service/link.go`)
+ * and the MCP server (`server/graph.go`) keep the same list.
+ */
+const ATTACHMENT_EXTENSIONS = new Set(
+  (
+    "png jpg jpeg gif webp bmp avif svg ico tif tiff heic " +
+    "pdf doc docx xls xlsx ppt pptx odt ods odp rtf txt csv epub " +
+    "mp3 wav ogg oga m4a flac aac opus mp4 webm mov mkv avi m4v " +
+    "zip rar 7z tar gz"
+  ).split(" "),
+);
+
+/** Whether a link target names an attached file (by its extension) rather than a note. */
+export function isAttachmentName(target: string): boolean {
+  const base = target.slice(target.lastIndexOf("/") + 1);
+  const dot = base.lastIndexOf(".");
+  return dot > 0 && ATTACHMENT_EXTENSIONS.has(base.slice(dot + 1).toLowerCase());
+}
 
 /**
  * Blanks fenced code blocks (``` or ~~~, closed by a fence of the same
@@ -64,7 +85,11 @@ export function extractLinks(content: string): string[] {
   const text = stripCode(content);
   let match;
   while ((match = WIKI_LINK_RE.exec(text)) !== null) {
-    const target = match[1].split("#")[0].trim();
+    // `![[file]]` embeds an attachment and `[[file.pdf]]` links one (#565):
+    // neither is a link to a note.
+    if (match[1] === "!") continue;
+    const target = match[2].split("#")[0].trim();
+    if (isAttachmentName(target)) continue;
     if (target && !links.includes(target)) {
       links.push(target);
     }

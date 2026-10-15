@@ -25,7 +25,7 @@ vi.mock("./api", async (orig) => {
   };
 });
 
-import { listAttachments, uploadAttachment, attachmentObjectUrl } from "./attachmentClient";
+import { listAttachments, uploadAttachment, attachmentObjectUrl, attachmentBytes } from "./attachmentClient";
 import { vaultKeySession } from "./vaultKeys";
 import { generateVaultKey } from "./crypto";
 import { readBytes } from "./attachmentCrypto";
@@ -67,6 +67,21 @@ describe("attachment client (#238)", () => {
     const att = await uploadAttachment("n1", new File(["hi"], "a.txt", { type: "text/plain" }), vault);
     expect(att.filename).toBe("a.txt");
     expect(await attachmentObjectUrl(att)).toBe(`plain:${att.id}`);
+  });
+
+  it("hands the vault export plaintext bytes (#550)", async () => {
+    vaultKeySession.set("v1", generateVaultKey());
+    const e2ee = { id: "v1", encryption: "e2ee" as const };
+    const sealed = await uploadAttachment("n1", new File(["top secret"], "plan.txt"), e2ee);
+    expect(new TextDecoder().decode(await attachmentBytes(sealed, e2ee))).toBe("top secret");
+
+    store.clear();
+    const plain = { id: "v2", encryption: "none" as const };
+    const att = await uploadAttachment("n1", new File(["hi"], "a.txt"), plain);
+    expect(new TextDecoder().decode(await attachmentBytes(att, plain))).toBe("hi");
+
+    vaultKeySession.clear();
+    await expect(attachmentBytes(sealed, e2ee)).rejects.toThrow(/locked/);
   });
 
   it("refuses while the e2ee vault is locked", async () => {

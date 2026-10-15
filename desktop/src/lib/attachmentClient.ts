@@ -67,6 +67,16 @@ export function onAttachmentsChanged(listener: (noteId: string) => void): () => 
 }
 
 /**
+ * The attachment's plaintext bytes (decrypted on this device in an e2ee
+ * vault), for the vault export (#550).
+ */
+export async function attachmentBytes(att: Attachment, vault: VaultLike): Promise<Uint8Array> {
+  const key = vault.encryption === "e2ee" ? keyFor(vault.id) : null;
+  const bytes = await readBytes(await api.bytes(att.id));
+  return key ? decryptAttachmentBytes(bytes, key) : bytes;
+}
+
+/**
  * An object URL for the attachment (caller revokes it). The blob is typed with
  * safeBlobType, so it can never become an active document.
  */

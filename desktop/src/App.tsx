@@ -84,7 +84,17 @@ import { ConflictDialog, ConflictNotice } from "./components/Conflict";
 import type { SortBy } from "./lib/noteFilter";
 import { toIsoDate } from "./lib/daily";
 import { renderTemplate, templateVars, listTemplates } from "./lib/templates";
-import { stripFrontmatter, safeFilename, noteToHtmlDocument, vaultToZip, downloadFile, printNote } from "./lib/export";
+import {
+  stripFrontmatter,
+  safeFilename,
+  noteToHtmlDocument,
+  vaultToZip,
+  downloadFile,
+  printNote,
+  collectAttachments,
+  describeExport,
+} from "./lib/export";
+import { listAttachments, attachmentBytes } from "./lib/attachmentClient";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
 import type { ViewMode } from "./lib/prefs";
 import type { RailView } from "./components/Workspace/Rail";
@@ -882,11 +892,23 @@ export default function App() {
     toast(parts.join(", ") + ".", { key: "import", kind: failed > 0 ? "error" : "success" });
   }, []);
 
-  const handleExportVault = useCallback(() => {
+  const handleExportVault = useCallback(async () => {
     const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
-    if (!vault || noteListRef.current.length === 0) return;
-    downloadFile(`${safeFilename(vault.name)}.zip`, "application/zip", vaultToZip(noteListRef.current));
-    toast(`Exported “${vault.name}” as a zip`, { kind: "success" });
+    const notes = noteListRef.current;
+    if (!vault || notes.length === 0) return;
+    if (isVaultLocked(vault)) {
+      toast("Unlock the vault before exporting it.", { kind: "error" });
+      return;
+    }
+    // Attachments too (#550), decrypted on this device in an e2ee vault.
+    const { attachments, failed } = await collectAttachments(notes, {
+      list: (noteId) => listAttachments(noteId, vault),
+      read: (att) => attachmentBytes(att, vault),
+      onProgress: (done, total) => toast(`Exporting… ${done} of ${total} notes`, { key: "export", duration: 60_000 }),
+    });
+    downloadFile(`${safeFilename(vault.name)}.zip`, "application/zip", vaultToZip(notes, undefined, attachments));
+    const { message, kind } = describeExport(vault.name, attachments.length, failed);
+    toast(message, { key: "export", kind, duration: failed.length > 0 ? 12_000 : undefined });
   }, []);
 
   const signOutNow = useCallback(() => {

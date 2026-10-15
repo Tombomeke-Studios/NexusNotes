@@ -9,6 +9,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Sharing an end-to-end encrypted vault explains first that the person needs the vault's
   passphrase from you (Cancel is the default), and a member opening a shared encrypted vault
   is asked to get the passphrase from its owner.
+- The vault export zip now contains every attached file, decrypted on your device for an
+  end-to-end encrypted vault, next to its note so `![[image.png]]` still shows the image when
+  the folder is opened in Obsidian or a similar tool. Files that could not be downloaded are
+  named in the export message instead of being left out silently.
 - Graph: links are drawn in a clearly visible grey (at least 3:1 contrast, green for the
   open note) and stop at the rim of both notes, arrowheads and curved links are optional
   toggles that the app remembers, and a zoom bar (buttons, slider, Fit) sits next to

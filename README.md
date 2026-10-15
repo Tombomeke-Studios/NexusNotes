@@ -22,7 +22,8 @@ vaults end-to-end encrypted unless you choose otherwise.
   linked files included); everything else is encrypted at rest on the server.
 - **Organise** with folders, nested tags, stars, daily, weekly and monthly notes, and
   templates; attach files; import a folder of markdown (an Obsidian vault works).
-- **Share a vault** with others as viewer or editor; export everything as markdown.
+- **Share a vault** with others as viewer or editor; export everything as markdown, attached
+  files included.
 - **Desktop app** (Tauri) for Windows, macOS and Linux, and nothing else: no mobile app, no browser extension. It connects to a hosted server or to one you run yourself. The browser web UI from the Docker stack is being retired, see [docs/hosted-service.md](docs/hosted-service.md).
 
 | Graph view | Command palette |

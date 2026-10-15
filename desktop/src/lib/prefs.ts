@@ -22,6 +22,9 @@ export interface WorkspacePrefs {
   /** Templates for weekly and monthly notes (#240). */
   weeklyTemplate: string;
   monthlyTemplate: string;
+  /** Graph view link style: soft curves instead of straight lines, and arrowheads. */
+  graphCurved: boolean;
+  graphArrows: boolean;
 }
 
 export const PREFS_STORAGE_KEY = "nexus_workspace_prefs";
@@ -40,6 +43,8 @@ export const DEFAULT_PREFS: WorkspacePrefs = {
   dailyTemplate: DEFAULT_DAILY_TEMPLATE,
   weeklyTemplate: DEFAULT_WEEKLY_TEMPLATE,
   monthlyTemplate: DEFAULT_MONTHLY_TEMPLATE,
+  graphCurved: false,
+  graphArrows: false,
 };
 
 export const PREF_LIMITS = {
@@ -65,7 +70,7 @@ function sanitize(raw: Partial<WorkspacePrefs> & { reduceMotion?: unknown }): Wo
       prefs[key] = clamp(v, min, max);
     }
   }
-  for (const key of ["showStatusBar", "leftOpen", "rightOpen"] as const) {
+  for (const key of ["showStatusBar", "leftOpen", "rightOpen", "graphCurved", "graphArrows"] as const) {
     const v = raw[key];
     if (typeof v === "boolean") prefs[key] = v;
   }

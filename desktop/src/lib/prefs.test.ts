@@ -19,6 +19,15 @@ describe("prefs", () => {
     expect(prefs.showStatusBar).toBe(DEFAULT_PREFS.showStatusBar);
   });
 
+  it("keeps the graph link style, ignoring non-boolean values", () => {
+    expect(loadPrefs().graphCurved).toBe(false);
+    expect(loadPrefs().graphArrows).toBe(false);
+    savePrefs({ graphCurved: true, graphArrows: true });
+    expect(loadPrefs()).toMatchObject({ graphCurved: true, graphArrows: true });
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ graphCurved: "yes", graphArrows: 1 }));
+    expect(loadPrefs()).toMatchObject({ graphCurved: false, graphArrows: false });
+  });
+
   it("defaults motion to following the system setting", () => {
     expect(loadPrefs().motion).toBe("system");
   });

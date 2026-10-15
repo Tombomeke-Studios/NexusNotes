@@ -126,6 +126,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Embedded images and links to attached files (`![[photo.png]]`, `[[report.pdf]]`) no longer
   show up as missing notes in the graph, backlinks or the MCP graph; existing ones go away
   when the note is saved again.
+- The Privacy Policy, Terms of Service and Cookie Policy links work in the desktop app: they
+  open the bundled page in a small window of its own (a tab in a browser) and use the
+  accent colour.
 - Text typed offline in a note you then left (or before closing the app) is sent as soon as
   the server is reachable, without reopening the note.
 - `[[links]]` written as code (in backticks or a code block) no longer show up as links in

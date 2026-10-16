@@ -8,7 +8,9 @@ import {
   vaultToZip,
   collectAttachments,
   describeExport,
+  describeExportError,
 } from "./export";
+import { ZipTooLargeError } from "./zip";
 import type { Note } from "./types";
 
 const note = (id: string, title: string, path: string, content = ""): Note => ({
@@ -158,6 +160,24 @@ describe("describeExport (#550)", () => {
       kind: "error",
     });
     expect(describeExport("W", 0, ["1", "2", "3", "4", "5", "6"]).message).toContain("1, 2, 3, 4, 5 and 1 more.");
+  });
+});
+
+describe("describeExportError", () => {
+  it("passes the zip limit message on as it is", () => {
+    const err = new ZipTooLargeError("The export is too large for one zip file.");
+    expect(describeExportError("Work", err)).toBe("The export is too large for one zip file.");
+  });
+
+  it("says when the vault is too large to build in memory", () => {
+    expect(describeExportError("Work", new RangeError("Array buffer allocation failed"))).toBe(
+      "Couldn't export “Work”: it is too large to build in memory.",
+    );
+  });
+
+  it("names any other failure", () => {
+    expect(describeExportError("Work", new Error("Network down"))).toBe("Couldn't export “Work”: Network down.");
+    expect(describeExportError("Work", "?")).toBe("Couldn't export “Work”: something went wrong.");
   });
 });
 

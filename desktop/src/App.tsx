@@ -93,6 +93,7 @@ import {
   printNote,
   collectAttachments,
   describeExport,
+  describeExportError,
 } from "./lib/export";
 import { listAttachments, attachmentBytes } from "./lib/attachmentClient";
 import { loadPrefs, savePrefs, PREF_LIMITS, clamp } from "./lib/prefs";
@@ -900,15 +901,20 @@ export default function App() {
       toast("Unlock the vault before exporting it.", { kind: "error" });
       return;
     }
-    // Attachments too (#550), decrypted on this device in an e2ee vault.
-    const { attachments, failed } = await collectAttachments(notes, {
-      list: (noteId) => listAttachments(noteId, vault),
-      read: (att) => attachmentBytes(att, vault),
-      onProgress: (done, total) => toast(`Exporting… ${done} of ${total} notes`, { key: "export", duration: 60_000 }),
-    });
-    downloadFile(`${safeFilename(vault.name)}.zip`, "application/zip", vaultToZip(notes, undefined, attachments));
-    const { message, kind } = describeExport(vault.name, attachments.length, failed);
-    toast(message, { key: "export", kind, duration: failed.length > 0 ? 12_000 : undefined });
+    try {
+      // Attachments too (#550), decrypted on this device in an e2ee vault.
+      const { attachments, failed } = await collectAttachments(notes, {
+        list: (noteId) => listAttachments(noteId, vault),
+        read: (att) => attachmentBytes(att, vault),
+        onProgress: (done, total) => toast(`Exporting… ${done} of ${total} notes`, { key: "export", duration: 60_000 }),
+      });
+      downloadFile(`${safeFilename(vault.name)}.zip`, "application/zip", vaultToZip(notes, undefined, attachments));
+      const { message, kind } = describeExport(vault.name, attachments.length, failed);
+      toast(message, { key: "export", kind, duration: failed.length > 0 ? 12_000 : undefined });
+    } catch (err) {
+      // Too large for a zip, out of memory, ...: replaces the "Exporting…" toast.
+      toast(describeExportError(vault.name, err), { key: "export", kind: "error", duration: 12_000 });
+    }
   }, []);
 
   const signOutNow = useCallback(() => {

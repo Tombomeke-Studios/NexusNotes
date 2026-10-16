@@ -242,7 +242,7 @@ it is what it exists for:
 | `src/lib/remarkCallouts.ts` | remark plugin: `> [!NOTE]` blockquotes → styled callout blocks in the preview (#223) |
 | `src/lib/tagTree.ts` | Builds the nested tag tree (grouped on `/`) for the sidebar tag panel |
 | `src/lib/tagRename.ts` | Renames a tag across note content (inline + front-matter, cascades to nested children) |
-| `src/lib/graphLayout.ts` | Graph view start layout (#439): new nodes seeded in a cloud at the centre, known nodes keep their position across re-renders, capped stagger for the fade-in |
+| `src/lib/graphLayout.ts` | Graph view start layout (#439): new nodes seeded in a cloud at the centre, known nodes keep their position across re-renders, capped stagger for the fade-in; folder colour slots per vault in sorted order (#593, palette checked by `components/Graph/graphPalette.test.ts`) |
 | `src/lib/rafThrottle.ts` | Coalesces a fast event stream (zoom, drag) into at most one call per animation frame with the latest value; the graph's zoom slider uses it |
 | `src/lib/diff.ts` | Line diff (Myers) between two versions of a note, side-by-side rows, numbering and folding of unchanged runs, and a merge draft with conflict markers (#225) |
 | `src/components/History/` + `src/lib/versionHistory.ts` | Version history (#415-#417): snapshot list per day/device, diff against the current text or another version (side by side / inline), restore (server-side, as a new version); versions are decrypted on the device for e2ee vaults |

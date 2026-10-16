@@ -64,6 +64,17 @@ describe("buildGraphData", () => {
     expect(node.updatedAt).toBe("2026-10-01T10:00:00Z");
   });
 
+  it("lists the vault's top-level folders, sorted, without root (#593)", () => {
+    const notes = [
+      makeNote({ id: "1", title: "A", path: "Examples" }),
+      makeNote({ id: "2", title: "B", path: "Daily/2026" }),
+      makeNote({ id: "3", title: "C", path: "" }),
+      makeNote({ id: "4", title: "D", path: "Examples/Deep" }),
+      makeNote({ id: "5", title: "E", path: "archive" }),
+    ];
+    expect(buildGraphData(notes).folders).toEqual(["archive", "Daily", "Examples"]);
+  });
+
   it("returns empty for no notes", () => {
     const graph = buildGraphData([]);
     expect(graph.nodes).toEqual([]);
@@ -171,6 +182,15 @@ describe("localGraph (#144)", () => {
     expect(d2.nodes.map((n) => n.id).sort()).toEqual(["a", "b", "c", "ghost:ghosty"]);
     // The C-D link is outside depth 2 from A.
     expect(d2.links.every((l) => l.target !== "d" && l.source !== "d")).toBe(true);
+  });
+
+  it("keeps the whole vault's folders so the local graph colours them like the full graph (#593)", () => {
+    const vault = buildGraphData([
+      { id: "a", vault_id: "v", path: "Work", title: "A", content: "[[B]]", checksum: "", created_at: "", updated_at: "" },
+      { id: "b", vault_id: "v", path: "Daily/2026", title: "B", content: "", checksum: "", created_at: "", updated_at: "" },
+      { id: "c", vault_id: "v", path: "Archive", title: "C", content: "", checksum: "", created_at: "", updated_at: "" },
+    ]);
+    expect(localGraph(vault, "a", 1).folders).toEqual(["Archive", "Daily", "Work"]);
   });
 
   it("an unlinked note yields just itself; an unknown id yields nothing", () => {

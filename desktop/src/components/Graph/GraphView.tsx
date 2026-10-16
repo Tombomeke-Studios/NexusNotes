@@ -1,7 +1,7 @@
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import * as d3 from "d3";
 import { findGraphNode } from "../../lib/wikilinks";
-import { enterDelay, fitTransform, folderColorIndex, seedPositions, type Point } from "../../lib/graphLayout";
+import { enterDelay, fitTransform, folderColorIndex, folderColorSlots, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
 import { rafThrottle } from "../../lib/rafThrottle";
 import { loadPrefs, savePrefs } from "../../lib/prefs";
@@ -46,9 +46,10 @@ interface SimLink extends d3.SimulationLinkDatum<SimNode> {
   ghost?: boolean;
 }
 
-// Folder colours come from the theme tokens (#267); root notes stay neutral.
-function folderColor(folder: string): string {
-  const i = folderColorIndex(folder);
+// Folder colours come from the theme tokens (#267), one slot per folder of
+// the vault (#593); root notes stay neutral.
+function folderColor(folder: string, slots: Map<string, number>): string {
+  const i = folderColorIndex(folder, slots);
   return i === null ? "var(--graph-root)" : `var(--graph-folder-${i})`;
 }
 
@@ -86,6 +87,10 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     return () => throttled.cancel();
   }, []);
   const zoomRef = useRef<{ to: (k: number) => void; fit: () => void }>({ to: () => {}, fit: () => {} });
+  const colorSlots = useMemo(
+    () => folderColorSlots(data.folders ?? data.nodes.map((n) => n.folder)),
+    [data.folders, data.nodes],
+  );
 
   const render = useCallback(() => {
     const svg = d3.select(svgRef.current);
@@ -250,7 +255,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
       .join("g")
       .attr("class", (d) =>
         `graph-node ${d.id === activeNoteId ? "graph-node--active" : ""} ${d.connections === 0 ? "graph-node--orphan" : ""} ${d.ghost ? "graph-node--ghost" : ""}`)
-      .style("--node-color", (d) => folderColor(d.folder))
+      .style("--node-color", (d) => folderColor(d.folder, colorSlots))
       // Nodes are reachable by keyboard (#267): Tab to one, Enter opens it.
       .attr("tabindex", 0)
       .attr("role", "button")
@@ -384,7 +389,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     });
 
     return () => { simulation.stop(); };
-  }, [data, activeNoteId, onSelectNote, onCreateNote, showOrphans, compact, curved, arrows]);
+  }, [data, colorSlots, activeNoteId, onSelectNote, onCreateNote, showOrphans, compact, curved, arrows]);
 
   useEffect(() => {
     const cleanup = render();
@@ -452,7 +457,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
                       className="graph-list-open"
                       onClick={() => (n.ghost ? onCreateNote?.(n.title) : onSelectNote(n.id))}
                     >
-                      <span className="graph-list-dot" style={{ background: n.ghost ? "transparent" : folderColor(n.folder) }} />
+                      <span className="graph-list-dot" style={{ background: n.ghost ? "transparent" : folderColor(n.folder, colorSlots) }} />
                       {n.title}
                       {n.ghost && <span className="graph-list-note"> (not created yet)</span>}
                     </button>
@@ -583,7 +588,7 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           <div className="graph-legend" aria-label="Legend">
             {legendFolders.map(([folder]) => (
               <span key={folder} className="graph-legend-item">
-                <span className="graph-legend-dot" style={{ background: folderColor(folder) }} />
+                <span className="graph-legend-dot" style={{ background: folderColor(folder, colorSlots) }} />
                 {folder}
               </span>
             ))}

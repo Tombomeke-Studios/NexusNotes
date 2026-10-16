@@ -51,6 +51,28 @@ describe("GraphView", () => {
     expect(top!.lastElementChild).toHaveClass("graph-tip");
   });
 
+  it("colours each folder of the vault differently, legend included (#593)", () => {
+    const { container } = renderGraph({
+      nodes: [
+        { id: "a", title: "Alpha", connections: 0, folder: "Examples" },
+        { id: "b", title: "Beta", connections: 0, folder: "Daily" },
+        { id: "c", title: "Gamma", connections: 0, folder: "Templates" },
+      ],
+      links: [],
+    });
+    const legend = [...container.querySelectorAll(".graph-legend-item")].map((item) => [
+      item.textContent,
+      (item.querySelector(".graph-legend-dot") as HTMLElement).style.background,
+    ]);
+    expect(legend).toEqual(
+      expect.arrayContaining([
+        ["Daily", "var(--graph-folder-1)"],
+        ["Examples", "var(--graph-folder-2)"],
+        ["Templates", "var(--graph-folder-3)"],
+      ]),
+    );
+  });
+
   it("remembers the Curved and Arrows choices", () => {
     renderGraph(twoNotes);
     fireEvent.click(screen.getByRole("button", { name: "Curved" }));

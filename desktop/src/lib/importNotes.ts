@@ -147,6 +147,33 @@ function decodeLinkPath(raw: string): string {
   }
 }
 
+/**
+ * Rewrites the note's links to imported files, outside code: attach(path)
+ * gives the name the file is linked under.
+ */
+function rewriteLinks(
+  raw: string,
+  noteDir: string,
+  resolve: (target: string, noteDir: string) => string | undefined,
+  attach: (filePath: string) => string,
+): string {
+  return outsideCode(raw, (prose) =>
+    prose
+      .replace(WIKI_LINK, (match, bang: string, target: string, sub: string, alias: string) => {
+        const hit = resolve(target, noteDir);
+        return hit ? `${bang}[[${attach(hit)}${sub}${alias}]]` : match;
+      })
+      .replace(MD_LINK, (match, bang: string, text: string, angled?: string, bare?: string) => {
+        const target = angled ?? bare ?? "";
+        if (URL_SCHEME.test(target) || target.startsWith("#")) return match;
+        const hit = resolve(decodeLinkPath(target), noteDir);
+        if (!hit) return match;
+        const label = text.replace(/[|[\]]/g, " ").trim();
+        return `${bang}[[${attach(hit)}${label ? `|${label}` : ""}]]`;
+      }),
+  );
+}
+
 function numbered(name: string, n: number): string {
   const dot = name.lastIndexOf(".");
   return dot > 0 ? `${name.slice(0, dot)} ${n}${name.slice(dot)}` : `${name} ${n}`;
@@ -164,6 +191,9 @@ export async function planImport<F extends ImportFile>(
   // .trash, .git) are app data, not notes.
   const root = files.find((f) => f.webkitRelativePath)?.webkitRelativePath.split("/")[0] ?? "";
   const notes: Array<{ title: string; path: string; file: F }> = [];
+  // Notes the vault already has: not imported again, but their links still
+  // tell which files came with them.
+  const existingNotes: Array<{ path: string; file: F }> = [];
   const attachable = new Map<string, F>();
   for (const f of files) {
     const segments = (f.webkitRelativePath || f.name).split("/").slice(f.webkitRelativePath ? 1 : 0);
@@ -181,6 +211,7 @@ export async function planImport<F extends ImportFile>(
     const path = segments.slice(0, -1).join("/");
     if (have.has(key(path, title))) {
       plan.skipped.existing++;
+      existingNotes.push({ path, file: f });
       continue;
     }
     have.add(key(path, title));
@@ -207,27 +238,25 @@ export async function planImport<F extends ImportFile>(
       return name;
     };
     const raw = (await n.file.text()).replace(/\r\n/g, "\n");
-    const content = outsideCode(raw, (prose) =>
-      prose
-        .replace(WIKI_LINK, (match, bang: string, target: string, sub: string, alias: string) => {
-          const hit = resolve(target, n.path);
-          return hit ? `${bang}[[${attach(hit)}${sub}${alias}]]` : match;
-        })
-        .replace(MD_LINK, (match, bang: string, text: string, angled?: string, bare?: string) => {
-          const target = angled ?? bare ?? "";
-          if (URL_SCHEME.test(target) || target.startsWith("#")) return match;
-          const hit = resolve(decodeLinkPath(target), n.path);
-          if (!hit) return match;
-          const label = text.replace(/[|[\]]/g, " ").trim();
-          return `${bang}[[${attach(hit)}${label ? `|${label}` : ""}]]`;
-        }),
-    );
+    const content = rewriteLinks(raw, n.path, resolve, attach);
     plan.notes.push({ title: n.title, path: n.path, content, attachments });
   }
 
+  // The files of notes the vault already has came in with them (a re-import):
+  // already there, unless a new note links them too and gets its own copy.
+  const alreadyThere = new Set<string>();
+  for (const n of existingNotes) {
+    const raw = (await n.file.text()).replace(/\r\n/g, "\n");
+    rewriteLinks(raw, n.path, resolve, (filePath) => {
+      alreadyThere.add(filePath);
+      return "";
+    });
+  }
+  for (const p of alreadyThere) if (!referenced.has(p)) plan.skipped.existing++;
+
   // Files no imported note links to get a note of their own, which embeds
   // them so they show up (and stay reachable) like any other attachment.
-  const loose = [...attachable].filter(([p]) => !referenced.has(p));
+  const loose = [...attachable].filter(([p]) => !referenced.has(p) && !alreadyThere.has(p));
   if (loose.length > 0) {
     const title = root ? `Files from ${root}` : "Imported files";
     if (have.has(key("", title))) {

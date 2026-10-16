@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import * as d3 from "d3";
 import { findGraphNode } from "../../lib/wikilinks";
-import { enterDelay, fitTransform, folderColorIndex, folderColorSlots, seedPositions, type Point } from "../../lib/graphLayout";
+import { enterDelay, fitTransform, folderColorIndex, folderColorSlots, overlayInsets, seedPositions, type Point } from "../../lib/graphLayout";
 import { relativeTimeLabel } from "../../lib/stats";
 import { rafThrottle } from "../../lib/rafThrottle";
 import { loadPrefs, savePrefs } from "../../lib/prefs";
@@ -141,11 +141,19 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
     const kept = d3.zoomTransform(svgRef.current);
     g.attr("transform", kept.toString());
     const fitView = () => {
+      // Fit into the band the floating chrome leaves free (#594): the search
+      // box, toolbar and one-time tip on top, the legend and zoom bar below.
+      const host = svgRef.current?.parentElement;
+      const rects = (selector: string) => [...(host?.querySelectorAll(selector) ?? [])].map((el) => el.getBoundingClientRect());
+      const insets = svgRef.current
+        ? overlayInsets(svgRef.current.getBoundingClientRect(), rects(".graph-top"), rects(".graph-bottom, .graph-badge"))
+        : undefined;
       const t = fitTransform(
         nodes.map((n) => ({ x: n.x ?? 0, y: n.y ?? 0 })),
         width,
         height,
         compact ? 24 : 56,
+        insets,
       );
       svg
         .transition()
@@ -554,9 +562,9 @@ export function GraphView({ data, activeNoteId, onSelectNote, onCreateNote, comp
           </div>
         </div>
         {view === "map" && noteCount > 0 && (
-          <Tip id="graph" className="graph-tip">
-            Drag notes to arrange them, zoom with the bar at the bottom or by scrolling, click a note to open it. Double-click the background to
-            reset the view.
+          // Compact, and the camera fits below it (#594), so it covers no nodes.
+          <Tip id="graph" className="graph-tip tip--compact">
+            Drag to arrange, scroll to zoom, click a note to open it. Double-click the background to reset.
           </Tip>
         )}
       </div>

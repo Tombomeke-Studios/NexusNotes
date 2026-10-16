@@ -56,12 +56,54 @@ export function enterDelay(index: number, count: number): number {
 export const MIN_FIT_SCALE = 0.25;
 export const MAX_FIT_SCALE = 1.4;
 
+/** How far floating chrome reaches into the view from its top and bottom edge. */
+export interface Insets {
+  top: number;
+  bottom: number;
+}
+
+/** Space kept between the fitted node centres and the chrome floating over
+ * the graph: room for the biggest node's radius and the label under it. */
+export const OVERLAY_GAP = 36;
+
+/** The most of the view's height the chrome may claim from the fit. */
+export const MAX_CHROME_SHARE = 2 / 3;
+
+/**
+ * How much of the view the floating chrome covers (#594): the lowest bottom
+ * edge of the top overlays (search, toolbar, tip) and the highest top edge
+ * of the bottom ones (legend, zoom bar), measured from the view's edges.
+ * Empty (hidden) boxes are ignored.
+ */
+export function overlayInsets(
+  view: { top: number; bottom: number },
+  tops: { top: number; bottom: number; height: number }[],
+  bottoms: { top: number; bottom: number; height: number }[],
+): Insets {
+  const height = view.bottom - view.top;
+  const clamp = (v: number) => Math.min(Math.max(v, 0), height);
+  return {
+    top: tops.filter((r) => r.height > 0).reduce((m, r) => Math.max(m, clamp(r.bottom - view.top)), 0),
+    bottom: bottoms.filter((r) => r.height > 0).reduce((m, r) => Math.max(m, clamp(view.bottom - r.top)), 0),
+  };
+}
+
 /**
  * The zoom (scale k, translation x/y) that shows every point inside a
  * width x height view with `padding` around it (#267): the graph opens
- * fitted instead of wherever the simulation left it.
+ * fitted instead of wherever the simulation left it. With `insets` the graph
+ * is fitted into the band between the top and bottom chrome (#594), keeping
+ * OVERLAY_GAP clear of it, so the search box, the one-time tip and the legend
+ * do not cover nodes. Chrome never claims more than MAX_CHROME_SHARE of the
+ * height; beyond that the insets shrink proportionally.
  */
-export function fitTransform(points: Point[], width: number, height: number, padding = 48): { k: number; x: number; y: number } {
+export function fitTransform(
+  points: Point[],
+  width: number,
+  height: number,
+  padding = 48,
+  insets: Insets = { top: 0, bottom: 0 },
+): { k: number; x: number; y: number } {
   if (points.length === 0) return { k: 1, x: 0, y: 0 };
   let minX = Infinity;
   let minY = Infinity;
@@ -75,13 +117,24 @@ export function fitTransform(points: Point[], width: number, height: number, pad
   }
   const w = Math.max(maxX - minX, 1);
   const h = Math.max(maxY - minY, 1);
+  // Each edge keeps `padding` from the view's edge, or clears the chrome on
+  // it by OVERLAY_GAP, whichever is more.
+  let coverTop = insets.top > 0 ? insets.top + OVERLAY_GAP : 0;
+  let coverBottom = insets.bottom > 0 ? insets.bottom + OVERLAY_GAP : 0;
+  if (coverTop + coverBottom > height * MAX_CHROME_SHARE) {
+    const s = (height * MAX_CHROME_SHARE) / (coverTop + coverBottom);
+    coverTop *= s;
+    coverBottom *= s;
+  }
+  const top = Math.max(padding, coverTop);
+  const bottom = Math.max(padding, coverBottom);
   const k = Math.min(
     MAX_FIT_SCALE,
-    Math.max(MIN_FIT_SCALE, Math.min((width - padding * 2) / w, (height - padding * 2) / h)),
+    Math.max(MIN_FIT_SCALE, Math.min((width - padding * 2) / w, (height - top - bottom) / h)),
   );
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  return { k, x: width / 2 - k * cx, y: height / 2 - k * cy };
+  return { k, x: width / 2 - k * cx, y: top + (height - top - bottom) / 2 - k * cy };
 }
 
 /** How many folder colours the theme defines (--graph-folder-1 ... -N). */

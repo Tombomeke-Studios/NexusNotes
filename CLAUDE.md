@@ -217,7 +217,8 @@ it is what it exists for:
 | `src/lib/api.ts` | API client for sync service |
 | `src/lib/sync.ts` | WebSocket sync client |
 | `src/lib/syncEvents.ts` | Checks for pushed sync events before they touch state: does a note belong to the open vault (#562), is a note-list load still the latest (#563), what to do when the open note is deleted elsewhere (#561) |
-| `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror |
+| `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror (sealed for e2ee vaults, #549), sealing/forgetting a vault's unsaved text on lock |
+| `src/lib/sealedDrafts.ts` | Encrypted local drafts of e2ee notes (#549): AES-GCM under the vault key, note/vault id as additional data, opaque per-note name; serialised writes, unreadable drafts kept |
 | `src/lib/useCloseGuard.ts` | Closing a tab/window or signing out with unsaved text (in any note): waits for the save result, keeps the dialog open with the reason on failure (#283) |
 | `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing); kind `lock` is the failed vault lock (#545), which never offers to drop the text |
 | `src/components/Workspace/DeleteConfirmDialog.tsx` + `src/lib/useDeleteConfirm.ts` | Every note delete is asked first (#568): names the note or gives the count, Cancel is the default; a failed delete keeps the rest in the dialog with the reason |
@@ -228,7 +229,7 @@ it is what it exists for:
 | `src/components/Sidebar/VaultLockIcon.tsx` | Encrypted-vault lock in the sidebar header: open shackle while unlocked, swings shut and wobbles on each lock/unlock; `VaultLockButton` makes it lock the vault (or ask for the passphrase while locked, #545) |
 | `src/components/motion/OverlayMotion.tsx` | Enter/exit wrapper for anything floating above the workspace: applies an `overlayMotion` preset and stops catching the pointer while it animates out (render it under `AnimatePresence` with a key) |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`); `blockBrowserFind` (called from `main.tsx`) keeps Ctrl+F/F3 from opening the webview's own find bar in the packaged app |
-| `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
+| `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree; sealed under the vault key for e2ee vaults (`openFolders` on unlock, `forgetFolders` on lock) |
 | `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |
 | `src/lib/stars.ts` | Starred-notes helpers: `migrateLegacyPins` moves legacy localStorage pins to server-side stars, dropping a pin only once the server took (or permanently rejected) it |
 | `src/lib/crypto.ts` | E2EE crypto core: Argon2id derivation, AES-GCM note encryption, key wrapping, recovery codes (see docs/encryption.md) |

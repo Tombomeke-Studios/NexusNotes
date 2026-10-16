@@ -12,6 +12,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   history. Editors can trash and restore; only the vault owner can purge a note or empty the
   trash. An AI client's `delete_note` now moves the note to the trash. The app's Trash view
   follows in a later release; until then, deleting in the app still erases at once.
+- Text typed in an end-to-end encrypted vault is no longer lost when the app crashes or the
+  connection drops: unsaved changes are kept on your device encrypted with the vault's key,
+  and restored and saved after you unlock the vault again. Locking a vault while offline now
+  works too; its unsaved changes wait encrypted on the device. Names of empty folders in
+  encrypted vaults are stored encrypted as well.
 - Link autocomplete: typing `[[` in the editor opens a list of matching notes at the caret
   (exact and prefix matches first, then fuzzy ones, with the folder dimmed alongside). ↑/↓
   choose, Enter or Tab insert `[[Title]]` (Ctrl+Z undoes it), Esc closes; after `[[Title#`
@@ -21,7 +26,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   vault" in the vault menu or in the command palette. Its text leaves the app's memory and
   its tabs close until you enter the passphrase again. Settings > Sync can lock encrypted
   vaults by themselves after 5, 15 or 60 minutes without activity (off by default). Unsaved
-  text is saved first; if that fails, the vault stays unlocked and says why.
+  text is saved first; if that fails, it is kept encrypted on the device until you unlock
+  the vault again.
 - Find and replace in the open note: Ctrl+F opens a find bar that counts and highlights the
   matches (match case and whole word optional), Enter / Shift+Enter jump between them, and
   Replace / Replace all change the text in a way Ctrl+Z can undo. In the reading view it

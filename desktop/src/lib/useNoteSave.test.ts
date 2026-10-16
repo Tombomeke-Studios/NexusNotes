@@ -1186,6 +1186,28 @@ describe("useNoteSave — unconfirmed text in notes that are no longer open (#28
     expect(outcome).toEqual({ ok: true });
     expect(hook.result.current.hasUnconfirmed()).toBe(false);
   });
+
+  it("saveAll for one vault leaves other vaults' notes alone (#545)", async () => {
+    update.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue(savedNote("c1"));
+    const { hook } = setup({ keepsDrafts: () => false });
+    await failThenSwitch(hook);
+    update.mockClear();
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveAll(false, "other-vault");
+    });
+    expect(outcome).toEqual({ ok: true });
+    expect(update).not.toHaveBeenCalled();
+    expect(hook.result.current.unconfirmedNoteIds()).toEqual(["n1"]);
+
+    await act(async () => {
+      outcome = await hook.result.current.saveAll(false, "v1");
+    });
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(outcome).toEqual({ ok: true });
+    expect(hook.result.current.hasUnconfirmed()).toBe(false);
+  });
 });
 
 describe("useNoteSave — save outcome (#283)", () => {

@@ -478,15 +478,18 @@ export function useNoteSave(deps: NoteSaveDeps) {
    * Saves everything the server doesn't have yet: the open note's latest
    * text (when `includeOpenNote`) and the unconfirmed text of every note the
    * user has left. Reports the first failure; closing the window or signing
-   * out must not lose any of it (in-memory e2ee text has no draft).
+   * out must not lose any of it (in-memory e2ee text has no draft). With
+   * `vaultId`, only that vault's notes are saved (locking it, #545); the
+   * caller decides whether the open note belongs to it.
    */
-  const saveAll = useCallback(async (includeOpenNote: boolean): Promise<SaveOutcome> => {
+  const saveAll = useCallback(async (includeOpenNote: boolean, vaultId?: string): Promise<SaveOutcome> => {
     const d = depsRef.current;
     const open = d.activeNoteRef.current;
     const outcomes: SaveOutcome[] = [];
     if (open && includeOpenNote) outcomes.push(await saveNote(d.editorContentRef.current));
     for (const [id, req] of [...lastRequests.current]) {
       if (id === open?.id) continue;
+      if (vaultId !== undefined && req.note.vault_id !== vaultId) continue;
       await enqueue(req.note, req.content);
       outcomes.push(outcomeOf(id));
     }

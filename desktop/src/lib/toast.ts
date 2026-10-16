@@ -14,6 +14,13 @@ export interface Toast {
   duration: number;
   /** Toasts with the same key replace each other rather than stacking. */
   key?: string;
+  /** One button next to the message (e.g. "Open"); clicking it also closes the toast. */
+  action?: ToastAction;
+}
+
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
 }
 
 export const MAX_TOASTS = 4;
@@ -31,10 +38,16 @@ function set(next: Toast[]) {
 /** Shows a toast; returns its id for dismissToast. Errors stay a little longer. */
 export function toast(
   message: string,
-  { kind = "info", duration, key }: { kind?: ToastKind; duration?: number; key?: string } = {},
+  {
+    kind = "info",
+    duration,
+    key,
+    action,
+  }: { kind?: ToastKind; duration?: number; key?: string; action?: ToastAction } = {},
 ): number {
   const id = nextId++;
   const item: Toast = { id, message, kind, duration: duration ?? (kind === "error" ? 6000 : DEFAULT_DURATION), key };
+  if (action) item.action = action;
   const rest = key ? toasts.filter((t) => t.key !== key) : toasts;
   set([...rest, item].slice(-MAX_TOASTS));
   return id;

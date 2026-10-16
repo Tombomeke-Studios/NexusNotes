@@ -20,6 +20,8 @@ type accountVaultStore interface {
 
 type accountNoteStore interface {
 	ListByVault(ctx context.Context, vaultID string) ([]model.Note, error)
+	// ListTrashedNotes returns the vault's trashed notes with content (#569).
+	ListTrashedNotes(ctx context.Context, vaultID string) ([]model.Note, error)
 }
 
 type searchCleaner interface {

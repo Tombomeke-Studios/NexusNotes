@@ -34,18 +34,21 @@ type SyncService struct {
 	indexer   *search.Indexer
 	// lockTimeout bounds how long an update waits for a note another save holds.
 	lockTimeout string
+	// trashRetention is how long trashed notes are kept (#569).
+	trashRetention time.Duration
 }
 
 func NewSyncService(noteRepo *repository.NoteRepo, vaultRepo *repository.VaultRepo, linkRepo *repository.LinkRepo, tagRepo *repository.TagRepo, aliasRepo *repository.AliasRepo, linkFiles *repository.LinkedFileRepo, indexer *search.Indexer) *SyncService {
 	return &SyncService{
-		noteRepo:    noteRepo,
-		vaultRepo:   vaultRepo,
-		linkRepo:    linkRepo,
-		tagRepo:     tagRepo,
-		aliasRepo:   aliasRepo,
-		linkFiles:   linkFiles,
-		indexer:     indexer,
-		lockTimeout: "5s",
+		noteRepo:       noteRepo,
+		vaultRepo:      vaultRepo,
+		linkRepo:       linkRepo,
+		tagRepo:        tagRepo,
+		aliasRepo:      aliasRepo,
+		linkFiles:      linkFiles,
+		indexer:        indexer,
+		lockTimeout:    "5s",
+		trashRetention: DefaultTrashRetention,
 	}
 }
 

@@ -37,11 +37,16 @@ func (f *fakeAccountVaultStore) ListByUser(context.Context, string) ([]model.Vau
 }
 
 type fakeAccountNoteStore struct {
-	notesByVault map[string][]model.Note
+	notesByVault   map[string][]model.Note
+	trashedByVault map[string][]model.Note
 }
 
 func (f *fakeAccountNoteStore) ListByVault(_ context.Context, vaultID string) ([]model.Note, error) {
 	return f.notesByVault[vaultID], nil
+}
+
+func (f *fakeAccountNoteStore) ListTrashedNotes(_ context.Context, vaultID string) ([]model.Note, error) {
+	return f.trashedByVault[vaultID], nil
 }
 
 type fakeSearchCleaner struct{ vaultIDs []string }

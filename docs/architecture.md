@@ -182,6 +182,9 @@ ignored.
 7. Without Meilisearch the Sync Service falls back to its own search: titles, tags and
    aliases are matched in PostgreSQL, note content after decrypting it in the service
    (content is encrypted at rest, so the database cannot match it)
+8. A note moved to the trash leaves the index and comes back on restore (#569). Index
+   updates run in the background, so results from Meilisearch are also checked against
+   the database and hits for notes that are no longer live are dropped
 
 > Configure Meilisearch searchable attributes and filterable attributes **before** adding
 > documents — changing them after indexing triggers a full reindex.
@@ -218,6 +221,9 @@ sequenceDiagram
 7. Without Meilisearch the Sync Service falls back to its own search: titles, tags and
    aliases are matched in PostgreSQL, note content after decrypting it in the service
    (content is encrypted at rest, so the database cannot match it)
+8. A note moved to the trash leaves the index and comes back on restore (#569). Index
+   updates run in the background, so results from Meilisearch are also checked against
+   the database and hits for notes that are no longer live are dropped
 
 > Configure Meilisearch searchable attributes and filterable attributes **before** adding
 > documents — changing them after indexing triggers a full reindex.
@@ -280,7 +286,8 @@ erDiagram
 - **vaults** — a user's note collections; each records its encryption mode and,
   for e2ee vaults, an opaque client-written key blob (see encryption.md).
 - **notes** — markdown content (ciphertext for e2ee vaults) with a checksum
-  used for conflict detection.
+  used for conflict detection, and when the note went to the trash, if it did
+  (see Trash below).
 - **note_versions** — snapshots of a note over time for the version history
   (one per device per 5 minutes of editing).
 - **devices** — registered sync clients and their last-seen time.
@@ -310,6 +317,37 @@ then follow the order the query reads in:
   vault's retention; both use an index on note plus creation time.
 - **Tags and aliases** are indexed on their value, for the tag filter and for
   resolving wiki-links by alias.
+- **Trash** (#569): the note list uses an index that only covers live notes,
+  and the trash view and the purge job use small indexes that only cover
+  trashed ones, by vault and by the time they were trashed.
+
+### Trash (#569)
+
+Deleting a note in the app moves it to its vault's trash instead of erasing
+it. The note keeps its row, content, history, tags, links and attachments, and
+is marked with when it was trashed; nothing is copied. Every live read in the
+note repository filters trashed notes out (note lists, get-by-id, both
+searches, backlinks, link resolution, tags, versions, attachments, stars, the
+search index rebuild), so to the rest of the service a trashed note does not
+exist. A wiki-link to it resolves as missing, or to another live note with the
+same title, and resolves to it again when it is restored, back at its original
+path. A folder is trashed as one batch in one transaction.
+
+An hourly job deletes notes trashed more than `TRASH_RETENTION_DAYS` (30 by
+default) ago. It runs under a Postgres advisory lock, so with several
+instances only one purges, and deletes each note in its own transaction, only
+if it is still trashed and still old enough, so a note restored while the job
+runs survives. Versions, tags, links, stars and attachment rows go with the
+note; attachment files are removed from object storage after the commit,
+best-effort with a log line on failure (the orphan sweep catches anything
+left). The owner can also purge a note or empty the trash by hand; editors can
+only trash and restore.
+
+There are no storage quotas: trashed notes take up space until they are
+purged, and the vault's storage stats count them, saying how many there are.
+In an e2ee vault the trash works on ciphertext only. Converting a vault to
+e2ee purges its trash, since the client cannot see those notes to encrypt them.
+The account export includes trashed notes, in a `.trash` folder per vault.
 
 Each migration runs in a transaction, so indexes are created with a plain
 create rather than concurrently (which cannot run inside one). At self-hosted

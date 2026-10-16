@@ -163,7 +163,11 @@ reaches the routes its scope allows; every other endpoint answers `403`.
 | Scope | Routes |
 |---|---|
 | `read` | `GET /api/vaults`, `GET /api/vaults/:id`, `GET /api/vaults/:vaultId/notes`, `GET /api/notes/:noteId`, `GET /api/notes/:noteId/backlinks`, `GET /api/vaults/:vaultId/search`, `GET /api/vaults/:vaultId/tags` |
-| `read-write` | the above, plus `POST /api/vaults/:vaultId/notes`, `PUT /api/notes/:noteId`, `DELETE /api/vaults/:vaultId/notes/:noteId` |
+| `read-write` | the above, plus `POST /api/vaults/:vaultId/notes`, `PUT /api/notes/:noteId`, `POST /api/notes/:noteId/trash`, `DELETE /api/vaults/:vaultId/notes/:noteId` |
+
+A token never deletes a note for good (#569): its `DELETE` moves the note to the
+trash like `POST /api/notes/:noteId/trash`, and the purge and restore routes are
+not open to tokens.
 
 The token acts as its owner, with the owner's role in each vault. Writes to an
 end-to-end encrypted vault are refused (`403`): the server could not encrypt
@@ -269,7 +273,8 @@ In one transaction the server checks it received exactly the vault's current
 notes and linked files (else `409`; a link without its sealed name or source is
 `400`, #410), stores the ciphertext with the sealed title and path (#362; a note
 without a title is refused with `400`), deletes stored versions, tags, aliases and links
-(plaintext the server no longer may hold) and switches the vault to `e2ee`;
+(plaintext the server no longer may hold), purges the notes in the vault's
+trash (#569: they are plaintext the client never saw to encrypt) and switches the vault to `e2ee`;
 search documents keep only the sealed titles and paths. Response (200): the `Vault`. The
 owner's and members' devices get a `vault:encrypted` WebSocket message
 (`{ "vault_id": "..." }`) and must reload the vault, which is now locked.
@@ -312,6 +317,7 @@ editor. Without the required access the API answers `403`.
 ### GET /api/vaults/:vaultId/notes
 
 List all notes in a vault, sorted by path. Returns `Note[]`. Read access required.
+Notes in the trash are left out, here and in every other note read (#569).
 
 Paged (#461) with `?limit=N` (1-1000, else `400`): notes come in path order,
 and when more follow, the response carries an `X-Next-Cursor` header to pass
@@ -342,7 +348,9 @@ Response (201): `Note`. Write access required; `400` when `title` is missing.
 
 ### GET /api/notes/:noteId
 
-Response (200): `Note`. Read access required; `404` for an unknown note.
+Response (200): `Note`. Read access required; `404` for an unknown note or a
+note in the trash (as for every other endpoint under `/api/notes/:noteId`
+except restore and purge: versions, backlinks, attachments, stars, saving).
 
 ### PUT /api/notes/:noteId
 
@@ -373,8 +381,74 @@ Response (409): `ConflictInfo` on checksum mismatch:
 
 ### DELETE /api/vaults/:vaultId/notes/:noteId
 
-Response (204). Write access to the vault required (`403` otherwise); `404`
-when the note does not exist or is not in that vault.
+Deletes the note for good, with its history and attachments; other devices get
+`note:deleted`. Response (204). Write access to the vault required (`403`
+otherwise); `404` when the note does not exist or is not in that vault. Kept
+as it was for apps from before the trash; new clients move notes to the trash
+instead. With an MCP token it moves the note to the trash (#569).
+
+## Trash
+
+Deleting a note in the app moves it to its vault's trash (#569). A trashed
+note keeps its content, history and attachments but is left out of every
+live read: note lists, get-by-id, search (both endpoints), backlinks, tags,
+versions, attachments and starred notes. A link to it resolves as missing
+until it is restored. It is deleted for good `TRASH_RETENTION_DAYS` (30 by
+default) after it was trashed, by an hourly job, or earlier by purging it or
+emptying the trash.
+
+| Action | Owner | Editor | Viewer |
+|---|---|---|---|
+| Trash, restore | yes | yes | no |
+| List the trash | yes | yes | yes |
+| Purge, empty the trash | yes | no | no |
+
+Without the role the API answers `403`. In an e2ee vault everything works on
+the stored ciphertext; titles and paths in the trash list stay sealed.
+
+`TrashedNote` is a note without content, plus when it was trashed and when the
+job will delete it:
+
+```json
+{ "id": "...", "vault_id": "...", "path": "Projects", "title": "Plan", "checksum": "...",
+  "created_at": "...", "updated_at": "...", "deleted_at": "2026-10-16T12:00:00Z", "purge_at": "2026-11-15T12:00:00Z" }
+```
+
+### POST /api/notes/:noteId/trash
+
+Moves a note to its vault's trash. Response (200): the `TrashedNote`. Devices
+get `note:trashed` and, for apps from before the trash, `note:deleted`. `404`
+for an unknown note or one already in the trash. An MCP token may call it, but
+not in an e2ee vault (`403`).
+
+### POST /api/vaults/:id/trash
+
+Moves several notes of the vault to the trash in one transaction, such as a
+folder: `{ "note_ids": ["...", "..."] }` (1-1000 ids, else `400`). Ids that
+are not live notes of the vault are skipped. Response (200): `TrashedNote[]`
+for the notes moved; each one is announced as for a single note.
+
+### GET /api/vaults/:id/trash
+
+Lists the vault's trash, most recently trashed first: `TrashedNote[]`.
+
+### POST /api/notes/:noteId/restore
+
+Takes a note out of the trash, back at its original path. Links to its title
+resolve to it again, and it is searchable again. Response (200): the `Note`;
+devices get `note:restored` with the same payload. `404` when the note is not
+in the trash.
+
+### DELETE /api/notes/:noteId/purge
+
+Deletes a trashed note for good, with its history and attachments; devices
+get `note:deleted`. Owner only. Response (204); `404` when the note is not in
+the trash (a live note cannot be purged).
+
+### POST /api/vaults/:id/trash/empty
+
+Purges every note in the vault's trash, one transaction per note. Owner only.
+Response (200): `{ "purged": 3 }`.
 
 ### GET /api/notes/:noteId/versions
 
@@ -413,7 +487,10 @@ Response (200): the new settings.
 ### GET /api/vaults/:id/storage-stats
 
 How much the vault stores (#220):
-`{ "notes": 120, "content_bytes": 480000, "versions": 900, "version_bytes": 3100000, "attachments": 4, "attachment_bytes": 2200000 }`.
+`{ "notes": 120, "content_bytes": 480000, "versions": 900, "version_bytes": 3100000, "attachments": 4, "attachment_bytes": 2200000, "trashed_notes": 2 }`.
+Notes in the trash, with their versions and attachments, count in every figure
+since they take up space until they are purged; `trashed_notes` says how many
+of `notes` are in the trash (#569).
 Byte counts are the stored sizes: note content and versions are encrypted at
 rest, so they run a little above the plaintext. Read access required (`403`
 otherwise).
@@ -631,7 +708,14 @@ the ticket alone.
 { "type": "note:created", "payload": { ...Note } }
 { "type": "note:updated", "payload": { ...Note } }
 { "type": "note:deleted", "payload": { "note_id": "..." } }
+{ "type": "note:trashed", "payload": { "note_id": "...", "vault_id": "...", "deleted_at": "..." } }
+{ "type": "note:restored", "payload": { ...Note } }
 ```
+
+A note moved to the trash sends `note:trashed` followed by `note:deleted`, so
+apps from before the trash drop it as before. A purge (by hand, emptying the
+trash or the retention job) sends `note:deleted` again; clients ignore one for
+a note they no longer hold.
 
 ---
 

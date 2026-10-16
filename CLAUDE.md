@@ -172,8 +172,8 @@ it is what it exists for:
 | `internal/config/` | Environment-based configuration |
 | `internal/handler/` | HTTP handlers (notes, vaults, auth, sync) |
 | `internal/model/` | Domain models (Note, Vault, Device, Version) |
-| `internal/repository/` | PostgreSQL data access layer |
-| `internal/service/` | Business logic (sync, conflict detection, versioning) |
+| `internal/repository/` | PostgreSQL data access layer; `note_trash.go` holds the only reads of trashed notes (#569) |
+| `internal/service/` | Business logic (sync, conflict detection, versioning); `trash.go` + `trashpurge.go` = trash/restore and the retention purge job (#569) |
 | `internal/middleware/` | Auth, logging, CORS, rate limiting, gzip for JSON responses (`Compress`, #461), per-route `Deadlines` for long transfers, `NoStore` (default `Cache-Control: private, no-store` on `/api/`, #553) |
 | `internal/ws/` | WebSocket hub and client management; `Hub.Shutdown` sends 1001 close frames on server shutdown |
 | `internal/fieldcrypt/` | Encryption at rest (#352): AES-256-GCM field envelopes under `DATA_ENCRYPTION_KEY` (+ old keys for rotation), legacy-plaintext passthrough, HMAC blind index |
@@ -292,6 +292,7 @@ it is what it exists for:
 - WebSocket connections are authenticated with a short-lived, single-use ticket from `POST /api/ws/ticket` (never the JWT in the URL), and the Origin must be on the same allowlist as CORS.
 - All timestamps are UTC, stored as `TIMESTAMPTZ` in PostgreSQL.
 - Note content is stored in PostgreSQL (not as files on disk), encrypted at rest by `NoteRepo` (versions too): never read or match `notes.content` / `note_versions.content` in SQL, always go through the repository.
+- Trashed notes (#569) keep their row, only marked as trashed: every live read of notes must leave them out (lists, get-by-id, search, links, tags, stars, attachments). Only `repository/note_trash.go` reads trashed notes; a new query that forgets the filter leaks the trash.
 - Vault paths use forward slashes regardless of client OS.
 - The packaged app owns its backend: `src-tauri/src/lib.rs` runs `supervise_backend` on a background thread (reuses a healthy :8080 backend without touching Docker, warns the UI via the `backend-exposed` event when that backend is reachable from the network, otherwise waits for Docker and starts the sidecar; a watchdog restarts a sidecar that fails 3 health checks in a row, with backoff). Never block Tauri's `setup` on Docker or the backend. The sidecar gets a per-install JWT secret (`jwt-secret` in the app's local data dir, `load_or_create_secret`) — never hardcode one. The same goes for its database and Redis passwords (`db-password`, `redis-password`): the app re-keys the Postgres role on every start and copies a pre-#277 install's notes out of the shared dev database once (`migrate_legacy_database`).
 - The frontend must not treat an unreachable or failing server as "signed out": only an explicit rejection (401/403, or 404 = account gone) clears the session — see `restoreFailureAction` in `src/lib/session.ts`.

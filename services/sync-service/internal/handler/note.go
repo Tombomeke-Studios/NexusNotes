@@ -65,12 +65,12 @@ func NewNoteHandler(syncService *service.SyncService, vaultRepo *repository.Vaul
 
 // broadcastToVault pushes a note event to everyone with access to the vault —
 // the owner and every member — so shared vaults sync in real time (#54).
-func (h *NoteHandler) broadcastToVault(r *http.Request, vaultID string, msg ws.Message) {
+func (h *NoteHandler) broadcastToVault(ctx context.Context, vaultID string, msg ws.Message) {
 	recipients := map[string]bool{}
-	if vault, err := h.vaultRepo.GetByID(r.Context(), vaultID); err == nil {
+	if vault, err := h.vaultRepo.GetByID(ctx, vaultID); err == nil {
 		recipients[vault.UserID] = true
 	}
-	if ids, err := h.memberRepo.MemberUserIDs(r.Context(), vaultID); err == nil {
+	if ids, err := h.memberRepo.MemberUserIDs(ctx, vaultID); err == nil {
 		for _, id := range ids {
 			recipients[id] = true
 		}
@@ -117,7 +117,7 @@ func (h *NoteHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload, _ := json.Marshal(note)
-	h.broadcastToVault(r, vaultID, ws.Message{Type: "note:created", Payload: payload})
+	h.broadcastToVault(r.Context(), vaultID, ws.Message{Type: "note:created", Payload: payload})
 
 	writeJSON(w, http.StatusCreated, note)
 }
@@ -260,7 +260,7 @@ func (h *NoteHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload, _ := json.Marshal(note)
-	h.broadcastToVault(r, note.VaultID, ws.Message{Type: "note:updated", Payload: payload})
+	h.broadcastToVault(r.Context(), note.VaultID, ws.Message{Type: "note:updated", Payload: payload})
 
 	writeJSON(w, http.StatusOK, note)
 }
@@ -275,6 +275,15 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.mcpWriteDenied(w, r, vaultID) {
+		return
+	}
+
+	// An AI client never deletes for good (#569): its delete moves the note
+	// to the trash, so the user can restore it.
+	if middleware.MCPTokenFrom(r.Context()) != nil {
+		if _, ok := h.trashInVault(w, r, vaultID, noteID); ok {
+			w.WriteHeader(http.StatusNoContent)
+		}
 		return
 	}
 
@@ -305,7 +314,7 @@ func (h *NoteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload, _ := json.Marshal(map[string]string{"note_id": noteID})
-	h.broadcastToVault(r, vaultID, ws.Message{Type: "note:deleted", Payload: payload})
+	h.broadcastToVault(r.Context(), vaultID, ws.Message{Type: "note:deleted", Payload: payload})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -375,7 +384,7 @@ func (h *NoteHandler) RestoreVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload, _ := json.Marshal(note)
-	h.broadcastToVault(r, note.VaultID, ws.Message{Type: "note:updated", Payload: payload})
+	h.broadcastToVault(r.Context(), note.VaultID, ws.Message{Type: "note:updated", Payload: payload})
 	writeJSON(w, http.StatusOK, note)
 }
 
@@ -599,6 +608,6 @@ func (h *NoteHandler) ConvertVault(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payload, _ := json.Marshal(map[string]string{"vault_id": vaultID})
-	h.broadcastToVault(r, vaultID, ws.Message{Type: "vault:encrypted", Payload: payload})
+	h.broadcastToVault(r.Context(), vaultID, ws.Message{Type: "vault:encrypted", Payload: payload})
 	writeJSON(w, http.StatusOK, vault)
 }

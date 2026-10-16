@@ -219,7 +219,7 @@ it is what it exists for:
 | `src/lib/syncEvents.ts` | Checks for pushed sync events before they touch state: does a note belong to the open vault (#562), is a note-list load still the latest (#563), what to do when the open note is deleted elsewhere (#561) |
 | `src/lib/useNoteSave.ts` | Saving the open note: serialised PUTs per note, edit-version race guard, conflict/network-retry handling, local draft mirror |
 | `src/lib/useCloseGuard.ts` | Closing a tab/window or signing out with unsaved text (in any note): waits for the save result, keeps the dialog open with the reason on failure (#283) |
-| `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing) |
+| `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing); kind `lock` is the failed vault lock (#545), which never offers to drop the text |
 | `src/components/Workspace/DeleteConfirmDialog.tsx` + `src/lib/useDeleteConfirm.ts` | Every note delete is asked first (#568): names the note or gives the count, Cancel is the default; a failed delete keeps the rest in the dialog with the reason |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |

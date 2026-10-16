@@ -93,4 +93,19 @@ describe("CloseConfirmDialog", () => {
     renderDialog({ error: error("network") });
     expect(screen.getByRole("alertdialog")).toHaveTextContent(/closing without saving discards/i);
   });
+
+  it("keeps a vault that couldn't save unlocked, offering only retry or keep editing (#545)", () => {
+    const h = renderDialog({ kind: "lock", error: error("network") });
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveTextContent(/"Plans" couldn't be saved because the server can't be reached/);
+    expect(dialog).toHaveTextContent(/the vault stays unlocked until it's saved/i);
+    expect(dialog).not.toHaveTextContent(/without saving/i);
+    expect(screen.queryByRole("button", { name: /without saving/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(h.onSave).toHaveBeenCalledTimes(1);
+    expect(h.onCancel).toHaveBeenCalledTimes(1);
+    expect(h.onDiscard).not.toHaveBeenCalled();
+  });
 });

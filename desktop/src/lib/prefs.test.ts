@@ -28,6 +28,16 @@ describe("prefs", () => {
     expect(loadPrefs()).toMatchObject({ graphCurved: false, graphArrows: false });
   });
 
+  it("keeps auto-lock off by default and only takes the offered idle times (#545)", () => {
+    expect(loadPrefs().autoLockMinutes).toBe(0);
+    savePrefs({ autoLockMinutes: 15 });
+    expect(loadPrefs().autoLockMinutes).toBe(15);
+    for (const bad of [7, -5, "15", null]) {
+      localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ autoLockMinutes: bad }));
+      expect(loadPrefs().autoLockMinutes).toBe(0);
+    }
+  });
+
   it("defaults motion to following the system setting", () => {
     expect(loadPrefs().motion).toBe("system");
   });

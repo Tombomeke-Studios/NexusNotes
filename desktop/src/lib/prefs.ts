@@ -5,6 +5,10 @@ import { MOTION_PREFERENCES, type MotionPreference } from "./motion";
 export type ViewMode = "edit" | "split" | "preview";
 export type RightTab = "outline" | "links" | "graph" | "files" | "info";
 
+/** Idle minutes before unlocked encrypted vaults lock themselves (#545); 0 = never. */
+export const AUTO_LOCK_CHOICES = [0, 5, 15, 60] as const;
+export type AutoLockMinutes = (typeof AUTO_LOCK_CHOICES)[number];
+
 export interface WorkspacePrefs {
   fontSize: number;
   /** Reduced motion: follow the OS, always reduce, or keep full motion (lib/motion.ts). */
@@ -25,6 +29,8 @@ export interface WorkspacePrefs {
   /** Graph view link style: soft curves instead of straight lines, and arrowheads. */
   graphCurved: boolean;
   graphArrows: boolean;
+  /** Lock unlocked encrypted vaults after this many idle minutes; 0 = off (the default). */
+  autoLockMinutes: AutoLockMinutes;
 }
 
 export const PREFS_STORAGE_KEY = "nexus_workspace_prefs";
@@ -45,6 +51,7 @@ export const DEFAULT_PREFS: WorkspacePrefs = {
   monthlyTemplate: DEFAULT_MONTHLY_TEMPLATE,
   graphCurved: false,
   graphArrows: false,
+  autoLockMinutes: 0,
 };
 
 export const PREF_LIMITS = {
@@ -79,6 +86,9 @@ function sanitize(raw: Partial<WorkspacePrefs> & { reduceMotion?: unknown }): Wo
   } else if (raw.reduceMotion === true) {
     // Legacy boolean toggle from before the OS preference was honoured.
     prefs.motion = "reduce";
+  }
+  if (AUTO_LOCK_CHOICES.includes(raw.autoLockMinutes as AutoLockMinutes)) {
+    prefs.autoLockMinutes = raw.autoLockMinutes as AutoLockMinutes;
   }
   if (VIEW_MODES.includes(raw.viewMode as ViewMode)) prefs.viewMode = raw.viewMode as ViewMode;
   if (RIGHT_TABS.includes(raw.rightTab as RightTab)) prefs.rightTab = raw.rightTab as RightTab;

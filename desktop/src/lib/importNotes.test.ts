@@ -140,6 +140,43 @@ describe("planImport attachments (#551)", () => {
     expect(again.skipped.existing).toBe(2);
   });
 
+  it("re-importing a folder whose files are all linked adds nothing", async () => {
+    const folder = () => [
+      file("V/Trip.md", "![[beach.png]] [doc](assets/doc.pdf)"),
+      file("V/Notes/Plan.md", "![[map.png]]"),
+      file("V/beach.png"),
+      file("V/assets/doc.pdf"),
+      file("V/assets/map.png"),
+    ];
+    const first = await planImport(folder(), []);
+    expect(titles(first)).toEqual(["Trip", "Plan"]);
+    const again = await planImport(
+      folder(),
+      first.notes.map((n) => ({ title: n.title, path: n.path })),
+    );
+    // The skipped notes' files are already in the vault: no "Files from V" with copies.
+    expect(again.notes).toEqual([]);
+    expect(again.skipped).toEqual({ existing: 5, tooLarge: [] });
+  });
+
+  it("counts the files of notes already in the vault as there, but still attaches them to new notes", async () => {
+    const plan = await planImport(
+      [
+        file("V/Old.md", "![[old.png]] ![[shared.png]]"),
+        file("V/New.md", "![[shared.png]]"),
+        file("V/old.png"),
+        file("V/shared.png"),
+        file("V/loose.pdf"),
+      ],
+      [{ title: "Old", path: "" }],
+    );
+    expect(titles(plan)).toEqual(["New", "Files from V"]);
+    expect(plan.notes[0].attachments.map((a) => a.name)).toEqual(["shared.png"]);
+    expect(plan.notes[1].attachments.map((a) => a.name)).toEqual(["loose.pdf"]);
+    // Old.md and old.png.
+    expect(plan.skipped.existing).toBe(2);
+  });
+
   it("leaves links in inline code alone", async () => {
     const plan = await planImport(
       [file("V/n.md", "`![[pic.png]]` and ``a ` [x](pic.png)`` but ![[pic.png]]"), file("V/pic.png")],

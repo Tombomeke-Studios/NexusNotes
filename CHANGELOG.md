@@ -6,12 +6,18 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Trash in the app: deleting a note, a selection or a folder now moves it to the vault's
+  Trash ("You can restore it for 30 days"). The Trash entry at the bottom of the sidebar shows
+  how many notes are in it and opens a list with when each was deleted and when it goes for
+  good. Restore puts a note back where it was (with an "Open" shortcut); the vault owner can
+  also delete a note permanently or empty the Trash, both asked first. Encrypted vaults show
+  the titles decrypted on your device. Encrypting a vault asks you to restore or empty its
+  Trash first.
 - Server side of the trash: deleted notes can be moved to their vault's trash and restored
   for 30 days (`TRASH_RETENTION_DAYS`), after which an hourly job deletes them for good with
   their history and attachments. Trashed notes are left out of lists, search, links, tags and
   history. Editors can trash and restore; only the vault owner can purge a note or empty the
-  trash. An AI client's `delete_note` now moves the note to the trash. The app's Trash view
-  follows in a later release; until then, deleting in the app still erases at once.
+  trash. An AI client's `delete_note` now moves the note to the trash.
 - Text typed in an end-to-end encrypted vault is no longer lost when the app crashes or the
   connection drops: unsaved changes are kept on your device encrypted with the vault's key,
   and restored and saved after you unlock the vault again. Locking a vault while offline now

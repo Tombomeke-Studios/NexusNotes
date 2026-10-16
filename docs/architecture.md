@@ -354,6 +354,17 @@ first.
 The account export includes trashed notes, in a `.trash` folder per vault,
 exactly as stored (ciphertext for an e2ee vault).
 
+In the desktop app every delete (one note, a selection, a folder) asks first
+and then moves the notes to the trash: one note with the single-note call, a
+selection or a folder's notes in one batch call. The sidebar's Trash entry
+opens the vault's trash, with restore for owners and editors and delete for
+good / empty for owners. In an e2ee vault the titles and folders are decrypted
+on the device, and dropped again when the vault locks. Over the WebSocket the
+app treats `note:trashed` as a delete (including the "deleted elsewhere"
+question for unsaved text) and ignores the `note:deleted` that follows it;
+`note:restored` brings the note back through the same decrypt and vault-lock
+checks as `note:created`.
+
 Each migration runs in a transaction, so indexes are created with a plain
 create rather than concurrently (which cannot run inside one). At self-hosted
 vault sizes a brief lock during an upgrade is cheaper than a migration that can

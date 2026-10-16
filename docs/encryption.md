@@ -374,6 +374,13 @@ wired in `useNoteSave.ts`):
 - **On lock** the in-memory copies of the vault's unsaved text are forgotten
   (see "Locking a vault"); the sealed drafts stay on disk.
 
+**Empty-folder names.** Folders without notes exist only on the device
+(`desktop/src/lib/folders.ts`). In an e2ee vault their names are as private as
+note paths, so the list is stored sealed under the Vault Key the same way (one
+entry per vault, the vault id as additional data) and kept in memory only
+while the vault is unlocked. A readable list left from before is merged in,
+sealed and removed the first time the vault is unlocked.
+
 The sealed form protects the drafts at rest on the device with the same key as
 the server copy. It does not protect against code running in the app while the
 vault is unlocked, which can read the plaintext in memory anyway.

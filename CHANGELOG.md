@@ -6,6 +6,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Find and replace in the open note: Ctrl+F opens a find bar that counts and highlights the
+  matches (match case and whole word optional), Enter / Shift+Enter jump between them, and
+  Replace / Replace all change the text in a way Ctrl+Z can undo. In the reading view it
+  switches to split view first.
 - Sharing an end-to-end encrypted vault explains first that the person needs the vault's
   passphrase from you (Cancel is the default), and a member opening a shared encrypted vault
   is asked to get the passphrase from its owner.

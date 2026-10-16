@@ -366,7 +366,8 @@ export default function App() {
     },
     closeNote: (noteId) => closeTabRef.current(noteId),
   });
-  const { onRemoteDelete, markOwnDelete, forgetOwnDelete, reset: resetDeletedElsewhere } = deletedElsewhere;
+  const { onRemoteDelete, onVaultEncrypted, markOwnDelete, forgetOwnDelete, reset: resetDeletedElsewhere } =
+    deletedElsewhere;
   // While that question is open nothing may be saved to the deleted note.
   const ignoreSave = useCallback(() => {}, []);
 
@@ -590,6 +591,10 @@ export default function App() {
           // from local drafts, and reload: the vault now asks to be unlocked.
           const { vault_id } = payload as { vault_id: string };
           if (vaultKeySession.get(vault_id)) return; // converted here
+          // A "deleted elsewhere" question about a note in this vault closes:
+          // its Keep would save the text as plaintext until the vault list
+          // reloads, and the note is dropped from the workspace below.
+          onVaultEncrypted(vault_id);
           if (activeVaultIdRef.current === vault_id) {
             cancelNoteLoads();
             for (const n of noteListRef.current) clearDraft(n.id);
@@ -620,7 +625,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, unconfirmedNoteIds]);
+  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, onVaultEncrypted, unconfirmedNoteIds]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);

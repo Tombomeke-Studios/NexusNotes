@@ -346,8 +346,13 @@ only trash and restore.
 There are no storage quotas: trashed notes take up space until they are
 purged, and the vault's storage stats count them, saying how many there are.
 In an e2ee vault the trash works on ciphertext only. Converting a vault to
-e2ee purges its trash, since the client cannot see those notes to encrypt them.
-The account export includes trashed notes, in a `.trash` folder per vault.
+e2ee is refused while its trash holds notes: the client cannot see them to
+encrypt them, and the server never purges them without the user asking. A
+restored note whose title another live note already has does not take its
+links over unless it is the older of the two: links go to the note created
+first.
+The account export includes trashed notes, in a `.trash` folder per vault,
+exactly as stored (ciphertext for an e2ee vault).
 
 Each migration runs in a transaction, so indexes are created with a plain
 create rather than concurrently (which cannot run inside one). At self-hosted

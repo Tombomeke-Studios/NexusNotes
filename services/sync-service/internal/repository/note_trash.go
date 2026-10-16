@@ -218,25 +218,17 @@ func (r *NoteRepo) PurgeTrashed(ctx context.Context, vaultID, id string, cutoff 
 	return keys, true, nil
 }
 
-// PurgeTrashedTx deletes every trashed note of the vault inside tx (a vault
-// turning e2ee must keep no plaintext, #569) and returns their ids. The
-// caller must make sure none of them has attachments.
-func (r *NoteRepo) PurgeTrashedTx(ctx context.Context, tx pgx.Tx, vaultID string) ([]string, error) {
-	rows, err := tx.Query(ctx,
-		`DELETE FROM notes WHERE vault_id = $1 AND deleted_at IS NOT NULL RETURNING id`, vaultID)
-	if err != nil {
-		return nil, fmt.Errorf("purge vault trash: %w", err)
+// HasTrashTx reports whether the vault's trash holds any note. A vault
+// turning e2ee is refused while it does (#569): the trash is plaintext the
+// client cannot see to encrypt.
+func (r *NoteRepo) HasTrashTx(ctx context.Context, tx pgx.Tx, vaultID string) (bool, error) {
+	var has bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM notes WHERE vault_id = $1 AND deleted_at IS NOT NULL)`, vaultID,
+	).Scan(&has); err != nil {
+		return false, fmt.Errorf("check trash: %w", err)
 	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("scan purged note: %w", err)
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
+	return has, nil
 }
 
 // LiveIDs reports which of ids are live notes of the vault (search hits from

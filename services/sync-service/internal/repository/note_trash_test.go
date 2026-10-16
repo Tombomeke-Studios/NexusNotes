@@ -181,19 +181,30 @@ func TestNoteRepo_PurgeSkipsANoteRestoredMeanwhile(t *testing.T) {
 	}
 }
 
-func TestNoteRepo_PurgeTrashedTxEmptiesTheVaultTrash(t *testing.T) {
+func TestNoteRepo_HasTrashTx(t *testing.T) {
 	f := newTrashFixture(t)
 	ctx := context.Background()
-	tx, _ := f.repo.BeginTx(ctx)
-	ids, err := f.repo.PurgeTrashedTx(ctx, tx, f.vaultID)
-	if err != nil || len(ids) != 1 || ids[0] != f.trashed.ID {
-		t.Fatalf("PurgeTrashedTx = %v, %v", ids, err)
+	has := func() bool {
+		t.Helper()
+		tx, err := f.repo.BeginTx(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		got, err := f.repo.HasTrashTx(ctx, tx, f.vaultID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
 	}
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatal(err)
+	if !has() {
+		t.Fatal("a trash with a note reads as empty")
 	}
-	if ids, _ := f.repo.TrashedIDs(ctx, f.vaultID); len(ids) != 0 {
-		t.Fatalf("trash still holds %v", ids)
+	if _, ok, err := f.repo.PurgeTrashed(ctx, f.vaultID, f.trashed.ID, time.Time{}); !ok || err != nil {
+		t.Fatalf("purge: %v %v", ok, err)
+	}
+	if has() {
+		t.Fatal("an emptied trash reads as holding notes")
 	}
 }
 

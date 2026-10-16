@@ -273,15 +273,16 @@ In one transaction the server checks it received exactly the vault's current
 notes and linked files (else `409`; a link without its sealed name or source is
 `400`, #410), stores the ciphertext with the sealed title and path (#362; a note
 without a title is refused with `400`), deletes stored versions, tags, aliases and links
-(plaintext the server no longer may hold), purges the notes in the vault's
-trash (#569: they are plaintext the client never saw to encrypt) and switches the vault to `e2ee`;
+(plaintext the server no longer may hold) and switches the vault to `e2ee`;
 search documents keep only the sealed titles and paths. Response (200): the `Vault`. The
 owner's and members' devices get a `vault:encrypted` WebSocket message
 (`{ "vault_id": "..." }`) and must reload the vault, which is now locked.
 
 Errors: `404` when the vault does not exist or the caller is not its owner;
 `409` when a note was added, removed or changed since the client read it (read
-again and retry); `422` when the vault is already e2ee or has attachments
+again and retry), or with `Restore or empty the Trash first` while the vault's
+trash holds notes (#569: they are plaintext the client cannot see to encrypt;
+retrying does not help until the trash is restored or emptied); `422` when the vault is already e2ee or has attachments
 (attachments cannot be end-to-end encrypted yet); `400` without
 `encryption_meta`. The body may be up to 64 MiB.
 
@@ -435,7 +436,9 @@ Lists the vault's trash, most recently trashed first: `TrashedNote[]`.
 ### POST /api/notes/:noteId/restore
 
 Takes a note out of the trash, back at its original path. Links to its title
-resolve to it again, and it is searchable again. Response (200): the `Note`;
+resolve to it again, and it is searchable again. When another live note has
+the same title, links go to whichever of the two was created first, as they
+do for any two notes sharing a title. Response (200): the `Note`;
 devices get `note:restored` with the same payload. `404` when the note is not
 in the trash.
 

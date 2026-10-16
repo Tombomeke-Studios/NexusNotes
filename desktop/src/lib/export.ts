@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Note } from "./types";
-import { buildZip, type ZipEntry } from "./zip";
+import { buildZip, ZipTooLargeError, type ZipEntry } from "./zip";
 
 /**
  * Note export (#152): plain markdown (front-matter stripped), a standalone
@@ -159,6 +159,14 @@ export function describeExport(
   if (failed.length === 0) return { message, kind: "success" };
   const shown = failed.slice(0, 5).join(", ") + (failed.length > 5 ? ` and ${failed.length - 5} more` : "");
   return { message: `${message} Not included (download failed): ${shown}.`, kind: "error" };
+}
+
+/** The error toast when a vault export fails, so it never just stops at "Exporting…". */
+export function describeExportError(vaultName: string, err: unknown): string {
+  if (err instanceof ZipTooLargeError) return err.message;
+  if (err instanceof RangeError) return `Couldn't export “${vaultName}”: it is too large to build in memory.`;
+  const reason = err instanceof Error && err.message ? err.message.replace(/\.$/, "") : "something went wrong";
+  return `Couldn't export “${vaultName}”: ${reason}.`;
 }
 
 /** Where the vault export gets each note's attachments (through the vault's encryption). */

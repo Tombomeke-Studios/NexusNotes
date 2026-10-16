@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { convertVaultToE2ee, type ConvertNotePayload, type ConvertDeps } from "./vaultConvert";
+import { convertVaultToE2ee, isTrashNotEmpty, type ConvertNotePayload, type ConvertDeps } from "./vaultConvert";
 import { ApiError } from "./api";
 import { decryptNote, plaintextChecksum } from "./crypto";
 import { openField } from "./vaultKeys";
@@ -86,5 +86,23 @@ describe("convertVaultToE2ee", () => {
       convertVaultToE2ee("v1", "a strong passphrase", { listNotes: async () => [], convert: refused }, fastKdf),
     ).rejects.toMatchObject({ status: 422 });
     expect(refused).toHaveBeenCalledOnce();
+  });
+
+  it("does not retry while the vault's Trash holds notes (#569)", async () => {
+    const trashFull = vi.fn().mockRejectedValue(new ApiError(409, "Restore or empty the Trash first"));
+    const err = await convertVaultToE2ee("v1", "a strong passphrase", { listNotes: async () => [], convert: trashFull }, fastKdf).catch(
+      (e: unknown) => e,
+    );
+    expect(isTrashNotEmpty(err)).toBe(true);
+    expect(trashFull).toHaveBeenCalledOnce();
+  });
+});
+
+describe("isTrashNotEmpty", () => {
+  it("tells the Trash refusal from a note that changed meanwhile", () => {
+    expect(isTrashNotEmpty(new ApiError(409, "Restore or empty the Trash first"))).toBe(true);
+    expect(isTrashNotEmpty(new ApiError(409, "changed"))).toBe(false);
+    expect(isTrashNotEmpty(new ApiError(422, "Restore or empty the Trash first"))).toBe(false);
+    expect(isTrashNotEmpty(new Error("Restore or empty the Trash first"))).toBe(false);
   });
 });

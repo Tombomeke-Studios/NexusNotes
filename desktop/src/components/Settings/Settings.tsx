@@ -42,6 +42,8 @@ interface SettingsProps {
   onChangePassphrase: (currentPassphrase: string, newPassphrase: string) => Promise<void>;
   /** Encrypts the active standard vault end to end with a new passphrase (#361). */
   onEncryptVault: (passphrase: string) => Promise<void>;
+  /** Opens the active vault's Trash (#569). */
+  onOpenTrash?: () => void;
   /** Downloads the active vault as an Obsidian-compatible zip (#152). */
   onExportVault: () => void;
   onUpdatePrefs: (partial: Partial<WorkspacePrefs>) => void;
@@ -70,6 +72,7 @@ export function Settings({
   activeVault,
   onChangePassphrase,
   onEncryptVault,
+  onOpenTrash,
   onExportVault,
   onUpdatePrefs,
   onSignOut,
@@ -358,7 +361,7 @@ export function Settings({
                         </div>
                       </div>
                     </div>
-                    <ConvertVaultForm vaultName={activeVault.name} onConvert={onEncryptVault} />
+                    <ConvertVaultForm vaultName={activeVault.name} onConvert={onEncryptVault} onOpenTrash={onOpenTrash} />
                   </>
                 )}
               </>

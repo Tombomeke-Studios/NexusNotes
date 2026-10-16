@@ -317,6 +317,8 @@ export default function App() {
     saveError,
     retryNow: retrySavesNow,
     replayDrafts,
+    sealVault: sealVaultText,
+    forgetVault: forgetVaultText,
   } = useNoteSave({
     activeNoteRef,
     editorContentRef,
@@ -1643,6 +1645,8 @@ export default function App() {
     activeVaultId: () => activeVaultIdRef.current,
     saveVault: saveVaultNotes,
     hasUnsavedText,
+    // A failed save no longer blocks the lock: the text is sealed on this device (#549).
+    sealUnsavedText: sealVaultText,
     busyReason: (vaultId) =>
       deletedElsewhere.asksAbout(vaultId)
         ? "A note in this vault was deleted elsewhere. Keep or discard your text first."
@@ -1651,7 +1655,8 @@ export default function App() {
           : importingInto.current === vaultId
             ? "Notes are still being imported into this vault."
             : null,
-    clearVault: (vaultId) =>
+    clearVault: (vaultId) => {
+      forgetVaultText(vaultId);
       clearLockedVault(vaultId, {
         activeVaultId: () => activeVaultIdRef.current,
         cancelPending: () => {
@@ -1666,7 +1671,8 @@ export default function App() {
         setEmptyFolders, setSelectedIds, setFilterTags, setFilterFolder, setSearchQuery, setReplaceRequest,
         setInsertRequest, setConflictPrompt, setHistoryOpen, setShowGlobalSearch, setPaletteQuery,
         setShowTemplatePicker, setRenameTag, setCtxMenu, setShowCalendar,
-      }),
+      });
+    },
     promptUnlock: setUnlockVaultId,
     autoLockMinutes: prefs.autoLockMinutes,
   });

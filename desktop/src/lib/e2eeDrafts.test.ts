@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { useNoteSave, UNREADABLE_DRAFT, type SaveStatus } from "./useNoteSave";
-import type { LockableVault } from "./useVaultLock";
+import { useVaultLock, type LockableVault } from "./useVaultLock";
 import {
   decryptFieldForVault,
   decryptNoteForVault,
@@ -53,7 +53,7 @@ function serverNote(overrides: Partial<Note> = {}): Note {
   };
 }
 
-/** What App passes to useNoteSave for an e2ee vault. */
+/** What App passes to useNoteSave for an e2ee vault, and the lock wired to it. */
 function useApp(initial: Note | null) {
   const [activeNote, setActiveNote] = useState<Note | null>(initial);
   const [, setNoteList] = useState<Note[]>(initial ? [initial] : []);
@@ -81,7 +81,22 @@ function useApp(initial: Note | null) {
     decryptServerContent: (_vaultId, content) => decryptNoteForVault(VAULT, content),
     sessionKey: "user-1",
   });
-  return { ...save, saveStatus, activeNote, editorContent };
+  const lock = useVaultLock({
+    vaults: () => [VAULT],
+    activeVaultId: () => VAULT.id,
+    saveVault: save.saveVault,
+    hasUnsavedText: save.hasUnsavedText,
+    busyReason: () => null,
+    clearVault: (vaultId) => {
+      save.forgetVault(vaultId);
+      setActiveNote(null);
+      setEditorContent("");
+    },
+    promptUnlock: () => {},
+    autoLockMinutes: 0,
+    sealUnsavedText: save.sealVault,
+  });
+  return { ...save, lock, saveStatus, activeNote, editorContent };
 }
 
 /** Lets sealing, opening (Web Crypto runs off the main thread) and the saves they start finish. */
@@ -165,6 +180,61 @@ describe("encrypted drafts — writing", () => {
     });
     await settle();
     expect(await readSealedDraft(VAULT.id, NOTE_ID, key)).toEqual({ content: "first and more", base: "c1" });
+  });
+});
+
+describe("encrypted drafts — no plaintext on disk (#549)", () => {
+  it("never stores the text, title or path through an edit, a failed save and a lock", async () => {
+    // A real Storage (jsdom) would take an own "setItem" property as an item:
+    // spy on its prototype then; the test shim is a plain object.
+    const target = typeof Storage !== "undefined" && localStorage instanceof Storage ? Storage.prototype : localStorage;
+    const setItem = vi.spyOn(target, "setItem");
+    const hook = renderHook(() => useApp(serverNote()));
+    offline();
+
+    for (const text of ["words", "words typed", TYPED]) act(() => hook.result.current.liveChange(text));
+    await settle();
+    const outcome = await act(() => hook.result.current.saveNote(TYPED));
+    expect(outcome.ok).toBe(false);
+    await settle();
+    await act(async () => {
+      expect(await hook.result.current.lock.lock(VAULT.id)).toBe(true);
+    });
+    await settle();
+
+    expect(vaultKeySession.get(VAULT.id)).toBeNull();
+    expect(setItem).toHaveBeenCalled();
+    for (const [name, value] of setItem.mock.calls) {
+      for (const secret of [TYPED, "words", TITLE, PATH, "Hidden", "Quarterly", SERVER_TEXT]) {
+        expect(name).not.toContain(secret);
+        expect(value).not.toContain(secret);
+      }
+    }
+    // And nothing readable was written by any other route either.
+    for (let i = 0; i < localStorage.length; i++) {
+      const name = localStorage.key(i)!;
+      expect(`${name} ${localStorage.getItem(name)}`).not.toMatch(/words|Quarterly|Hidden|server's copy/);
+    }
+  });
+
+  it("forgets the vault's unsaved text in memory on lock; the sealed draft stays on disk", async () => {
+    const hook = renderHook(() => useApp(serverNote()));
+    offline();
+    act(() => hook.result.current.liveChange(TYPED));
+    await act(() => hook.result.current.saveNote(TYPED));
+    await act(async () => {
+      await hook.result.current.lock.lock(VAULT.id);
+    });
+    await settle();
+
+    expect(hook.result.current.hasUnsavedText(VAULT.id)).toBe(false);
+    expect(hook.result.current.hasUnconfirmed()).toBe(false);
+    expect(hook.result.current.editorContent).toBe("");
+    expect(hasSealedDraft(NOTE_ID)).toBe(true);
+    // The network retry that was waiting never goes out (it would have no key).
+    const sent = update.mock.calls.length;
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1100)));
+    expect(update.mock.calls.length).toBe(sent);
   });
 });
 

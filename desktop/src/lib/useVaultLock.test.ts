@@ -154,7 +154,7 @@ describe("useVaultLock — locking by hand", () => {
     expect(hook.result.current.failure).toMatchObject({ vaultId: "v1", edited: true });
   });
 
-  it("keeps the vault unlocked and shows the failed-save form when the save fails", async () => {
+  it("keeps the vault unlocked and shows the failed-save form when the save fails and nothing can seal the text", async () => {
     const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
     const { hook, deps } = setup({ saveVault });
     let locked = true;
@@ -233,8 +233,37 @@ describe("useVaultLock — locking by hand", () => {
     expect(unlocked("v1")).toBe(false);
   });
 
-  it("has nowhere to keep unsaved text yet: the default seam refuses", async () => {
+  it("seals the unsaved text by default when the save fails, then locks (#549)", async () => {
+    const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
+    const sealUnsavedText = vi.fn(async () => true);
+    const { hook, deps } = setup({ saveVault, sealUnsavedText });
+    await act(async () => {
+      expect(await hook.result.current.lock("v1")).toBe(true);
+    });
+    expect(sealUnsavedText).toHaveBeenCalledWith("v1");
+    expect(unlocked("v1")).toBe(false);
+    expect(deps.clearVault).toHaveBeenCalledWith("v1");
+    expect(hook.result.current.failure).toBeNull();
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringContaining("kept encrypted on this device"),
+      expect.objectContaining({ kind: "success" }),
+    );
+  });
+
+  it("stays unlocked with the failed-save form when the text can't be sealed", async () => {
+    const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
+    const { hook } = setup({ saveVault, sealUnsavedText: async () => false });
+    await act(async () => {
+      expect(await hook.result.current.lock("v1")).toBe(false);
+    });
+    expect(unlocked("v1")).toBe(true);
+    expect(hook.result.current.failure).toEqual({ vaultId: "v1", error: offline, edited: false });
+  });
+
+  it("the seam refuses without a way to seal, or when sealing throws", async () => {
     expect(await keepUnsavedTextWhileLocked("v1", offline)).toBe(false);
+    expect(await keepUnsavedTextWhileLocked("v1", offline, async () => Promise.reject(new Error("quota")))).toBe(false);
+    expect(await keepUnsavedTextWhileLocked("v1", offline, async () => true)).toBe(true);
   });
 });
 
@@ -322,6 +351,16 @@ describe("useVaultLock — auto-lock when idle", () => {
 
     await advance(IDLE_CHECK_MS);
     expect(unlocked("v1")).toBe(false);
+  });
+
+  it("locks while offline once the unsaved text is sealed (#549)", async () => {
+    const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
+    const sealUnsavedText = vi.fn(async () => true);
+    const { deps } = setup({ autoLockMinutes: 5, saveVault, sealUnsavedText, vaults: () => VAULTS.slice(0, 1) });
+    await advance(5 * MINUTE);
+    expect(sealUnsavedText).toHaveBeenCalledWith("v1");
+    expect(unlocked("v1")).toBe(false);
+    expect(deps.clearVault).toHaveBeenCalledWith("v1");
   });
 
   it("toasts a postponed auto-lock once per idle stretch, not on every tick", async () => {

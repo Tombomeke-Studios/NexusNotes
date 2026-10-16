@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import "./EmptyState.css";
 
-type Art = "notes" | "graph" | "search";
+type Art = "notes" | "graph" | "search" | "trash";
 
 /**
  * An empty view with a small illustration, a title, a line of guidance and
@@ -56,6 +56,17 @@ function Illustration({ art }: { art: Art }) {
         <path d="M28 24h22M28 31h18M28 38h12" className="es-line" />
         <circle cx="62" cy="54" r="10" className="es-accent" />
         <path d="M62 49v10M57 54h10" className="es-accent-mark" />
+      </svg>
+    );
+  }
+  if (art === "trash") {
+    return (
+      <svg className="empty-state-art" width="80" height="72" viewBox="0 0 80 72" fill="none" aria-hidden="true">
+        <path d="M24 22h32l-3 38a4 4 0 0 1-4 4H31a4 4 0 0 1-4-4z" className="es-sheet" />
+        <path d="M20 22h40M33 22v-5a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v5" className="es-line" />
+        <path d="M35 32v22M45 32v22" className="es-line" />
+        <circle cx="60" cy="54" r="10" className="es-accent" />
+        <path d="M56 54.5l3 3 5.5-6" className="es-accent-mark" />
       </svg>
     );
   }

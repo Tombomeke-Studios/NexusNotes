@@ -30,7 +30,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] `test/mcp-client`: MCP client tests and a full-flow integration test (#552)
 - [x] `feature/version-paging`: paginate the version history, History panel loads more on scroll (#555)
 - [x] `ci/release-workflow`: Windows installer and checksums on version tags, unsigned until #529 (#557)
-- [ ] `feature/e2ee-drafts`: encrypted local drafts in encrypted vaults; starts after `feature/vault-lock` merges (#549)
+- [x] `feature/e2ee-drafts`: encrypted local drafts in encrypted vaults; starts after `feature/vault-lock` merges (#549)
 
 ### Sprint 2 candidates (agreed)
 - [ ] Offline read access first: it gates opening registration (#227)

@@ -351,3 +351,17 @@ func TestLoad_DBPoolRejectsBadValues(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTrashRetention(t *testing.T) {
+	for raw, want := range map[string]int{"": DefaultTrashRetentionDays, " 7 ": 7, "1": 1, "3650": 3650} {
+		got, err := parseTrashRetention(raw)
+		if err != nil || got != want {
+			t.Errorf("%q: got %d, %v; want %d", raw, got, err, want)
+		}
+	}
+	for _, raw := range []string{"0", "-1", "3651", "thirty"} {
+		if _, err := parseTrashRetention(raw); err == nil {
+			t.Errorf("%q: expected an error", raw)
+		}
+	}
+}

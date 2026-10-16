@@ -21,6 +21,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   `.msi`) and attaches it to a GitHub release with a `SHA256SUMS.txt`. The installer is not
   code-signed yet, so Windows SmartScreen asks for confirmation; the release notes explain
   the prompt and how to check the checksum.
+- Version history loads a page at a time: the History panel opens on the newest 50 versions
+  and loads older ones as you scroll (or with "Load older versions"). The versions endpoint
+  takes an optional `limit` and `before` cursor; without them it returns the whole history.
 - Graph: links are drawn in a clearly visible grey (at least 3:1 contrast, green for the
   open note) and stop at the rim of both notes, arrowheads and curved links are optional
   toggles that the app remembers, and a zoom bar (buttons, slider, Fit) sits next to

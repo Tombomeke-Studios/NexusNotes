@@ -32,6 +32,32 @@ export interface ZipEntry {
   content: string | Uint8Array;
 }
 
+/**
+ * Without ZIP64 the entry count is a 16-bit field and sizes and offsets are
+ * 32-bit, so a larger archive would come out corrupt; buildZip refuses it.
+ */
+export const ZIP_MAX_ENTRIES = 0xffff;
+export const ZIP_MAX_BYTES = 0xffffffff;
+
+/** The entries don't fit one zip without ZIP64; the message says so in plain words. */
+export class ZipTooLargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ZipTooLargeError";
+  }
+}
+
+const formatGB = (bytes: number) => `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+
+/** Throws ZipTooLargeError when an archive of this many entries and bytes can't be written. */
+export function checkZipLimits(entries: number, bytes: number): void {
+  if (entries <= ZIP_MAX_ENTRIES && bytes <= ZIP_MAX_BYTES) return;
+  throw new ZipTooLargeError(
+    `The export is too large for one zip file: a zip holds at most 65,535 files and 4 GB, ` +
+      `and this one has ${entries.toLocaleString("en-US")} files and ${formatGB(bytes)}.`,
+  );
+}
+
 /** DOS date/time fields for the given moment (zip's timestamp format). */
 function dosDateTime(d: Date): { date: number; time: number } {
   return {
@@ -40,7 +66,10 @@ function dosDateTime(d: Date): { date: number; time: number } {
   };
 }
 
-/** Builds a complete ZIP archive from text (stored as UTF-8) and byte entries. */
+/**
+ * Builds a complete ZIP archive from text (stored as UTF-8) and byte entries.
+ * Throws ZipTooLargeError, before writing anything, when they don't fit.
+ */
 export function buildZip(entries: ZipEntry[], now: Date = new Date()): Uint8Array {
   const encoder = new TextEncoder();
   const { date, time } = dosDateTime(now);
@@ -48,12 +77,18 @@ export function buildZip(entries: ZipEntry[], now: Date = new Date()): Uint8Arra
   const central: Uint8Array[] = [];
   let offset = 0;
 
+  const encoded = entries.map((entry) => ({
+    name: encoder.encode(entry.path),
+    data: typeof entry.content === "string" ? encoder.encode(entry.content) : entry.content,
+  }));
+  // Local header (30) + name + data, central header (46) + name, end record (22).
+  const archiveBytes = encoded.reduce((n, e) => n + 76 + 2 * e.name.length + e.data.length, 22);
+  checkZipLimits(entries.length, archiveBytes);
+
   const u16 = (v: number) => [v & 0xff, (v >>> 8) & 0xff];
   const u32 = (v: number) => [v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff];
 
-  for (const entry of entries) {
-    const name = encoder.encode(entry.path);
-    const data = typeof entry.content === "string" ? encoder.encode(entry.content) : entry.content;
+  for (const { name, data } of encoded) {
     const crc = crc32(data);
 
     // Local file header: signature, version, flags (bit 11 = UTF-8 names),

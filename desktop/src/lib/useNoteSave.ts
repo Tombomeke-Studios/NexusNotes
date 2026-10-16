@@ -5,6 +5,14 @@ import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { notes as notesApi, ApiError } from "./api";
 import { SERVER_SUSPECT_EVENT } from "./connection";
 import { saveDraft, loadDraft, loadDraftBase, rebaseDraft, clearDraft } from "./drafts";
+import {
+  UnreadableDraftError,
+  clearSealedDraft,
+  readSealedDraft,
+  rebaseSealedDraft,
+  writeSealedDraft,
+} from "./sealedDrafts";
+import { toast } from "./toast";
 import type { Note } from "./types";
 
 /**
@@ -102,8 +110,14 @@ export interface NoteSaveDeps {
   encryptOutgoing: (vaultId: string, plaintext: string) => Promise<{ content: string; checksum?: string }>;
   /** Seals title and folder path for upload (e2ee vaults, #362); omitted: sent as they are. */
   sealMeta?: (vaultId: string, title: string, path: string) => Promise<{ title: string; path: string }>;
-  /** False when plaintext must never touch disk (e2ee vaults), so no local draft is kept. */
+  /** False when plaintext must never touch disk (e2ee vaults): no plaintext draft is kept. */
   keepsDrafts: (vaultId: string) => boolean;
+  /**
+   * The key that seals local drafts of a vault that keeps no plaintext draft
+   * (an unlocked e2ee vault, #549); null: no draft at all (locked). Omitted:
+   * such vaults keep no draft.
+   */
+  draftKey?: (vaultId: string) => Uint8Array | null;
   /**
    * Turns the note text a 409 reports as the server's version into plaintext
    * (e2ee vaults send ciphertext). Omitted: the text is used as it is.
@@ -123,6 +137,10 @@ export interface NoteSaveDeps {
    */
   sessionKey?: string | null;
 }
+
+/** Shown when a draft kept on this device can't be opened; it stays where it is. */
+export const UNREADABLE_DRAFT =
+  "A draft kept on this device couldn't be decrypted with this vault's key. It was kept as it is and not sent.";
 
 /** The version of a note another device saved, kept while the note is in conflict. */
 export interface ServerVersion {
@@ -210,6 +228,27 @@ export function useNoteSave(deps: NoteSaveDeps) {
    * 409 for a save of that version or older is stale and ignored.
    */
   const resolvedUpTo = useRef(new Map<string, number>());
+  /**
+   * Bumped per vault when its text is forgotten (locked, #549): results of
+   * requests sent before that are ignored, so no plaintext comes back.
+   */
+  const vaultGenerations = useRef(new Map<string, number>());
+  const vaultGenerationOf = (vaultId: string) => vaultGenerations.current.get(vaultId) ?? 0;
+  /** Notes whose sealed draft is being read for a replay. */
+  const replaying = useRef(new Set<string>());
+  /** Notes whose sealed draft could not be opened: it is never overwritten or cleared. */
+  const unreadable = useRef(new Set<string>());
+
+  /** The key sealing the vault's drafts, or null (plaintext drafts, or none). */
+  const sealKey = (vaultId: string): Uint8Array | null => {
+    const d = depsRef.current;
+    return d.keepsDrafts(vaultId) ? null : (d.draftKey?.(vaultId) ?? null);
+  };
+  /** The server has the note's text: its local draft, plain or sealed, goes. */
+  const dropDraft = (id: string) => {
+    clearDraft(id);
+    if (!unreadable.current.has(id)) clearSealedDraft(id);
+  };
 
   const versionOf = (id: string) => versions.current.get(id) ?? 0;
   const isActive = (id: string) => depsRef.current.activeNoteRef.current?.id === id;
@@ -247,7 +286,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
     if (lastRequests.current.get(note.id)?.version === version) lastRequests.current.delete(note.id);
     if (versionOf(note.id) === version) {
       cancelTimer(note.id);
-      clearDraft(note.id);
+      dropDraft(note.id);
       d.setNoteList((prev) => prev.map((n) => (n.id === saved.id ? saved : n)));
       // Only refresh the open note / status if we haven't since navigated away
       // (e.g. a save flushed on blur while clicking a preview link).
@@ -260,6 +299,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
       d.setNoteList((prev) => prev.map((n) => (n.id === saved.id ? merge(n) : n)));
       d.setActiveNote((prev) => (prev && prev.id === saved.id ? merge(prev) : prev));
       rebaseDraft(note.id, base, updated.checksum);
+      const key = sealKey(note.vault_id);
+      if (key) void rebaseSealedDraft(note.vault_id, note.id, base, updated.checksum, key);
       scheduleFollowUp(note.id);
     }
     d.onSynced();
@@ -309,7 +350,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
     const { note, content, version } = req;
     const d = depsRef.current;
     const gen = generation.current;
-    const stale = () => gen !== generation.current;
+    const vaultGen = vaultGenerationOf(note.vault_id);
+    const stale = () => gen !== generation.current || vaultGen !== vaultGenerationOf(note.vault_id);
     if (isActive(note.id) && versionOf(note.id) === version) {
       d.setSaveStatus((s) => (s === "conflict" ? s : "saving"));
     }
@@ -461,6 +503,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
     savedVersions.current.clear();
     lastErrors.current.clear();
     resolvedUpTo.current.clear();
+    replaying.current.clear();
+    unreadable.current.clear();
     setSaveError(null);
     setConflicts(new Map());
   }, [sessionKey]);
@@ -549,11 +593,14 @@ export function useNoteSave(deps: NoteSaveDeps) {
     d.setEditorContent(content);
     markDirty();
     // Mirror to a local draft so nothing is lost if the app closes before the
-    // debounced server save runs — except for e2ee vaults, where plaintext
-    // must never touch disk (localStorage included).
+    // debounced server save runs. For e2ee vaults plaintext must never touch
+    // disk (localStorage included): their draft is sealed under the vault key.
     const current = d.activeNoteRef.current;
     if (current && d.keepsDrafts(current.vault_id)) {
       saveDraft(current.id, content, baseChecksum(current));
+    } else if (current && !unreadable.current.has(current.id)) {
+      const key = sealKey(current.vault_id);
+      if (key) void writeSealedDraft(current.vault_id, current.id, { content, base: baseChecksum(current) }, key);
     }
     // baseChecksum only reads refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -572,7 +619,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
       lastRequests.current.delete(id);
       failures.current.delete(id);
       lastErrors.current.delete(id);
-      clearDraft(id);
+      dropDraft(id);
       clearErrorFor(id);
     }
     d.setSaveStatus("saved");
@@ -581,7 +628,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
   /**
    * Local text of a note that the server doesn't have yet, for reopening it:
    * the draft (standard vaults) or else the text of a save the server hasn't
-   * confirmed (failed, queued or in flight; e2ee notes keep no draft). Comes
+   * confirmed (failed, queued or in flight; a sealed e2ee draft becomes one
+   * when replayDrafts restores it after an unlock). Comes
    * with the checksum it was written against. The caller must open the text
    * on that version, not on the freshly loaded server copy, so saving it
    * gets a 409 if another device changed the note in between.
@@ -672,7 +720,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
       requested.current.set(noteId, version);
       lastRequests.current.delete(noteId);
       queued.current.delete(noteId);
-      clearDraft(noteId);
+      dropDraft(noteId);
       d.setSaveStatus("saved");
       return { ok: true };
     }
@@ -697,20 +745,63 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Whether a replay must leave the note alone: it is open, or its save is already under way. */
+  const busyForReplay = (id: string) =>
+    isActive(id) || lastRequests.current.has(id) || timers.current.has(id) || workers.current.has(id);
+
+  /**
+   * Restores a sealed draft (#549) after the vault was unlocked: the same
+   * rules as a plain draft once it is open. One that can't be opened is kept
+   * on disk, reported once and never overwritten.
+   */
+  const replaySealed = async (note: Note, key: Uint8Array) => {
+    const id = note.id;
+    if (replaying.current.has(id) || unreadable.current.has(id)) return;
+    replaying.current.add(id);
+    const gen = generation.current;
+    const vaultGen = vaultGenerationOf(note.vault_id);
+    try {
+      let draft: Awaited<ReturnType<typeof readSealedDraft>>;
+      try {
+        draft = await readSealedDraft(note.vault_id, id, key);
+      } catch (err) {
+        if (!(err instanceof UnreadableDraftError) || gen !== generation.current) return;
+        unreadable.current.add(id);
+        toast(UNREADABLE_DRAFT, { kind: "error", key: "sealed-draft-unreadable" });
+        return;
+      }
+      if (!draft || gen !== generation.current || vaultGen !== vaultGenerationOf(note.vault_id)) return;
+      if (busyForReplay(id)) return;
+      if (draft.content === note.content) {
+        clearSealedDraft(id);
+        return;
+      }
+      void enqueue({ ...note, checksum: draft.base ?? note.checksum }, draft.content);
+    } finally {
+      replaying.current.delete(id);
+    }
+  };
+
   /**
    * Sends the drafts of notes that are not open (#227): text typed offline in
    * a note the user then left, or left over from an earlier run, reaches the
    * server without reopening each note. A draft is saved against the version
    * it was written on, so a note changed elsewhere since answers 409 and keeps
    * its draft for the user to resolve when they open it. Notes whose save is
-   * already queued, in flight or waiting to retry are left alone, as are
-   * vaults that keep no drafts (e2ee).
+   * already queued, in flight or waiting to retry are left alone. Drafts of
+   * e2ee vaults are sealed (#549): they are opened with the vault key, so
+   * only while the vault is unlocked; the text then counts as unconfirmed
+   * and reopening the note shows it (localCopy).
    */
   const replayDrafts = useCallback((notes: readonly Note[]) => {
     const d = depsRef.current;
     for (const note of notes) {
-      if (isActive(note.id) || !d.keepsDrafts(note.vault_id)) continue;
-      if (lastRequests.current.has(note.id) || timers.current.has(note.id) || workers.current.has(note.id)) continue;
+      if (busyForReplay(note.id)) continue;
+      if (!d.keepsDrafts(note.vault_id)) {
+        const key = sealKey(note.vault_id);
+        if (key) void replaySealed(note, key);
+        continue;
+      }
       const draft = loadDraft(note.id);
       if (draft === null) continue;
       if (draft === note.content) {
@@ -723,9 +814,73 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Seals the vault's unsaved text into encrypted drafts (#549), for a lock
+   * whose save failed: the open note's edited text and every unconfirmed
+   * save of the vault. True once all of it is on disk; false when there is
+   * no key, storage refused, or a note's earlier draft is unreadable (it is
+   * never overwritten).
+   */
+  const sealVault = useCallback(async (vaultId: string): Promise<boolean> => {
+    const key = sealKey(vaultId);
+    if (!key) return false;
+    const d = depsRef.current;
+    const open = d.activeNoteRef.current;
+    const drafts = new Map<string, { content: string; base: string }>();
+    for (const [id, req] of lastRequests.current) {
+      if (req.note.vault_id === vaultId) drafts.set(id, { content: req.content, base: baseChecksum(req.note) });
+    }
+    // The editor holds newer text than any request of the open note.
+    if (open && openNoteEdited(vaultId)) {
+      drafts.set(open.id, { content: d.editorContentRef.current, base: baseChecksum(open) });
+    }
+    if ([...drafts.keys()].some((id) => unreadable.current.has(id))) return false;
+    const results = await Promise.all(
+      [...drafts].map(([id, draft]) => writeSealedDraft(vaultId, id, draft, key)),
+    );
+    return results.every((r) => r !== "failed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Forgets the vault's unsaved text (it was locked, #549; the text is in
+   * sealed drafts by then): queued saves, retries and their plaintext go,
+   * and answers to saves already sent are ignored. The drafts on disk stay.
+   */
+  const forgetVault = useCallback((vaultId: string) => {
+    vaultGenerations.current.set(vaultId, vaultGenerationOf(vaultId) + 1);
+    const ids = new Set<string>();
+    for (const map of [lastRequests.current, queued.current, pendingRetries.current]) {
+      for (const [id, req] of map) if (req.note.vault_id === vaultId) ids.add(id);
+    }
+    const open = depsRef.current.activeNoteRef.current;
+    if (open?.vault_id === vaultId) ids.add(open.id);
+    for (const id of ids) {
+      cancelTimer(id);
+      queued.current.delete(id);
+      lastRequests.current.delete(id);
+      pendingRetries.current.delete(id);
+      failures.current.delete(id);
+      lastErrors.current.delete(id);
+      resolvedUpTo.current.delete(id);
+      // Nothing of this note is pending in memory any more.
+      savedVersions.current.set(id, versionOf(id));
+      requested.current.set(id, versionOf(id));
+      clearErrorFor(id);
+    }
+    setConflicts((prev) => {
+      if (![...prev.keys()].some((id) => ids.has(id))) return prev;
+      const next = new Map(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  }, []);
+
   return {
     retryNow,
     replayDrafts,
+    sealVault,
+    forgetVault,
     isOwnVersion,
     conflictVersion,
     resolveConflict,

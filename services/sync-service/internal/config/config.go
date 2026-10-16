@@ -67,6 +67,26 @@ type Config struct {
 	// DBPool sizes the Postgres connection pool (DB_MAX_CONNS, DB_MIN_CONNS,
 	// DB_MAX_CONN_LIFETIME, DB_MAX_CONN_IDLE_TIME) (#220).
 	DBPool DBPool
+	// TrashRetentionDays is how long a trashed note can be restored before the
+	// purge job deletes it for good (TRASH_RETENTION_DAYS, #569).
+	TrashRetentionDays int
+}
+
+// DefaultTrashRetentionDays is how long trashed notes are kept by default.
+const DefaultTrashRetentionDays = 30
+
+// parseTrashRetention reads TRASH_RETENTION_DAYS: 1 to 3650 days, the
+// default when unset.
+func parseTrashRetention(raw string) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return DefaultTrashRetentionDays, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 || n > 3650 {
+		return 0, fmt.Errorf("TRASH_RETENTION_DAYS must be a number of days between 1 and 3650")
+	}
+	return n, nil
 }
 
 // DBPool holds the connection pool settings. Connections are recycled after
@@ -215,6 +235,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	trashRetention, err := parseTrashRetention(os.Getenv("TRASH_RETENTION_DAYS"))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Port:                    port,
 		BindAddrs:               bindAddrs,
@@ -244,6 +269,7 @@ func Load() (*Config, error) {
 		MetricsAddr:             metricsAddr,
 		TrustedProxies:          trustedProxies,
 		DBPool:                  dbPool,
+		TrashRetentionDays:      trashRetention,
 	}, nil
 }
 

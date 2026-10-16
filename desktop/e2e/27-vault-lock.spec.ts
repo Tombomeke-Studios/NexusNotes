@@ -60,7 +60,7 @@ test.describe("Locking an encrypted vault (#545)", () => {
     await expect(page.getByText("This vault is locked")).toBeVisible({ timeout: 10_000 });
   });
 
-  test("a lock whose save fails keeps the vault unlocked and the text on screen", async ({ page }) => {
+  test("a lock whose save fails keeps the text sealed on the device and restores it on unlock (#549)", async ({ page }) => {
     const secret = `UNSAVED-${uid()}`;
     await createEncryptedFirstVault(page, `Offline-${uid()}`);
     await expect(page.locator(".editor-textarea")).toBeVisible({ timeout: 10_000 });
@@ -72,18 +72,25 @@ test.describe("Locking an encrypted vault (#545)", () => {
     await page.locator(".editor-textarea").fill(`# Draft\n\n${secret}\n`);
     await page.getByRole("button", { name: "Lock vault" }).click();
 
-    const dialog = page.getByRole("alertdialog");
-    await expect(dialog).toContainText("Couldn't save your changes", { timeout: 15_000 });
-    await expect(dialog).toContainText(/stays unlocked/);
-    await expect(dialog.getByRole("button", { name: /without saving/i })).toHaveCount(0);
-    await dialog.getByRole("button", { name: "Keep editing" }).click();
-
-    await expect(page.getByText("This vault is locked")).toHaveCount(0);
-    await expect(page.locator(".editor-textarea")).toHaveValue(new RegExp(secret));
-
-    // Back online: Lock vault goes through.
-    await page.unroute("**/api/notes/*");
-    await page.getByRole("button", { name: "Lock vault" }).click();
+    // The lock goes ahead: the unsaved text waits encrypted on the device.
     await expect(page.getByText("This vault is locked")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
+    expect(await page.locator("body").innerText()).not.toContain(secret);
+    const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+    expect(stored).toContain("nexus_sealed_draft_");
+    expect(stored).not.toContain(secret);
+
+    // Back online, the passphrase brings the text back and it reaches the server.
+    await page.unroute("**/api/notes/*");
+    await page.getByRole("button", { name: "Unlock vault" }).click();
+    await page.getByPlaceholder("Vault passphrase").fill(PASSPHRASE);
+    await page.getByRole("button", { name: "Unlock", exact: true }).click();
+    await expect
+      .poll(() => page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("nexus_sealed_draft_"))), {
+        timeout: 20_000,
+      })
+      .toBe(false);
+    await page.locator("[data-note-id]").filter({ hasText: "Welcome" }).first().click({ timeout: 20_000 });
+    await expect(page.locator(".editor-textarea")).toHaveValue(new RegExp(secret), { timeout: 10_000 });
   });
 });

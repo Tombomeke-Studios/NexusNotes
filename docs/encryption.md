@@ -294,8 +294,10 @@ back on unlock), the client-side search results, the version-history dialog and
 its decrypted versions, the conflict dialog, the palette, template picker,
 tag-rename and calendar dialogs, the tag and folder filters, the sidebar
 search, and an open linked-files panel of that vault. Unconfirmed save
-requests (the only in-memory "drafts" of an e2ee note) are empty by then,
-because the lock waits for them (below). Attachment ids keep a mapping to their
+requests, queued saves and waiting retries of that vault (the in-memory
+copies of its unsaved text) are forgotten too, and answers to saves already
+sent are ignored; by then their text is either on the server or sealed in an
+encrypted draft on the device (below). Attachment ids keep a mapping to their
 vault id; it holds no plaintext. When the user comes back to the vault (selects
 it, or returns to the app after an auto-lock), the unlock dialog asks for the
 passphrase.
@@ -311,11 +313,15 @@ vault whose text the server has not confirmed is saved, and the editor is
 read-only while that runs. The lock saves again for as long as newer text
 appears (up to three rounds), and the last check, made with nothing awaited
 before the key is dropped, reads the edit versions directly rather than React
-state. If a save fails (offline, server down, conflict), the vault stays
-unlocked: a manual lock shows the failed-save form (retry or keep editing;
-there is no "lock without saving", since the text could never be encrypted
-again without the key), and an auto-lock is postponed with a toast and tried
-again on the next idle tick. Text that kept changing gets its own wording in
+state. If a save fails (offline, server down, conflict), the unsaved text is
+sealed into encrypted drafts while the key is still there (below), and the
+lock goes ahead; the "Locked" message says the changes are kept encrypted on
+the device. Only when sealing fails too (storage full, or an earlier draft of
+that note could not be decrypted and must not be overwritten) does the vault
+stay unlocked: a manual lock shows the failed-save form (retry or keep
+editing; there is no "lock without saving", since the text could never be
+encrypted again without the key), and an auto-lock is postponed with a toast
+and tried again on the next idle tick. Text that kept changing gets its own wording in
 the form ("your newest changes aren't saved yet"). A lock also waits while the
 "deleted elsewhere" question (#561) is open for a note in that vault, because
 its text exists only on screen and Keep needs the key to encrypt it, and while
@@ -324,11 +330,53 @@ dropped.
 
 **Encrypted drafts (#549).** `keepUnsavedTextWhileLocked` in `useVaultLock.ts`
 is the one place that decides what happens to text a failed save could not
-deliver. Today it has nowhere safe to put it and returns false (the vault
-stays unlocked); encrypted drafts will seal that text under the vault key on
-the device and return true, so the lock can go ahead.
+deliver. It seals the vault's unsaved text (the open note's edited text and
+every unconfirmed save) as encrypted drafts and returns true once all of it is
+on disk, so the lock can go ahead. Unlocking the vault restores and saves it,
+as described under "Encrypted local drafts".
 
 Locking one vault leaves the others as they are.
+
+---
+
+## Encrypted local drafts (#549)
+
+Standard vaults mirror every edit to a local draft so text typed offline
+survives a crash. An e2ee vault's plaintext must never touch disk, so its
+drafts are sealed under the Vault Key instead (`desktop/src/lib/sealedDrafts.ts`,
+wired in `useNoteSave.ts`):
+
+- **What is stored.** One entry per note in `localStorage`, named after the
+  note id (a random UUID, so the name reveals nothing about the note). Its
+  value holds a format version, the vault id and one AES-256-GCM ciphertext
+  with a fresh 96-bit IV per write. The ciphertext covers the text and the
+  checksum of the server version it was written against; the vault and note
+  id are bound as additional data, so a draft only opens for its own note. No
+  title, path, text or checksum is stored in clear. Tests watch every
+  `localStorage` write through an edit, a failed save and a lock and assert
+  that none contains the text, title or path.
+- **When it is written.** On every edit while the vault is unlocked (writes
+  are serialised per note; a newer one overtakes an older one still being
+  encrypted), and by a lock whose save failed. While the vault is locked
+  nothing is written, because there is no key.
+- **When it goes.** As soon as the server confirms the text, like a plain
+  draft. A write still being encrypted at that moment never lands.
+- **Restoring.** After a relaunch the drafts stay sealed until the vault is
+  unlocked. Unlocking reloads the vault's notes, which replays their drafts
+  with the same rules as plain drafts: a draft equal to the server's text is
+  dropped, any other is opened, saved against the version it was based on and
+  shown when the note is opened. A note changed elsewhere in between answers
+  with a conflict, and the draft stays until the conflict is resolved. When
+  the server is unreachable the save is retried when it comes back.
+- **A draft that can't be opened** (a different key, damaged data) is kept on
+  the device untouched, never sent and never overwritten, and a toast says so
+  once per session.
+- **On lock** the in-memory copies of the vault's unsaved text are forgotten
+  (see "Locking a vault"); the sealed drafts stay on disk.
+
+The sealed form protects the drafts at rest on the device with the same key as
+the server copy. It does not protect against code running in the app while the
+vault is unlocked, which can read the plaintext in memory anyway.
 
 ---
 

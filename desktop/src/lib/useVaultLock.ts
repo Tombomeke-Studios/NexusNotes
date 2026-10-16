@@ -48,6 +48,11 @@ export interface VaultLockDeps {
   promptUnlock: (vaultId: string) => void;
   /** Idle minutes before every unlocked vault locks; 0 = never. */
   autoLockMinutes: number;
+  /**
+   * Seals the vault's unsaved text into encrypted drafts on this device
+   * (#549); true once all of it is stored. Used by the seam below.
+   */
+  sealUnsavedText?: (vaultId: string) => Promise<boolean>;
   /** Overrides the #549 seam below (tests). */
   keepUnsavedText?: (vaultId: string, error: SaveError) => Promise<boolean>;
 }
@@ -57,18 +62,26 @@ export interface VaultLockDeps {
  * its text did not reach the server (offline, server down, conflict). Returns
  * true when that text is kept somewhere safe, so the lock may go ahead.
  *
- * Today there is no such place: e2ee vaults keep no local drafts (plaintext
- * never touches disk), and once the key is gone the in-memory text could
- * never be encrypted again. So it returns false and the vault stays unlocked:
- * a manual lock shows the failed-save form, an auto-lock is postponed. With
- * encrypted drafts this seals the text under the vault key into a local
- * draft and returns true.
+ * The safe place is a draft sealed under the vault key on this device, made
+ * while the key is still there (`seal`); unlocking the vault restores and
+ * saves it. Whatever the reason the save failed, the text is sealed with the
+ * version it was based on, so a conflict comes back as a conflict. Without a
+ * way to seal, or when sealing fails, it returns false and the vault stays
+ * unlocked: a manual lock shows the failed-save form, an auto-lock is
+ * postponed.
  */
-export async function keepUnsavedTextWhileLocked(vaultId: string, error: SaveError): Promise<boolean> {
-  // #549: seal the vault's unconfirmed text into encrypted drafts here.
-  void vaultId;
+export async function keepUnsavedTextWhileLocked(
+  vaultId: string,
+  error: SaveError,
+  seal?: (vaultId: string) => Promise<boolean>,
+): Promise<boolean> {
   void error;
-  return false;
+  if (!seal) return false;
+  try {
+    return await seal(vaultId);
+  } catch {
+    return false;
+  }
 }
 
 /** Whether the vault is end-to-end encrypted and its key is in memory. */
@@ -99,9 +112,10 @@ type Mode = "manual" | "auto" | "expired";
  * A lock never discards text: the vault's unsaved notes are saved first, and
  * only once the server has them (checked again synchronously right before the
  * key is dropped) does the key go, along with every decrypted copy. When that
- * save fails the vault stays unlocked; a manual lock reports it in `failure`
- * (the failed-save form: retry / keep editing), an auto-lock shows a toast
- * and tries again on the next idle tick. `locking` lists the vaults a lock is
+ * save fails, the text is sealed into encrypted drafts (#549) and the lock
+ * goes ahead; only if that fails too does the vault stay unlocked: a manual
+ * lock reports it in `failure` (the failed-save form: retry / keep editing),
+ * an auto-lock shows a toast and tries again on the next idle tick. `locking` lists the vaults a lock is
  * saving right now; their editor should be read-only meanwhile, so an
  * auto-lock that is under way finishes even when the user comes back. Each
  * vault locks on its own; the others stay as they are.
@@ -155,7 +169,8 @@ export function useVaultLock(deps: VaultLockDeps) {
         }
         const outcome = await depsRef.current.saveVault(vaultId);
         if (outcome.ok || outcome.error.message === NOT_SAVED_YET) continue;
-        const keep = depsRef.current.keepUnsavedText ?? keepUnsavedTextWhileLocked;
+        const d = depsRef.current;
+        const keep = d.keepUnsavedText ?? ((id: string, e: SaveError) => keepUnsavedTextWhileLocked(id, e, d.sealUnsavedText));
         if (await keep(vaultId, outcome.error)) kept = true;
         else return postpone(null, outcome.error);
       }
@@ -176,7 +191,10 @@ export function useVaultLock(deps: VaultLockDeps) {
       const open = depsRef.current.activeVaultId() === vaultId;
       if (mode === "auto" && open) returnPrompt.current = vaultId;
       if (mode === "expired" && open) depsRef.current.promptUnlock(vaultId);
-      if (mode === "manual") toast(`Locked "${vault.name}".`, { kind: "success", key: "vault-lock" });
+      if (mode === "manual") {
+        const note = kept ? " Unsaved changes are kept encrypted on this device and saved after you unlock it." : "";
+        toast(`Locked "${vault.name}".${note}`, { kind: "success", key: "vault-lock" });
+      }
       return true;
     } finally {
       inFlight.current.delete(vaultId);

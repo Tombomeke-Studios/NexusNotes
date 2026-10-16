@@ -42,6 +42,7 @@ import {
   stars as starsApi,
   links as linksApi,
   devices as devicesApi,
+  trash as trashApi,
   getToken,
   getDeviceId,
   auth,
@@ -1061,18 +1062,16 @@ export default function App() {
     if (ids.length > 1) setSelectedIds(new Set());
   }, [moveOne]);
 
-  const handleDeleteFolder = useCallback(async (folderPath: string) => {
+  // A folder's notes (subfolders included) go to the Trash in one batch call
+  // once confirmed (#569); an empty folder just goes.
+  const handleDeleteFolder = useCallback((folderPath: string) => {
     if (!activeVaultId) return;
-    // Flatten: move notes in the folder (or its subfolders) back to the root,
-    // then drop the folder marker.
-    const inside = noteListRef.current.filter(
-      (n) => n.path === folderPath || n.path.startsWith(folderPath + "/"),
-    );
-    for (const n of inside) {
-      await moveOne(n.id, "");
-    }
-    setEmptyFolders(removeFolder(activeVaultId, folderPath));
-  }, [activeVaultId, moveOne]);
+    const inside = noteListRef.current
+      .filter((n) => n.path === folderPath || n.path.startsWith(folderPath + "/"))
+      .map((n) => n.id);
+    if (inside.length === 0) setEmptyFolders(removeFolder(activeVaultId, folderPath));
+    else requestDeleteRef.current(inside, folderPath);
+  }, [activeVaultId]);
 
   const handleDuplicateNote = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
@@ -1093,27 +1092,41 @@ export default function App() {
     setCursor({ line: 1, col: 1 });
   }, [activeVaultId, encryptOutgoing, sealMeta, flushPendingSave]);
 
-  const deleteOne = useCallback(async (noteId: string) => {
+  // Deleting moves notes to the vault's Trash (#569). The server pushes
+  // note:trashed back to this device before it answers.
+  const trashOne = useCallback(async (noteId: string) => {
     if (!activeVaultId) return;
-    // The server pushes note:deleted back to this device before it answers.
     markOwnDelete(noteId);
     try {
-      await notesApi.delete(activeVaultId, noteId);
+      await trashApi.move(noteId);
     } catch (err) {
       forgetOwnDelete(noteId);
       throw err;
     }
-    setNoteList((prev) => prev.filter((n) => n.id !== noteId));
-    closeTabRef.current(noteId);
   }, [activeVaultId, markOwnDelete, forgetOwnDelete]);
-  // Deleting is permanent, so every delete is asked first (#568).
+  const trashMany = useCallback(async (noteIds: string[]) => {
+    if (!activeVaultId) return;
+    for (const id of noteIds) markOwnDelete(id);
+    let moved: Set<string>;
+    try {
+      moved = new Set((await trashApi.moveMany(activeVaultId, noteIds)).map((n) => n.id));
+    } catch (err) {
+      for (const id of noteIds) forgetOwnDelete(id);
+      throw err;
+    }
+    // Skipped ids were already gone: no push comes for them.
+    for (const id of noteIds) if (!moved.has(id)) forgetOwnDelete(id);
+  }, [activeVaultId, markOwnDelete, forgetOwnDelete]);
+  // Every delete is asked first (#568).
   const deleteConfirm = useDeleteConfirm({
-    deleteOne,
-    onDeleted: (ids) => {
+    trashOne,
+    trashMany,
+    onDeleted: (ids, folder) => {
       setSelectedIds((prev) => (ids.some((id) => prev.has(id)) ? new Set([...prev].filter((id) => !ids.includes(id))) : prev));
-      // Notes found already gone (404) skipped deleteOne's own cleanup (#586).
+      // Also covers notes found already gone (404, #586) and batch ids the server skipped.
       setNoteList((prev) => (prev.some((n) => ids.includes(n.id)) ? prev.filter((n) => !ids.includes(n.id)) : prev));
       for (const id of ids) closeTabRef.current(id);
+      if (folder !== null && activeVaultIdRef.current) setEmptyFolders(removeFolder(activeVaultIdRef.current, folder));
     },
   });
   const requestDelete = deleteConfirm.request;
@@ -2275,6 +2288,7 @@ export default function App() {
           <DeleteConfirmDialog
             key="delete-confirm"
             noteTitles={deleteConfirm.pending.map((id) => noteList.find((n) => n.id === id)?.title ?? "")}
+            folder={deleteConfirm.folder}
             busy={deleteConfirm.busy}
             error={deleteConfirm.error}
             onCancel={deleteConfirm.cancel}

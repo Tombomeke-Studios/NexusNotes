@@ -112,9 +112,9 @@ func (f *fakeAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		n.Content, n.Checksum = body["content"], n.Checksum+"+"
 		write(200, n)
-	case r.Method == http.MethodDelete && len(parts) == 5:
-		f.deleted = append(f.deleted, parts[4])
-		w.WriteHeader(204)
+	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "notes" && parts[3] == "trash":
+		f.deleted = append(f.deleted, parts[2])
+		write(200, map[string]string{"id": parts[2]})
 	case r.Method == http.MethodGet && len(parts) == 4 && parts[3] == "search":
 		write(200, []nexus.SearchResult{{ID: "n1", Title: "Plan", Snippet: r.URL.Query().Get("q")}})
 	case r.Method == http.MethodGet && len(parts) == 4 && parts[3] == "tags":

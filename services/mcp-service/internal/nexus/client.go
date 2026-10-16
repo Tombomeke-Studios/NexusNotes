@@ -233,7 +233,9 @@ func (c *Client) UpdateNote(ctx context.Context, tool string, n *Note, content s
 	return &out, nil
 }
 
-func (c *Client) DeleteNote(ctx context.Context, tool, vaultID, noteID string) error {
-	_, err := c.do(ctx, tool, http.MethodDelete, "/api/vaults/"+url.PathEscape(vaultID)+"/notes/"+url.PathEscape(noteID), nil, nil)
+// TrashNote moves a note to its vault's trash (#569), from where the user can
+// restore it for 30 days. There is no way to delete a note for good over MCP.
+func (c *Client) TrashNote(ctx context.Context, tool, noteID string) error {
+	_, err := c.do(ctx, tool, http.MethodPost, "/api/notes/"+url.PathEscape(noteID)+"/trash", nil, nil)
 	return err
 }

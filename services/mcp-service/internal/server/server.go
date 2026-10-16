@@ -47,7 +47,7 @@ func New(client *nexus.Client, now func() time.Time) *mcp.Server {
 	mcp.AddTool(s, &mcp.Tool{Name: "create_note", Description: "Create a note in a vault folder.", Annotations: &mcp.ToolAnnotations{DestructiveHint: &notDestructive}}, t.createNote)
 	mcp.AddTool(s, &mcp.Tool{Name: "update_note", Description: `Change a note's content: "replace" it (default), or "append" / "prepend" text to it.`, Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive}}, t.updateNote)
 	mcp.AddTool(s, &mcp.Tool{Name: "append_to_note", Description: "Append a block of text to the end of a note, keeping everything already in it.", Annotations: &mcp.ToolAnnotations{DestructiveHint: &notDestructive}}, t.appendToNote)
-	mcp.AddTool(s, &mcp.Tool{Name: "delete_note", Description: "Delete a note permanently. Requires confirm: true.", Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive}}, t.deleteNote)
+	mcp.AddTool(s, &mcp.Tool{Name: "delete_note", Description: "Move a note to the trash; the user can restore it in the app for 30 days. Requires confirm: true.", Annotations: &mcp.ToolAnnotations{DestructiveHint: &destructive}}, t.deleteNote)
 	addResources(s, t)
 	addPrompts(s, t)
 	return s
@@ -492,8 +492,8 @@ func joinBlocks(a, b string) string {
 
 type DeleteIn struct {
 	VaultID string `json:"vault_id,omitempty" jsonschema:"optional: the vault the note must be in"`
-	NoteID  string `json:"note_id" jsonschema:"the note to delete"`
-	Confirm bool   `json:"confirm" jsonschema:"must be true: deleting cannot be undone"`
+	NoteID  string `json:"note_id" jsonschema:"the note to move to the trash"`
+	Confirm bool   `json:"confirm" jsonschema:"must be true: the note leaves the vault until the user restores it"`
 }
 
 type DeleteOut struct {
@@ -502,7 +502,7 @@ type DeleteOut struct {
 
 func (t *tools) deleteNote(ctx context.Context, _ *mcp.CallToolRequest, in DeleteIn) (*mcp.CallToolResult, DeleteOut, error) {
 	if !in.Confirm {
-		return nil, DeleteOut{}, errors.New("deleting a note cannot be undone; call again with confirm: true if the user asked for it")
+		return nil, DeleteOut{}, errors.New("deleting moves the note to the trash, out of the vault until the user restores it; call again with confirm: true if the user asked for it")
 	}
 	n, err := t.c.Note(ctx, "delete_note", in.NoteID)
 	if err != nil {
@@ -511,7 +511,8 @@ func (t *tools) deleteNote(ctx context.Context, _ *mcp.CallToolRequest, in Delet
 	if err := inVault(n, in.VaultID); err != nil {
 		return nil, DeleteOut{}, err
 	}
-	if err := t.c.DeleteNote(ctx, "delete_note", n.VaultID, n.ID); err != nil {
+	// Into the trash, never for good (#569): the user can restore it.
+	if err := t.c.TrashNote(ctx, "delete_note", n.ID); err != nil {
 		return nil, DeleteOut{}, explain(err)
 	}
 	return nil, DeleteOut{Deleted: infoOf(n)}, nil

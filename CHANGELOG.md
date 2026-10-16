@@ -6,6 +6,12 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Server side of the trash: deleted notes can be moved to their vault's trash and restored
+  for 30 days (`TRASH_RETENTION_DAYS`), after which an hourly job deletes them for good with
+  their history and attachments. Trashed notes are left out of lists, search, links, tags and
+  history. Editors can trash and restore; only the vault owner can purge a note or empty the
+  trash. An AI client's `delete_note` now moves the note to the trash. The app's Trash view
+  follows in a later release; until then, deleting in the app still erases at once.
 - Link autocomplete: typing `[[` in the editor opens a list of matching notes at the caret
   (exact and prefix matches first, then fuzzy ones, with the folder dimmed alongside). ↑/↓
   choose, Enter or Tab insert `[[Title]]` (Ctrl+Z undoes it), Esc closes; after `[[Title#`

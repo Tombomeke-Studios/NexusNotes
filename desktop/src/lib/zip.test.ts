@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildZip, crc32 } from "./zip";
+import { buildZip, checkZipLimits, crc32, ZipTooLargeError, ZIP_MAX_BYTES, ZIP_MAX_ENTRIES } from "./zip";
 
 describe("crc32", () => {
   it("matches well-known reference vectors", () => {
@@ -56,5 +56,23 @@ describe("buildZip", () => {
     expect(size).toBe(6);
     expect(crc).toBe(crc32(bytes));
     expect(Array.from(zip.subarray(30 + "a.png".length, 30 + "a.png".length + 6))).toEqual(Array.from(bytes));
+  });
+});
+
+describe("zip limits without ZIP64", () => {
+  it("accepts an archive at the limits", () => {
+    expect(() => checkZipLimits(ZIP_MAX_ENTRIES, 1024)).not.toThrow();
+    expect(() => checkZipLimits(1, ZIP_MAX_BYTES)).not.toThrow();
+  });
+
+  it("refuses more entries or bytes than a zip can address", () => {
+    expect(() => checkZipLimits(ZIP_MAX_ENTRIES + 1, 1024)).toThrow(ZipTooLargeError);
+    expect(() => checkZipLimits(1, ZIP_MAX_BYTES + 1)).toThrow(ZipTooLargeError);
+    expect(() => checkZipLimits(70_000, 5 * 1024 ** 3)).toThrow(/65,535 files and 4 GB.*70,000 files.*5\.0 GB/);
+  });
+
+  it("buildZip refuses before writing instead of producing a corrupt zip", () => {
+    const entries = Array.from({ length: ZIP_MAX_ENTRIES + 1 }, (_, i) => ({ path: `${i}.md`, content: "" }));
+    expect(() => buildZip(entries)).toThrow(ZipTooLargeError);
   });
 });

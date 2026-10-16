@@ -2,6 +2,20 @@
 export const isTauriWindow =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/**
+ * Keeps Ctrl+F (and F3, find next) from opening the webview's own find bar
+ * in the packaged app, also in views without an editor; the editor has its
+ * own find and replace (#547). Returns a function that stops it.
+ */
+export function blockBrowserFind(target: Window = window): () => void {
+  const handler = (e: KeyboardEvent) => {
+    const findKey = (e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "f";
+    if (findKey || e.key === "F3") e.preventDefault();
+  };
+  target.addEventListener("keydown", handler);
+  return () => target.removeEventListener("keydown", handler);
+}
+
 /** Short OS name derived from a user-agent string. */
 export function osFromUserAgent(ua: string): string {
   if (/Windows/i.test(ua)) return "Windows";

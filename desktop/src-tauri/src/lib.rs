@@ -11,6 +11,8 @@ use tauri::{Emitter, Manager, RunEvent};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
+mod policy;
+
 const BACKEND_PORT: u16 = 8080;
 
 /// The app's own databases (#277): compose project, file and containers. Kept
@@ -758,6 +760,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .manage(Backend(Mutex::new(None)))
         .manage(Shutdown(AtomicBool::new(false)))
+        .invoke_handler(tauri::generate_handler![policy::open_policy_page])
         .setup(|app| {
             // Off the UI thread: the window opens immediately and the frontend shows
             // a "waiting for the server" state until /health answers.

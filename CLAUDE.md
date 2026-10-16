@@ -223,7 +223,8 @@ it is what it exists for:
 | `src/lib/motion-tokens.ts` | Shared motion tokens: springs (`snappy`/`smooth`/`bounce`), 120-320 ms durations, exit = 65% of entry, overlay enter/exit presets (mirrored by the `--duration-*`/`--easing-*` CSS tokens) |
 | `src/components/Sidebar/VaultLockIcon.tsx` | Encrypted-vault lock in the sidebar header: open shackle while unlocked, wobbles on each lock/unlock |
 | `src/components/motion/OverlayMotion.tsx` | Enter/exit wrapper for anything floating above the workspace: applies an `overlayMotion` preset and stops catching the pointer while it animates out (render it under `AnimatePresence` with a key) |
-| `src/lib/platform.ts` + `src/components/LegalLink.tsx` | Runtime environment check (`isTauriWindow`); `openBundledPage` opens a bundled policy page (only `/legal/<name>.html`, see `legalPagePath`) in its own capability-less window in the packaged app, a tab in a browser; `LegalLink` is the link component for those pages |
+| `src/lib/platform.ts` + `src/components/LegalLink.tsx` | Runtime environment check (`isTauriWindow`); `openBundledPage` opens a bundled policy page (only `/legal/<name>.html`, see `legalPagePath`) through the native `open_policy_page` command in the packaged app, a tab in a browser; `LegalLink` is the link component for those pages |
+| `src-tauri/src/policy.rs` | `open_policy_page` command: fixed list of bundled policy pages, opens/focuses a capability-less `legal-<name>` window that cannot navigate away from those pages |
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |
 | `src/lib/recent.ts` | Per-vault recently-opened notes (localStorage) for the sidebar Recent section |
 | `src/lib/stars.ts` | Starred-notes helpers: `migrateLegacyPins` moves legacy localStorage pins to server-side stars, dropping a pin only once the server took (or permanently rejected) it |

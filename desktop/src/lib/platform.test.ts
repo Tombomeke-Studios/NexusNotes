@@ -1,18 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { deviceDescription, osFromUserAgent, browserFromUserAgent, legalPagePath, openBundledPage } from "./platform";
 
-const created: Array<{ label: string; options: Record<string, unknown> }> = [];
-const focused: string[] = [];
-vi.mock("@tauri-apps/api/webviewWindow", () => ({
-  WebviewWindow: class {
-    static async getByLabel(label: string) {
-      return created.some((w) => w.label === label) ? { setFocus: async () => void focused.push(label) } : null;
-    }
-    constructor(label: string, options: Record<string, unknown>) {
-      created.push({ label, options });
-    }
-  },
-}));
+const invoke = vi.hoisted(() => vi.fn<(cmd: string, args?: Record<string, unknown>) => Promise<unknown>>());
+vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
 const CHROME_WIN =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
@@ -95,35 +85,43 @@ describe("legalPagePath", () => {
 
 describe("openBundledPage", () => {
   let open: ReturnType<typeof vi.spyOn>;
+  let warn: ReturnType<typeof vi.spyOn>;
   beforeEach(() => {
-    created.length = 0;
-    focused.length = 0;
+    invoke.mockReset();
+    invoke.mockResolvedValue(undefined);
     open = vi.spyOn(window, "open").mockReturnValue(null);
+    warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
-  afterEach(() => open.mockRestore());
+  afterEach(() => {
+    open.mockRestore();
+    warn.mockRestore();
+  });
 
   it("opens a policy page in a browser tab", async () => {
-    await openBundledPage("/legal/terms.html", "Terms", false);
+    await openBundledPage("/legal/terms.html", false);
     expect(open).toHaveBeenCalledWith("/legal/terms.html", "_blank", "noopener");
+    expect(invoke).not.toHaveBeenCalled();
   });
 
-  it("opens a policy page in its own window in the desktop app, focusing it the second time", async () => {
-    await openBundledPage("/legal/privacy.html", "Privacy Policy", true);
-    expect(created).toEqual([
-      { label: "legal-privacy", options: expect.objectContaining({ url: "/legal/privacy.html", title: "Privacy Policy" }) },
-    ]);
-    await openBundledPage("/legal/privacy.html", "Privacy Policy", true);
-    expect(created).toHaveLength(1);
-    expect(focused).toEqual(["legal-privacy"]);
+  it("asks the native command for the page by name in the desktop app", async () => {
+    await openBundledPage("/legal/privacy.html", true);
+    expect(invoke).toHaveBeenCalledExactlyOnceWith("open_policy_page", { name: "privacy" });
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the native command refuses the page", async () => {
+    invoke.mockRejectedValueOnce("unknown policy page");
+    await expect(openBundledPage("/legal/other.html", true)).resolves.toBeUndefined();
+    expect(invoke).toHaveBeenCalledWith("open_policy_page", { name: "other" });
   });
 
   it("opens nothing for a path outside /legal/", async () => {
     for (const tauri of [false, true]) {
-      await openBundledPage("https://example.com/", "Example", tauri);
-      await openBundledPage("/index.html", "App", tauri);
-      await openBundledPage("/legal/../index.html", "App", tauri);
+      await openBundledPage("https://example.com/", tauri);
+      await openBundledPage("/index.html", tauri);
+      await openBundledPage("/legal/../index.html", tauri);
     }
     expect(open).not.toHaveBeenCalled();
-    expect(created).toEqual([]);
+    expect(invoke).not.toHaveBeenCalled();
   });
 });

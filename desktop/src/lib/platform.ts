@@ -50,12 +50,13 @@ export function legalPagePath(path: string): string | null {
 
 /**
  * Opens one of the bundled policy pages (see legalPagePath). A native webview
- * ignores `target="_blank"`, so the packaged app opens its own small window,
- * labelled `legal-<name>`; no capability lists those labels, so the page gets
- * no access to the app's commands. A browser opens a tab. Any other path is
- * refused and nothing opens.
+ * ignores `target="_blank"`, so the packaged app asks the native
+ * `open_policy_page` command (`src-tauri/src/policy.rs`) for its own small
+ * window: that command checks the name against a fixed list, builds the URL
+ * itself and focuses the window if it is already open. A browser opens a tab.
+ * Any other path is refused here already and nothing opens.
  */
-export async function openBundledPage(path: string, title: string, tauri: boolean = isTauriWindow): Promise<void> {
+export async function openBundledPage(path: string, tauri: boolean = isTauriWindow): Promise<void> {
   const page = legalPagePath(path);
   if (!page) {
     console.warn("openBundledPage: not a bundled policy page", path);
@@ -65,12 +66,11 @@ export async function openBundledPage(path: string, title: string, tauri: boolea
     window.open(page, "_blank", "noopener");
     return;
   }
-  const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
-  const label = `legal-${page.slice("/legal/".length, -".html".length)}`;
-  const existing = await WebviewWindow.getByLabel(label);
-  if (existing) {
-    await existing.setFocus();
-    return;
+  const name = page.slice("/legal/".length, -".html".length);
+  const { invoke } = await import("@tauri-apps/api/core");
+  try {
+    await invoke("open_policy_page", { name });
+  } catch (err) {
+    console.warn("openBundledPage: the policy page did not open", name, err);
   }
-  new WebviewWindow(label, { url: page, title, width: 760, height: 820, center: true });
 }

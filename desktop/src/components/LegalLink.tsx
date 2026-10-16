@@ -16,7 +16,7 @@ export function LegalLink({ href, children }: { href: string; children: ReactNod
       onClick={(e) => {
         if (!isTauriWindow) return;
         e.preventDefault();
-        void openBundledPage(href, typeof children === "string" ? children : "NexusNotes");
+        void openBundledPage(href);
       }}
     >
       {children}

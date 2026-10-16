@@ -139,5 +139,25 @@ export function useDeletedElsewhere(deps: DeletedElsewhereDeps) {
     if (deletedRef.current?.vault_id === vaultId) reset();
   }, [reset]);
 
-  return { deleted, busy, error, markOwnDelete, forgetOwnDelete, onRemoteDelete, keepAsNew, discard, reset, onVaultEncrypted };
+  /**
+   * Whether the question is open for a note in `vaultId`. Locking that vault
+   * (#545) waits for the answer: its text exists only on this screen, and
+   * Keep needs the vault key to encrypt it. Reads the ref, so it is current
+   * even before the next render.
+   */
+  const asksAbout = useCallback((vaultId: string) => deletedRef.current?.vault_id === vaultId, []);
+
+  return {
+    deleted,
+    busy,
+    error,
+    markOwnDelete,
+    forgetOwnDelete,
+    onRemoteDelete,
+    keepAsNew,
+    discard,
+    reset,
+    onVaultEncrypted,
+    asksAbout,
+  };
 }

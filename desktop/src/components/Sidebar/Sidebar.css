@@ -865,6 +865,64 @@
   100% { rotate: 0deg; }
 }
 
+/* The shackle (#545): lifted and swung open around its left leg while the
+   vault is unlocked; on a lock it swings back over the body and drops in,
+   on an unlock the reverse. Instant under reduced motion (data-rm). */
+.sidebar-vault-shackle {
+  transform-box: view-box;
+  transform-origin: 5.5px 7px;
+}
+.sidebar-vault-shackle--open {
+  transform: translateY(-1.2px) rotate(-26deg);
+}
+.sidebar-vault-shackle--closing {
+  animation: shackleClose 460ms var(--easing-spring);
+}
+.sidebar-vault-shackle--opening {
+  animation: shackleOpen 360ms var(--easing-spring);
+}
+@keyframes shackleClose {
+  0% { transform: translateY(-1.2px) rotate(-26deg); }
+  55% { transform: translateY(-1.2px) rotate(0deg); }
+  100% { transform: none; }
+}
+@keyframes shackleOpen {
+  0% { transform: none; }
+  40% { transform: translateY(-1.2px) rotate(0deg); }
+  100% { transform: translateY(-1.2px) rotate(-26deg); }
+}
+
+/* The header's lock icon is a button (#545): locks the open vault, or asks
+   for its passphrase while it is locked. */
+.sidebar-vault-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.sidebar-vault-lock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-left: -6px;
+  border-radius: 6px;
+  color: var(--accent);
+  transition: background var(--transition-fast);
+}
+.sidebar-vault-lock-btn:hover {
+  background: var(--bg-overlay);
+}
+.sidebar-vault-lock-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.sidebar-vault-lock-btn + .sidebar-vault-btn {
+  margin-left: 0;
+  padding-left: 4px;
+}
+
 /* Starred note (#308): the star pops in on the bounce spring and flashes
    filled for a moment before settling back to its outline. */
 .tree-pin {

@@ -12,7 +12,7 @@ import { ROOT_FOLDER } from "../../lib/noteFilter";
 import { buildTagTree } from "../../lib/tagTree";
 import { ContextMenu } from "../Workspace/ContextMenu";
 import { TagTree } from "./TagTree";
-import { VaultLockIcon } from "./VaultLockIcon";
+import { VaultLockButton, VaultLockIcon } from "./VaultLockIcon";
 import { OverlayMotion } from "../motion/OverlayMotion";
 import "./Sidebar.css";
 
@@ -62,6 +62,10 @@ interface SidebarProps {
   view: "files" | "search";
   /** The active vault is end-to-end encrypted and its key is not unlocked. */
   activeVaultLocked?: boolean;
+  /** Locks an unlocked e2ee vault (#545): the header's lock icon and the vault menu. */
+  onLockVault?: (vaultId: string) => void;
+  /** Asks for the open vault's passphrase (the lock icon of a locked vault). */
+  onUnlockVault?: () => void;
   vaults: Vault[];
   activeVaultId: string | null;
   tree: TreeNode[];
@@ -118,6 +122,8 @@ interface SidebarProps {
 export function Sidebar({
   view,
   activeVaultLocked = false,
+  onLockVault,
+  onUnlockVault,
   loading = false,
   vaults,
   activeVaultId,
@@ -294,13 +300,24 @@ export function Sidebar({
   return (
     <div className="sidebar">
       <div className="sidebar-head">
-        <button className="sidebar-vault-btn" onClick={() => setShowVaults((v) => !v)}>
-          {activeVault?.encryption === "e2ee" && <VaultLockIcon locked={activeVaultLocked} />}
-          <span className="sidebar-vault-name">{activeVault?.name ?? "Vault"}</span>
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-            <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        <div className="sidebar-vault-title">
+          {activeVault?.encryption === "e2ee" &&
+            (onLockVault ? (
+              <VaultLockButton
+                locked={activeVaultLocked}
+                onLock={() => onLockVault(activeVault.id)}
+                onUnlock={() => onUnlockVault?.()}
+              />
+            ) : (
+              <VaultLockIcon locked={activeVaultLocked} />
+            ))}
+          <button className="sidebar-vault-btn" onClick={() => setShowVaults((v) => !v)}>
+            <span className="sidebar-vault-name">{activeVault?.name ?? "Vault"}</span>
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
         <div className="sidebar-head-actions">
           <button
             className={`sidebar-action-btn${hasFilter || sortBy !== "title" ? " sidebar-action-btn--accent" : ""}${showFilter ? " sidebar-action-btn--open" : ""}`}
@@ -408,6 +425,21 @@ export function Sidebar({
               </svg>
               New vault
             </button>
+            {activeVault?.encryption === "e2ee" && !activeVaultLocked && onLockVault && (
+              <button
+                className="sidebar-vault-item sidebar-vault-item--lock"
+                onClick={() => {
+                  setShowVaults(false);
+                  onLockVault(activeVault.id);
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+                  <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke="currentColor" strokeWidth="1.4" />
+                </svg>
+                Lock vault
+              </button>
+            )}
             <div className="sidebar-vault-sep" />
             <button className="sidebar-vault-item sidebar-vault-item--signout" onClick={onSignOut}>
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">

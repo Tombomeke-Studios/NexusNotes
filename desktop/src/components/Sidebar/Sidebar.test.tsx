@@ -105,3 +105,25 @@ describe("Sidebar vault lock", () => {
     expect(vaultMenu().queryByRole("button", { name: "Lock vault" })).toBeNull();
   });
 });
+
+// The Trash entry at the bottom of the sidebar (#569).
+describe("Sidebar Trash entry", () => {
+  it("opens the Trash and shows how many notes are in it", () => {
+    const onOpenTrash = vi.fn();
+    render(<Sidebar {...props({ trashCount: 3, onOpenTrash })} />);
+    const entry = screen.getByRole("button", { name: "Trash, 3 notes" });
+    expect(entry).toHaveTextContent("3");
+    fireEvent.click(entry);
+    expect(onOpenTrash).toHaveBeenCalledOnce();
+  });
+
+  it("shows no count when the Trash is empty", () => {
+    render(<Sidebar {...props({ trashCount: 0, onOpenTrash: vi.fn() })} />);
+    expect(screen.getByRole("button", { name: "Trash" })).not.toHaveTextContent(/\d/);
+  });
+
+  it("is not offered while the vault is locked", () => {
+    render(<Sidebar {...props({ trashCount: 2, onOpenTrash: vi.fn(), activeVaultLocked: true })} />);
+    expect(screen.queryByRole("button", { name: /^Trash/ })).toBeNull();
+  });
+});

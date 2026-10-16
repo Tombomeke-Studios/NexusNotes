@@ -117,6 +117,10 @@ interface SidebarProps {
   onNoteContextMenu?: (e: React.MouseEvent, noteId: string) => void;
   /** The vault's notes are still loading: placeholder rows, not the empty state (#434). */
   loading?: boolean;
+  /** Notes in the active vault's Trash (#569). */
+  trashCount?: number;
+  /** Opens the Trash panel; the entry is shown only with it. */
+  onOpenTrash?: () => void;
 }
 
 export function Sidebar({
@@ -125,6 +129,8 @@ export function Sidebar({
   onLockVault,
   onUnlockVault,
   loading = false,
+  trashCount = 0,
+  onOpenTrash,
   vaults,
   activeVaultId,
   tree,
@@ -731,6 +737,20 @@ export function Sidebar({
             onRenameTag={onRenameTag}
           />
         </div>
+      )}
+
+      {onOpenTrash && activeVaultId && !activeVaultLocked && (
+        <button
+          className="sidebar-trash"
+          onClick={onOpenTrash}
+          aria-label={trashCount > 0 ? `Trash, ${trashCount} ${trashCount === 1 ? "note" : "notes"}` : "Trash"}
+        >
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.2a1 1 0 001 .8h4.6a1 1 0 001-.8L12 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="sidebar-trash-label">Trash</span>
+          {trashCount > 0 && <span className="sidebar-trash-count">{trashCount}</span>}
+        </button>
       )}
     </div>
   );

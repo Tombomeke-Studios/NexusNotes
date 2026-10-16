@@ -59,6 +59,14 @@ plaintext from memory and drafts, and ask for the passphrase.
 A vault with attachments cannot be converted yet: its existing files were
 stored readable by the server and would have to be re-encrypted too.
 
+Nor can a vault whose Trash holds notes (#569): they are plaintext on the
+server, but the client only encrypts the notes it can see, so they would stay
+readable inside an e2ee vault. The server refuses with `409` ("Restore or empty
+the Trash first") and leaves the trash as it is; it never deletes them on the
+user's behalf. Once the notes are restored (and then converted with the rest)
+or the trash is emptied, the conversion goes through. In an e2ee vault the
+trash itself only ever holds ciphertext, like every other note.
+
 ### Linked files (#364)
 
 A linked file's display name and source, and each member's annotations, are

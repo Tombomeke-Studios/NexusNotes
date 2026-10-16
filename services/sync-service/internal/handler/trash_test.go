@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -599,9 +601,10 @@ func TestTrash_E2EEVaultStaysCiphertext(t *testing.T) {
 	}
 }
 
-// Converting a vault to e2ee empties its trash: the trash holds plaintext the
-// client cannot see to encrypt (#569).
-func TestTrash_ConvertToE2EEPurgesTheTrash(t *testing.T) {
+// Converting a vault to e2ee is refused while its trash holds notes: they are
+// plaintext the client cannot see to encrypt, and are never purged without the
+// user asking (#569).
+func TestTrash_ConvertToE2EERefusedWhileTheTrashHoldsNotes(t *testing.T) {
 	f := newTrashFixture(t)
 	ctx := context.Background()
 	vaultID := seedVaultFor(t, f.pool, f.owner)
@@ -616,14 +619,77 @@ func TestTrash_ConvertToE2EEPurgesTheTrash(t *testing.T) {
 	if _, err := f.svc.TrashNotes(ctx, vaultID, []string{binned.ID}); err != nil {
 		t.Fatal(err)
 	}
-	err = f.svc.ConvertVaultToE2EE(ctx, vaultID, f.owner, json.RawMessage(`{"v":1}`),
-		[]service.ConvertNote{{ID: live.ID, Title: "sealed", Path: "", Content: "cipher", Checksum: "c", BaseChecksum: live.Checksum}}, nil)
-	if err != nil {
-		t.Fatalf("convert: %v", err)
+	body, _ := json.Marshal(map[string]any{
+		"encryption_meta": map[string]int{"v": 1},
+		"notes":           []service.ConvertNote{{ID: live.ID, Title: "sealed", Content: "cipher", Checksum: "c", BaseChecksum: live.Checksum}},
+	})
+	convert := func() *httptest.ResponseRecorder {
+		return request(f.h.ConvertVault, http.MethodPost, "/", f.owner, map[string]string{"id": vaultID}, string(body))
+	}
+
+	rec := convert()
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "Restore or empty the Trash first") {
+		t.Fatalf("convert with a full trash: %d %s, want 409", rec.Code, rec.Body.String())
 	}
 	var rows int
 	_ = f.pool.QueryRow(ctx, `SELECT count(*) FROM notes WHERE id = $1`, binned.ID).Scan(&rows)
-	if rows != 0 {
-		t.Fatal("the trashed plaintext note survived the conversion")
+	if rows != 1 {
+		t.Fatal("the refused conversion purged the trash")
+	}
+	if v, _ := repository.NewVaultRepo(f.pool, fieldcrypttest.Cipher(t)).GetByID(ctx, vaultID); v.Encryption == model.VaultEncryptionE2EE {
+		t.Fatal("the refused conversion still encrypted the vault")
+	}
+
+	if rec := call(f.h.EmptyTrash, http.MethodPost, f.owner, map[string]string{"id": vaultID}); rec.Code != http.StatusOK {
+		t.Fatalf("empty: %d", rec.Code)
+	}
+	if rec := convert(); rec.Code != http.StatusOK {
+		t.Fatalf("convert with an empty trash: %d %s", rec.Code, rec.Body.String())
+	}
+}
+
+// The account export includes the trash; an e2ee vault's trashed notes come
+// out as the client ciphertext they were stored as (#569).
+func TestTrash_ExportKeepsTrashedE2EENotesCiphertext(t *testing.T) {
+	f := newTrashFixture(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	vault := &model.Vault{ID: uuid.NewString(), UserID: f.owner, Name: "Locked", Encryption: model.VaultEncryptionE2EE, CreatedAt: now, UpdatedAt: now}
+	vaults := repository.NewVaultRepo(f.pool, fieldcrypttest.Cipher(t))
+	if err := vaults.Create(ctx, vault); err != nil {
+		t.Fatal(err)
+	}
+	n, err := f.svc.CreateNote(ctx, vault.ID, "e2ee.sealed-title", "", "e2ee.ciphertext-body", "dev", "client-sum")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.TrashNotes(ctx, vault.ID, []string{n.ID}); err != nil {
+		t.Fatal(err)
+	}
+	accounts := service.NewAccountService(repository.NewUserRepo(f.pool, fieldcrypttest.Cipher(t)), vaults,
+		repository.NewNoteRepo(f.pool, fieldcrypttest.Cipher(t)), search.NewIndexer("http://127.0.0.1:1", ""), ws.NewHub())
+	data, err := accounts.Export(ctx, f.owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, file := range zr.File {
+		if !strings.Contains(file.Name, "/.trash/") {
+			continue
+		}
+		rc, _ := file.Open()
+		content, _ := io.ReadAll(rc)
+		_ = rc.Close()
+		if file.Name != "Locked/.trash/e2ee.sealed-title.md" || string(content) != "e2ee.ciphertext-body" {
+			t.Fatalf("trashed entry %s = %q", file.Name, content)
+		}
+		found = true
+	}
+	if !found {
+		t.Fatal("the export left the trash out")
 	}
 }

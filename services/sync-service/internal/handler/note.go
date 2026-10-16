@@ -594,6 +594,9 @@ func (h *NoteHandler) ConvertVault(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, service.ErrConvertNotesChanged):
 		writeError(w, http.StatusConflict, err.Error())
 		return
+	case errors.Is(err, service.ErrConvertTrashNotEmpty):
+		writeError(w, http.StatusConflict, "Restore or empty the Trash first")
+		return
 	case errors.Is(err, service.ErrConvertNotStandard), errors.Is(err, service.ErrConvertHasAttachments):
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return

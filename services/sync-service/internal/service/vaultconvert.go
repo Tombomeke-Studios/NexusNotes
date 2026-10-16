@@ -19,6 +19,8 @@ var (
 	ErrConvertMissingMeta      = errors.New("encryption_meta is required")
 	ErrConvertMissingTitle     = errors.New("every note needs its encrypted title")
 	ErrConvertMissingLinkField = errors.New("every linked file needs its encrypted name and source")
+	// The trash holds plaintext notes the client cannot see to encrypt (#569).
+	ErrConvertTrashNotEmpty = errors.New("the vault's trash is not empty")
 )
 
 // ConvertNote is one note re-encrypted by the client: its sealed title and
@@ -48,8 +50,9 @@ type ConvertLink struct {
 // now (else ErrConvertNotesChanged, so the client re-reads and retries),
 // swaps in the ciphertext, deletes the plaintext it still holds about the
 // vault (stored versions, tags, aliases, links) and switches the vault to
-// e2ee. Notes in the vault's trash are purged. Only the owner may convert; a vault with attachments is refused
-// until attachments can be end-to-end encrypted (#238).
+// e2ee. Only the owner may convert; a vault with attachments is refused
+// until attachments can be end-to-end encrypted (#238), and one with notes in
+// its trash until they are restored or purged (#569).
 func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID string, meta json.RawMessage, notes []ConvertNote, links []ConvertLink) error {
 	if len(meta) == 0 {
 		return ErrConvertMissingMeta
@@ -86,17 +89,17 @@ func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID st
 		return ErrConvertHasAttachments
 	}
 
-	// The trash holds plaintext the client cannot see to encrypt: an e2ee
-	// vault must keep none of it, so converting empties the trash (#569).
-	// Attachments of trashed notes were refused above with the rest.
-	purgedTrash, err := s.noteRepo.PurgeTrashedTx(ctx, tx, vaultID)
-	if err != nil {
-		return err
-	}
-
 	current, err := s.noteRepo.ChecksumsForUpdateTx(ctx, tx, vaultID)
 	if err != nil {
 		return err
+	}
+	// Checked with the live notes locked, so a note trashed just before is
+	// seen. The trash is plaintext the client cannot see to encrypt, and is
+	// never purged without the user asking (#569).
+	if has, err := s.noteRepo.HasTrashTx(ctx, tx, vaultID); err != nil {
+		return err
+	} else if has {
+		return ErrConvertTrashNotEmpty
 	}
 	if len(notes) != len(current) {
 		return ErrConvertNotesChanged
@@ -146,11 +149,6 @@ func (s *SyncService) ConvertVaultToE2EE(ctx context.Context, vaultID, userID st
 		return fmt.Errorf("commit conversion: %w", err)
 	}
 
-	if s.indexer != nil {
-		for _, id := range purgedTrash {
-			s.indexer.DeleteNote(id)
-		}
-	}
 	// Re-index without content: the vault is e2ee now, so searchDoc keeps
 	// only the sealed titles and paths, replacing the documents that held
 	// plaintext.

@@ -73,6 +73,15 @@ describe("GraphView", () => {
     );
   });
 
+  it("keeps the one-time tip compact so it covers little of the map (#594)", () => {
+    const { container } = renderGraph(twoNotes);
+    const tip = container.querySelector(".graph-tip");
+    expect(tip).not.toBeNull();
+    expect(tip).toHaveClass("tip--compact");
+    // Fits on one or two lines at the tip's width, with the dismiss button.
+    expect(tip!.querySelector(".tip-text")!.textContent!.length).toBeLessThanOrEqual(100);
+  });
+
   it("remembers the Curved and Arrows choices", () => {
     renderGraph(twoNotes);
     fireEvent.click(screen.getByRole("button", { name: "Curved" }));

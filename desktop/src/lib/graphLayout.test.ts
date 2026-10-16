@@ -9,7 +9,68 @@ import {
   folderColorIndex,
   folderColorSlots,
   FOLDER_COLOR_COUNT,
+  OVERLAY_GAP,
+  MAX_CHROME_SHARE,
+  overlayInsets,
 } from "./graphLayout";
+
+describe("fitTransform with chrome insets (#594)", () => {
+  const points = [
+    { x: 0, y: 0 },
+    { x: 100, y: 100 },
+  ];
+  // Where a point lands on screen under a transform.
+  const screenY = (t: { k: number; y: number }, y: number) => t.k * y + t.y;
+
+  it("keeps the graph below the top chrome and above the bottom chrome", () => {
+    const t = fitTransform(points, 800, 600, 40, { top: 150, bottom: 90 });
+    expect(screenY(t, 0)).toBeGreaterThanOrEqual(150 + OVERLAY_GAP - 0.001);
+    expect(screenY(t, 100)).toBeLessThanOrEqual(600 - 90 - OVERLAY_GAP + 0.001);
+  });
+
+  it("centres the graph in the free band between them", () => {
+    const t = fitTransform(points, 800, 600, 40, { top: 150, bottom: 90 });
+    const bandMid = (150 + OVERLAY_GAP + (600 - 90 - OVERLAY_GAP)) / 2;
+    expect((screenY(t, 0) + screenY(t, 100)) / 2).toBeCloseTo(bandMid);
+  });
+
+  it("matches the plain fit without insets", () => {
+    expect(fitTransform(points, 800, 600, 40, { top: 0, bottom: 0 })).toEqual(fitTransform(points, 800, 600, 40));
+  });
+
+  it("keeps the padding when the chrome is smaller than it", () => {
+    expect(fitTransform(points, 800, 600, 60, { top: 20, bottom: 0 })).toEqual(fitTransform(points, 800, 600, 60));
+  });
+
+  it("never lets the chrome claim more than its share of the view", () => {
+    const big = [
+      { x: 0, y: 0 },
+      { x: 400, y: 400 },
+    ];
+    const t = fitTransform(big, 1000, 600, 10, { top: 1000, bottom: 1000 });
+    // The rest of the 600px view stays for the graph, centred.
+    const free = 600 * (1 - MAX_CHROME_SHARE);
+    expect(screenY(t, 400) - screenY(t, 0)).toBeCloseTo(free);
+    expect(screenY(t, 0)).toBeCloseTo((600 - free) / 2);
+  });
+});
+
+describe("overlayInsets (#594)", () => {
+  const view = { top: 100, bottom: 700 };
+  const box = (top: number, bottom: number) => ({ top, bottom, height: bottom - top });
+
+  it("measures the lowest top overlay and the highest bottom overlay", () => {
+    expect(overlayInsets(view, [box(112, 150), box(112, 210)], [box(600, 640), box(560, 690)])).toEqual({ top: 110, bottom: 140 });
+  });
+
+  it("ignores hidden (empty) overlays and missing ones", () => {
+    expect(overlayInsets(view, [box(0, 0)], [])).toEqual({ top: 0, bottom: 0 });
+  });
+
+  it("clamps overlays that reach past the view", () => {
+    expect(overlayInsets(view, [box(50, 900)], [box(20, 40)])).toEqual({ top: 600, bottom: 600 });
+  });
+});
 
 describe("seedPositions", () => {
   it("starts new nodes in a small cloud around the centre", () => {

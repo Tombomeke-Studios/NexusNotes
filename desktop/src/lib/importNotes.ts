@@ -50,6 +50,8 @@ export interface ImportPlan<F extends ImportFile = ImportFile> {
 
 const MARKDOWN = /\.(md|markdown)$/i;
 const IMAGE = /\.(png|jpe?g|gif|webp|bmp|avif|svg)$/i;
+/** Files the operating system leaves in folders: never notes or attachments. */
+const OS_CLUTTER = /^(thumbs\.db|desktop\.ini|\.ds_store)$/i;
 
 /** Joins and normalises a vault-relative path; null when it climbs out of the vault. */
 function normalisePath(path: string): string | null {
@@ -151,7 +153,7 @@ export async function planImport<F extends ImportFile>(
   const attachable = new Map<string, F>();
   for (const f of files) {
     const segments = (f.webkitRelativePath || f.name).split("/").slice(f.webkitRelativePath ? 1 : 0);
-    if (segments.some((s) => s.startsWith("."))) continue;
+    if (segments.some((s) => s.startsWith(".")) || OS_CLUTTER.test(f.name)) continue;
     const isNote = MARKDOWN.test(f.name);
     if (f.size > (isNote ? MAX_IMPORT_BYTES : MAX_ATTACHMENT_BYTES)) {
       plan.skipped.tooLarge.push(f.name);

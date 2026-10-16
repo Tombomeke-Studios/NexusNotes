@@ -139,6 +139,21 @@ describe("planImport attachments (#551)", () => {
     expect(again.notes).toEqual([]);
     expect(again.skipped.existing).toBe(2);
   });
+
+  it("leaves operating-system clutter out", async () => {
+    const plan = await planImport(
+      [
+        file("V/a.md"),
+        file("V/Thumbs.db"),
+        file("V/sub/desktop.ini"),
+        file("V/sub/.DS_Store"),
+        { ...file("thumbs.db"), webkitRelativePath: "" },
+      ],
+      [],
+    );
+    expect(titles(plan)).toEqual(["a"]);
+    expect(plan.skipped).toEqual({ existing: 0, tooLarge: [] });
+  });
 });
 
 describe("runImport (#551)", () => {

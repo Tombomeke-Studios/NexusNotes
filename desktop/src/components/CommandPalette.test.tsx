@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { CommandPalette } from "./CommandPalette";
+import { lockVaultCommands } from "../lib/useVaultLock";
+import { vaultKeySession } from "../lib/vaultKeys";
 import type { Note } from "../lib/types";
 
 function note(id: string, title: string, updated: string): Note {
@@ -54,5 +56,30 @@ describe("CommandPalette initial highlight", () => {
     expect(selectedTitle()).toBe("Alpha");
     fireEvent.keyDown(screen.getByPlaceholderText(/search notes/i), { key: "Enter" });
     expect(onSelectNote).toHaveBeenCalledWith("a");
+  });
+});
+
+// "Lock vault" (#545) is in the palette while the open e2ee vault is unlocked.
+describe("CommandPalette Lock vault", () => {
+  const vault = { id: "v1", encryption: "e2ee" as const };
+  afterEach(() => vaultKeySession.clear());
+
+  it("runs Lock vault for the open vault", () => {
+    vaultKeySession.set("v1", new Uint8Array(32));
+    const lock = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <CommandPalette notes={[]} commands={lockVaultCommands(vault, lock)} initialQuery=">lock" onSelectNote={() => {}} onClose={onClose} />,
+    );
+    expect(selectedTitle()).toBe("Lock vault");
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
+    expect(lock).toHaveBeenCalledWith("v1");
+  });
+
+  it("is not offered while the vault is locked", () => {
+    render(
+      <CommandPalette notes={[]} commands={lockVaultCommands(vault, vi.fn())} initialQuery=">lock" onSelectNote={() => {}} onClose={() => {}} />,
+    );
+    expect(screen.queryByText("Lock vault")).toBeNull();
   });
 });

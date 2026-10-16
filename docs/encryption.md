@@ -265,6 +265,48 @@ next device that can.
 
 ---
 
+## Locking a vault (#545)
+
+An unlocked vault can be locked again without closing the app: the lock icon
+next to the vault name, "Lock vault" in the vault menu, or the same command in
+the palette. Settings > Sync > Auto-lock locks every unlocked encrypted vault
+after 5, 15 or 60 minutes without keyboard, mouse or focus activity in the app
+(off by default). The logic lives in `desktop/src/lib/useVaultLock.ts`.
+
+**What a lock clears.** The vault's key leaves the in-memory key session, and
+every decrypted copy of the vault that the window holds goes with it: the note
+list and open notes (tabs, editor text, the right panel's outline, backlinks
+and link previews, which are all derived from that list), the client-side search
+results, the version-history dialog and its decrypted versions, the conflict
+dialog, the palette, template picker, tag-rename and calendar dialogs, the tag
+and folder filters, the sidebar search, and an open linked-files panel of that
+vault. Unconfirmed save requests (the only in-memory "drafts" of an e2ee note)
+are empty by then, because the lock waits for them (below). Attachment ids keep
+a mapping to their vault id; it holds no plaintext. When the user comes back to
+the vault (selects it, or returns to the app after an auto-lock), the unlock
+dialog asks for the passphrase.
+
+**Text is never discarded.** Before the key is dropped, every note of that
+vault whose text the server has not confirmed is saved. If that save fails
+(offline, server down, conflict), the vault stays unlocked: a manual lock shows
+the failed-save form (retry or keep editing; there is no "lock without
+saving", since the text could never be encrypted again without the key), and
+an auto-lock is postponed with a toast and tried again on the next idle tick.
+An auto-lock also gives up when the user becomes active while it saves. A lock
+waits too while the "deleted elsewhere" question (#561) is open for a note in
+that vault, because its text exists only on screen and Keep needs the key to
+encrypt it; that check runs again right before the key is dropped.
+
+**Encrypted drafts (#549).** `keepUnsavedTextWhileLocked` in `useVaultLock.ts`
+is the one place that decides what happens to text a failed save could not
+deliver. Today it has nowhere safe to put it and returns false (the vault
+stays unlocked); encrypted drafts will seal that text under the vault key on
+the device and return true, so the lock can go ahead.
+
+Locking one vault leaves the others as they are.
+
+---
+
 ## Passphrase change flow
 
 ```
@@ -292,8 +334,8 @@ next device that can.
   payload format is the same at every note size.
 - Never transmit the Master Key to the server and never write it to disk.
 - Hold the Vault Key in memory for the session duration; clear it on lock or logout.
-- Provide a "Lock vault" button that clears the Vault Key from memory and requires
-  passphrase re-entry to resume.
+- Locking a vault clears the Vault Key from memory and requires passphrase re-entry
+  to resume; see "Locking a vault" below.
 - Store Argon2id parameters in the `kdf_params` JSON column so you can increase them
   in future releases without breaking existing vaults.
 - If you increase the Argon2id parameters in a future release, derive the new Master Key

@@ -79,6 +79,7 @@ import { PERIOD_FOLDER, periodTitle, type Period } from "./lib/periodic";
 import { welcomeNotes, QUICK_START_TITLE } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
+import { useVaultLock, lockVaultCommands } from "./lib/useVaultLock";
 import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
 import { DeleteConfirmDialog } from "./components/Workspace/DeleteConfirmDialog";
 import { useDeleteConfirm } from "./lib/useDeleteConfirm";
@@ -1617,6 +1618,53 @@ export default function App() {
   });
   const { saveThenClose } = closeGuard;
 
+  // Locking an e2ee vault (#545), by hand or when idle: its notes are saved
+  // first, then the key goes and so does every decrypted copy of the vault.
+  const vaultLock = useVaultLock({
+    vaults: () => vaultListRef.current,
+    activeVaultId: () => activeVaultIdRef.current,
+    saveVault: (vaultId) =>
+      saveAllNotes(activeNoteRef.current?.vault_id === vaultId && isDirtyStatus(saveStatusRef.current), vaultId),
+    busyReason: (vaultId) =>
+      deletedElsewhere.asksAbout(vaultId)
+        ? "A note in this vault was deleted elsewhere. Keep or discard your text first."
+        : closePrompt
+          ? "Finish the unsaved-changes question first."
+          : null,
+    clearVault: (vaultId) => {
+      setLinksVaultId((id) => (id === vaultId ? null : id));
+      if (activeVaultIdRef.current !== vaultId) return;
+      selectionSeq.current += 1;
+      cancelNoteLoads();
+      resetDeletedElsewhere();
+      pendingRemote.current = null;
+      linkBaseline.current = null;
+      setReplaceRequest(null);
+      setInsertRequest(null);
+      setTabs([]);
+      setActiveTabKey(null);
+      setActiveNote(null);
+      setEditorContent("");
+      setSaveStatus("idle");
+      setNoteList([]);
+      setSelectedIds(new Set());
+      setFilterTags([]);
+      setFilterFolder(null);
+      setSearchQuery("");
+      setConflictPrompt(null);
+      setHistoryOpen(false);
+      setShowGlobalSearch(false);
+      setPaletteQuery(null);
+      setShowTemplatePicker(false);
+      setRenameTag(null);
+      setCtxMenu(null);
+      setShowCalendar(false);
+      deleteConfirm.cancel();
+    },
+    promptUnlock: setUnlockVaultId,
+    autoLockMinutes: prefs.autoLockMinutes,
+  });
+
   // Warn before losing unsaved work on close. In the browser, the native
   // beforeunload prompt; in the native app, intercept the close and show our own
   // Save / Don't save / Cancel dialog (like Word).
@@ -1816,7 +1864,8 @@ export default function App() {
     showTemplatePicker || renameTag !== null || shareVaultId !== null ||
     linksVaultId !== null || ctxMenu !== null || workspaceMenu !== null ||
     deleteConfirm.pending !== null ||
-    deletedElsewhere.deleted !== null;
+    deletedElsewhere.deleted !== null ||
+    vaultLock.failure !== null;
 
   return (
     <div
@@ -1911,6 +1960,8 @@ export default function App() {
             <Sidebar
               view={railView}
               activeVaultLocked={activeVaultLocked}
+              onLockVault={(id) => void vaultLock.lock(id)}
+              onUnlockVault={() => activeVaultId && setUnlockVaultId(activeVaultId)}
               loading={notesLoading}
               vaults={vaultList}
               activeVaultId={activeVaultId}
@@ -2240,6 +2291,18 @@ export default function App() {
             onSave={closeGuard.saveAndClose}
           />
         )}
+        {!closePrompt && vaultLock.failure && (
+          <CloseConfirmDialog
+            key="lock-failed"
+            noteTitles={[noteList.find((n) => n.id === vaultLock.failure!.error.noteId)?.title ?? ""]}
+            kind="lock"
+            saving={vaultLock.retrying}
+            error={vaultLock.failure.error}
+            onCancel={vaultLock.dismiss}
+            onDiscard={vaultLock.dismiss}
+            onSave={() => void vaultLock.retry()}
+          />
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -2493,7 +2556,7 @@ export default function App() {
           <CommandPalette
             key="palette"
             notes={noteList}
-            commands={commands}
+            commands={[...commands, ...lockVaultCommands(activeVault, (id) => void vaultLock.lock(id))]}
             initialQuery={paletteQuery}
             onSelectNote={handleSelectNote}
             onClose={() => setPaletteQuery(null)}

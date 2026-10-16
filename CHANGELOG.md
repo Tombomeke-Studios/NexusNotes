@@ -11,6 +11,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   choose, Enter or Tab insert `[[Title]]` (Ctrl+Z undoes it), Esc closes; after `[[Title#`
   it lists that note's headings. When nothing matches it offers "Create link to '…'". It
   only uses the notes already on your device, so encrypted vaults never ask the server.
+- Lock an end-to-end encrypted vault with one click: the lock icon next to its name, "Lock
+  vault" in the vault menu or in the command palette. Its text leaves the app's memory and
+  its tabs close until you enter the passphrase again. Settings > Sync can lock encrypted
+  vaults by themselves after 5, 15 or 60 minutes without activity (off by default). Unsaved
+  text is saved first; if that fails, the vault stays unlocked and says why.
 - Find and replace in the open note: Ctrl+F opens a find bar that counts and highlights the
   matches (match case and whole word optional), Enter / Shift+Enter jump between them, and
   Replace / Replace all change the text in a way Ctrl+Z can undo. In the reading view it

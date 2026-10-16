@@ -66,6 +66,10 @@ type VaultStorageStats struct {
 	VersionBytes    int64 `json:"version_bytes"`
 	Attachments     int64 `json:"attachments"`
 	AttachmentBytes int64 `json:"attachment_bytes"`
+	// TrashedNotes is how many of Notes are in the trash (#569): trashed notes
+	// (and their versions and attachments) count in every figure above, since
+	// they take up space until they are purged.
+	TrashedNotes int64 `json:"trashed_notes"`
 }
 
 // MCP token scopes (#221): read lists and reads notes; read-write may also
@@ -147,6 +151,21 @@ type Note struct {
 	Checksum  string    `json:"checksum"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// TrashedNote is a note in its vault's trash (#569), listed without content.
+// Title and path are returned as stored: an e2ee vault's stay sealed.
+// PurgeAt is when the purge job deletes it for good.
+type TrashedNote struct {
+	ID        string    `json:"id"`
+	VaultID   string    `json:"vault_id"`
+	Path      string    `json:"path"`
+	Title     string    `json:"title"`
+	Checksum  string    `json:"checksum"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt time.Time `json:"deleted_at"`
+	PurgeAt   time.Time `json:"purge_at"`
 }
 
 type NoteVersion struct {

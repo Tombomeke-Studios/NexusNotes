@@ -17,9 +17,11 @@ func NewStarRepo(pool *pgxpool.Pool) *StarRepo {
 }
 
 // List returns the ids of all notes the user has starred, oldest star first.
+// Trashed notes are left out; their star returns with them on restore (#569).
 func (r *StarRepo) List(ctx context.Context, userID string) ([]string, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT note_id FROM starred_notes WHERE user_id = $1 ORDER BY starred_at`,
+		`SELECT s.note_id FROM starred_notes s JOIN notes n ON n.id = s.note_id
+		 WHERE s.user_id = $1 AND n.deleted_at IS NULL ORDER BY s.starred_at`,
 		userID,
 	)
 	if err != nil {

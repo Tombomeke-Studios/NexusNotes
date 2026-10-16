@@ -59,12 +59,14 @@ func (r *AttachmentRepo) ListByNote(ctx context.Context, noteID string) ([]model
 	return atts, rows.Err()
 }
 
-// GetByID returns one attachment's metadata (incl. its storage path).
+// GetByID returns one attachment's metadata (incl. its storage path). An
+// attachment of a trashed note is not found (#569).
 func (r *AttachmentRepo) GetByID(ctx context.Context, id string) (*model.Attachment, error) {
 	var a model.Attachment
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, note_id, vault_id, filename, mime_type, size_bytes, storage_path, created_at
-		 FROM attachments WHERE id = $1`,
+		`SELECT a.id, a.note_id, a.vault_id, a.filename, a.mime_type, a.size_bytes, a.storage_path, a.created_at
+		 FROM attachments a JOIN notes n ON n.id = a.note_id
+		 WHERE a.id = $1 AND n.deleted_at IS NULL`,
 		id,
 	).Scan(&a.ID, &a.NoteID, &a.VaultID, &a.Filename, &a.MimeType, &a.SizeBytes, &a.StoragePath, &a.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {

@@ -123,7 +123,7 @@ func (r *NoteRepo) GetByID(ctx context.Context, id string) (*model.Note, error) 
 	var n model.Note
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
-		 FROM notes WHERE id = $1`,
+		 FROM notes WHERE id = $1 AND deleted_at IS NULL`,
 		id,
 	).Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -141,7 +141,7 @@ func (r *NoteRepo) GetByID(ctx context.Context, id string) (*model.Note, error) 
 func (r *NoteRepo) ListByVault(ctx context.Context, vaultID string) ([]model.Note, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
-		 FROM notes WHERE vault_id = $1 ORDER BY path`,
+		 FROM notes WHERE vault_id = $1 AND deleted_at IS NULL ORDER BY path`,
 		vaultID,
 	)
 	if err != nil {
@@ -197,7 +197,7 @@ var ErrInvalidCursor = errors.New("invalid cursor")
 func (r *NoteRepo) ListPage(ctx context.Context, vaultID string, limit int, after NoteCursor) ([]model.Note, *NoteCursor, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
-		 FROM notes WHERE vault_id = $1 AND (path, id) > ($2, $3)
+		 FROM notes WHERE vault_id = $1 AND deleted_at IS NULL AND (path, id) > ($2, $3)
 		 ORDER BY path, id LIMIT $4`,
 		vaultID, after.Path, after.ID, limit+1,
 	)
@@ -230,7 +230,7 @@ func (r *NoteRepo) ListPage(ctx context.Context, vaultID string, limit int, afte
 // ChecksumsForUpdateTx returns every note of the vault (id -> checksum),
 // row-locking them until tx ends so none can be saved meanwhile (#361).
 func (r *NoteRepo) ChecksumsForUpdateTx(ctx context.Context, tx pgx.Tx, vaultID string) (map[string]string, error) {
-	rows, err := tx.Query(ctx, `SELECT id, checksum FROM notes WHERE vault_id = $1 FOR NO KEY UPDATE`, vaultID)
+	rows, err := tx.Query(ctx, `SELECT id, checksum FROM notes WHERE vault_id = $1 AND deleted_at IS NULL FOR NO KEY UPDATE`, vaultID)
 	if err != nil {
 		return nil, fmt.Errorf("lock vault notes: %w", err)
 	}
@@ -263,7 +263,7 @@ func (r *NoteRepo) ReplaceSealedTx(ctx context.Context, tx pgx.Tx, id, vaultID, 
 		return err
 	}
 	tag, err := tx.Exec(ctx,
-		`UPDATE notes SET title = $3, path = $4, content = $5, checksum = $6, updated_at = $7 WHERE id = $1 AND vault_id = $2`,
+		`UPDATE notes SET title = $3, path = $4, content = $5, checksum = $6, updated_at = $7 WHERE id = $1 AND vault_id = $2 AND deleted_at IS NULL`,
 		id, vaultID, title, path, sealed, checksum, at,
 	)
 	if err != nil {
@@ -299,7 +299,7 @@ func (r *NoteRepo) ForEach(ctx context.Context, batchSize int, fn func([]model.N
 	for {
 		rows, err := r.pool.Query(ctx,
 			`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
-			 FROM notes WHERE id > $1 ORDER BY id LIMIT $2`,
+			 FROM notes WHERE id > $1 AND deleted_at IS NULL ORDER BY id LIMIT $2`,
 			after, batchSize,
 		)
 		if err != nil {
@@ -339,7 +339,7 @@ func (r *NoteRepo) Update(ctx context.Context, note *model.Note) error {
 	}
 	_, err = r.pool.Exec(ctx,
 		`UPDATE notes SET path = $1, title = $2, content = $3, checksum = $4, updated_at = $5
-		 WHERE id = $6 AND vault_id = $7`,
+		 WHERE id = $6 AND vault_id = $7 AND deleted_at IS NULL`,
 		note.Path, note.Title, content, note.Checksum, note.UpdatedAt, note.ID, note.VaultID,
 	)
 	if err != nil {
@@ -372,7 +372,7 @@ func (r *NoteRepo) GetForUpdateTx(ctx context.Context, tx pgx.Tx, id string) (*m
 	var n model.Note
 	err := tx.QueryRow(ctx,
 		`SELECT id, vault_id, path, title, content, checksum, created_at, updated_at
-		 FROM notes WHERE id = $1 FOR NO KEY UPDATE`,
+		 FROM notes WHERE id = $1 AND deleted_at IS NULL FOR NO KEY UPDATE`,
 		id,
 	).Scan(&n.ID, &n.VaultID, &n.Path, &n.Title, &n.Content, &n.Checksum, &n.CreatedAt, &n.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -556,7 +556,7 @@ func (r *NoteRepo) UpdateTx(ctx context.Context, tx pgx.Tx, note *model.Note) er
 	}
 	_, err = tx.Exec(ctx,
 		`UPDATE notes SET path = $1, title = $2, content = $3, checksum = $4, updated_at = $5
-		 WHERE id = $6 AND vault_id = $7`,
+		 WHERE id = $6 AND vault_id = $7 AND deleted_at IS NULL`,
 		note.Path, note.Title, content, note.Checksum, note.UpdatedAt, note.ID, note.VaultID,
 	)
 	if err != nil {
@@ -643,7 +643,7 @@ func (r *NoteRepo) Search(ctx context.Context, vaultID, query string) ([]model.N
 		    OR EXISTS (SELECT 1 FROM note_aliases na WHERE na.note_id = n.id AND lower(na.alias) LIKE $2)
 		       AS meta_match
 		FROM notes n
-		WHERE n.vault_id = $1
+		WHERE n.vault_id = $1 AND n.deleted_at IS NULL
 		ORDER BY n.updated_at DESC
 	`, vaultID, pattern)
 	if err != nil {
@@ -732,7 +732,8 @@ func firstRunes(s string, n int) string {
 
 // StorageStats counts a vault's notes, versions and attachments and their
 // stored sizes (#220). Sizes are measured on the stored (encrypted) values;
-// nothing is decrypted.
+// nothing is decrypted. Trashed notes count too, since they take up space
+// until they are purged; TrashedNotes says how many there are (#569).
 func (r *NoteRepo) StorageStats(ctx context.Context, vaultID string) (model.VaultStorageStats, error) {
 	var s model.VaultStorageStats
 	err := r.pool.QueryRow(ctx, `
@@ -742,9 +743,10 @@ func (r *NoteRepo) StorageStats(ctx context.Context, vaultID string) (model.Vaul
 			(SELECT count(*) FROM note_versions nv JOIN notes n ON n.id = nv.note_id WHERE n.vault_id = $1),
 			(SELECT coalesce(sum(octet_length(nv.content)), 0) FROM note_versions nv JOIN notes n ON n.id = nv.note_id WHERE n.vault_id = $1),
 			(SELECT count(*) FROM attachments WHERE vault_id = $1),
-			(SELECT coalesce(sum(size_bytes), 0) FROM attachments WHERE vault_id = $1)`,
+			(SELECT coalesce(sum(size_bytes), 0) FROM attachments WHERE vault_id = $1),
+			(SELECT count(*) FROM notes WHERE vault_id = $1 AND deleted_at IS NOT NULL)`,
 		vaultID,
-	).Scan(&s.Notes, &s.ContentBytes, &s.Versions, &s.VersionBytes, &s.Attachments, &s.AttachmentBytes)
+	).Scan(&s.Notes, &s.ContentBytes, &s.Versions, &s.VersionBytes, &s.Attachments, &s.AttachmentBytes, &s.TrashedNotes)
 	if err != nil {
 		return s, fmt.Errorf("vault storage stats: %w", err)
 	}

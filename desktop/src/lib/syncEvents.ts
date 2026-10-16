@@ -14,6 +14,24 @@ export function isForVault(note: { vault_id?: string } | null | undefined, openV
 }
 
 /**
+ * Whether a pushed note, decrypted in the meantime, may enter state (#545).
+ * Standard vaults: always. E2ee vaults only when it was readable and the
+ * vault still holds the same key it was decrypted with: a lock (or a lock and
+ * unlock) during the decrypt drops it, and ciphertext never joins the list
+ * (state only holds plaintext; an unlock reloads the vault anyway).
+ */
+export function keepsDecryptedPush(input: {
+  e2ee: boolean;
+  readable: boolean;
+  /** The vault's key when the decrypt started and when it finished (null: locked). */
+  keyBefore: Uint8Array | null;
+  keyAfter: Uint8Array | null;
+}): boolean {
+  if (!input.e2ee) return true;
+  return input.readable && input.keyBefore !== null && input.keyAfter === input.keyBefore;
+}
+
+/**
  * What to do when the server reports a note deleted (#561). The open note
  * stays on screen and the user is asked ("ask") when it holds text the server
  * never confirmed and the delete came from elsewhere; closing it then would

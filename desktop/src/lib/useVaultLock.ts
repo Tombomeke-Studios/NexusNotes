@@ -53,7 +53,10 @@ export interface VaultLockDeps {
  * encrypted drafts this seals the text under the vault key into a local
  * draft and returns true.
  */
-export async function keepUnsavedTextWhileLocked(_vaultId: string, _error: SaveError): Promise<boolean> {
+export async function keepUnsavedTextWhileLocked(vaultId: string, error: SaveError): Promise<boolean> {
+  // #549: seal the vault's unconfirmed text into encrypted drafts here.
+  void vaultId;
+  void error;
   return false;
 }
 
@@ -142,6 +145,7 @@ export function useVaultLock(deps: VaultLockDeps) {
       setLocks((n) => n + 1);
       setFailure((f) => (f?.vaultId === vaultId ? null : f));
       if (mode === "auto" && depsRef.current.activeVaultId() === vaultId) returnPrompt.current = vaultId;
+      if (mode === "manual") toast(`Locked "${vault.name}".`, { kind: "success", key: "vault-lock" });
       return true;
     } finally {
       locking.current.delete(vaultId);

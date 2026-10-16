@@ -64,6 +64,7 @@ describe("useVaultLock — locking by hand", () => {
     expect(unlocked("v1")).toBe(false);
     expect(deps.clearVault).toHaveBeenCalledWith("v1");
     expect(hook.result.current.failure).toBeNull();
+    expect(toast).toHaveBeenCalledWith('Locked "Private".', expect.objectContaining({ kind: "success" }));
   });
 
   it("leaves the other vaults unlocked", async () => {

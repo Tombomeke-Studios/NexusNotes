@@ -14,6 +14,8 @@ interface CloseConfirmDialogProps {
   saving: boolean;
   /** Why the last save before closing failed; switches the dialog to its error form. */
   error: SaveError | null;
+  /** Nothing failed: newer edits arrived while saving before a vault lock (#545). */
+  edited?: boolean;
   onCancel: () => void;
   onDiscard: () => void;
   onSave: () => void;
@@ -52,6 +54,7 @@ export function CloseConfirmDialog({
   kind,
   saving,
   error,
+  edited = false,
   onCancel,
   onDiscard,
   onSave,
@@ -59,6 +62,37 @@ export function CloseConfirmDialog({
   const name = describeNotes(noteTitles);
   const plural = noteTitles.length > 1;
   const discardLabel = LABELS[kind].discard;
+  if (error && edited) {
+    // Not a failure: the text changed while it was being saved.
+    return (
+      <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={saving ? undefined : onCancel}>
+        <OverlayMotion
+          preset="dialog"
+          className="confirm-dialog"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="close-confirm-title"
+          aria-describedby="close-confirm-body"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="confirm-title" id="close-confirm-title">
+            Your newest changes aren&rsquo;t saved yet
+          </div>
+          <div className="confirm-body" id="close-confirm-body">
+            New edits arrived while the vault was locking, so it stays unlocked until they are saved.
+          </div>
+          <div className="confirm-actions">
+            <button className="confirm-btn" onClick={onCancel} disabled={saving}>
+              Keep editing
+            </button>
+            <button className="confirm-btn confirm-btn--primary" onClick={onSave} disabled={saving}>
+              {saving ? "Saving…" : LABELS[kind].save}
+            </button>
+          </div>
+        </OverlayMotion>
+      </OverlayMotion>
+    );
+  }
 
   return (
     <OverlayMotion preset="backdrop" className="confirm-overlay" onClick={saving ? undefined : onCancel}>

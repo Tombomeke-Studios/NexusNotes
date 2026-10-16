@@ -143,9 +143,9 @@ func TestClient_NotesPagingFollowsTheCursor(t *testing.T) {
 
 func TestClient_WritesCarryDeviceAndChecksum(t *testing.T) {
 	s, c := newStub(t, map[string]func(http.ResponseWriter, *http.Request){
-		"POST /api/vaults/v1/notes":      jsonReply(201, Note{ID: "n9", Title: "New", Checksum: "c0"}),
-		"PUT /api/notes/n9":              jsonReply(200, Note{ID: "n9", Checksum: "c1"}),
-		"DELETE /api/vaults/v1/notes/n9": func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) },
+		"POST /api/vaults/v1/notes": jsonReply(201, Note{ID: "n9", Title: "New", Checksum: "c0"}),
+		"PUT /api/notes/n9":         jsonReply(200, Note{ID: "n9", Checksum: "c1"}),
+		"POST /api/notes/n9/trash":  jsonReply(200, map[string]string{"id": "n9"}),
 	})
 	created, err := c.CreateNote(ctx, "create_note", "v1", "New", "Inbox", "hello")
 	if err != nil || created.ID != "n9" {
@@ -155,7 +155,7 @@ func TestClient_WritesCarryDeviceAndChecksum(t *testing.T) {
 	if err != nil || updated.Checksum != "c1" {
 		t.Fatalf("update = %+v, %v", updated, err)
 	}
-	if err := c.DeleteNote(ctx, "delete_note", "v1", "n9"); err != nil {
+	if err := c.TrashNote(ctx, "delete_note", "n9"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -167,8 +167,8 @@ func TestClient_WritesCarryDeviceAndChecksum(t *testing.T) {
 	if update.body["prev_checksum"] != "c0" || update.body["content"] != "hello again" || update.body["device_id"] != "mcp" {
 		t.Errorf("update request = %+v", update)
 	}
-	if s.seen[2].method != http.MethodDelete || s.seen[2].tool != "delete_note" {
-		t.Errorf("delete request = %+v", s.seen[2])
+	if s.seen[2].method != http.MethodPost || s.seen[2].tool != "delete_note" {
+		t.Errorf("trash request = %+v", s.seen[2])
 	}
 }
 

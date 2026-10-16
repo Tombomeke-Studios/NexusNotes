@@ -108,8 +108,8 @@ is accepted only when its origin is listed in `MCP_ALLOWED_ORIGINS` (or
 Anything else gets `403` before the token is looked at. The list is empty by default.
 
 Every call goes to the sync service as the token's owner, with an `X-MCP-Tool` header
-that the audit log records. `delete_note` deletes for good (the note's history goes with
-it); `update_note` and `append_to_note` re-read and retry once when the note changed in
+that the audit log records. `delete_note` moves the note to the vault's trash, from where
+the user can restore it for 30 days (#569); no tool can delete a note for good. `update_note` and `append_to_note` re-read and retry once when the note changed in
 between, so an edit made in the app at the same moment is kept.
 
 ## Tools exposed to AI clients
@@ -137,7 +137,7 @@ definition, and returns a structured result.
 | `create_note` | Create a new note | `vault_id`, `path`, `content`, `tags` (optional) |
 | `update_note` | Replace or patch note content | `vault_id`, `note_id`, `content`, `mode`: `replace`, `append`, or `prepend` |
 | `append_to_note` | Append a text block to an existing note — non-destructive | `vault_id`, `note_id`, `text` |
-| `delete_note` | Soft-delete a note | `vault_id`, `note_id`, `confirm: true` |
+| `delete_note` | Move a note to the trash (restorable in the app for 30 days) | `vault_id`, `note_id`, `confirm: true` |
 
 > **Why `confirm: true` on delete?** It forces the AI to pass an explicit safety parameter,
 > preventing accidental deletion from ambiguous instructions.

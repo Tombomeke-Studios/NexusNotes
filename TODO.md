@@ -29,7 +29,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] `fix/mcp-origin`: check the Origin header on the MCP HTTP transport (#556)
 - [x] `test/mcp-client`: MCP client tests and a full-flow integration test (#552)
 - [ ] `feature/version-paging`: paginate the version history, History panel loads more on scroll (#555)
-- [ ] `ci/release-workflow`: Windows installer and checksums on version tags, unsigned until #529 (#557)
+- [x] `ci/release-workflow`: Windows installer and checksums on version tags, unsigned until #529 (#557)
 - [ ] `feature/e2ee-drafts`: encrypted local drafts in encrypted vaults; starts after `feature/vault-lock` merges (#549)
 
 ### Sprint 2 candidates (agreed)

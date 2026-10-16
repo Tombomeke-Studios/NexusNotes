@@ -69,6 +69,12 @@ export function retryDelay(attempt: number): number {
   return Math.min(BASE_RETRY_DELAY_MS * 2 ** attempt, MAX_RETRY_DELAY_MS);
 }
 
+/**
+ * The message of a save outcome that failed only because newer edits arrived
+ * while it ran (nothing went wrong; they just aren't saved yet).
+ */
+export const NOT_SAVED_YET = "Your latest changes haven't been saved yet.";
+
 /** A conflict resolution was based on a version the other device has replaced since. */
 const CHANGED_AGAIN =
   "This note was changed on the other device again. The comparison now shows its newest version.";
@@ -413,7 +419,7 @@ export function useNoteSave(deps: NoteSaveDeps) {
       error: lastErrors.current.get(id) ?? {
         noteId: id,
         kind: "failed",
-        message: "Your latest changes haven't been saved yet.",
+        message: NOT_SAVED_YET,
       },
     };
   };

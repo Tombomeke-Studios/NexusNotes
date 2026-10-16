@@ -1,9 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { vaultKeySession } from "./vaultKeys";
-import type { SaveError, SaveOutcome } from "./useNoteSave";
+import { NOT_SAVED_YET, type SaveError, type SaveOutcome } from "./useNoteSave";
 import {
   IDLE_CHECK_MS,
+  MAX_SAVE_ROUNDS,
   keepUnsavedTextWhileLocked,
   lockVaultCommands,
   useVaultLock,
@@ -22,21 +23,33 @@ const VAULTS: LockableVault[] = [
   { id: "v3", name: "Work", encryption: "none" },
 ];
 
+/**
+ * Each vault starts with unsaved text; a successful save clears it unless
+ * the test says otherwise (like the real hasUnsavedText, which reads the
+ * edit versions).
+ */
 function setup(overrides: Partial<VaultLockDeps> = {}) {
+  const dirty = new Set(["v1", "v2"]);
+  const save = overrides.saveVault ?? (async (): Promise<SaveOutcome> => ({ ok: true }));
   const deps: VaultLockDeps = {
     vaults: () => VAULTS,
     activeVaultId: () => "v1",
-    saveVault: vi.fn(async (): Promise<SaveOutcome> => ({ ok: true })),
     busyReason: vi.fn(() => null),
+    hasUnsavedText: vi.fn((id: string) => dirty.has(id)),
     clearVault: vi.fn(),
     promptUnlock: vi.fn(),
     autoLockMinutes: 0,
     ...overrides,
+    saveVault: vi.fn(async (id: string) => {
+      const outcome = await save(id);
+      if (outcome.ok) dirty.delete(id);
+      return outcome;
+    }),
   };
   const hook = renderHook((props: Partial<VaultLockDeps>) => useVaultLock({ ...deps, ...props }), {
     initialProps: {},
   });
-  return { deps, hook };
+  return { deps, hook, dirty };
 }
 
 const unlocked = (id: string) => vaultKeySession.get(id) !== null;
@@ -50,6 +63,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("useVaultLock — locking by hand", () => {
@@ -65,6 +79,15 @@ describe("useVaultLock — locking by hand", () => {
     expect(deps.clearVault).toHaveBeenCalledWith("v1");
     expect(hook.result.current.failure).toBeNull();
     expect(toast).toHaveBeenCalledWith('Locked "Private".', expect.objectContaining({ kind: "success" }));
+  });
+
+  it("sends no save when nothing is unsaved", async () => {
+    const { hook, deps, dirty } = setup();
+    dirty.clear();
+    await act(async () => {
+      expect(await hook.result.current.lock("v1")).toBe(true);
+    });
+    expect(deps.saveVault).not.toHaveBeenCalled();
   });
 
   it("leaves the other vaults unlocked", async () => {
@@ -86,6 +109,51 @@ describe("useVaultLock — locking by hand", () => {
     expect(deps.clearVault).not.toHaveBeenCalled();
   });
 
+  it("lists the vault as locking while it saves, so its editor can be read-only", async () => {
+    let finish: (o: SaveOutcome) => void = () => {};
+    const { hook } = setup({ saveVault: () => new Promise<SaveOutcome>((resolve) => (finish = resolve)) });
+    let pending: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      pending = hook.result.current.lock("v1");
+    });
+    expect(hook.result.current.locking).toEqual(["v1"]);
+    await act(async () => {
+      finish({ ok: true });
+      await pending;
+    });
+    expect(hook.result.current.locking).toEqual([]);
+    expect(unlocked("v1")).toBe(false);
+  });
+
+  it("saves again when text arrives during the save, and only then drops the key", async () => {
+    const { hook, deps, dirty } = setup();
+    let rounds = 0;
+    vi.mocked(deps.saveVault).mockImplementation(async (id: string) => {
+      rounds += 1;
+      // The first save lands while newer edits came in: still unsaved.
+      if (rounds > 1) dirty.delete(id);
+      return rounds === 1 ? { ok: false, error: { noteId: "n1", kind: "failed", message: NOT_SAVED_YET } } : { ok: true };
+    });
+    await act(async () => {
+      expect(await hook.result.current.lock("v1")).toBe(true);
+    });
+    expect(rounds).toBe(2);
+    expect(unlocked("v1")).toBe(false);
+  });
+
+  it("keeps the vault unlocked and says new edits arrived when the text keeps changing", async () => {
+    const { hook, deps } = setup();
+    // Every save succeeds, yet there is always newer text by the time it lands.
+    vi.mocked(deps.saveVault).mockImplementation(async () => ({ ok: true }));
+    await act(async () => {
+      expect(await hook.result.current.lock("v1")).toBe(false);
+    });
+    expect(deps.saveVault).toHaveBeenCalledTimes(MAX_SAVE_ROUNDS);
+    expect(unlocked("v1")).toBe(true);
+    expect(deps.clearVault).not.toHaveBeenCalled();
+    expect(hook.result.current.failure).toMatchObject({ vaultId: "v1", edited: true });
+  });
+
   it("keeps the vault unlocked and shows the failed-save form when the save fails", async () => {
     const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
     const { hook, deps } = setup({ saveVault });
@@ -96,7 +164,7 @@ describe("useVaultLock — locking by hand", () => {
     expect(locked).toBe(false);
     expect(unlocked("v1")).toBe(true);
     expect(deps.clearVault).not.toHaveBeenCalled();
-    expect(hook.result.current.failure).toEqual({ vaultId: "v1", error: offline });
+    expect(hook.result.current.failure).toEqual({ vaultId: "v1", error: offline, edited: false });
   });
 
   it("locks on Retry once the save goes through", async () => {
@@ -173,6 +241,8 @@ describe("useVaultLock — locking by hand", () => {
 describe("useVaultLock — auto-lock when idle", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    // The app window has focus (jsdom says it never does).
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
   });
 
   const advance = (ms: number) =>
@@ -211,16 +281,42 @@ describe("useVaultLock — auto-lock when idle", () => {
     expect(unlocked("v1")).toBe(false);
   });
 
+  it("ignores the pointer passing over the window while the app is in the background", async () => {
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    setup({ autoLockMinutes: 5 });
+    await advance(4 * MINUTE);
+    window.dispatchEvent(new Event("pointermove"));
+    await advance(MINUTE + IDLE_CHECK_MS);
+    expect(unlocked("v1")).toBe(false);
+  });
+
+  it("locks on the first activity after the machine slept through the idle time", async () => {
+    const { deps } = setup({ autoLockMinutes: 5 });
+    // Asleep: the clock moves on, timers don't run.
+    vi.setSystemTime(Date.now() + 3 * 60 * MINUTE);
+    await act(async () => {
+      window.dispatchEvent(new Event("pointermove"));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(unlocked("v1")).toBe(false);
+    expect(unlocked("v2")).toBe(false);
+    // The user is here: the open vault asks for its passphrase straight away.
+    expect(deps.promptUnlock).toHaveBeenCalledWith("v1");
+  });
+
   it("is postponed with a toast when a save fails, and retries on the next idle tick", async () => {
     const saveVault = vi
       .fn<(id: string) => Promise<SaveOutcome>>()
       .mockResolvedValueOnce({ ok: false, error: offline })
       .mockResolvedValue({ ok: true });
-    const { hook } = setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
+    const { hook, deps } = setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
     await advance(5 * MINUTE);
-    expect(saveVault).toHaveBeenCalledTimes(1);
+    expect(deps.saveVault).toHaveBeenCalledTimes(1);
     expect(unlocked("v1")).toBe(true);
-    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/^Couldn't lock: unsaved changes/), expect.objectContaining({ kind: "error" }));
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringMatching(/^Couldn't lock: unsaved changes/),
+      expect.objectContaining({ kind: "error" }),
+    );
     // Never the manual failed-save form: nobody is there to answer it.
     expect(hook.result.current.failure).toBeNull();
 
@@ -230,31 +326,31 @@ describe("useVaultLock — auto-lock when idle", () => {
 
   it("toasts a postponed auto-lock once per idle stretch, not on every tick", async () => {
     const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
-    setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
+    const { deps } = setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
     await advance(5 * MINUTE + 4 * IDLE_CHECK_MS);
-    expect(saveVault.mock.calls.length).toBeGreaterThan(1);
+    expect(vi.mocked(deps.saveVault).mock.calls.length).toBeGreaterThan(1);
     expect(toast).toHaveBeenCalledTimes(1);
   });
 
-  it("gives up when the user comes back while the save is running", async () => {
+  it("finishes a started auto-lock when the user comes back during its save", async () => {
     let finish: (o: SaveOutcome) => void = () => {};
     const saveVault = vi.fn(() => new Promise<SaveOutcome>((resolve) => (finish = resolve)));
-    const { deps } = setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
-    await advance(5 * MINUTE + IDLE_CHECK_MS);
-    expect(saveVault).toHaveBeenCalled();
+    const { hook, deps } = setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
+    await advance(5 * MINUTE);
+    expect(deps.saveVault).toHaveBeenCalled();
+    expect(hook.result.current.locking).toEqual(["v1"]);
     window.dispatchEvent(new Event("keydown"));
     await act(async () => finish({ ok: true }));
-    expect(unlocked("v1")).toBe(true);
-    expect(deps.clearVault).not.toHaveBeenCalled();
+    expect(unlocked("v1")).toBe(false);
   });
 
   it("asks for the passphrase when the user returns to the vault it locked", async () => {
     const { deps } = setup({ autoLockMinutes: 5 });
     await advance(5 * MINUTE + IDLE_CHECK_MS);
     expect(deps.promptUnlock).not.toHaveBeenCalled();
-    window.dispatchEvent(new Event("pointermove"));
+    window.dispatchEvent(new Event("keydown"));
     expect(deps.promptUnlock).toHaveBeenCalledWith("v1");
-    window.dispatchEvent(new Event("pointermove"));
+    window.dispatchEvent(new Event("keydown"));
     expect(deps.promptUnlock).toHaveBeenCalledTimes(1);
   });
 
@@ -272,7 +368,7 @@ describe("useVaultLock — auto-lock when idle", () => {
     await advance(10 * MINUTE);
     expect(unlocked("v1")).toBe(true);
     hook.rerender({ autoLockMinutes: 5 });
-    await advance(5 * MINUTE + IDLE_CHECK_MS);
+    await advance(IDLE_CHECK_MS);
     expect(unlocked("v1")).toBe(false);
   });
 });

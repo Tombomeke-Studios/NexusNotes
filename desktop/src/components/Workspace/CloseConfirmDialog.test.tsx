@@ -108,4 +108,13 @@ describe("CloseConfirmDialog", () => {
     expect(h.onCancel).toHaveBeenCalledTimes(1);
     expect(h.onDiscard).not.toHaveBeenCalled();
   });
+
+  it("says new edits arrived, not that saving failed, when the text changed during the lock", () => {
+    renderDialog({ kind: "lock", noteTitles: [], error: error("failed", "x"), edited: true });
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveTextContent(/Your newest changes aren.t saved yet/);
+    expect(dialog).toHaveTextContent(/new edits arrived while the vault was locking/i);
+    expect(dialog).not.toHaveTextContent(/couldn't be saved/i);
+    expect(screen.getByRole("button", { name: "Save & lock" })).toBeInTheDocument();
+  });
 });

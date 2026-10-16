@@ -140,6 +140,19 @@ describe("planImport attachments (#551)", () => {
     expect(again.skipped.existing).toBe(2);
   });
 
+  it("leaves links in inline code alone", async () => {
+    const plan = await planImport(
+      [file("V/n.md", "`![[pic.png]]` and ``a ` [x](pic.png)`` but ![[pic.png]]"), file("V/pic.png")],
+      [],
+    );
+    expect(plan.notes[0].content).toBe("`![[pic.png]]` and ``a ` [x](pic.png)`` but ![[pic.png]]");
+    expect(plan.notes[0].attachments.map((a) => a.name)).toEqual(["pic.png"]);
+    // A link that only appears in code does not attach its file.
+    const codeOnly = await planImport([file("V/n.md", "`![[pic.png]]`"), file("V/pic.png")], []);
+    expect(codeOnly.notes[0].attachments).toEqual([]);
+    expect(codeOnly.notes[1].title).toBe("Files from V");
+  });
+
   it("leaves operating-system clutter out", async () => {
     const plan = await planImport(
       [

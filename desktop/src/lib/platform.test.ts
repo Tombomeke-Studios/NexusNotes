@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deviceDescription, osFromUserAgent, browserFromUserAgent } from "./platform";
+import { deviceDescription, osFromUserAgent, browserFromUserAgent, blockBrowserFind } from "./platform";
 
 const CHROME_WIN =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
@@ -35,5 +35,20 @@ describe("deviceDescription", () => {
       name: "NexusNotes on Windows",
       platform: "desktop",
     });
+  });
+});
+
+describe("blockBrowserFind (#547)", () => {
+  it("keeps Ctrl+F and F3 from opening the webview's own find bar", () => {
+    const stop = blockBrowserFind(window);
+    const press = (init: KeyboardEventInit) =>
+      window.dispatchEvent(new KeyboardEvent("keydown", { ...init, cancelable: true }));
+    expect(press({ key: "f", ctrlKey: true })).toBe(false);
+    expect(press({ key: "F", ctrlKey: true, shiftKey: true })).toBe(false);
+    expect(press({ key: "F3" })).toBe(false);
+    expect(press({ key: "f" })).toBe(true);
+    expect(press({ key: "p", ctrlKey: true })).toBe(true);
+    stop();
+    expect(press({ key: "f", ctrlKey: true })).toBe(true);
   });
 });

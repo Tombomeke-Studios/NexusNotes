@@ -74,7 +74,7 @@ import { migrateLegacyPins } from "./lib/stars";
 import { convertVaultToE2ee } from "./lib/vaultConvert";
 import { clearDraft } from "./lib/drafts";
 import { loadRecent, pushRecent } from "./lib/recent";
-import { loadFolders, addFolder, removeFolder } from "./lib/folders";
+import { loadFolders, addFolder, removeFolder, openFolders, forgetFolders } from "./lib/folders";
 import { PERIOD_FOLDER, periodTitle, type Period } from "./lib/periodic";
 import { welcomeNotes, QUICK_START_TITLE } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
@@ -1325,6 +1325,12 @@ export default function App() {
     setRecoveryCode(code);
   }, [flushPendingSave]);
 
+  /** Opens an unlocked vault's sealed empty-folder names into the tree, if it is still the active one. */
+  const showSealedFolders = useCallback(async (vaultId: string) => {
+    const list = await openFolders(vaultId);
+    if (activeVaultIdRef.current === vaultId && vaultKeySession.get(vaultId)) setEmptyFolders(list);
+  }, []);
+
   /** Derives the key from the passphrase; rejects (dialog shows the error) when wrong. */
   const handleUnlockVault = useCallback(async (passphrase: string) => {
     const vault = vaultListRef.current.find((v) => v.id === unlockVaultId);
@@ -1332,10 +1338,11 @@ export default function App() {
     const key = await unlockVaultKey(vault.encryption_meta as EncryptionMeta, passphrase);
     vaultKeySession.set(vault.id, key);
     setUnlockVaultId(null);
-    // A lock emptied them (#545), and the active vault didn't change.
-    if (activeVaultIdRef.current === vault.id) setEmptyFolders(loadFolders(vault.id));
+    // A lock emptied them (#545), and the active vault didn't change. They
+    // are stored sealed (and older readable ones get sealed now).
+    void showSealedFolders(vault.id);
     loadNotes(vault.id);
-  }, [unlockVaultId, loadNotes]);
+  }, [unlockVaultId, loadNotes, showSealedFolders]);
 
   /**
    * Recovery (#176): the backup code unwraps the Vault Key, the vault is
@@ -1354,8 +1361,9 @@ export default function App() {
     );
     setUnlockVaultId(null);
     setRecoveryCode(freshCode);
+    void showSealedFolders(vault.id);
     loadNotes(vault.id);
-  }, [unlockVaultId, loadNotes]);
+  }, [unlockVaultId, loadNotes, showSealedFolders]);
 
   const handleCreateVault = useCallback(async (name: string, passphrase?: string) => {
     const isFirstVault = vaultListRef.current.length === 0;
@@ -1657,6 +1665,7 @@ export default function App() {
             : null,
     clearVault: (vaultId) => {
       forgetVaultText(vaultId);
+      forgetFolders(vaultId);
       clearLockedVault(vaultId, {
         activeVaultId: () => activeVaultIdRef.current,
         cancelPending: () => {

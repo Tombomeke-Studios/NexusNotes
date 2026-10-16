@@ -9,6 +9,25 @@ import type { NoteVersion, NoteVersionInfo } from "./types";
  * demand (#414) and decrypted here for e2ee vaults.
  */
 
+/** Versions per page of the history list (#555): the panel opens on the newest ones. */
+export const VERSIONS_PAGE_SIZE = 50;
+
+/** One page of a note's versions and the cursor of the next, older page (null = no more). */
+export interface VersionPage {
+  versions: NoteVersionInfo[];
+  next: string | null;
+}
+
+export function listVersionsPage(noteId: string, before: string | null): Promise<VersionPage> {
+  return notesApi.versionsPage(noteId, VERSIONS_PAGE_SIZE, before);
+}
+
+/** Adds an older page below the loaded versions, skipping any already listed. */
+export function appendVersions(loaded: NoteVersionInfo[], older: NoteVersionInfo[]): NoteVersionInfo[] {
+  const seen = new Set(loaded.map((v) => v.id));
+  return [...loaded, ...older.filter((v) => !seen.has(v.id))];
+}
+
 /** Who saved a version, from this device's point of view. */
 export function deviceLabel(deviceId: string, thisDeviceId: string, names: Map<string, string>): string {
   if (!deviceId) return "Unknown device";

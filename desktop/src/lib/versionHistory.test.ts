@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { deviceLabel, groupByDay, diffSummary, loadVersionText } from "./versionHistory";
+import { deviceLabel, groupByDay, diffSummary, loadVersionText, appendVersions } from "./versionHistory";
 import { diffLines } from "./diff";
 import { vaultKeySession, encryptNoteForVault } from "./vaultKeys";
 import { generateVaultKey } from "./crypto";
@@ -8,6 +8,14 @@ import type { NoteVersionInfo } from "./types";
 function v(id: string, updated: string): NoteVersionInfo {
   return { id, note_id: "n1", checksum: id, device_id: "", created_at: updated, updated_at: updated };
 }
+
+describe("appendVersions (#555)", () => {
+  it("adds an older page below and skips versions already listed", () => {
+    const loaded = [v("a", "2026-10-03T10:00:00Z"), v("b", "2026-10-03T09:00:00Z")];
+    const older = [v("b", "2026-10-03T09:00:00Z"), v("c", "2026-10-03T08:00:00Z")];
+    expect(appendVersions(loaded, older).map((x) => x.id)).toEqual(["a", "b", "c"]);
+  });
+});
 
 describe("deviceLabel", () => {
   const names = new Map([["d2", "Work laptop"]]);

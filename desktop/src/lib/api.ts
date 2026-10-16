@@ -428,6 +428,17 @@ export const notes = {
     }),
   versions: (noteId: string) =>
     request<NoteVersionInfo[]>(`/api/notes/${noteId}/versions`),
+  /** One page of the version list, newest first, and the cursor of the next (older) page (#555). */
+  versionsPage: async (noteId: string, limit: number, before: string | null) => {
+    let next: string | null = null;
+    const query = `limit=${limit}${before ? `&before=${encodeURIComponent(before)}` : ""}`;
+    const versions = await request<NoteVersionInfo[]>(`/api/notes/${noteId}/versions?${query}`, {}, {
+      onHeaders: (h) => {
+        next = h.get("X-Next-Cursor");
+      },
+    });
+    return { versions: versions ?? [], next: next as string | null };
+  },
   version: (noteId: string, versionId: string) =>
     request<NoteVersion>(`/api/notes/${noteId}/versions/${versionId}`),
   /** Makes a version the note's content again, as a new version (#417); 409 when the note moved on. */

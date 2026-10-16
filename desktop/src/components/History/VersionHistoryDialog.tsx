@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useIsPresent } from "framer-motion";
 import { OverlayMotion } from "../motion/OverlayMotion";
-import { notes as notesApi } from "../../lib/api";
 import {
   diffLines,
   foldUnchanged,
@@ -11,7 +10,15 @@ import {
   type DiffLine,
   type NumberedSideRow,
 } from "../../lib/diff";
-import { deviceLabel, diffSummary, groupByDay, loadVersionText } from "../../lib/versionHistory";
+import {
+  appendVersions,
+  deviceLabel,
+  diffSummary,
+  groupByDay,
+  listVersionsPage,
+  loadVersionText,
+  type VersionPage,
+} from "../../lib/versionHistory";
 import type { VaultLike } from "../../lib/vaultKeys";
 import type { Note, NoteVersionInfo } from "../../lib/types";
 import "../Conflict/Conflict.css";
@@ -30,7 +37,8 @@ interface VersionHistoryDialogProps {
   /** Restores a version; resolves with an error message, or null on success. */
   onRestore: (versionId: string) => Promise<string | null>;
   onClose: () => void;
-  listVersions?: (noteId: string) => Promise<NoteVersionInfo[]>;
+  /** One page of versions below the cursor (null = the newest) (#555). */
+  listVersions?: (noteId: string, before: string | null) => Promise<VersionPage>;
   loadText?: (vault: VaultLike, noteId: string, versionId: string) => Promise<string>;
 }
 
@@ -59,12 +67,17 @@ export function VersionHistoryDialog({
   deviceNames,
   onRestore,
   onClose,
-  listVersions = notesApi.versions,
+  listVersions = listVersionsPage,
   loadText = loadVersionText,
 }: VersionHistoryDialogProps) {
   const present = useIsPresent();
   const [versions, setVersions] = useState<NoteVersionInfo[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  // Older versions load a page at a time as the list scrolls (#555).
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState(false);
+  const loadingMoreRef = useRef(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [compareTo, setCompareTo] = useState<string>(CURRENT);
   const [mode, setMode] = useState<"split" | "inline">("split");
@@ -82,10 +95,11 @@ export function VersionHistoryDialog({
 
   useEffect(() => {
     let active = true;
-    listVersions(note.id)
-      .then((list) => {
+    listVersions(note.id, null)
+      .then(({ versions: list, next }) => {
         if (!active) return;
         setVersions(list);
+        setNextCursor(next);
         // Open on the newest version that differs from the saved note.
         const first = list.find((v) => v.checksum !== note.checksum) ?? list[0];
         setSelected(first?.id ?? null);
@@ -97,6 +111,41 @@ export function VersionHistoryDialog({
     // Loaded once per opened note.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
+
+  const loadMore = () => {
+    if (!nextCursor || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setMoreError(false);
+    // The guard drops in the same step as the page lands, so the render that
+    // shows the page may already ask for the next one.
+    const done = () => {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    };
+    listVersions(note.id, nextCursor)
+      .then(({ versions: older, next }) => {
+        done();
+        setVersions((prev) => appendVersions(prev ?? [], older));
+        setNextCursor(next);
+      })
+      .catch(() => {
+        done();
+        setMoreError(true);
+      });
+  };
+
+  // Near the bottom of the list, or when the loaded versions don't fill it
+  // yet, the next page comes in.
+  const nearEnd = () => {
+    const el = listRef.current;
+    return !!el && el.scrollTop + el.clientHeight >= el.scrollHeight - 120;
+  };
+  useEffect(() => {
+    if (nextCursor && !loadingMore && !moreError && nearEnd()) loadMore();
+    // Re-checked whenever a page arrived and its load finished.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [versions, nextCursor, loadingMore]);
 
   // Load the texts the diff needs, once each.
   const needed = [selected, compareTo === CURRENT ? null : compareTo].filter((id): id is string => !!id);
@@ -166,6 +215,7 @@ export function VersionHistoryDialog({
     if (!versions || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
     e.preventDefault();
     const i = versions.findIndex((v) => v.id === selected);
+    if (e.key === "ArrowDown" && i >= versions.length - 3) loadMore();
     const next = versions[Math.max(0, Math.min(versions.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
     if (next) {
       setSelected(next.id);
@@ -217,6 +267,7 @@ export function VersionHistoryDialog({
               tabIndex={0}
               ref={listRef}
               onKeyDown={onListKey}
+              onScroll={() => nearEnd() && !moreError && loadMore()}
               aria-activedescendant={selected ? `vh-${selected}` : undefined}
             >
               {groups.map((group) => (
@@ -239,6 +290,19 @@ export function VersionHistoryDialog({
                   ))}
                 </div>
               ))}
+              {nextCursor && (
+                <div className="vh-more" role="presentation">
+                  {loadingMore ? (
+                    <span className="vh-more-status" role="status">
+                      Loading older versions&hellip;
+                    </span>
+                  ) : (
+                    <button className="vh-more-btn" onClick={loadMore}>
+                      {moreError ? "Couldn't load older versions. Retry" : "Load older versions"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="vh-main">

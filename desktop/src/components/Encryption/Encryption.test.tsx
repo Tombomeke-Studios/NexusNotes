@@ -319,4 +319,20 @@ describe("ConvertVaultForm", () => {
     expect(await screen.findByText(/has attachments/i)).toBeTruthy();
     expect(screen.getByPlaceholderText("New vault passphrase")).toBeTruthy();
   });
+
+  it("asks to restore or empty the Trash first, with a button that opens it (#569)", async () => {
+    const onConvert = vi.fn().mockRejectedValue(new ApiError(409, "Restore or empty the Trash first"));
+    const onOpenTrash = vi.fn();
+    render(<ConvertVaultForm vaultName="Work" onConvert={onConvert} onOpenTrash={onOpenTrash} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /encrypt this vault/i }));
+    fireEvent.change(screen.getByPlaceholderText("New vault passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.change(screen.getByPlaceholderText("Confirm passphrase"), { target: { value: "a strong passphrase" } });
+    fireEvent.click(screen.getByRole("button", { name: "Encrypt vault" }));
+
+    expect(await screen.findByText(/Restore or empty the Trash first/)).toBeTruthy();
+    expect(screen.queryByText(/kept changing/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open Trash" }));
+    expect(onOpenTrash).toHaveBeenCalledOnce();
+  });
 });

@@ -36,6 +36,15 @@ export interface ConvertDeps {
 const MAX_ATTEMPTS = 3;
 
 /**
+ * The server refuses a conversion while the vault's Trash holds notes (#569):
+ * they are plaintext this device can't see to encrypt. Retrying doesn't help
+ * until they are restored or the Trash is emptied.
+ */
+export function isTrashNotEmpty(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409 && /trash/i.test(err.message);
+}
+
+/**
  * Turns a standard vault into an end-to-end encrypted one (#361): a new vault
  * key is wrapped under the passphrase, every note (content, title and folder
  * path) is encrypted on this device
@@ -76,7 +85,7 @@ export async function convertVaultToE2ee(
       const vault = await deps.convert(vaultId, meta, payload, links);
       return { vault, vaultKey, recoveryCode };
     } catch (err) {
-      if (!(err instanceof ApiError && err.status === 409) || attempt >= MAX_ATTEMPTS) throw err;
+      if (!(err instanceof ApiError && err.status === 409) || isTrashNotEmpty(err) || attempt >= MAX_ATTEMPTS) throw err;
     }
   }
 }

@@ -2295,6 +2295,10 @@ export default function App() {
             activeVault={activeVault ?? null}
             onChangePassphrase={handleChangePassphrase}
             onEncryptVault={handleEncryptVault}
+            onOpenTrash={() => {
+              setShowSettings(false);
+              trash.openTrash();
+            }}
             onExportVault={handleExportVault}
             onUpdatePrefs={updatePrefs}
             onSignOut={handleSignOut}

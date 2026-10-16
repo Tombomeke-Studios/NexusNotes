@@ -1,6 +1,7 @@
 import { HistorySettings } from "./HistorySettings";
 import { AIAccessSettings } from "./AIAccessSettings";
 import { openConsentPreferences } from "../../lib/consent";
+import { LegalLink } from "../LegalLink";
 import { SHORTCUTS } from "../../lib/shortcuts";
 import { toast } from "../../lib/toast";
 import { useEffect, useState } from "react";
@@ -466,9 +467,9 @@ export function Settings({
                   <div>
                     <div className="settings-row-label">Privacy and cookies</div>
                     <div className="settings-row-sub">
-                      <a href="/legal/privacy.html" target="_blank" rel="noopener">Privacy Policy</a> ·{" "}
-                      <a href="/legal/terms.html" target="_blank" rel="noopener">Terms of Service</a> ·{" "}
-                      <a href="/legal/cookies.html" target="_blank" rel="noopener">Cookie Policy</a>
+                      <LegalLink href="/legal/privacy.html">Privacy Policy</LegalLink> ·{" "}
+                      <LegalLink href="/legal/terms.html">Terms of Service</LegalLink> ·{" "}
+                      <LegalLink href="/legal/cookies.html">Cookie Policy</LegalLink>
                     </div>
                   </div>
                   <button className="settings-export-btn" onClick={openConsentPreferences}>

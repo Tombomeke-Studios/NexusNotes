@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { consentDecided, loadConsent, saveConsent } from "../lib/consent";
+import { LegalLink } from "./LegalLink";
 import "./ConsentBanner.css";
 
 const COOKIE_POLICY = "/legal/cookies.html";
@@ -39,7 +40,7 @@ export function ConsentBanner() {
     <section className="consent" role="region" aria-label="Cookies and storage">
       <p className="consent-text">
         NexusNotes sets no cookies and stores only what it needs to work in your browser, with no
-        tracking. <a href={COOKIE_POLICY} target="_blank" rel="noopener">Cookie Policy</a>
+        tracking. <LegalLink href={COOKIE_POLICY}>Cookie Policy</LegalLink>
       </p>
       {details && (
         <fieldset className="consent-choices">

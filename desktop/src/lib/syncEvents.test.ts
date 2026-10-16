@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLoadSequence, deletedNoteAction, isForVault, keepsDecryptedPush } from "./syncEvents";
+import { createLoadSequence, createTrashEchoes, deletedNoteAction, isForVault, keepsDecryptedPush } from "./syncEvents";
 
 describe("deletedNoteAction", () => {
   const base = { deletedId: "n1", openNoteId: "n1", ownDelete: false, unsavedText: true };
@@ -91,5 +91,28 @@ describe("keepsDecryptedPush (#545)", () => {
 
   it("drops it too when the vault was locked and unlocked again meanwhile", () => {
     expect(keepsDecryptedPush({ e2ee: true, readable: true, keyBefore: key, keyAfter: new Uint8Array(32) })).toBe(false);
+  });
+});
+
+describe("createTrashEchoes (#569)", () => {
+  it("ignores the note:deleted that follows a note:trashed, once", () => {
+    const echoes = createTrashEchoes();
+    echoes.trashed("n1");
+    expect(echoes.isEcho("n1")).toBe(true);
+    // A later purge of the same note is a real delete.
+    expect(echoes.isEcho("n1")).toBe(false);
+  });
+
+  it("treats a note:deleted without a note:trashed before it as a real delete", () => {
+    const echoes = createTrashEchoes();
+    echoes.trashed("n1");
+    expect(echoes.isEcho("n2")).toBe(false);
+  });
+
+  it("forgets everything on clear", () => {
+    const echoes = createTrashEchoes();
+    echoes.trashed("n1");
+    echoes.clear();
+    expect(echoes.isEcho("n1")).toBe(false);
   });
 });

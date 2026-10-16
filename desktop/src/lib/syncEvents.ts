@@ -50,6 +50,31 @@ export function deletedNoteAction(input: {
 }
 
 /**
+ * A note moved to the trash is announced twice (#569): `note:trashed`, then a
+ * `note:deleted` for apps from before the trash. The first is handled; the
+ * second must not be (no second close, no "deleted elsewhere" question).
+ * A later purge sends `note:deleted` again, and that one is real.
+ */
+export interface TrashEchoes {
+  /** A note:trashed arrived for the note. */
+  trashed(noteId: string): void;
+  /** Whether a note:deleted is the echo of a note:trashed; consumes it. */
+  isEcho(noteId: string): boolean;
+  clear(): void;
+}
+
+export function createTrashEchoes(): TrashEchoes {
+  const ids = new Set<string>();
+  return {
+    trashed: (noteId) => {
+      ids.add(noteId);
+    },
+    isEcho: (noteId) => ids.delete(noteId),
+    clear: () => ids.clear(),
+  };
+}
+
+/**
  * Orders a vault's note-list loads (#563): only the latest may write the list
  * or replay drafts. Selecting a locked vault starts no load but must still
  * stop the running one, so it invalidates the sequence.

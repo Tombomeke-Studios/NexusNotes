@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLoadSequence, deletedNoteAction, isForVault } from "./syncEvents";
+import { createLoadSequence, deletedNoteAction, isForVault, keepsDecryptedPush } from "./syncEvents";
 
 describe("deletedNoteAction", () => {
   const base = { deletedId: "n1", openNoteId: "n1", ownDelete: false, unsavedText: true };
@@ -66,5 +66,30 @@ describe("createLoadSequence", () => {
     b.begin();
     b.invalidate();
     expect(a.isCurrent(tokenA)).toBe(true);
+  });
+});
+
+describe("keepsDecryptedPush (#545)", () => {
+  const key = new Uint8Array(32);
+
+  it("lets a standard vault's push through as it is", () => {
+    expect(keepsDecryptedPush({ e2ee: false, readable: true, keyBefore: null, keyAfter: null })).toBe(true);
+  });
+
+  it("lets an e2ee push through when it decrypted with the key that is still there", () => {
+    expect(keepsDecryptedPush({ e2ee: true, readable: true, keyBefore: key, keyAfter: key })).toBe(true);
+  });
+
+  it("drops an e2ee push that could not be decrypted (a locked vault, its own save's echo)", () => {
+    expect(keepsDecryptedPush({ e2ee: true, readable: false, keyBefore: null, keyAfter: null })).toBe(false);
+    expect(keepsDecryptedPush({ e2ee: true, readable: false, keyBefore: key, keyAfter: key })).toBe(false);
+  });
+
+  it("drops a push whose decrypt finished after the vault was locked", () => {
+    expect(keepsDecryptedPush({ e2ee: true, readable: true, keyBefore: key, keyAfter: null })).toBe(false);
+  });
+
+  it("drops it too when the vault was locked and unlocked again meanwhile", () => {
+    expect(keepsDecryptedPush({ e2ee: true, readable: true, keyBefore: key, keyAfter: new Uint8Array(32) })).toBe(false);
   });
 });

@@ -199,7 +199,8 @@ it is what it exists for:
 | `src/components/Workspace/` | Shell chrome: top bar (breadcrumb, window controls), activity rail, panel styles |
 | `src/components/Workspace/WindowControls.tsx` | Native minimize/maximize/close controls (reused by top bar + login screen) |
 | `src/components/Editor/` | Markdown editor with live preview; `LinkPreview.tsx` + `src/lib/linkPreview.ts` show a [[link]]'s target on hover (#425) |
-| `src/components/Editor/FindBar.tsx` + `src/lib/findReplace.ts` | Find and replace in the open note (#547): Ctrl+F bar (count, Enter/Shift+Enter, match case, whole word), matches marked in the highlight layer; Replace / Replace all edit the textarea with `execCommand("insertText")` so Ctrl+Z undoes them and autosave sees them |
+| `src/components/Editor/FindBar.tsx` + `src/lib/findReplace.ts` | Find and replace in the open note (#547): Ctrl+F bar (count, Enter/Shift+Enter, match case, whole word), matches marked in the highlight layer; Replace / Replace all edit the textarea with `execCommand("insertText")` (`src/lib/textareaEdit.ts`, shared) so Ctrl+Z undoes them and autosave sees them |
+| `src/components/Editor/LinkSuggest.tsx` + `src/lib/linkSuggest.ts` | [[link]] autocomplete (#548): typing `[[` opens a listbox at the caret with ranked note titles (exact > prefix > fuzzy, folder hint) or, after `Title#`, that note's headings; inserts via `lib/textareaEdit.ts` (undoable); in-memory notes only, so e2ee vaults never ask the server |
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
 | `src/components/RightPanel/` | Right panel: outline, backlinks, local graph, Files (attachments, #238), note info |
 | `src/components/Search/Snippet.tsx` + `src/lib/snippet.ts` | Renders search snippets as text with `<em>` highlights (snippets are raw note text; never render them as HTML) |

@@ -1,7 +1,7 @@
 /**
  * Every keyboard shortcut, grouped, for the shortcut reference (`?`, #452)
  * and the Settings list. Keep it in step with the handlers in App.tsx (and
- * the editor's own: Ctrl+S and Ctrl+F live in Editor.tsx).
+ * the editor's own: Ctrl+S and Ctrl+F live in Editor.tsx, [[ in LinkSuggest.tsx).
  */
 export interface ShortcutGroup {
   title: string;
@@ -26,6 +26,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       ["New note", "Ctrl+N"],
       ["Save", "Ctrl+S"],
       ["Insert template", "Ctrl+T"],
+      ["Link to a note, with name suggestions", "[["],
       ["Cycle edit / split / read", "Ctrl+E"],
       ["Version history", "Ctrl+Shift+H"],
     ],

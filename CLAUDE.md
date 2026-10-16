@@ -225,7 +225,7 @@ it is what it exists for:
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/motion.ts` | Reduced motion, single source of truth: resolves the OS `prefers-reduced-motion` + the Motion setting (System/Reduced/Full) and applies it to CSS (`data-rm` on `<html>`) and framer-motion (`skipAnimations`) |
 | `src/lib/motion-tokens.ts` | Shared motion tokens: springs (`snappy`/`smooth`/`bounce`), 120-320 ms durations, exit = 65% of entry, overlay enter/exit presets (mirrored by the `--duration-*`/`--easing-*` CSS tokens) |
-| `src/components/Sidebar/VaultLockIcon.tsx` | Encrypted-vault lock in the sidebar header: open shackle while unlocked, wobbles on each lock/unlock |
+| `src/components/Sidebar/VaultLockIcon.tsx` | Encrypted-vault lock in the sidebar header: open shackle while unlocked, swings shut and wobbles on each lock/unlock; `VaultLockButton` makes it lock the vault (or ask for the passphrase while locked, #545) |
 | `src/components/motion/OverlayMotion.tsx` | Enter/exit wrapper for anything floating above the workspace: applies an `overlayMotion` preset and stops catching the pointer while it animates out (render it under `AnimatePresence` with a key) |
 | `src/lib/platform.ts` | Runtime environment check (`isTauriWindow`); `blockBrowserFind` (called from `main.tsx`) keeps Ctrl+F/F3 from opening the webview's own find bar in the packaged app |
 | `src/lib/folders.ts` | Per-vault empty-folder persistence (localStorage) for the file tree |

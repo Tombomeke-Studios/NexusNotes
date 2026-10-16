@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { Sidebar } from "./Sidebar";
 
@@ -59,5 +59,49 @@ describe("Sidebar while the vault loads", () => {
     render(<Sidebar {...props()} />);
     expect(screen.queryByRole("status", { name: "Loading notes" })).toBeNull();
     expect(screen.getByText(/No notes yet/)).toBeTruthy();
+  });
+});
+
+// Locking an encrypted vault (#545): the header's lock icon and the vault menu.
+describe("Sidebar vault lock", () => {
+  const e2ee = [
+    { id: "v1", user_id: "u1", name: "Private", encryption: "e2ee", created_at: "", updated_at: "" },
+  ] as Props["vaults"];
+  const vaultMenu = () => {
+    fireEvent.click(document.querySelector(".sidebar-vault-btn")!);
+    return within(document.querySelector<HTMLElement>(".sidebar-vault-list")!);
+  };
+
+  it("locks the open vault from the lock icon while it is unlocked", () => {
+    const onLockVault = vi.fn();
+    render(<Sidebar {...props({ vaults: e2ee, onLockVault })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Lock vault" }));
+    expect(onLockVault).toHaveBeenCalledWith("v1");
+  });
+
+  it("asks for the passphrase from the lock icon while it is locked", () => {
+    const onLockVault = vi.fn();
+    const onUnlockVault = vi.fn();
+    render(<Sidebar {...props({ vaults: e2ee, activeVaultLocked: true, onLockVault, onUnlockVault })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Unlock vault" }));
+    expect(onUnlockVault).toHaveBeenCalled();
+    expect(onLockVault).not.toHaveBeenCalled();
+  });
+
+  it("offers Lock vault in the vault menu for an unlocked encrypted vault", () => {
+    const onLockVault = vi.fn();
+    render(<Sidebar {...props({ vaults: e2ee, onLockVault })} />);
+    fireEvent.click(vaultMenu().getByRole("button", { name: "Lock vault" }));
+    expect(onLockVault).toHaveBeenCalledWith("v1");
+  });
+
+  it("has no lock for a standard vault, nor in the menu of a locked one", () => {
+    const { unmount } = render(<Sidebar {...props({ onLockVault: vi.fn() })} />);
+    expect(screen.queryByRole("button", { name: /lock vault/i })).toBeNull();
+    expect(vaultMenu().queryByRole("button", { name: "Lock vault" })).toBeNull();
+    unmount();
+
+    render(<Sidebar {...props({ vaults: e2ee, activeVaultLocked: true, onLockVault: vi.fn() })} />);
+    expect(vaultMenu().queryByRole("button", { name: "Lock vault" })).toBeNull();
   });
 });

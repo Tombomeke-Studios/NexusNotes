@@ -85,6 +85,34 @@
   color: var(--text-primary);
 }
 
+/* Older pages of the list (#555). */
+.vh-more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 4px 6px;
+}
+
+.vh-more-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vh-more-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.vh-more-status {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .vh-time {
   font-variant-numeric: tabular-nums;
   font-weight: 600;

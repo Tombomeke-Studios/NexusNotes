@@ -137,6 +137,10 @@ holds unsaved or unconfirmed text does not close it: the editor turns
 read-only and the user chooses between keeping the text as a new note (same
 vault and folder, sent through the vault's encryption) and discarding it. The
 echo of a delete this device sent is recognised and closes the note as before.
+When the vault turns end-to-end encrypted on another device (`vault:encrypted`)
+that question closes, and a "keep" still in progress sends nothing more: the
+vault's text is dropped from the workspace, as for any vault that becomes
+encrypted elsewhere.
 
 Closing a tab or the window with unsaved text (the close button, or an
 OS-level close in the native app) never closes until the server has

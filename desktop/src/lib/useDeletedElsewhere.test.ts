@@ -133,4 +133,44 @@ describe("useDeletedElsewhere", () => {
     act(() => hook.result.current.reset());
     expect(hook.result.current.deleted).toBeNull();
   });
+
+  it("closes the question when its vault becomes encrypted elsewhere", () => {
+    const { hook } = setup();
+    act(() => {
+      hook.result.current.onRemoteDelete("n1", true);
+    });
+    act(() => hook.result.current.onVaultEncrypted("other-vault"));
+    expect(hook.result.current.deleted?.id).toBe("n1");
+    act(() => hook.result.current.onVaultEncrypted("v1"));
+    expect(hook.result.current.deleted).toBeNull();
+    expect(hook.result.current.busy).toBe(false);
+  });
+
+  it("sends nothing from a Keep still running when the vault becomes encrypted", async () => {
+    let release: (v: { content: string; checksum?: string }) => void = () => {};
+    const encryptOutgoing = vi.fn(
+      () => new Promise<{ content: string; checksum?: string }>((resolve) => (release = resolve)),
+    );
+    const { hook, deps } = setup({ encryptOutgoing });
+    act(() => {
+      hook.result.current.onRemoteDelete("n1", true);
+    });
+    let keeping: Promise<void> = Promise.resolve();
+    act(() => {
+      keeping = hook.result.current.keepAsNew();
+    });
+    expect(hook.result.current.busy).toBe(true);
+    act(() => hook.result.current.onVaultEncrypted("v1"));
+    await act(async () => {
+      release({ content: "my unsaved text" });
+      await keeping;
+    });
+    expect(deps.sealMeta).not.toHaveBeenCalled();
+    expect(deps.createNote).not.toHaveBeenCalled();
+    expect(deps.discardUnsaved).not.toHaveBeenCalled();
+    expect(deps.openReplacement).not.toHaveBeenCalled();
+    expect(hook.result.current.deleted).toBeNull();
+    expect(hook.result.current.error).toBeNull();
+    expect(hook.result.current.busy).toBe(false);
+  });
 });

@@ -6,6 +6,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Link autocomplete: typing `[[` in the editor opens a list of matching notes at the caret
+  (exact and prefix matches first, then fuzzy ones, with the folder dimmed alongside). ↑/↓
+  choose, Enter or Tab insert `[[Title]]` (Ctrl+Z undoes it), Esc closes; after `[[Title#`
+  it lists that note's headings. When nothing matches it offers "Create link to '…'". It
+  only uses the notes already on your device, so encrypted vaults never ask the server.
 - Find and replace in the open note: Ctrl+F opens a find bar that counts and highlights the
   matches (match case and whole word optional), Enter / Shift+Enter jump between them, and
   Replace / Replace all change the text in a way Ctrl+Z can undo. In the reading view it

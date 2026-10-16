@@ -18,7 +18,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] `feature/vault-lock`: lock an encrypted vault manually and auto-lock it when idle (#545)
 - [x] `feature/e2ee-share-warning`: warn before inviting someone to an encrypted vault (#546)
 - [x] `feature/find-replace`: Ctrl+F find and replace in the open note (#547)
-- [ ] `feature/link-autocomplete`: autocomplete wiki-links while typing `[[` (#548)
+- [x] `feature/link-autocomplete`: autocomplete wiki-links while typing `[[` (#548)
 - [ ] `feature/server-url`: server URL field, default unchanged, no CSP change in this sprint (#500, #504)
 
 ### Backend and data developer (in order)

@@ -2,6 +2,7 @@ import { headingSlug } from "../../lib/outline";
 import { highlightMarkdown } from "../../lib/mdHighlight";
 import { LinkPreview } from "./LinkPreview";
 import { FindBar, type FindRequest } from "./FindBar";
+import { LinkSuggest } from "./LinkSuggest";
 import { markMatches, type Match } from "../../lib/findReplace";
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import ReactMarkdown from "react-markdown";
@@ -732,6 +733,14 @@ export function Editor({
             }}
             spellCheck={false}
             placeholder="Start writing..."
+          />
+          {/* [[link]] autocomplete (#548); remounts with the textarea. */}
+          <LinkSuggest
+            textareaRef={textareaRef}
+            notes={notes}
+            noteId={note.id}
+            readOnly={readOnly}
+            onReplaceText={handleChange}
           />
           </div>
         )}

@@ -5,7 +5,7 @@ import { SHORTCUTS } from "../../lib/shortcuts";
 import { toast } from "../../lib/toast";
 import { useEffect, useState } from "react";
 import { downloadFile } from "../../lib/export";
-import { motion, useIsPresent } from "framer-motion";
+import { useIsPresent } from "framer-motion";
 import type { WorkspacePrefs } from "../../lib/prefs";
 import type { Vault } from "../../lib/types";
 import { auth, devices as devicesApi, ApiError } from "../../lib/api";
@@ -16,7 +16,7 @@ import { useServerStatus } from "../../lib/useServerStatus";
 import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
 import { ConvertVaultForm } from "../Encryption/ConvertVaultForm";
 import type { MotionPreference } from "../../lib/motion";
-import { spring } from "../../lib/motion-tokens";
+import { Segmented } from "./Segmented";
 import "./Settings.css";
 import { OverlayMotion } from "../motion/OverlayMotion";
 
@@ -61,41 +61,6 @@ const MOTION_OPTIONS: Array<{ value: MotionPreference; label: string }> = [
   { value: "reduce", label: "Reduced" },
   { value: "full", label: "Full" },
 ];
-
-/** Segmented choice with a pill that glides to the selected option. */
-function Segmented<T extends string>({
-  id,
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: T;
-  options: Array<{ value: T; label: string }>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="settings-seg" role="radiogroup" aria-label={label}>
-      {options.map((o) => {
-        const on = o.value === value;
-        return (
-          <button
-            key={o.value}
-            role="radio"
-            aria-checked={on}
-            className={`settings-seg-btn${on ? " settings-seg-btn--on" : ""}`}
-            onClick={() => onChange(o.value)}
-          >
-            {on && <motion.span layoutId={`seg-pill-${id}`} className="settings-seg-pill" transition={spring.snappy} />}
-            <span className="settings-seg-label">{o.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function Settings({
   prefs,

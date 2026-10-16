@@ -45,6 +45,15 @@ export interface Note {
   updated_at: string;
 }
 
+/**
+ * A note in its vault's trash (#569): no content, plus when it was trashed and
+ * when the server deletes it for good. Title and path are sealed in e2ee vaults.
+ */
+export interface TrashedNote extends Omit<Note, "content"> {
+  deleted_at: string;
+  purge_at: string;
+}
+
 /** A stored snapshot of a note (#413); the list omits `content` (#414). */
 export interface NoteVersionInfo {
   id: string;

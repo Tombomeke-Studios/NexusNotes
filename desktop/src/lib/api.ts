@@ -1,7 +1,7 @@
 import { APP_VERSION, assessHealth, type HealthPayload, type ServerStatus } from "./version";
 import { resolveApiBase } from "./apiBase";
 import { isTauriWindow } from "./platform";
-import type { User, Vault, Note, NoteVersion, NoteVersionInfo, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember, McpToken, McpScope, McpAuditEntry } from "./types";
+import type { User, Vault, Note, NoteVersion, NoteVersionInfo, ConflictInfo, BacklinkNote, SearchHit, Device, VaultMember, McpToken, McpScope, McpAuditEntry, TrashedNote } from "./types";
 
 // The packaged app has no VITE_API_URL at runtime and uses its sidecar's fixed
 // port (see src-tauri/src/lib.rs); the web UI uses its own origin (#399).
@@ -449,6 +449,30 @@ export const notes = {
     }),
   backlinks: (noteId: string) =>
     request<BacklinkNote[]>(`/api/notes/${noteId}/backlinks`),
+};
+
+/**
+ * The vault's trash (#569): deleting moves notes here; they can be restored
+ * for 30 days. Trash and restore need owner or editor, purge and empty owner.
+ */
+export const trash = {
+  move: (noteId: string) =>
+    request<TrashedNote>(`/api/notes/${noteId}/trash`, { method: "POST" }),
+  /** Several notes of one vault in one transaction (a folder, a selection); at most 1000 ids. */
+  moveMany: async (vaultId: string, noteIds: string[]) =>
+    (await request<TrashedNote[] | null>(`/api/vaults/${vaultId}/trash`, {
+      method: "POST",
+      body: JSON.stringify({ note_ids: noteIds }),
+    })) ?? [],
+  list: async (vaultId: string) =>
+    (await request<TrashedNote[] | null>(`/api/vaults/${vaultId}/trash`)) ?? [],
+  /** Back at its original path; returns the note (ciphertext in e2ee vaults). */
+  restore: (noteId: string) =>
+    request<Note>(`/api/notes/${noteId}/restore`, { method: "POST" }),
+  purge: (noteId: string) =>
+    request<void>(`/api/notes/${noteId}/purge`, { method: "DELETE" }),
+  empty: (vaultId: string) =>
+    request<{ purged: number }>(`/api/vaults/${vaultId}/trash/empty`, { method: "POST" }),
 };
 
 /** Starred (favourite) notes, per user across vaults (#151). */

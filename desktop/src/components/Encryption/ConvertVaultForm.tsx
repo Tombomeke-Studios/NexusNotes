@@ -107,12 +107,12 @@ export function ConvertVaultForm({ vaultName, onConvert, onOpenTrash }: ConvertV
         disabled={busy}
       />
       {(error ?? validation) && <div className="enc-error">{error ?? validation}</div>}
-      {trashBlocks && onOpenTrash && (
-        <button className="settings-export-btn" onClick={onOpenTrash}>
-          Open Trash
-        </button>
-      )}
       <div className="enc-change-actions">
+        {trashBlocks && onOpenTrash && (
+          <button className="confirm-btn convert-open-trash" onClick={onOpenTrash}>
+            Open Trash
+          </button>
+        )}
         <button className="confirm-btn" onClick={close} disabled={busy}>
           Cancel
         </button>

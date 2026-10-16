@@ -156,6 +156,11 @@
   margin-top: 4px;
 }
 
+/* The conversion waits for the Trash (#569): its way there sits on the left. */
+.convert-open-trash {
+  margin-right: auto;
+}
+
 /* Recovery code dialog */
 
 .enc-code {

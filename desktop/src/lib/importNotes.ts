@@ -96,13 +96,27 @@ function makeResolver(files: Map<string, unknown>) {
   };
 }
 
-/** Applies fn to the text outside fenced code blocks; fenced lines are kept as they are. */
+/** A code span: a run of backticks up to the next run of the same length. */
+const CODE_SPAN = /(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g;
+
+/** Applies fn to the text between inline code spans; the spans are kept as they are. */
+function outsideSpans(text: string, fn: (prose: string) => string): string {
+  let out = "";
+  let last = 0;
+  for (const m of text.matchAll(CODE_SPAN)) {
+    out += fn(text.slice(last, m.index)) + m[0];
+    last = m.index + m[0].length;
+  }
+  return out + fn(text.slice(last));
+}
+
+/** Applies fn to the text outside code (fenced blocks and inline spans), which is kept as it is. */
 function outsideCode(text: string, fn: (prose: string) => string): string {
   const out: string[] = [];
   let prose: string[] = [];
   let fence = "";
   const flush = () => {
-    if (prose.length) out.push(fn(prose.join("\n")));
+    if (prose.length) out.push(outsideSpans(prose.join("\n"), fn));
     prose = [];
   };
   for (const line of text.split("\n")) {

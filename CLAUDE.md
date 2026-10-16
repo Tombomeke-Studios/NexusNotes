@@ -223,7 +223,7 @@ it is what it exists for:
 | `src/components/Trash/TrashDialog.tsx` | Trash panel (#569): trashed notes with folder and "deleted X ago · removed in N days", Restore, Delete permanently and Empty Trash (each confirmed in the danger style), actions hidden by role, `EmptyState` when empty |
 | `src/lib/useCloseGuard.ts` | Closing a tab/window or signing out with unsaved text (in any note): waits for the save result, keeps the dialog open with the reason on failure (#283) |
 | `src/components/Workspace/CloseConfirmDialog.tsx` | Unsaved-changes dialog: save & close / close without saving / cancel, plus its failed-save form (retry / keep editing); kind `lock` is the failed vault lock (#545), which never offers to drop the text |
-| `src/components/Workspace/DeleteConfirmDialog.tsx` + `src/lib/useDeleteConfirm.ts` | Every note delete is asked first (#568): names the note or gives the count, Cancel is the default; a failed delete keeps the rest in the dialog with the reason |
+| `src/components/Workspace/DeleteConfirmDialog.tsx` + `src/lib/useDeleteConfirm.ts` | Every note delete is asked first (#568) and moves the notes to the Trash (#569): one note with the single-note call, a selection or a folder's notes in one batch call; names the note, folder or count, Cancel is the default; a failed move keeps the rest in the dialog with the reason |
 | `src/lib/prefs.ts` | Persisted workspace preferences (panels, view mode, font size) |
 | `src/lib/stats.ts` | Word count, reading time, cursor position, relative time |
 | `src/lib/motion.ts` | Reduced motion, single source of truth: resolves the OS `prefers-reduced-motion` + the Motion setting (System/Reduced/Full) and applies it to CSS (`data-rm` on `<html>`) and framer-motion (`skipAnimations`) |

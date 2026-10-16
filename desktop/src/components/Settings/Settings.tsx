@@ -17,6 +17,7 @@ import { ChangePassphraseForm } from "../Encryption/ChangePassphraseForm";
 import { ConvertVaultForm } from "../Encryption/ConvertVaultForm";
 import type { MotionPreference } from "../../lib/motion";
 import { Segmented } from "./Segmented";
+import { AutoLockSetting } from "./AutoLockSetting";
 import "./Settings.css";
 import { OverlayMotion } from "../motion/OverlayMotion";
 
@@ -315,6 +316,11 @@ export function Settings({
                   </button>
                 </div>
                 {activeVault && <HistorySettings vault={activeVault} />}
+                <div className="settings-section-title settings-section-title--spaced">Encrypted vaults</div>
+                <AutoLockSetting
+                  value={prefs.autoLockMinutes}
+                  onChange={(autoLockMinutes) => onUpdatePrefs({ autoLockMinutes })}
+                />
                 {activeVault?.encryption === "e2ee" && (
                   <>
                     <div className="settings-section-title settings-section-title--spaced">

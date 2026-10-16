@@ -13,6 +13,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   end-to-end encrypted vault, next to its note so `![[image.png]]` still shows the image when
   the folder is opened in Obsidian or a similar tool. Files that could not be downloaded are
   named in the export message instead of being left out silently.
+- Releases publish a Windows installer: pushing a `vX.Y.Z` tag builds the app (`.exe` and
+  `.msi`) and attaches it to a GitHub release with a `SHA256SUMS.txt`. The installer is not
+  code-signed yet, so Windows SmartScreen asks for confirmation; the release notes explain
+  the prompt and how to check the checksum.
 - Graph: links are drawn in a clearly visible grey (at least 3:1 contrast, green for the
   open note) and stop at the rim of both notes, arrowheads and curved links are optional
   toggles that the app remembers, and a zoom bar (buttons, slider, Fit) sits next to

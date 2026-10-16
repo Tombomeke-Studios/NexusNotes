@@ -274,6 +274,7 @@ it is what it exists for:
 | `docker-compose.dev.yml` | Development stack with hot reload (the packaged app only takes MinIO from it) |
 | `docker-compose.app.yml` | The packaged app's own Postgres + Redis (project `nexusnotes-app`, ports 5433/6380, per-install passwords) (#277) |
 | `.github/workflows/validate.yml` | CI pipeline: lint, test, build |
+| `.github/workflows/release.yml` | Release on a `v*` tag (#557): builds the Windows installers (sidecar bundled) and publishes them with `SHA256SUMS.txt` as a GitHub release; run by hand = dry run, no release |
 | `db/migrations/` | Shared SQL migrations |
 
 ## 8. Conventions & gotchas

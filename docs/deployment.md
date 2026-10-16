@@ -415,6 +415,45 @@ versioned together with the app:
   `## [X.Y.Z] - YYYY-MM-DD` heading and add its compare link at the bottom of
   the changelog (`[X.Y.Z]: …/compare/vPREV...vX.Y.Z`).
 
+### Releases
+
+Pushing a `vX.Y.Z` tag runs `.github/workflows/release.yml` (#557). It builds the
+Windows installers (NSIS `.exe` and `.msi`, with the sync-service sidecar bundled) on
+`windows-latest` and publishes them as a GitHub release for the tag, together with a
+`SHA256SUMS.txt`. The release notes are the tag's changelog section plus install
+instructions.
+
+To cut a release:
+
+1. On a feature branch into `dev`: set the version (`./scripts/set-version.sh X.Y.Z`)
+   and move the changelog's *Unreleased* entries under `## [X.Y.Z] - YYYY-MM-DD`
+   (see above).
+2. Promote `dev` → `staging` → `main` through PRs, waiting for CI at each step
+   (the promotion flow in CLAUDE.md).
+3. Tag the merge commit on `main` and push the tag:
+
+   ```bash
+   git checkout main && git pull
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+4. Watch the *Release* workflow. The release appears under GitHub Releases when it
+   finishes.
+
+The workflow refuses a tag that doesn't match the `VERSION` file or doesn't point at a
+commit on `main`. A tag with a suffix (`v0.6.0-rc.1`) becomes a pre-release. To test the
+build without publishing, run the workflow by hand (*Actions → Release → Run
+workflow*). That dry run keeps the installers as a workflow artifact for 14 days and
+creates no release.
+
+The installers are **not code-signed** until #529 lands. The release notes say so and
+explain the Windows SmartScreen prompt ("Windows protected your PC": *More info* →
+*Run anyway*) and how to check the download with `Get-FileHash` against
+`SHA256SUMS.txt`. The build job runs with a read-only token. Only the publish job, which
+runs no project code, can write releases. Every action is pinned to a commit SHA, and
+dependency caches are off in this workflow.
+
 ---
 
 ## CI/CD
@@ -431,6 +470,9 @@ GitHub Actions workflow (`.github/workflows/validate.yml`) runs automatically on
 | Backend (Go) | `services/sync-service/**` changes | Lint (golangci-lint), test (`go test -race`), build |
 | Desktop (React) | `desktop/**` changes | Lint (ESLint), type check (tsc), test (Vitest) |
 | Docker images | `services/sync-service/**`, `desktop/**` or `docker-compose.yml` changes | Builds the sync service and web UI production images (no push), so an unbuildable Dockerfile fails CI |
+
+A separate workflow, `.github/workflows/release.yml`, runs only on `v*` tags (or by
+hand as a dry run) and publishes the Windows installers; see [Releases](#releases).
 
 ---
 

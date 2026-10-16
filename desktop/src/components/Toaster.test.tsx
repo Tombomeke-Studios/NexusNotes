@@ -56,4 +56,15 @@ describe("Toaster", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dismiss notification" }));
     expect(getToasts()).toHaveLength(0);
   });
+
+  it("runs a toast's action and closes it (#569)", () => {
+    const onClick = vi.fn();
+    render(<Toaster />);
+    act(() => {
+      toast('Restored "Plan"', { kind: "success", action: { label: "Open", onClick } });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(getToasts()).toHaveLength(0);
+  });
 });

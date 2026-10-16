@@ -53,6 +53,17 @@ function ToastItem({ toast }: { toast: Toast }) {
     >
       <span className="toast-icon" aria-hidden="true" />
       <span className="toast-message">{toast.message}</span>
+      {toast.action && (
+        <button
+          className="toast-action"
+          onClick={() => {
+            dismissToast(toast.id);
+            toast.action!.onClick();
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button className="toast-close" aria-label="Dismiss notification" onClick={() => dismissToast(toast.id)}>
         <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
           <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

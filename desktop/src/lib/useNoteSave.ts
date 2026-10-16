@@ -497,6 +497,31 @@ export function useNoteSave(deps: NoteSaveDeps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saveNote]);
 
+  /** Whether the open note has edits newer than the last text the server confirmed. */
+  const openNoteEdited = (vaultId: string): boolean => {
+    const open = depsRef.current.activeNoteRef.current;
+    return !!open && open.vault_id === vaultId && versionOf(open.id) > (savedVersions.current.get(open.id) ?? 0);
+  };
+
+  /**
+   * Whether any note of the vault holds text the server hasn't confirmed: the
+   * open note's newer edits, or a requested save that hasn't succeeded. Reads
+   * only refs, so it is exact right after an await (React state may lag).
+   */
+  const hasUnsavedText = useCallback((vaultId: string): boolean => {
+    if (openNoteEdited(vaultId)) return true;
+    for (const req of lastRequests.current.values()) if (req.note.vault_id === vaultId) return true;
+    return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Saves the vault's unsaved text (#545): the open note when it is edited, and its unconfirmed notes. */
+  const saveVault = useCallback(
+    (vaultId: string): Promise<SaveOutcome> => saveAll(openNoteEdited(vaultId), vaultId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [saveAll],
+  );
+
   /** True while any note holds text that a save was requested for but the server hasn't confirmed. */
   const hasUnconfirmed = useCallback(() => lastRequests.current.size > 0, []);
 
@@ -700,6 +725,8 @@ export function useNoteSave(deps: NoteSaveDeps) {
     resolveConflict,
     saveNote,
     saveAll,
+    saveVault,
+    hasUnsavedText,
     hasUnconfirmed,
     unconfirmedNoteIds,
     liveChange,

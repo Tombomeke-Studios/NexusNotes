@@ -1187,6 +1187,49 @@ describe("useNoteSave — unconfirmed text in notes that are no longer open (#28
     expect(hook.result.current.hasUnconfirmed()).toBe(false);
   });
 
+  it("knows exactly whether a vault still has unsaved text, even before a re-render (#545)", async () => {
+    let finish: (n: Note) => void = () => {};
+    update.mockImplementationOnce(() => new Promise<Note>((resolve) => (finish = resolve)));
+    const { hook } = setup({ keepsDrafts: () => false });
+    expect(hook.result.current.hasUnsavedText("v1")).toBe(false);
+
+    act(() => hook.result.current.liveChange("first"));
+    expect(hook.result.current.hasUnsavedText("v1")).toBe(true);
+    expect(hook.result.current.hasUnsavedText("other-vault")).toBe(false);
+
+    let saving: Promise<unknown> = Promise.resolve();
+    act(() => {
+      saving = hook.result.current.saveVault("v1");
+    });
+    // Typed while the save is on its way: still unsaved once it lands.
+    act(() => hook.result.current.liveChange("first and more"));
+    await act(async () => {
+      for (let i = 0; i < 10 && update.mock.calls.length === 0; i++) await Promise.resolve();
+      expect(update).toHaveBeenCalledTimes(1);
+      finish(savedNote("c1"));
+      await saving;
+    });
+    expect(hook.result.current.hasUnsavedText("v1")).toBe(true);
+
+    update.mockResolvedValueOnce(savedNote("c2"));
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveVault("v1");
+    });
+    expect(outcome).toEqual({ ok: true });
+    expect(hook.result.current.hasUnsavedText("v1")).toBe(false);
+  });
+
+  it("saveVault sends nothing for a vault without unsaved text", async () => {
+    const { hook } = setup({ keepsDrafts: () => false });
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.saveVault("v1");
+    });
+    expect(outcome).toEqual({ ok: true });
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it("saveAll for one vault leaves other vaults' notes alone (#545)", async () => {
     update.mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValue(savedNote("c1"));
     const { hook } = setup({ keepsDrafts: () => false });

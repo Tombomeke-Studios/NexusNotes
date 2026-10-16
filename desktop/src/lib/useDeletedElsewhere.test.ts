@@ -173,4 +173,17 @@ describe("useDeletedElsewhere", () => {
     expect(hook.result.current.error).toBeNull();
     expect(hook.result.current.busy).toBe(false);
   });
+
+  it("tells a vault lock (#545) that it is still asking about one of that vault's notes", () => {
+    const { hook } = setup();
+    expect(hook.result.current.asksAbout("v1")).toBe(false);
+    act(() => {
+      hook.result.current.onRemoteDelete("n1", true);
+    });
+    // Read without a re-render: a lock checks it right before dropping the key.
+    expect(hook.result.current.asksAbout("v1")).toBe(true);
+    expect(hook.result.current.asksAbout("other-vault")).toBe(false);
+    act(() => hook.result.current.discard());
+    expect(hook.result.current.asksAbout("v1")).toBe(false);
+  });
 });

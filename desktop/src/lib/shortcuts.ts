@@ -1,6 +1,7 @@
 /**
  * Every keyboard shortcut, grouped, for the shortcut reference (`?`, #452)
- * and the Settings list. Keep it in step with the handlers in App.tsx.
+ * and the Settings list. Keep it in step with the handlers in App.tsx (and
+ * the editor's own: Ctrl+S and Ctrl+F live in Editor.tsx).
  */
 export interface ShortcutGroup {
   title: string;
@@ -11,6 +12,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: "Find and navigate",
     items: [
+      ["Find and replace in the note", "Ctrl+F"],
       ["Quick open", "Ctrl+P"],
       ["Command palette", "Ctrl+Shift+P"],
       ["Global search", "Ctrl+Shift+F"],

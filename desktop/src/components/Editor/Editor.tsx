@@ -1,6 +1,8 @@
 import { headingSlug } from "../../lib/outline";
 import { highlightMarkdown } from "../../lib/mdHighlight";
 import { LinkPreview } from "./LinkPreview";
+import { FindBar, type FindRequest } from "./FindBar";
+import { markMatches, type Match } from "../../lib/findReplace";
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -167,6 +169,17 @@ export function Editor({
   const previewRef = useRef<HTMLDivElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
   const highlighted = useMemo(() => highlightMarkdown(content), [content]);
+  // Find and replace (#547): the open bar and the matches it marks.
+  const [find, setFind] = useState<FindRequest | null>(null);
+  const [findMarks, setFindMarks] = useState<{ matches: Match[]; current: number } | null>(null);
+  const marked = useMemo(
+    () => (highlighted && findMarks ? markMatches(highlighted, findMarks.matches, findMarks.current) : highlighted),
+    [highlighted, findMarks],
+  );
+  const onFindMarks = useCallback(
+    (matches: Match[], current: number) => setFindMarks(matches.length ? { matches, current } : null),
+    [],
+  );
   // [[link]] hover preview (#425): opens after a short hover, like a tooltip.
   const [hoverLink, setHoverLink] = useState<{ noteId: string; rect: DOMRect } | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -192,6 +205,10 @@ export function Editor({
   noteRef.current = note;
   const initialTextRef = useRef(initialText);
   initialTextRef.current = initialText;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const onModeChangeRef = useRef(onModeChange);
+  onModeChangeRef.current = onModeChange;
 
   const notesByTitle = useMemo(() => {
     const map = new Map<string, string>();
@@ -379,6 +396,17 @@ export function Editor({
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         onSaveRef.current(contentRef.current);
         setHasChanges(false);
+      }
+      // Ctrl+F: find in the open note (#547), never the browser's own find.
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        if (!noteRef.current) return;
+        // The reading view has no text to search; show the source next to it.
+        if (modeRef.current === "preview") onModeChangeRef.current("split");
+        const el = textareaRef.current;
+        const selected = el ? el.value.slice(el.selectionStart, el.selectionEnd) : "";
+        const query = selected && !selected.includes("\n") ? selected : undefined;
+        setFind((prev) => ({ nonce: (prev?.nonce ?? 0) + 1, query }));
       }
     };
     window.addEventListener("keydown", handler);
@@ -622,6 +650,22 @@ export function Editor({
           </div>
         </div>
       </div>
+      {find && (
+        <FindBar
+          text={content}
+          textareaRef={textareaRef}
+          highlightRef={highlightRef}
+          request={find}
+          readOnly={readOnly}
+          onMarks={onFindMarks}
+          onReplaceText={handleChange}
+          onClose={() => {
+            setFind(null);
+            setFindMarks(null);
+            textareaRef.current?.focus();
+          }}
+        />
+      )}
       <div
         ref={contentRowRef}
         key={note.id}
@@ -637,9 +681,9 @@ export function Editor({
           >
           {/* Syntax highlighting (#267): the same text, styled, behind the
               transparent textarea, scrolled along with it. */}
-          {highlighted && (
+          {marked && (
             <pre ref={highlightRef} className="editor-highlight" aria-hidden="true" style={{ fontSize }}>
-              {highlighted.map((line, i) => (
+              {marked.map((line, i) => (
                 <Fragment key={i}>
                   {line.map((seg, j) =>
                     seg.cls ? (

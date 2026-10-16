@@ -328,6 +328,8 @@ export default function App() {
     encryptOutgoing,
     sealMeta,
     keepsDrafts: (vaultId) => !isE2eeVault(vaultOf(vaultId)),
+    // E2ee vaults keep their drafts sealed under the vault key (#549).
+    draftKey: (vaultId) => (isE2eeVault(vaultOf(vaultId)) ? vaultKeySession.get(vaultId) : null),
     // The server's version in a 409 is ciphertext for e2ee vaults. An unknown
     // vault throws, so the conflict dialog never shows unreadable text.
     showEditorText: (noteId, text) => replaceEditorText(noteId, text),

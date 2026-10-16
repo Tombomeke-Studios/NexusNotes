@@ -36,6 +36,8 @@ export function useDeletedElsewhere(deps: DeletedElsewhereDeps) {
     deletedRef.current = note;
     setDeletedState(note);
   }, []);
+  // It went to the Trash (#569) rather than being deleted for good.
+  const [trashed, setTrashed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Bumped by reset: a Keep still running for an earlier question stops
@@ -62,15 +64,17 @@ export function useDeletedElsewhere(deps: DeletedElsewhereDeps) {
   }, []);
 
   /**
-   * Handles a pushed note:deleted. Returns true when the note stays open for
-   * the question; false when the caller should close it as usual.
+   * Handles a pushed note:deleted, or a note:trashed (`movedToTrash`, #569).
+   * Returns true when the note stays open for the question; false when the
+   * caller should close it as usual.
    */
-  const onRemoteDelete = useCallback((noteId: string, unsavedText: boolean): boolean => {
+  const onRemoteDelete = useCallback((noteId: string, unsavedText: boolean, movedToTrash = false): boolean => {
     const ownDelete = ownDeletes.current.delete(noteId);
     const open = depsRef.current.activeNoteRef.current;
     const action = deletedNoteAction({ deletedId: noteId, openNoteId: open?.id ?? null, ownDelete, unsavedText });
     if (action !== "ask" || !open) return false;
     setDeleted(open);
+    setTrashed(movedToTrash);
     setError(null);
     return true;
   }, [setDeleted]);
@@ -124,6 +128,7 @@ export function useDeletedElsewhere(deps: DeletedElsewhereDeps) {
   const reset = useCallback(() => {
     generation.current += 1;
     setDeleted(null);
+    setTrashed(false);
     setError(null);
     setBusy(false);
   }, [setDeleted]);
@@ -149,6 +154,7 @@ export function useDeletedElsewhere(deps: DeletedElsewhereDeps) {
 
   return {
     deleted,
+    trashed,
     busy,
     error,
     markOwnDelete,

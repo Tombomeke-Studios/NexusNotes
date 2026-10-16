@@ -21,6 +21,13 @@ describe("DeletedElsewhereDialog", () => {
     expect(dialog).toHaveTextContent(/your unsaved text is still here/i);
   });
 
+  it("says the note was moved to the Trash when it was (#569)", () => {
+    renderDialog({ trashed: true });
+    const dialog = screen.getByRole("alertdialog", { name: /moved to the trash/i });
+    expect(dialog).toHaveTextContent(/"Plans" was moved to the Trash on another device/);
+    expect(dialog).toHaveTextContent(/your unsaved text is still here/i);
+  });
+
   it("offers keep as new note (focused) and discard", () => {
     const { onKeep, onDiscard } = renderDialog();
     const keep = screen.getByRole("button", { name: "Keep as new note" });

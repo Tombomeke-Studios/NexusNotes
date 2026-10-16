@@ -49,7 +49,7 @@ import {
   ApiError,
 } from "./lib/api";
 import { restoreFailureAction } from "./lib/session";
-import { createLoadSequence, isForVault, keepsDecryptedPush } from "./lib/syncEvents";
+import { createLoadSequence, createTrashEchoes, isForVault, keepsDecryptedPush } from "./lib/syncEvents";
 import { sealLegacyMeta, needsMetaSeal } from "./lib/legacyMeta";
 import {
   setupVaultEncryption,
@@ -391,6 +391,8 @@ export default function App() {
     deletedElsewhere;
   // While that question is open nothing may be saved to the deleted note.
   const ignoreSave = useCallback(() => {}, []);
+  // note:trashed is followed by a note:deleted for the same note (#569).
+  const trashEchoes = useRef(createTrashEchoes()).current;
 
   // The open note moves to another device's version. The ref is updated at
   // once so a second push right after this one compares with the new text.
@@ -544,7 +546,8 @@ export default function App() {
     if (user) {
       syncClient.connect();
       const unsub = syncClient.onMessage((type, payload) => {
-        if (type === "note:created" || type === "note:updated") {
+        // A restored note (#569) comes back like a new one, through the same guards.
+        if (type === "note:created" || type === "note:updated" || type === "note:restored") {
           // Notes of other vaults (shared with this account, open elsewhere)
           // never join the open vault's list (#562), not even after a vault
           // switch during the decryption below.
@@ -630,13 +633,18 @@ export default function App() {
             setNoteList([]);
           }
           loadVaultsRef.current();
-        } else if (type === "note:deleted") {
+        } else if (type === "note:trashed" || type === "note:deleted") {
           const { note_id } = payload as { note_id: string };
+          // Moved to the Trash (#569): handled like a delete; the note:deleted
+          // sent after it for older apps is ignored.
+          const movedToTrash = type === "note:trashed";
+          if (movedToTrash) trashEchoes.trashed(note_id);
+          else if (trashEchoes.isEcho(note_id)) return;
           setNoteList((prev) => prev.filter((n) => n.id !== note_id));
           // Unsaved or unconfirmed text in the open note is never dropped
           // here: the note stays open and the user is asked (#561).
           const unsavedText = isDirtyStatus(saveStatusRef.current) || unconfirmedNoteIds().includes(note_id);
-          if (onRemoteDelete(note_id, unsavedText)) {
+          if (onRemoteDelete(note_id, unsavedText, movedToTrash)) {
             setLastSyncAt(new Date());
             return;
           }
@@ -650,7 +658,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, vaultOf, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, onVaultEncrypted, unconfirmedNoteIds]);
+  }, [user, vaultOf, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, onVaultEncrypted, unconfirmedNoteIds, trashEchoes]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -2299,6 +2307,7 @@ export default function App() {
           <DeletedElsewhereDialog
             key="deleted-elsewhere"
             noteTitle={activeNote?.id === deletedElsewhere.deleted.id ? activeNote.title : deletedElsewhere.deleted.title}
+            trashed={deletedElsewhere.trashed}
             busy={deletedElsewhere.busy}
             error={deletedElsewhere.error}
             onKeep={() => void deletedElsewhere.keepAsNew()}

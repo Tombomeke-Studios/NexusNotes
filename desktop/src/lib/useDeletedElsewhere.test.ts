@@ -47,6 +47,25 @@ describe("useDeletedElsewhere", () => {
     expect(deps.closeNote).not.toHaveBeenCalled();
   });
 
+  it("remembers that the note went to the Trash on another device (#569)", () => {
+    const { hook } = setup();
+    act(() => {
+      hook.result.current.onRemoteDelete("n1", true, true);
+    });
+    expect(hook.result.current.deleted?.id).toBe("n1");
+    expect(hook.result.current.trashed).toBe(true);
+    act(() => hook.result.current.reset());
+    expect(hook.result.current.trashed).toBe(false);
+  });
+
+  it("does not call a plain delete elsewhere a move to the Trash", () => {
+    const { hook } = setup();
+    act(() => {
+      hook.result.current.onRemoteDelete("n1", true);
+    });
+    expect(hook.result.current.trashed).toBe(false);
+  });
+
   it("lets a saved note close as before", () => {
     const { hook } = setup();
     let kept = true;

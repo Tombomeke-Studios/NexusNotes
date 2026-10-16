@@ -2,6 +2,8 @@ import { OverlayMotion } from "../motion/OverlayMotion";
 
 interface DeletedElsewhereDialogProps {
   noteTitle: string;
+  /** It was moved to the Trash (#569) rather than deleted for good. */
+  trashed?: boolean;
   /** The new note is being created: both choices wait for it. */
   busy: boolean;
   /** Why "Keep as new note" failed; the text is still in the editor. */
@@ -16,7 +18,7 @@ interface DeletedElsewhereDialogProps {
  * would leave an editor on a note that no longer exists. "Keep as new note"
  * is the default (focused) choice; only "Discard" drops the text.
  */
-export function DeletedElsewhereDialog({ noteTitle, busy, error, onKeep, onDiscard }: DeletedElsewhereDialogProps) {
+export function DeletedElsewhereDialog({ noteTitle, trashed = false, busy, error, onKeep, onDiscard }: DeletedElsewhereDialogProps) {
   const name = `"${noteTitle || "Untitled"}"`;
   return (
     <OverlayMotion preset="backdrop" className="confirm-overlay">
@@ -29,10 +31,10 @@ export function DeletedElsewhereDialog({ noteTitle, busy, error, onKeep, onDisca
         aria-describedby="deleted-elsewhere-body"
       >
         <div className="confirm-title" id="deleted-elsewhere-title">
-          Note deleted elsewhere
+          {trashed ? "Note moved to the Trash elsewhere" : "Note deleted elsewhere"}
         </div>
         <div className="confirm-body" id="deleted-elsewhere-body">
-          {name} was deleted on another device. Your unsaved text is still here: keep it as a new
+          {name} was {trashed ? "moved to the Trash" : "deleted"} on another device. Your unsaved text is still here: keep it as a new
           note, or discard it.
           {error && (
             <span className="confirm-detail" role="alert">

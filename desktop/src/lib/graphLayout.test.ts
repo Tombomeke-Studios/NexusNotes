@@ -7,6 +7,7 @@ import {
   MAX_FIT_SCALE,
   MIN_FIT_SCALE,
   folderColorIndex,
+  folderColorSlots,
   FOLDER_COLOR_COUNT,
 } from "./graphLayout";
 
@@ -71,5 +72,48 @@ describe("folderColorIndex (#267)", () => {
     const i = folderColorIndex("Projects")!;
     expect(i).toBeGreaterThanOrEqual(1);
     expect(i).toBeLessThanOrEqual(FOLDER_COLOR_COUNT);
+  });
+});
+
+describe("folderColorSlots (#593)", () => {
+  it("gives a vault's folders their own slot in sorted order", () => {
+    const slots = folderColorSlots(["Templates", "Examples", "Daily", "Examples"]);
+    expect([...slots.entries()]).toEqual([
+      ["Daily", 1],
+      ["Examples", 2],
+      ["Templates", 3],
+    ]);
+  });
+
+  it("sorts case-insensitively and leaves root notes out", () => {
+    const slots = folderColorSlots(["beta", "", "Alpha", "Gamma"]);
+    expect(slots.get("Alpha")).toBe(1);
+    expect(slots.get("beta")).toBe(2);
+    expect(slots.get("Gamma")).toBe(3);
+    expect(slots.has("")).toBe(false);
+  });
+
+  it("never gives two folders the same colour while the palette lasts", () => {
+    // "Examples" and "Daily" hashed onto the same slot before #593.
+    expect(folderColorIndex("Examples")).toBe(folderColorIndex("Daily"));
+    const folders = ["Examples", "Daily", ...Array.from({ length: FOLDER_COLOR_COUNT - 2 }, (_, i) => `Folder ${i}`)];
+    const slots = folderColorSlots(folders);
+    expect(new Set(slots.values()).size).toBe(FOLDER_COLOR_COUNT);
+    expect(slots.get("Examples")).not.toBe(slots.get("Daily"));
+  });
+
+  it("falls back to the name hash for folders beyond the palette", () => {
+    const folders = Array.from({ length: FOLDER_COLOR_COUNT + 3 }, (_, i) => `F${String(i).padStart(2, "0")}`);
+    const slots = folderColorSlots(folders);
+    for (let i = 0; i < FOLDER_COLOR_COUNT; i++) expect(slots.get(folders[i])).toBe(i + 1);
+    for (const extra of folders.slice(FOLDER_COLOR_COUNT)) expect(slots.get(extra)).toBe(folderColorIndex(extra));
+  });
+
+  it("folderColorIndex reads the slot and hashes only folders it does not know", () => {
+    const slots = folderColorSlots(["Daily", "Examples"]);
+    expect(folderColorIndex("Daily", slots)).toBe(1);
+    expect(folderColorIndex("Examples", slots)).toBe(2);
+    expect(folderColorIndex("Elsewhere", slots)).toBe(folderColorIndex("Elsewhere"));
+    expect(folderColorIndex("", slots)).toBeNull();
   });
 });

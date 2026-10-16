@@ -47,6 +47,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] `fix/delete-confirm`: confirm before deleting with the Delete key or a multi-select; desktop developer, after `fix/sync-event-handling` (#568)
 - [x] `fix/delete-confirm-polish`: delete dialog follow-ups: a 404 counts as deleted, untitled notes, listed titles, red button, error wording; desktop developer (#586)
 - [x] `fix/graph-narrow-toolbar`: in a narrow graph pane the toolbar moves below the search box and the tip below both; desktop developer, after `fix/sync-event-handling` (#580)
+- [x] `fix/graph-folder-colours`: each folder gets its own colour-blind-safe graph colour, assigned per vault in sorted order; desktop developer (#593)
 - [ ] `fix/rename-echo`: tag rename and note moves go through the save path; backend and data developer, after `feature/e2ee-drafts` (#564)
 - [ ] Sprint 2: Trash with 30-day restore, first after offline (#569)
 - [ ] Sprint 2: links to attached files open the file (#566), update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)

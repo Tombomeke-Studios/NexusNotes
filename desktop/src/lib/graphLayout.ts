@@ -87,10 +87,34 @@ export function fitTransform(points: Point[], width: number, height: number, pad
 /** How many folder colours the theme defines (--graph-folder-1 ... -N). */
 export const FOLDER_COLOR_COUNT = 10;
 
-/** A folder's colour slot (1-based), stable per name; null for root notes. */
-export function folderColorIndex(folder: string): number | null {
-  if (!folder) return null;
+function hashSlot(folder: string): number {
   let hash = 0;
   for (let i = 0; i < folder.length; i++) hash = (hash * 31 + folder.charCodeAt(i)) | 0;
   return (Math.abs(hash) % FOLDER_COLOR_COUNT) + 1;
+}
+
+/** Distinct folder names (root "" left out), sorted case-insensitively. */
+export function sortedFolders(folders: Iterable<string>): string[] {
+  return [...new Set(folders)]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }) || (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * A vault's colour slots (#593): its folders in sorted order get slots
+ * 1..N, so no two share a colour while the palette lasts (hashing the name
+ * put "Examples" and "Daily" on the same one). Folders beyond the palette
+ * fall back to the name hash. Root notes ("") get no slot.
+ */
+export function folderColorSlots(folders: Iterable<string>): Map<string, number> {
+  return new Map(sortedFolders(folders).map((folder, i) => [folder, i < FOLDER_COLOR_COUNT ? i + 1 : hashSlot(folder)]));
+}
+
+/**
+ * A folder's colour slot (1-based); null for root notes. Reads `slots` from
+ * folderColorSlots when given, else (or for a folder it lacks) hashes the name.
+ */
+export function folderColorIndex(folder: string, slots?: Map<string, number>): number | null {
+  if (!folder) return null;
+  return slots?.get(folder) ?? hashSlot(folder);
 }

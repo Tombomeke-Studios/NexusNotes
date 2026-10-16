@@ -1,5 +1,6 @@
 import type { Note } from "./types";
 import { extractTags } from "./tags";
+import { sortedFolders } from "./graphLayout";
 
 export interface GraphNode {
   id: string;
@@ -24,6 +25,12 @@ export interface GraphLink {
 export interface GraphData {
   nodes: GraphNode[];
   links: GraphLink[];
+  /**
+   * Every top-level folder in the vault, sorted (#593). Folder colours are
+   * assigned from this list, so a subgraph (the local graph) colours a folder
+   * the same as the full graph. Falls back to the nodes' folders when absent.
+   */
+  folders?: string[];
 }
 
 const WIKI_LINK_RE = /(!?)\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
@@ -130,6 +137,7 @@ export function localGraph(data: GraphData, noteId: string, depth: number): Grap
   return {
     nodes: data.nodes.filter((n) => within.has(n.id)),
     links: data.links.filter((l) => within.has(l.source) && within.has(l.target)),
+    folders: data.folders,
   };
 }
 
@@ -219,5 +227,5 @@ export function buildGraphData(notes: Note[]): GraphData {
     });
   }
 
-  return { nodes, links };
+  return { nodes, links, folders: sortedFolders(nodes.map((n) => n.folder)) };
 }

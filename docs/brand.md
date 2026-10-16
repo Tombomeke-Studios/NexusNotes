@@ -41,7 +41,13 @@ never the hex values.
 | Error | `--error` | `#f38ba8` |
 
 The accent gradient runs from `#cba6f7` to `#b4befe` at 135 degrees. Graph folder
-colours are `--graph-folder-1` to `--graph-folder-10`.
+colours are `--graph-folder-1` to `--graph-folder-10`: a categorical, colour-blind-safe set
+based on Okabe-Ito (sky blue, orange, bluish green, yellow, reddish purple, vermillion,
+blue, then light green, light pink and brown), with notes outside a folder in a neutral
+grey (`--graph-root`). They are deliberately not the brand lilacs, which read as one colour
+in a graph. A vault's folders take the slots in alphabetical order, so the first six, which
+stay apart for protan, deutan and tritan vision too, are the ones most vaults use;
+`graphPalette.test.ts` guards the distances and the 3:1 contrast on the graph background.
 
 ## Logo
 

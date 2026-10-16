@@ -234,6 +234,7 @@ it is what it exists for:
 | `src/lib/crypto.ts` | E2EE crypto core: Argon2id derivation, AES-GCM note encryption, key wrapping, recovery codes (see docs/encryption.md) |
 | `src/lib/vaultKeys.ts` | Vault key management on top of crypto.ts: setup/unlock/recover/rewrap, in-memory unlocked-key session, note-level encrypt/decrypt helpers |
 | `src/lib/useVaultLock.ts` | Locking an e2ee vault (#545) by hand or after the idle time in prefs: saves its notes first, then drops the key and App clears every decrypted copy; a failed save keeps it unlocked (failed-save form / postponed auto-lock). `keepUnsavedTextWhileLocked` is the seam for encrypted drafts (#549) |
+| `src/lib/lockedVaultCleanup.ts` | `clearLockedVault`: the list of workspace state a vault lock empties (notes, tabs, editor, folders, filters, dialogs); add new state that can hold a vault's plaintext here |
 | `src/lib/attachmentCrypto.ts` + `attachmentClient.ts` | E2EE attachments (#238): files encrypted on the device under an opaque `e2ee.<…>.bin` name; the client lists/uploads/opens attachments through the vault's encryption (use it, not `api.attachments`, in UI code) |
 | `src/lib/linkedFiles.ts` | Linked files through the vault's encryption (#364): seals name/source/annotations in e2ee vaults, sends the decrypted URL to the proxy (use it, not `api.links`, in UI code) |
 | `src/lib/vaultConvert.ts` | Converts a standard vault to e2ee (#361): new vault key, every note encrypted on the device, one atomic `POST /api/vaults/{id}/encryption/convert`, retry on 409 |

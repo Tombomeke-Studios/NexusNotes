@@ -48,7 +48,7 @@ import {
   ApiError,
 } from "./lib/api";
 import { restoreFailureAction } from "./lib/session";
-import { createLoadSequence, isForVault } from "./lib/syncEvents";
+import { createLoadSequence, isForVault, keepsDecryptedPush } from "./lib/syncEvents";
 import { sealLegacyMeta, needsMetaSeal } from "./lib/legacyMeta";
 import {
   setupVaultEncryption,
@@ -80,6 +80,7 @@ import { welcomeNotes, QUICK_START_TITLE } from "./lib/welcome";
 import { useNoteSave, isDirtyStatus, type SaveStatus } from "./lib/useNoteSave";
 import { useCloseGuard, type ClosePrompt } from "./lib/useCloseGuard";
 import { useVaultLock, lockVaultCommands } from "./lib/useVaultLock";
+import { clearLockedVault } from "./lib/lockedVaultCleanup";
 import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
 import { DeleteConfirmDialog } from "./components/Workspace/DeleteConfirmDialog";
 import { useDeleteConfirm } from "./lib/useDeleteConfirm";
@@ -301,6 +302,8 @@ export default function App() {
   const {
     saveNote: handleSaveNote,
     saveAll: saveAllNotes,
+    saveVault: saveVaultNotes,
+    hasUnsavedText,
     hasUnconfirmed,
     unconfirmedNoteIds,
     liveChange: handleLiveChange,
@@ -542,12 +545,16 @@ export default function App() {
           // switch during the decryption below.
           if (!isForVault(payload as Note, activeVaultIdRef.current)) return;
           // E2ee payloads arrive as ciphertext; state only holds plaintext.
+          const pushedVault = (payload as Note).vault_id;
+          const keyBefore = vaultKeySession.get(pushedVault);
           decryptIncomingChecked(payload as Note).then(({ note: incoming, readable }) => {
             if (!isForVault(incoming, activeVaultIdRef.current)) return;
-            // Text that could not be decrypted never reaches the open note:
-            // not the editor, not a conflict comparison (it would be saved
-            // back as the note's content).
-            if (!readable && activeNoteRef.current?.id === incoming.id) return;
+            // Text that could not be decrypted never reaches state (not the
+            // list, the editor or a conflict comparison), and neither does a
+            // note whose vault was locked while it was decrypted (#545).
+            const e2ee = isE2eeVault(vaultOf(pushedVault));
+            const keyAfter = vaultKeySession.get(pushedVault);
+            if (!keepsDecryptedPush({ e2ee, readable, keyBefore, keyAfter })) return;
             // An echo must not clobber unsaved local edits on the open note —
             // e.g. a rename typed right after Ctrl+N would silently revert
             // and the next autosave would persist the old title (#204).
@@ -638,7 +645,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, onVaultEncrypted, unconfirmedNoteIds]);
+  }, [user, vaultOf, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, onVaultEncrypted, unconfirmedNoteIds]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -919,6 +926,7 @@ export default function App() {
   // loose files, created through the vault's encryption like any new note.
   const importFolderRef = useRef<HTMLInputElement>(null);
   const importFilesRef = useRef<HTMLInputElement>(null);
+  const importingInto = useRef<string | null>(null);
   const handleImportFiles = useCallback(async (list: FileList | null) => {
     const vault = vaultListRef.current.find((v) => v.id === activeVaultIdRef.current);
     if (!list || list.length === 0 || !vault) return;
@@ -926,24 +934,30 @@ export default function App() {
       toast("Unlock the vault before importing into it.", { kind: "error" });
       return;
     }
-    // Other files become attachments of the notes that embed them (#551).
-    const plan = await planImport(Array.from(list), noteListRef.current);
-    const { created, ...result } = await runImport(plan, {
-      createNote: async (n): Promise<Note> => {
-        const { content, checksum } = await encryptNoteForVault(vault, n.content);
-        const title = await encryptFieldForVault(vault, n.title);
-        const path = await encryptFieldForVault(vault, n.path);
-        const note = await notesApi.create(vault.id, title, path, content, checksum);
-        return { ...note, title: n.title, path: n.path, content: n.content };
-      },
-      uploadAttachment: (noteId, file) => uploadAttachment(noteId, file, vault),
-      onProgress: (done, total) =>
-        done % 5 === 0 && toast(`Importing ${done + 1} of ${total}…`, { key: "import", duration: 60_000 }),
-    });
-    const ids = new Set(created.map((n) => n.id));
-    setNoteList((prev) => [...prev.filter((n) => !ids.has(n.id)), ...created]);
-    const { message, kind } = summarizeImport({ created, ...result });
-    toast(message, { key: "import", kind, duration: message.length > 60 ? 12_000 : undefined });
+    // A lock of this vault waits for the import (#545).
+    importingInto.current = vault.id;
+    try {
+      // Other files become attachments of the notes that embed them (#551).
+      const plan = await planImport(Array.from(list), noteListRef.current);
+      const { created, ...result } = await runImport(plan, {
+        createNote: async (n): Promise<Note> => {
+          const { content, checksum } = await encryptNoteForVault(vault, n.content);
+          const title = await encryptFieldForVault(vault, n.title);
+          const path = await encryptFieldForVault(vault, n.path);
+          const note = await notesApi.create(vault.id, title, path, content, checksum);
+          return { ...note, title: n.title, path: n.path, content: n.content };
+        },
+        uploadAttachment: (noteId, file) => uploadAttachment(noteId, file, vault),
+        onProgress: (done, total) =>
+          done % 5 === 0 && toast(`Importing ${done + 1} of ${total}…`, { key: "import", duration: 60_000 }),
+      });
+      const ids = new Set(created.map((n) => n.id));
+      setNoteList((prev) => [...prev.filter((n) => !ids.has(n.id)), ...created]);
+      const { message, kind } = summarizeImport({ created, ...result });
+      toast(message, { key: "import", kind, duration: message.length > 60 ? 12_000 : undefined });
+    } finally {
+      importingInto.current = null;
+    }
   }, []);
 
   const handleExportVault = useCallback(async () => {
@@ -1314,6 +1328,8 @@ export default function App() {
     const key = await unlockVaultKey(vault.encryption_meta as EncryptionMeta, passphrase);
     vaultKeySession.set(vault.id, key);
     setUnlockVaultId(null);
+    // A lock emptied them (#545), and the active vault didn't change.
+    if (activeVaultIdRef.current === vault.id) setEmptyFolders(loadFolders(vault.id));
     loadNotes(vault.id);
   }, [unlockVaultId, loadNotes]);
 
@@ -1623,44 +1639,32 @@ export default function App() {
   const vaultLock = useVaultLock({
     vaults: () => vaultListRef.current,
     activeVaultId: () => activeVaultIdRef.current,
-    saveVault: (vaultId) =>
-      saveAllNotes(activeNoteRef.current?.vault_id === vaultId && isDirtyStatus(saveStatusRef.current), vaultId),
+    saveVault: saveVaultNotes,
+    hasUnsavedText,
     busyReason: (vaultId) =>
       deletedElsewhere.asksAbout(vaultId)
         ? "A note in this vault was deleted elsewhere. Keep or discard your text first."
         : closePrompt
           ? "Finish the unsaved-changes question first."
-          : null,
-    clearVault: (vaultId) => {
-      setLinksVaultId((id) => (id === vaultId ? null : id));
-      if (activeVaultIdRef.current !== vaultId) return;
-      selectionSeq.current += 1;
-      cancelNoteLoads();
-      resetDeletedElsewhere();
-      pendingRemote.current = null;
-      linkBaseline.current = null;
-      setReplaceRequest(null);
-      setInsertRequest(null);
-      setTabs([]);
-      setActiveTabKey(null);
-      setActiveNote(null);
-      setEditorContent("");
-      setSaveStatus("idle");
-      setNoteList([]);
-      setSelectedIds(new Set());
-      setFilterTags([]);
-      setFilterFolder(null);
-      setSearchQuery("");
-      setConflictPrompt(null);
-      setHistoryOpen(false);
-      setShowGlobalSearch(false);
-      setPaletteQuery(null);
-      setShowTemplatePicker(false);
-      setRenameTag(null);
-      setCtxMenu(null);
-      setShowCalendar(false);
-      deleteConfirm.cancel();
-    },
+          : importingInto.current === vaultId
+            ? "Notes are still being imported into this vault."
+            : null,
+    clearVault: (vaultId) =>
+      clearLockedVault(vaultId, {
+        activeVaultId: () => activeVaultIdRef.current,
+        cancelPending: () => {
+          selectionSeq.current += 1;
+          cancelNoteLoads();
+          resetDeletedElsewhere();
+          deleteConfirm.cancel();
+          pendingRemote.current = null;
+          linkBaseline.current = null;
+        },
+        setLinksVaultId, setTabs, setActiveTabKey, setActiveNote, setEditorContent, setSaveStatus, setNoteList,
+        setEmptyFolders, setSelectedIds, setFilterTags, setFilterFolder, setSearchQuery, setReplaceRequest,
+        setInsertRequest, setConflictPrompt, setHistoryOpen, setShowGlobalSearch, setPaletteQuery,
+        setShowTemplatePicker, setRenameTag, setCtxMenu, setShowCalendar,
+      }),
     promptUnlock: setUnlockVaultId,
     autoLockMinutes: prefs.autoLockMinutes,
   });
@@ -1839,8 +1843,10 @@ export default function App() {
     );
   }
 
-  const tree = buildTree(filteredNoteList, { keepNoteOrder: true, emptyFolders });
   const activeVault = vaultList.find((v) => v.id === activeVaultId);
+  const activeVaultLocked = isVaultLocked(activeVault);
+  // A locked vault shows no file tree at all (#545): no note or folder names.
+  const tree = activeVaultLocked ? [] : buildTree(filteredNoteList, { keepNoteOrder: true, emptyFolders });
   const tabItems = tabs.map((t) => ({
     ...t,
     // A note deleted elsewhere is gone from the list but may still be open (#561).
@@ -1856,7 +1862,6 @@ export default function App() {
   // window listener).
   flattenedNoteIdsRef.current = flattenTreeNoteIds(tree);
   graphActiveRef.current = graphActive;
-  const activeVaultLocked = isVaultLocked(activeVault);
 
   modalOpenRef.current =
     paletteQuery !== null || showGlobalSearch || showSettings || showCalendar ||
@@ -2133,7 +2138,12 @@ export default function App() {
               initialText={editorContent}
               attachmentBlockReason={attachmentBlockReason(activeVault)}
               vault={activeVault}
-              readOnly={creatingNote || deletedElsewhere.deleted !== null}
+              readOnly={
+                creatingNote ||
+                deletedElsewhere.deleted !== null ||
+                // Saving before a lock (#545): nothing typed may outrun it.
+                (activeVaultId !== null && vaultLock.locking.includes(activeVaultId))
+              }
               savedFlash={savedFlash}
             />
           )}
@@ -2298,6 +2308,7 @@ export default function App() {
             kind="lock"
             saving={vaultLock.retrying}
             error={vaultLock.failure.error}
+            edited={vaultLock.failure.edited}
             onCancel={vaultLock.dismiss}
             onDiscard={vaultLock.dismiss}
             onSave={() => void vaultLock.retry()}

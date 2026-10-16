@@ -85,6 +85,8 @@ import { clearLockedVault } from "./lib/lockedVaultCleanup";
 import { CloseConfirmDialog } from "./components/Workspace/CloseConfirmDialog";
 import { DeleteConfirmDialog } from "./components/Workspace/DeleteConfirmDialog";
 import { useDeleteConfirm } from "./lib/useDeleteConfirm";
+import { useTrash } from "./lib/useTrash";
+import { TrashDialog } from "./components/Trash/TrashDialog";
 import { ConflictDialog, ConflictNotice, DeletedElsewhereDialog } from "./components/Conflict";
 import { useDeletedElsewhere } from "./lib/useDeletedElsewhere";
 import type { SortBy } from "./lib/noteFilter";
@@ -393,6 +395,21 @@ export default function App() {
   const ignoreSave = useCallback(() => {}, []);
   // note:trashed is followed by a note:deleted for the same note (#569).
   const trashEchoes = useRef(createTrashEchoes()).current;
+  // The open vault's Trash (#569); nothing while the vault is locked.
+  const vaultForTrash = vaultList.find((v) => v.id === activeVaultId) ?? null;
+  const openNoteRef = useRef<(noteId: string) => void>(() => {});
+  const trash = useTrash(vaultForTrash && !isVaultLocked(vaultForTrash) ? vaultForTrash : null, {
+    api: trashApi,
+    openField: decryptFieldForVault,
+    decryptNote: decryptIncomingChecked,
+    keyOf: (vaultId) => vaultKeySession.get(vaultId),
+    onRestored: (note) => {
+      if (!isForVault(note, activeVaultIdRef.current)) return;
+      setNoteList((prev) => (prev.some((n) => n.id === note.id) ? prev : [...prev, note]));
+    },
+    openNote: (noteId) => openNoteRef.current(noteId),
+  });
+  const onTrashEvent = trash.onSyncEvent;
 
   // The open note moves to another device's version. The ref is updated at
   // once so a second push right after this one compares with the new text.
@@ -548,6 +565,7 @@ export default function App() {
       const unsub = syncClient.onMessage((type, payload) => {
         // A restored note (#569) comes back like a new one, through the same guards.
         if (type === "note:created" || type === "note:updated" || type === "note:restored") {
+          if (type === "note:restored") onTrashEvent(type, payload);
           // Notes of other vaults (shared with this account, open elsewhere)
           // never join the open vault's list (#562), not even after a vault
           // switch during the decryption below.
@@ -640,6 +658,7 @@ export default function App() {
           const movedToTrash = type === "note:trashed";
           if (movedToTrash) trashEchoes.trashed(note_id);
           else if (trashEchoes.isEcho(note_id)) return;
+          onTrashEvent(type, payload);
           setNoteList((prev) => prev.filter((n) => n.id !== note_id));
           // Unsaved or unconfirmed text in the open note is never dropped
           // here: the note stays open and the user is asked (#561).
@@ -658,7 +677,7 @@ export default function App() {
         syncClient.disconnect();
       };
     }
-  }, [user, vaultOf, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, onVaultEncrypted, unconfirmedNoteIds, trashEchoes]);
+  }, [user, vaultOf, decryptIncomingChecked, acceptRemoteUpdate, isOwnVersion, replaceEditorText, adoptRemote, retrySavesNow, replayDrafts, cancelNoteLoads, onRemoteDelete, onVaultEncrypted, unconfirmedNoteIds, trashEchoes, onTrashEvent]);
 
   useEffect(() => {
     setRecentIds(activeVaultId ? loadRecent(activeVaultId) : []);
@@ -1503,6 +1522,8 @@ export default function App() {
     }
     setCursor({ line: 1, col: 1 });
   }, [decryptIncoming, flushPendingSave, localCopy]);
+  // The restore toast's "Open" (#569).
+  openNoteRef.current = (noteId) => void handleSelectNote(noteId);
 
   // Keyboard navigation of the file tree: Up/Down move a single-note highlight
   // through the visible order, Enter opens it. Ignored while typing, in the
@@ -1908,6 +1929,7 @@ export default function App() {
     linksVaultId !== null || ctxMenu !== null || workspaceMenu !== null ||
     deleteConfirm.pending !== null ||
     deletedElsewhere.deleted !== null ||
+    trash.open ||
     vaultLock.failure !== null;
 
   return (
@@ -2028,6 +2050,8 @@ export default function App() {
               onCreateFolder={handleCreateFolder}
               onMoveNote={handleMoveNote}
               onDeleteFolder={handleDeleteFolder}
+              trashCount={trash.count}
+              onOpenTrash={trash.openTrash}
               newFolderNonce={newFolderNonce}
               onRequestNewVault={() => setShowNewVault(true)}
               onShareVault={setShareVaultId}
@@ -2312,6 +2336,23 @@ export default function App() {
             error={deletedElsewhere.error}
             onKeep={() => void deletedElsewhere.keepAsNew()}
             onDiscard={deletedElsewhere.discard}
+          />
+        )}
+        {trash.open && vaultForTrash && (
+          <TrashDialog
+            key="trash"
+            vaultName={vaultForTrash.name}
+            entries={trash.entries}
+            loading={trash.loading}
+            error={trash.error}
+            busyIds={trash.busyIds}
+            emptying={trash.emptying}
+            canRestore={trash.canRestore}
+            canPurge={trash.canPurge}
+            onRestore={(id) => void trash.restore(id)}
+            onPurge={(id) => void trash.purge(id)}
+            onEmpty={() => void trash.emptyTrash()}
+            onClose={trash.closeTrash}
           />
         )}
       </AnimatePresence>

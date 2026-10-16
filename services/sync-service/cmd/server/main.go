@@ -118,6 +118,8 @@ func main() {
 	emailAuth := service.NewEmailAuthService(userRepo, verifyRepo, resetRepo, refreshRepo, mailer, cfg.AppBaseURL)
 	linkedFileRepo := repository.NewLinkedFileRepo(pool, crypt)
 	syncService := service.NewSyncService(noteRepo, vaultRepo, linkRepo, tagRepo, aliasRepo, linkedFileRepo, indexer)
+	trashRetention := time.Duration(cfg.TrashRetentionDays) * 24 * time.Hour
+	syncService.SetTrashRetention(trashRetention)
 	// Search data is derived: an empty index (new volume, restore without it)
 	// is refilled from the database in the background (#365).
 	go func() {
@@ -198,6 +200,7 @@ func main() {
 	memberHandler := handler.NewMemberHandler(vaultRepo, memberRepo, userRepo)
 	attachHandler := handler.NewAttachmentHandler(attachStore, repository.NewAttachmentRepo(pool), vaultRepo, syncService)
 	// Deleting an account, vault or note also erases its attachment files (#290).
+	var trashFiles *service.FileCleanup
 	// Wired only when object storage is up: a nil *storage.Store inside the
 	// interface would not be nil.
 	if attachStore != nil {
@@ -217,7 +220,24 @@ func main() {
 		accountService.SetFileCleanup(files)
 		vaultHandler.SetFileCleanup(files)
 		noteHandler.SetFileCleanup(files)
+		trashFiles = files
 	}
+	// Notes trashed longer than TRASH_RETENTION_DAYS are deleted for good
+	// (#569): hourly, by one instance at a time (advisory lock).
+	trashPurger := service.NewTrashPurger(noteRepo, trashFiles, indexer, trashRetention)
+	trashPurger.OnPurged = noteHandler.NotifyPurged
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			if n, err := trashPurger.Run(context.Background()); err != nil {
+				slog.Error("trash purge failed", "error", err, "purged", n)
+			} else if n > 0 {
+				slog.Info("trash purge deleted notes past retention", "count", n)
+			}
+			<-ticker.C
+		}
+	}()
 	tagHandler := handler.NewTagHandler(syncService, vaultRepo)
 	searchHandler := handler.NewSearchHandler(indexer, vaultRepo, noteRepo)
 	starHandler := handler.NewStarHandler(repository.NewStarRepo(pool), vaultRepo, syncService)
@@ -261,7 +281,10 @@ func main() {
 		{"GET /api/vaults/{vaultId}/tags", tagHandler.ListVaultTags, false},
 		{"POST /api/vaults/{vaultId}/notes", noteHandler.Create, true},
 		{"PUT /api/notes/{noteId}", noteHandler.Update, true},
+		// A token's delete moves the note to the trash (#569); no MCP route
+		// can purge.
 		{"DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete, true},
+		{"POST /api/notes/{noteId}/trash", noteHandler.Trash, true},
 	} {
 		if !route.write {
 			mcpRead.HandleFunc(route.pattern, route.handler)
@@ -302,6 +325,13 @@ func main() {
 	protectedMux.HandleFunc("GET /api/notes/{noteId}", noteHandler.Get)
 	protectedMux.HandleFunc("PUT /api/notes/{noteId}", noteHandler.Update)
 	protectedMux.HandleFunc("DELETE /api/vaults/{vaultId}/notes/{noteId}", noteHandler.Delete)
+	// Trash with a 30-day restore (#569).
+	protectedMux.HandleFunc("POST /api/notes/{noteId}/trash", noteHandler.Trash)
+	protectedMux.HandleFunc("POST /api/notes/{noteId}/restore", noteHandler.Restore)
+	protectedMux.HandleFunc("DELETE /api/notes/{noteId}/purge", noteHandler.Purge)
+	protectedMux.HandleFunc("GET /api/vaults/{id}/trash", noteHandler.ListTrash)
+	protectedMux.HandleFunc("POST /api/vaults/{id}/trash", noteHandler.TrashBatch)
+	protectedMux.HandleFunc("POST /api/vaults/{id}/trash/empty", noteHandler.EmptyTrash)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions", noteHandler.Versions)
 	protectedMux.HandleFunc("GET /api/notes/{noteId}/versions/{versionId}", noteHandler.Version)
 	protectedMux.HandleFunc("POST /api/notes/{noteId}/versions/{versionId}/restore", noteHandler.RestoreVersion)

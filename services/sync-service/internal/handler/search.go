@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -83,10 +84,38 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 		// Meilisearch unavailable (not configured, down, or index missing):
 		// fall back to the Postgres full-text search so search still works.
 		hits = h.fallbackSearch(r, params)
+	} else {
+		hits = h.liveHits(r, params.VaultID, hits)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(hits)
+}
+
+// liveHits drops index hits for notes that are no longer live (#569).
+// Trashing a note removes it from the index, but that runs in the
+// background, so the database has the final say. When the check itself
+// fails the hits are returned as they are.
+func (h *SearchHandler) liveHits(r *http.Request, vaultID string, hits []search.Hit) []search.Hit {
+	if h.noteRepo == nil || len(hits) == 0 {
+		return hits
+	}
+	ids := make([]string, len(hits))
+	for i, hit := range hits {
+		ids[i] = hit.ID
+	}
+	live, err := h.noteRepo.LiveIDs(r.Context(), vaultID, ids)
+	if err != nil {
+		slog.Warn("search: check live notes", "error", err)
+		return hits
+	}
+	out := make([]search.Hit, 0, len(hits))
+	for _, hit := range hits {
+		if live[hit.ID] {
+			out = append(out, hit)
+		}
+	}
+	return out
 }
 
 // fallbackSearch runs a Postgres-backed search when Meilisearch is unavailable.

@@ -140,3 +140,19 @@ func keys(m map[string]string) []string {
 	}
 	return out
 }
+
+// Trashed notes are still the user's data until purged (#569).
+func TestExport_IncludesTrashedNotesInATrashFolder(t *testing.T) {
+	s, notes := exportFixture(t)
+	notes.notesByVault["v1"] = []model.Note{{ID: "n1", Title: "Live", Content: "kept"}}
+	notes.trashedByVault = map[string][]model.Note{"v1": {{ID: "n2", Title: "Gone", Path: "Old", Content: "binned"}}}
+
+	data, err := s.Export(context.Background(), "u1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	files := readZip(t, data)
+	if files["My Vault/Live.md"] != "kept" || files["My Vault/.trash/Old/Gone.md"] != "binned" {
+		t.Fatalf("got files %v", keys(files))
+	}
+}

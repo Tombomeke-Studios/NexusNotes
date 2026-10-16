@@ -49,15 +49,17 @@ func (s *AccountService) Export(ctx context.Context, userID string) ([]byte, err
 			return nil, fmt.Errorf("list notes for vault %s: %w", vault.ID, err)
 		}
 		used := make(map[string]bool)
-		for _, note := range notes {
-			name := noteEntryName(vault.Name, note, used)
-			w, err := zw.Create(name)
-			if err != nil {
-				return nil, fmt.Errorf("create zip entry %s: %w", name, err)
-			}
-			if _, err := w.Write([]byte(note.Content)); err != nil {
-				return nil, fmt.Errorf("write zip entry %s: %w", name, err)
-			}
+		if err := writeNotes(zw, sanitizeSegment(vault.Name), notes, used); err != nil {
+			return nil, err
+		}
+		// Trashed notes are still the user's data until purged (#569): they
+		// go in a .trash folder of the vault.
+		trashed, err := s.notes.ListTrashedNotes(ctx, vault.ID)
+		if err != nil {
+			return nil, fmt.Errorf("list trashed notes for vault %s: %w", vault.ID, err)
+		}
+		if err := writeNotes(zw, sanitizeSegment(vault.Name)+"/.trash", trashed, used); err != nil {
+			return nil, err
 		}
 	}
 
@@ -65,6 +67,21 @@ func (s *AccountService) Export(ctx context.Context, userID string) ([]byte, err
 		return nil, fmt.Errorf("finalize zip: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+// writeNotes adds each note as a markdown file under root.
+func writeNotes(zw *zip.Writer, root string, notes []model.Note, used map[string]bool) error {
+	for _, note := range notes {
+		name := noteEntryName(root, note, used)
+		w, err := zw.Create(name)
+		if err != nil {
+			return fmt.Errorf("create zip entry %s: %w", name, err)
+		}
+		if _, err := w.Write([]byte(note.Content)); err != nil {
+			return fmt.Errorf("write zip entry %s: %w", name, err)
+		}
+	}
+	return nil
 }
 
 func writeZipJSON(zw *zip.Writer, name string, v any) error {
@@ -80,10 +97,11 @@ func writeZipJSON(zw *zip.Writer, name string, v any) error {
 	return nil
 }
 
-// noteEntryName builds a safe, unique zip path: <vault>/<note path>/<title>.md.
-// Duplicate names get a numeric suffix instead of silently overwriting.
-func noteEntryName(vaultName string, note model.Note, used map[string]bool) string {
-	segments := []string{sanitizeSegment(vaultName)}
+// noteEntryName builds a safe, unique zip path: <root>/<note path>/<title>.md,
+// root being the already sanitised vault folder. Duplicate names get a
+// numeric suffix instead of silently overwriting.
+func noteEntryName(root string, note model.Note, used map[string]bool) string {
+	segments := []string{root}
 	for _, seg := range strings.Split(note.Path, "/") {
 		if s := sanitizeSegment(seg); s != "" {
 			segments = append(segments, s)

@@ -237,6 +237,11 @@ recycled after an hour. Tune it with `DB_MAX_CONNS`, `DB_MIN_CONNS`,
 `DB_MAX_CONN_LIFETIME` and `DB_MAX_CONN_IDLE_TIME` (durations such as `45m`);
 keep `DB_MAX_CONNS` well below Postgres' `max_connections` (100 by default)
 when several instances share one database.
+
+Deleted notes stay in their vault's trash for `TRASH_RETENTION_DAYS` (default 30,
+1-3650) before an hourly job deletes them for good (#569). Only one instance runs
+the job at a time (a Postgres advisory lock). Trashed notes take up space until
+then: there are no storage quotas.
 The `mcp-service` container is the MCP server for AI clients (#221). It is not
 published: the web UI proxies `/mcp` to it, so clients use
 `http(s)://<your host>/mcp` with an MCP token from Settings > AI Access (see

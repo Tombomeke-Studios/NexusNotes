@@ -40,7 +40,7 @@ func (r *TagRepo) GetVaultTags(ctx context.Context, vaultID string) ([]model.Tag
 		`SELECT nt.tag, COUNT(*) AS count
 		 FROM note_tags nt
 		 JOIN notes n ON n.id = nt.note_id
-		 WHERE n.vault_id = $1
+		 WHERE n.vault_id = $1 AND n.deleted_at IS NULL
 		 GROUP BY nt.tag
 		 ORDER BY count DESC, nt.tag ASC`,
 		vaultID,

@@ -49,12 +49,13 @@ func (r *LinkRepo) UpsertLinksTx(ctx context.Context, tx pgx.Tx, vaultID, source
 
 // ResolveTargetsTx resolves target_note_id for unresolved links within the vault.
 // Matches by exact title; first match wins when multiple notes share a title.
+// Trashed notes are not link targets (#569).
 func (r *LinkRepo) ResolveTargetsTx(ctx context.Context, tx pgx.Tx, vaultID, sourceNoteID string) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE note_links
 		 SET target_note_id = (
 		     SELECT n.id FROM notes n
-		     WHERE n.vault_id = $1 AND n.title = note_links.target_title
+		     WHERE n.vault_id = $1 AND n.title = note_links.target_title AND n.deleted_at IS NULL
 		     ORDER BY n.created_at
 		     LIMIT 1
 		 )
@@ -67,13 +68,38 @@ func (r *LinkRepo) ResolveTargetsTx(ctx context.Context, tx pgx.Tx, vaultID, sou
 	return nil
 }
 
+// ReresolveTitlesTx points every link of the vault whose target title is one
+// of titles at the oldest live note with that title, or at nothing (#569).
+// Run when notes go to or come back from the trash: a link to a trashed note
+// resolves as missing, and a restore brings it back.
+func (r *LinkRepo) ReresolveTitlesTx(ctx context.Context, tx pgx.Tx, vaultID string, titles []string) error {
+	if len(titles) == 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx,
+		`UPDATE note_links
+		 SET target_note_id = (
+		     SELECT n.id FROM notes n
+		     WHERE n.vault_id = $1 AND n.title = note_links.target_title AND n.deleted_at IS NULL
+		     ORDER BY n.created_at
+		     LIMIT 1
+		 )
+		 WHERE vault_id = $1 AND target_title = ANY($2)`,
+		vaultID, titles,
+	)
+	if err != nil {
+		return fmt.Errorf("re-resolve link targets: %w", err)
+	}
+	return nil
+}
+
 // GetBacklinks returns all notes that contain a [[wikilink]] pointing to targetNoteID.
 func (r *LinkRepo) GetBacklinks(ctx context.Context, targetNoteID string) ([]model.BacklinkNote, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT n.id, n.vault_id, n.path, n.title, n.updated_at
 		 FROM note_links nl
 		 JOIN notes n ON n.id = nl.source_note_id
-		 WHERE nl.target_note_id = $1
+		 WHERE nl.target_note_id = $1 AND n.deleted_at IS NULL
 		 ORDER BY n.title`,
 		targetNoteID,
 	)

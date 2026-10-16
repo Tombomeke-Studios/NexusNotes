@@ -13,6 +13,8 @@ import {
   plaintextChecksum,
   bytesToBase64,
   base64ToBytes,
+  encryptBytes,
+  decryptBytes,
   type KdfParams,
 } from "./crypto";
 
@@ -229,6 +231,30 @@ describe("ciphertext format compatibility", () => {
   it("derives the same master key from a stored base64 salt", async () => {
     const params: KdfParams = { algo: "argon2id", m: 64, t: 1, p: 1, salt: FIXTURE_SALT };
     expect(hex(await deriveMasterKey("fixture passphrase", params))).toBe(FIXTURE_MASTER_KEY);
+  });
+});
+
+describe("byte encryption with additional data", () => {
+  const key = generateVaultKey();
+  const bytes = new TextEncoder().encode("bound to its context");
+  const aad = (s: string) => new TextEncoder().encode(s);
+  const text = (b: Uint8Array) => new TextDecoder().decode(b);
+
+  it("opens only with the same additional data", async () => {
+    const sealed = await encryptBytes(bytes, key, aad("vault-1/note-1"));
+    expect(text(await decryptBytes(sealed, key, aad("vault-1/note-1")))).toBe("bound to its context");
+    await expect(decryptBytes(sealed, key, aad("vault-1/note-2"))).rejects.toThrow();
+    await expect(decryptBytes(sealed, key)).rejects.toThrow();
+  });
+
+  it("uses a fresh IV for every encryption", async () => {
+    const a = await encryptBytes(bytes, key, aad("x"));
+    const b = await encryptBytes(bytes, key, aad("x"));
+    expect(bytesToBase64(a.slice(0, 12))).not.toBe(bytesToBase64(b.slice(0, 12)));
+  });
+
+  it("keeps working without additional data", async () => {
+    expect(text(await decryptBytes(await encryptBytes(bytes, key), key))).toBe("bound to its context");
   });
 });
 

@@ -76,16 +76,27 @@ async function importAesKey(raw: Uint8Array, usages: KeyUsage[]): Promise<Crypto
   return crypto.subtle.importKey("raw", raw as BufferSource, "AES-GCM", false, usages);
 }
 
-async function aesEncrypt(plaintext: Uint8Array, rawKey: Uint8Array): Promise<{ iv: Uint8Array; data: Uint8Array }> {
+/** AES-GCM parameters; `aad` is authenticated but not encrypted (binds a ciphertext to its context). */
+function gcmParams(iv: Uint8Array, aad?: Uint8Array): AesGcmParams {
+  const params: AesGcmParams = { name: "AES-GCM", iv: iv as BufferSource };
+  if (aad) params.additionalData = aad as BufferSource;
+  return params;
+}
+
+async function aesEncrypt(
+  plaintext: Uint8Array,
+  rawKey: Uint8Array,
+  aad?: Uint8Array,
+): Promise<{ iv: Uint8Array; data: Uint8Array }> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await importAesKey(rawKey, ["encrypt"]);
-  const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, plaintext as BufferSource);
+  const data = await crypto.subtle.encrypt(gcmParams(iv, aad), key, plaintext as BufferSource);
   return { iv, data: new Uint8Array(data) };
 }
 
-async function aesDecrypt(iv: Uint8Array, data: Uint8Array, rawKey: Uint8Array): Promise<Uint8Array> {
+async function aesDecrypt(iv: Uint8Array, data: Uint8Array, rawKey: Uint8Array, aad?: Uint8Array): Promise<Uint8Array> {
   const key = await importAesKey(rawKey, ["decrypt"]);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, data as BufferSource);
+  const plain = await crypto.subtle.decrypt(gcmParams(iv, aad), key, data as BufferSource);
   return new Uint8Array(plain);
 }
 
@@ -125,19 +136,23 @@ export function base64UrlToBytes(s: string): Uint8Array {
   return base64ToBytes(b64);
 }
 
-/** Encrypts raw bytes (attachment files): IV (12 bytes) followed by ciphertext+tag. */
-export async function encryptBytes(plaintext: Uint8Array, vaultKey: Uint8Array): Promise<Uint8Array> {
-  const { iv, data } = await aesEncrypt(plaintext, vaultKey);
+/**
+ * Encrypts raw bytes (attachment files): IV (12 bytes) followed by
+ * ciphertext+tag. With `aad`, decrypting needs the same bytes (they say what
+ * the ciphertext belongs to, e.g. a vault and note id).
+ */
+export async function encryptBytes(plaintext: Uint8Array, vaultKey: Uint8Array, aad?: Uint8Array): Promise<Uint8Array> {
+  const { iv, data } = await aesEncrypt(plaintext, vaultKey, aad);
   const out = new Uint8Array(iv.length + data.length);
   out.set(iv);
   out.set(data, iv.length);
   return out;
 }
 
-/** Decrypts bytes from encryptBytes; throws on tampering or a wrong key. */
-export async function decryptBytes(payload: Uint8Array, vaultKey: Uint8Array): Promise<Uint8Array> {
+/** Decrypts bytes from encryptBytes; throws on tampering, a wrong key or different `aad`. */
+export async function decryptBytes(payload: Uint8Array, vaultKey: Uint8Array, aad?: Uint8Array): Promise<Uint8Array> {
   if (payload.length < 12 + 16) throw new Error("malformed encrypted bytes");
-  return aesDecrypt(payload.slice(0, 12), payload.slice(12), vaultKey);
+  return aesDecrypt(payload.slice(0, 12), payload.slice(12), vaultKey, aad);
 }
 
 /** SHA-256 hex of the plaintext, computed before encryption (conflict detection). */

@@ -23,6 +23,8 @@ import type { Note } from "../../lib/types";
 import type { ViewMode } from "../../lib/prefs";
 import { cursorPosition } from "../../lib/stats";
 import { toggleTask } from "../../lib/tasks";
+import { applyEdit, editForKey } from "../../lib/editorKeys";
+import { editTextarea } from "../../lib/textareaEdit";
 import { remarkWikilinks } from "../../lib/remarkWikilinks";
 import { remarkTags } from "../../lib/remarkTags";
 import { remarkImageEmbeds } from "../../lib/remarkImageEmbeds";
@@ -358,6 +360,31 @@ export function Editor({
   const handleChangeRef = useRef(handleChange);
   handleChangeRef.current = handleChange;
 
+  // Editor basics (#571): Enter continues a list, Tab indents, Ctrl+I and
+  // Ctrl+K format. Tab normally stays in the editor; right after Esc it
+  // moves the focus on, so the keyboard can always leave.
+  const tabMovesFocus = useRef(false);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const leaving = tabMovesFocus.current;
+    tabMovesFocus.current = e.key === "Escape";
+    if (readOnly || e.nativeEvent.isComposing || e.defaultPrevented) return;
+    const ta = e.currentTarget;
+    const edit = editForKey(e, ta.value, ta.selectionStart, ta.selectionEnd, leaving);
+    if (!edit) return;
+    e.preventDefault();
+    const next = applyEdit(ta.value, edit);
+    editTextarea(ta, edit.start, edit.end, edit.insert, next, handleChange);
+    const select = () => {
+      if (ta.value === next) ta.setSelectionRange(edit.selStart, edit.selEnd);
+    };
+    select();
+    // Without the browser's own edit the text arrives with the next render.
+    requestAnimationFrame(() => {
+      select();
+      reportCursor(ta);
+    });
+  };
+
   // Template insertion (#155): splice the text in at the cursor (replacing a
   // selection if any) and route it through handleChange so the dirty flag,
   // live-change mirror and debounced autosave all behave like typing.
@@ -392,7 +419,8 @@ export function Editor({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      // Lower-cased: with Caps Lock on the key arrives as "S".
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         onSaveRef.current(contentRef.current);
@@ -717,6 +745,7 @@ export function Editor({
             onSelect={(e) => reportCursor(e.currentTarget)}
             onClick={(e) => reportCursor(e.currentTarget)}
             onKeyUp={(e) => reportCursor(e.currentTarget)}
+            onKeyDown={handleKeyDown}
             onDrop={(e) => {
               const files = Array.from(e.dataTransfer.files);
               if (files.length > 0) {

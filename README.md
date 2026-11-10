@@ -239,7 +239,7 @@ testing.
 
 `Ctrl+P` quick-open · `Ctrl+Shift+P` command palette · `Ctrl+Shift+F` global
 search · `Ctrl+N` new note · `Ctrl+G` graph · `Ctrl+D` daily note · `Ctrl+E`
-cycle view · `Ctrl+B` toggle sidebar · `Ctrl+.` toggle right panel · `Ctrl+,`
+cycle view · `Ctrl+Shift+B` toggle sidebar · `Ctrl+.` toggle right panel · `Ctrl+,`
 settings.
 
 ### Stop everything

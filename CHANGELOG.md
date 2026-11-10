@@ -13,6 +13,11 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   also delete a note permanently or empty the Trash, both asked first. Encrypted vaults show
   the titles decrypted on your device. Encrypting a vault asks you to restore or empty its
   Trash first.
+- Editor basics: Enter in a list, task list or quote starts the next item (numbers count up,
+  a new task starts unticked) and Enter on an empty item ends the list. Tab and Shift+Tab
+  indent and outdent the line or the selected lines; Esc, then Tab leaves the editor with
+  the keyboard. Ctrl+B makes the selection bold, Ctrl+I italic, and Ctrl+K turns it into a
+  link. All of it can be undone with Ctrl+Z.
 - Server side of the trash: deleted notes can be moved to their vault's trash and restored
   for 30 days (`TRASH_RETENTION_DAYS`), after which an hourly job deletes them for good with
   their history and attachments. Trashed notes are left out of lists, search, links, tags and
@@ -147,6 +152,8 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   other device's, or merge them by hand.
 
 ### Changed
+- The sidebar toggle is now Ctrl+Shift+B. Ctrl+B still toggles it everywhere except while
+  you are typing in a note, where it makes the selected text bold.
 - The MCP server's client for the sync service and its full HTTP flow (connect with a
   token, list vaults, read a note) are covered by tests.
 - Keyboard users stay inside open dialogs (Tab cycles within them) and return to where they
@@ -168,6 +175,7 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - The graph's one-time tip is shorter and smaller, and the graph opens fitted into the space
   between the search box, toolbar and tip on top and the legend and zoom bar below, so none
   of them cover notes.
+- Ctrl+S saves with Caps Lock on.
 - The delete dialog lists the titles of a multi-delete, says "this note" for an untitled one,
   and no longer reports an error for a note already deleted on another device.
 - Deleting notes (the Delete key, the context menu, a multi-selection) asks first, naming the

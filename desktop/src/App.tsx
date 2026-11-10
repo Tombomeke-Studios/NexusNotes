@@ -1207,7 +1207,7 @@ export default function App() {
     { id: "weekly-note", label: "Open this week's note", action: () => handleOpenPeriodic("weekly", periodTitle("weekly", new Date())) },
     { id: "monthly-note", label: "Open this month's note", action: () => handleOpenPeriodic("monthly", periodTitle("monthly", new Date())) },
     { id: "insert-template", label: "Insert template", shortcut: "Ctrl+T", action: openTemplatePicker },
-    { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
+    { id: "toggle-sidebar", label: "Toggle left sidebar", shortcut: "Ctrl+Shift+B", action: () => updatePrefs({ leftOpen: !loadPrefs().leftOpen }) },
     { id: "toggle-right", label: "Toggle right panel", shortcut: "Ctrl+.", action: () => updatePrefs({ rightOpen: !loadPrefs().rightOpen }) },
     { id: "cycle-view", label: "Cycle view mode", shortcut: "Ctrl+E", action: cycleView },
     { id: "global-search", label: "Global search", shortcut: "Ctrl+Shift+F", action: () => setShowGlobalSearch(true) },
@@ -1267,7 +1267,10 @@ export default function App() {
         e.preventDefault();
         cycleView();
       }
-      if (meta && e.key === "b") {
+      // Ctrl+Shift+B always toggles the sidebar. Ctrl+B does too, except
+      // while typing in a note, where the editor has made the text bold (#571).
+      const b = meta && !e.altKey && e.key.toLowerCase() === "b";
+      if (b && (e.shiftKey || !e.defaultPrevented)) {
         e.preventDefault();
         setPrefs((p) => savePrefs({ leftOpen: !p.leftOpen }));
       }

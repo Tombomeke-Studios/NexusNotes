@@ -100,7 +100,8 @@ Made a mistake? \`Ctrl+Shift+H\` brings back any earlier version.
 | \`Ctrl+T\` | Insert a template |
 | \`Ctrl+Shift+F\` | Search across the vault |
 | \`Ctrl+Shift+H\` | Version history |
-| \`Ctrl+B\` | Toggle sidebar |
+| \`Ctrl+B\` / \`Ctrl+I\` | Bold / italic while typing |
+| \`Ctrl+Shift+B\` | Toggle sidebar |
 | \`Ctrl+,\` | Settings |
 | \`?\` | All shortcuts |
 

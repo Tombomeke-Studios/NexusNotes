@@ -110,7 +110,7 @@ export function TopBar({
         <button
           className={`topbar-btn${leftOpen ? " topbar-btn--on" : ""}`}
           onClick={onToggleLeft}
-          title="Toggle sidebar (Ctrl+B)"
+          title="Toggle sidebar (Ctrl+Shift+B)"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />

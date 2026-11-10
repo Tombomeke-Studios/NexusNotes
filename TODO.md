@@ -53,7 +53,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] Sprint 2: Trash with 30-day restore, first after offline (#569) — backend (`feature/trash-backend`: trash/restore/purge API, retention job, MCP delete trashes) and desktop (`feature/trash-desktop`: delete moves to the Trash, Trash panel, sync events, conversion refusal)
 - [ ] Sprint 2: links to attached files open the file (#566), update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)
 - [ ] Later: spell-check toggle (#572)
-- [x] `feature/editor-basics`: Enter continues lists, tasks and quotes; Tab / Shift+Tab indent; Ctrl+I italic, Ctrl+K link (#571; bold on Ctrl+B still waits for the keymap decision)
+- [x] `feature/editor-basics`: Enter continues lists, tasks and quotes; Tab / Shift+Tab indent; Ctrl+B bold, Ctrl+I italic, Ctrl+K link; the sidebar toggle moved to Ctrl+Shift+B and keeps Ctrl+B outside the editor (#571)
 
 ---
 

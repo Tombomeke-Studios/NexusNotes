@@ -150,9 +150,25 @@ describe("toggleWrap — Ctrl+I", () => {
     expect(italic("a *«word»* b")).toBe("a «word» b");
   });
 
-  it("works with two-character markers", () => {
-    const { text, start, end } = parse("«x»");
-    expect(show(text, toggleWrap(text, start, end, "**"))).toBe("**«x»**");
+  const bold = (marked: string) => {
+    const { text, start, end } = parse(marked);
+    return show(text, toggleWrap(text, start, end, "**"));
+  };
+
+  it("makes the selection bold with two stars, and plain again", () => {
+    expect(bold("«x»")).toBe("**«x»**");
+    expect(bold("**«x»**")).toBe("«x»");
+    expect(bold("«**x**»")).toBe("«x»");
+    expect(bold("a | b")).toBe("a **|** b");
+  });
+
+  it("tells bold and italic apart", () => {
+    // Italic on bold text adds to it rather than taking a star off.
+    expect(italic("**«x»**")).toBe("***«x»***");
+    expect(italic("***«x»***")).toBe("**«x»**");
+    expect(bold("*«x»*")).toBe("***«x»***");
+    expect(bold("***«x»***")).toBe("*«x»*");
+    expect(italic("«**x**»")).toBe("*«**x**»*");
   });
 });
 
@@ -186,6 +202,7 @@ describe("editForKey", () => {
     expect(editForKey(press("Enter"), "- a", 3, 3)?.insert).toBe("\n- ");
     expect(editForKey(press("Tab"), "a", 1, 1)?.insert).toBe(INDENT);
     expect(editForKey(press("Tab", { shiftKey: true }), "  a", 3, 3)?.insert).toBe("a");
+    expect(editForKey(press("b", { ctrlKey: true }), "a", 0, 1)?.insert).toBe("**a**");
     expect(editForKey(press("i", { ctrlKey: true }), "a", 0, 1)?.insert).toBe("*a*");
     expect(editForKey(press("I", { metaKey: true }), "a", 0, 1)?.insert).toBe("*a*");
     expect(editForKey(press("k", { ctrlKey: true }), "a", 0, 1)?.insert).toBe("[a]()");
@@ -196,6 +213,8 @@ describe("editForKey", () => {
     expect(editForKey(press("Enter", { ctrlKey: true }), "- a", 3, 3)).toBeNull();
     expect(editForKey(press("i", { ctrlKey: true, altKey: true }), "a", 0, 1)).toBeNull();
     expect(editForKey(press("i", { ctrlKey: true, shiftKey: true }), "a", 0, 1)).toBeNull();
+    // Ctrl+Shift+B is the sidebar toggle.
+    expect(editForKey(press("B", { ctrlKey: true, shiftKey: true }), "a", 0, 1)).toBeNull();
     expect(editForKey(press("x"), "a", 0, 1)).toBeNull();
   });
 

@@ -82,6 +82,16 @@ describe("Editor — typing basics (#571)", () => {
     expect(textarea.value).toBe("*word*[]()");
   });
 
+  it("makes the selection bold on Ctrl+B and claims the key, so the sidebar stays put", () => {
+    const { textarea } = setup("word");
+    textarea.setSelectionRange(0, 4);
+    expect(fireEvent.keyDown(textarea, { key: "b", ctrlKey: true })).toBe(false);
+    expect(textarea.value).toBe("**word**");
+    // Ctrl+Shift+B is left for the sidebar.
+    expect(fireEvent.keyDown(textarea, { key: "B", ctrlKey: true, shiftKey: true })).toBe(true);
+    expect(textarea.value).toBe("**word**");
+  });
+
   it("changes nothing while the note is read-only", () => {
     const { textarea, press } = setup("- one", { readOnly: true });
     expect(press("Enter")).toBe(false);

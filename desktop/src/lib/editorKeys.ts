@@ -139,19 +139,40 @@ export function indentLines(text: string, selStart: number, selEnd: number, outd
   return { start: blockStart, end: blockEnd, insert, selStart: blockStart, selEnd: blockStart + insert.length };
 }
 
+/** How many of `ch` stand directly before `at` (dir -1) or from `at` on (dir 1). */
+function run(text: string, at: number, dir: 1 | -1, ch: string): number {
+  let n = 0;
+  for (let i = dir === 1 ? at : at - 1; text[i] === ch; i += dir) n++;
+  return n;
+}
+
 /**
- * Ctrl+I and friends: wraps the selection in `marker` ("*" for italic), or
- * unwraps it when it already is (markers inside or just outside the
- * selection). With nothing selected the markers go in with the caret between.
+ * Whether `count` marker characters on each side include this marker: for
+ * "*", one star is italic, two are bold and three are both, so italic is
+ * there on an odd count and bold from two up.
+ */
+function hasMarker(count: number, marker: string): boolean {
+  return marker.length === 1 ? count % 2 === 1 : count >= marker.length;
+}
+
+/**
+ * Ctrl+B and Ctrl+I: wraps the selection in `marker` ("**" bold, "*"
+ * italic), or unwraps it when it already is (markers inside or just outside
+ * the selection). Bold and italic are told apart, so italic on bold text
+ * adds to it instead of taking a star off. With nothing selected the markers
+ * go in with the caret between.
  */
 export function toggleWrap(text: string, selStart: number, selEnd: number, marker: string): TextEdit {
   const n = marker.length;
+  const ch = marker[0];
   const selected = text.slice(selStart, selEnd);
-  if (selected.length >= 2 * n && selected.startsWith(marker) && selected.endsWith(marker)) {
+  const inside = Math.min(run(selected, 0, 1, ch), run(selected, selected.length, -1, ch));
+  if (selected.length > 2 * inside && hasMarker(inside, marker)) {
     const inner = selected.slice(n, -n);
     return { start: selStart, end: selEnd, insert: inner, selStart, selEnd: selStart + inner.length };
   }
-  if (text.slice(selStart - n, selStart) === marker && text.slice(selEnd, selEnd + n) === marker) {
+  const around = Math.min(run(text, selStart, -1, ch), run(text, selEnd, 1, ch));
+  if (hasMarker(around, marker)) {
     return { start: selStart - n, end: selEnd + n, insert: selected, selStart: selStart - n, selEnd: selEnd - n };
   }
   return {
@@ -204,6 +225,7 @@ export function editForKey(
   if (!mod && e.key === "Tab") return tabMovesFocus ? null : indentLines(text, selStart, selEnd, e.shiftKey);
   if (mod && !e.shiftKey) {
     const key = e.key.toLowerCase();
+    if (key === "b") return toggleWrap(text, selStart, selEnd, "**");
     if (key === "i") return toggleWrap(text, selStart, selEnd, "*");
     if (key === "k") return insertLink(text, selStart, selEnd);
   }

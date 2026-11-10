@@ -56,6 +56,22 @@ test.describe("Keyboard shortcuts", () => {
     await expect(panel).not.toHaveClass(/panel-left--closed/);
   });
 
+  test("Ctrl+Shift+B toggles the sidebar and Ctrl+B makes text bold while typing in a note (#571)", async ({ page }) => {
+    await createNote(page, "Bold Shortcut Note");
+    const panel = page.locator(".panel-left");
+    const textarea = page.locator(".editor-textarea");
+    await textarea.click();
+    await page.keyboard.type("word");
+    await page.keyboard.press("Control+a");
+    await page.keyboard.press("Control+b");
+    await expect(textarea).toHaveValue("**word**");
+    await expect(panel).not.toHaveClass(/panel-left--closed/);
+    await page.keyboard.press("Control+Shift+B");
+    await expect(panel).toHaveClass(/panel-left--closed/);
+    await page.keyboard.press("Control+Shift+B");
+    await expect(panel).not.toHaveClass(/panel-left--closed/);
+  });
+
   test("palette arrow keys move the selection", async ({ page }) => {
     await createNote(page, "First Arrow Note");
     await createNote(page, "Second Arrow Note");

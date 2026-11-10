@@ -2,7 +2,7 @@
  * Every keyboard shortcut, grouped, for the shortcut reference (`?`, #452)
  * and the Settings list. Keep it in step with the handlers in App.tsx (and
  * the editor's own: Ctrl+S and Ctrl+F live in Editor.tsx, [[ in LinkSuggest.tsx,
- * Enter / Tab / Ctrl+I / Ctrl+K in lib/editorKeys.ts).
+ * Enter / Tab / Ctrl+B / Ctrl+I / Ctrl+K in lib/editorKeys.ts).
  */
 export interface ShortcutGroup {
   title: string;
@@ -31,6 +31,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       ["Continue a list, task list or quote", "Enter"],
       ["Indent / outdent the line or selection", "Tab / Shift+Tab"],
       ["Leave the editor with the keyboard", "Esc, then Tab"],
+      ["Bold", "Ctrl+B"],
       ["Italic", "Ctrl+I"],
       ["Insert a link", "Ctrl+K"],
       ["Cycle edit / split / read", "Ctrl+E"],
@@ -40,7 +41,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: "Workspace",
     items: [
-      ["Toggle sidebar", "Ctrl+B"],
+      ["Toggle sidebar", "Ctrl+Shift+B (Ctrl+B outside the editor)"],
       ["Toggle side panel", "Ctrl+."],
       ["Settings", "Ctrl+,"],
       ["This list of shortcuts", "?"],

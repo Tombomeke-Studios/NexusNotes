@@ -4,6 +4,7 @@ import { vaultKeySession } from "./vaultKeys";
 import { NOT_SAVED_YET, type SaveError, type SaveOutcome } from "./useNoteSave";
 import {
   IDLE_CHECK_MS,
+  MAX_AUTO_RETRY_MS,
   MAX_SAVE_ROUNDS,
   keepUnsavedTextWhileLocked,
   lockVaultCommands,
@@ -369,6 +370,47 @@ describe("useVaultLock — auto-lock when idle", () => {
     await advance(5 * MINUTE + 4 * IDLE_CHECK_MS);
     expect(vi.mocked(deps.saveVault).mock.calls.length).toBeGreaterThan(1);
     expect(toast).toHaveBeenCalledTimes(1);
+  });
+
+  it("backs off a postponed auto-lock instead of saving on every tick (#603)", async () => {
+    const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
+    const { deps } = setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
+    const calls = () => vi.mocked(deps.saveVault).mock.calls.length;
+    await advance(5 * MINUTE);
+    expect(calls()).toBe(1);
+    // Waits of 15 s, 30 s, 60 s, … between attempts.
+    await advance(IDLE_CHECK_MS);
+    expect(calls()).toBe(2);
+    await advance(IDLE_CHECK_MS);
+    expect(calls()).toBe(2);
+    await advance(IDLE_CHECK_MS);
+    expect(calls()).toBe(3);
+    await advance(3 * IDLE_CHECK_MS);
+    expect(calls()).toBe(3);
+    await advance(IDLE_CHECK_MS);
+    expect(calls()).toBe(4);
+    // Capped: an hour of failing saves is a handful of requests, not hundreds.
+    await advance(60 * MINUTE);
+    expect(calls()).toBeLessThanOrEqual(4 + Math.ceil((60 * MINUTE) / MAX_AUTO_RETRY_MS) + 4);
+    expect(calls()).toBeGreaterThan(4 + 8);
+  });
+
+  it("starts the backoff over once the user has been back", async () => {
+    const saveVault = vi.fn(async (): Promise<SaveOutcome> => ({ ok: false, error: offline }));
+    const { deps } = setup({ autoLockMinutes: 5, saveVault, vaults: () => VAULTS.slice(0, 1) });
+    const calls = () => vi.mocked(deps.saveVault).mock.calls.length;
+    await advance(5 * MINUTE + 3 * IDLE_CHECK_MS);
+    expect(calls()).toBe(3);
+    // Coming back after the idle time tries once more at once ("expired").
+    await act(async () => {
+      window.dispatchEvent(new Event("keydown"));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(calls()).toBe(4);
+    await advance(5 * MINUTE);
+    expect(calls()).toBe(5);
+    await advance(IDLE_CHECK_MS);
+    expect(calls()).toBe(6);
   });
 
   it("finishes a started auto-lock when the user comes back during its save", async () => {

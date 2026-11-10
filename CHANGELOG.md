@@ -168,6 +168,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Graph folders no longer share or nearly share a colour (such as Examples and Daily): each
   folder of a vault gets its own from a colour-blind-safe palette, the same in the full graph,
   the local graph and the legend.
+- A link to an attached file such as `[[report.pdf]]` now saves that file when clicked. It
+  used to offer to create an empty note called "report.pdf". A file that isn't attached to
+  the note is shown as missing.
 - The Outline panel now works while only the source is shown: clicking a heading puts the
   cursor on its line (in split view both panes follow). It also lands on the right heading
   when two share a name or a quote contains one, and no longer lists `#` lines inside

@@ -6,6 +6,7 @@ import {
   scrollSourceTo,
   type HeadingRequest,
 } from "../../lib/headingJump";
+import { isAttachmentName } from "../../lib/wikilinks";
 import { highlightMarkdown } from "../../lib/mdHighlight";
 import { LinkPreview } from "./LinkPreview";
 import { FindBar, type FindRequest } from "./FindBar";
@@ -37,7 +38,7 @@ import { remarkCallouts } from "../../lib/remarkCallouts";
 import { wikiUrlTransform } from "../../lib/markdownUrls";
 import { ApiError, type Attachment } from "../../lib/api";
 import { listAttachments, uploadAttachment, onAttachmentsChanged } from "../../lib/attachmentClient";
-import { AttachmentImage } from "./AttachmentImage";
+import { AttachmentImage, AttachmentFileLink } from "./AttachmentImage";
 import "./Editor.css";
 
 hljs.registerLanguage("javascript", javascript);
@@ -607,6 +608,17 @@ export function Editor({
             </button>
           );
         }
+        // [[report.pdf]] names one of the note's files (#566): clicking saves
+        // it, and it never offers to create a note called "report.pdf".
+        const file = attachmentList.find((a) => a.filename.toLowerCase() === title.toLowerCase());
+        if (file) return <AttachmentFileLink attachment={file}>{children}</AttachmentFileLink>;
+        if (isAttachmentName(title)) {
+          return (
+            <span className="attachment-missing" title={`${title} is not attached to this note`}>
+              📎 {children}
+            </span>
+          );
+        }
         return (
           <button
             className="wikilink wikilink--unresolved"
@@ -647,7 +659,7 @@ export function Editor({
         </a>
       );
     },
-    [notesByTitle, goToHeading, onNavigateToNote, onCreateNote, onTagClick, showLinkPreview, hideLinkPreview],
+    [notesByTitle, attachmentList, goToHeading, onNavigateToNote, onCreateNote, onTagClick, showLinkPreview, hideLinkPreview],
   );
 
   if (!note) {

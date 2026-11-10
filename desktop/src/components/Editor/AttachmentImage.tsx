@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { startDownload } from "../../lib/export";
 import { isInlineImageType } from "../../lib/api";
 import { attachmentObjectUrl } from "../../lib/attachmentClient";
@@ -63,9 +63,10 @@ export function AttachmentImage({ name, alt, list }: AttachmentImageProps) {
 /**
  * A non-image attachment: clicking downloads it. The blob comes from
  * attachments.objectUrl, so it is typed application/octet-stream and can only
- * ever be saved, never rendered as a document.
+ * ever be saved, never rendered as a document. Also what a `[[file.pdf]]`
+ * link to one of the note's files renders as (#566); `children` is its label.
  */
-function AttachmentFileLink({ attachment }: { attachment: Attachment }) {
+export function AttachmentFileLink({ attachment, children }: { attachment: Attachment; children?: ReactNode }) {
   const [busy, setBusy] = useState(false);
 
   const download = async () => {
@@ -88,7 +89,7 @@ function AttachmentFileLink({ attachment }: { attachment: Attachment }) {
       disabled={busy}
       title={`Download ${attachment.filename}`}
     >
-      <span aria-hidden="true">📎</span> {attachment.filename}
+      <span aria-hidden="true">📎</span> {children ?? attachment.filename}
     </button>
   );
 }

@@ -3,12 +3,18 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { Editor } from "./Editor";
 import { attachments } from "../../lib/api";
+import type { Attachment } from "../../lib/api";
 import type { Note } from "../../lib/types";
 
 vi.mock("../../lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../lib/api")>()),
   attachments: { list: vi.fn().mockResolvedValue([]), objectUrl: vi.fn().mockResolvedValue("blob:x") },
 }));
+vi.mock("../../lib/export", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/export")>()),
+  startDownload: vi.fn(),
+}));
+import { startDownload } from "../../lib/export";
 
 const note = (id: string, title: string, content: string) =>
   ({ id, vault_id: "v1", title, path: "", content, checksum: "c1" }) as Note;
@@ -42,6 +48,7 @@ function setup(content: string, extra: Partial<ComponentProps<typeof Editor>> = 
 
 beforeEach(() => {
   vi.mocked(attachments.list).mockResolvedValue([]);
+  vi.mocked(startDownload).mockClear();
 });
 
 describe("Editor — links to a section (#558)", () => {
@@ -121,5 +128,43 @@ describe("Editor — going to a heading on request (#558)", () => {
     await waitFor(() => expect(onHeadingHandled).toHaveBeenCalledWith(request, true));
     rerender({ headingRequest: request, note: other, mode: "split" });
     expect(onHeadingHandled).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Editor — links to an attached file (#566)", () => {
+  const file: Attachment = {
+    id: "a1",
+    note_id: "n1",
+    filename: "Report.pdf",
+    mime_type: "application/pdf",
+    size_bytes: 10,
+    created_at: "",
+  } as Attachment;
+
+  it("saves the file instead of offering to create a note", async () => {
+    vi.mocked(attachments.list).mockResolvedValue([file]);
+    const { onCreateNote } = setup("the [[report.pdf|quarterly report]]");
+    const link = await screen.findByRole("button", { name: /quarterly report/ });
+    expect(link.className).toBe("attachment-file");
+    fireEvent.click(link);
+    await waitFor(() => expect(startDownload).toHaveBeenCalledWith("blob:x", "Report.pdf"));
+    expect(onCreateNote).not.toHaveBeenCalled();
+  });
+
+  it("marks a file that is not attached, and never creates a note named after it", () => {
+    const { view, onCreateNote } = setup("the [[gone.pdf]]");
+    const missing = view.container.querySelector(".attachment-missing") as HTMLElement;
+    expect(missing.textContent).toContain("gone.pdf");
+    expect(missing.title).toBe("gone.pdf is not attached to this note");
+    expect(view.container.querySelector(".wikilink--unresolved")).toBeNull();
+    expect(onCreateNote).not.toHaveBeenCalled();
+  });
+
+  it("still links a note whose title looks like a file name", () => {
+    const { onNavigateToNote } = setup("[[notes.txt]]", {
+      notes: [note("n1", "Plan", ""), note("n3", "notes.txt", "")],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open notes.txt" }));
+    expect(onNavigateToNote).toHaveBeenCalledWith("n3", undefined);
   });
 });

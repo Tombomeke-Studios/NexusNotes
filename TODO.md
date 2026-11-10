@@ -52,7 +52,8 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] `fix/rename-echo`: tag rename and note moves go through the save path; backend and data developer, after `feature/e2ee-drafts` (#564)
 - [x] Sprint 2: Trash with 30-day restore, first after offline (#569) — backend (`feature/trash-backend`: trash/restore/purge API, retention job, MCP delete trashes) and desktop (`feature/trash-desktop`: delete moves to the Trash, Trash panel, sync events, conversion refusal)
 - [x] Outline panel works in the source-only view and targets the clicked heading (#610)
-- [ ] Sprint 2: links to attached files open the file (#566), update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)
+- [x] Sprint 2: links to attached files save the file instead of creating an empty note (#566)
+- [ ] Sprint 2: update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)
 - [ ] Later: spell-check toggle (#572)
 
 ---

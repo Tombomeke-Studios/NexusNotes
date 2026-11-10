@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Sidebar } from "./components/Sidebar";
 import { Editor, type ReplaceRequest } from "./components/Editor";
+import type { HeadingRequest } from "./lib/headingJump";
 import { GlobalSearch } from "./components/Search";
 import { GraphView } from "./components/Graph";
 import { CommandPalette } from "./components/CommandPalette";
@@ -275,6 +276,9 @@ export default function App() {
 
   /** Text for the open note that came from outside the editor (#324). */
   const [replaceRequest, setReplaceRequest] = useState<ReplaceRequest | null>(null);
+  // Going to a heading of the open note (#558): the outline panel and section links.
+  const [headingRequest, setHeadingRequest] = useState<HeadingRequest | null>(null);
+  const headingNonce = useRef(0);
   const replaceNonce = useRef(0);
   /** Another device's version waiting for the editor to show it (#324). */
   const pendingRemote = useRef<{ nonce: number; note: Note; expected: string } | null>(null);
@@ -1522,6 +1526,28 @@ export default function App() {
     }
     setCursor({ line: 1, col: 1 });
   }, [decryptIncoming, flushPendingSave, localCopy]);
+  // A [[Note#Section]] link (#558): open the note, then go to the heading.
+  const handleNavigateToNote = useCallback(
+    async (noteId: string, section?: string) => {
+      // Only while this is still the latest selection: the editor applies
+      // the request once that note's text is on screen.
+      const selection = selectionSeq.current + 1;
+      await handleSelectNote(noteId);
+      if (selection !== selectionSeq.current) return;
+      setHeadingRequest(section ? { noteId, section, nonce: ++headingNonce.current } : null);
+    },
+    [handleSelectNote],
+  );
+  const handleJumpToHeading = useCallback((offset: number) => {
+    const noteId = activeNoteRef.current?.id;
+    if (noteId) setHeadingRequest({ noteId, offset, nonce: ++headingNonce.current });
+  }, []);
+  const handleHeadingHandled = useCallback((request: HeadingRequest, found: boolean) => {
+    setHeadingRequest((current) => (current?.nonce === request.nonce ? null : current));
+    if (!found && request.section) {
+      toast(`This note has no heading "${request.section}".`, { key: "heading-missing" });
+    }
+  }, []);
   // The restore toast's "Open" (#569).
   openNoteRef.current = (noteId) => void handleSelectNote(noteId);
 
@@ -2190,7 +2216,9 @@ export default function App() {
               onRename={handleRenameNote}
               onRenameCommit={handleRenameCommit}
               onCreateNote={handleCreateNoteWithTitle}
-              onNavigateToNote={handleSelectNote}
+              onNavigateToNote={handleNavigateToNote}
+              headingRequest={headingRequest}
+              onHeadingHandled={handleHeadingHandled}
               paused={closePrompt !== null || deletedElsewhere.deleted !== null}
               insertRequest={insertRequest}
               replaceRequest={replaceRequest}
@@ -2232,6 +2260,7 @@ export default function App() {
               tab={prefs.rightTab}
               onTabChange={(t) => updatePrefs({ rightTab: t })}
               onNavigateToNote={handleSelectNote}
+              onJumpToHeading={handleJumpToHeading}
               onCreateNote={handleCreateNoteWithTitle}
               vault={activeNote ? vaultList.find((v) => v.id === activeNote.vault_id) ?? null : null}
               canWrite={(vaultList.find((v) => v.id === activeNote?.vault_id)?.role ?? "owner") !== "viewer"}

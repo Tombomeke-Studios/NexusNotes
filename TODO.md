@@ -36,7 +36,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Offline read access first: it gates opening registration (#227)
 - [ ] Click-to-load remote images, no `https:` in `img-src` (#519)
 - [ ] Invite-only registration (#521), drop Redis from production (#514)
-- [ ] Navigate to `[[Note#Section]]` across notes (#558)
+- [x] Navigate to `[[Note#Section]]` across notes, and `[[#Section]]` within one (#558)
 - [ ] Serve admin stats on the internal metrics listener (#554)
 
 ### Scout findings (approved by the client and the middleman)
@@ -51,7 +51,9 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] `fix/graph-tip-placement`: compact graph tip, and the graph fits into the space the top and bottom chrome leave free; desktop developer (#594)
 - [ ] `fix/rename-echo`: tag rename and note moves go through the save path; backend and data developer, after `feature/e2ee-drafts` (#564)
 - [x] Sprint 2: Trash with 30-day restore, first after offline (#569) — backend (`feature/trash-backend`: trash/restore/purge API, retention job, MCP delete trashes) and desktop (`feature/trash-desktop`: delete moves to the Trash, Trash panel, sync events, conversion refusal)
-- [ ] Sprint 2: links to attached files open the file (#566), update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)
+- [x] Outline panel works in the source-only view and targets the clicked heading (#610)
+- [x] Sprint 2: links to attached files save the file instead of creating an empty note (#566)
+- [ ] Sprint 2: update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)
 - [ ] Later: spell-check toggle (#572)
 
 ---
@@ -640,7 +642,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add `Ctrl+F` in-note search and replace
 - [ ] Add `Ctrl+,` settings panel with options for theme, font size, Vim mode, and sync interval
 - [x] Add `![[image.png]]` embed syntax rendering inline images from attachments
-- [ ] Add `[[Note name#Section]]` section anchor navigation
+- [x] Add `[[Note name#Section]]` section anchor navigation (#558)
 - [x] Add callout blocks (`> [!NOTE]`, `> [!WARNING]`, etc.) (#223)
 - [ ] Add KaTeX math rendering for inline (`$...$`) and block (`$$...$$`) expressions
 - [ ] Add footnote support using `[^1]` syntax

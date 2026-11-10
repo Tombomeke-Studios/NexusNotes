@@ -8,6 +8,7 @@ import {
   type Match,
 } from "../../lib/findReplace";
 import { editTextarea } from "../../lib/textareaEdit";
+import { measureTop } from "../../lib/textareaMeasure";
 import "./FindBar.css";
 
 export interface FindRequest {
@@ -30,29 +31,6 @@ interface FindBarProps {
   /** Sets the whole text when the browser cannot insert the edit itself. */
   onReplaceText: (next: string) => void;
   onClose: () => void;
-}
-
-/**
- * Where `offset` sits from the top of the textarea's content, for notes too
- * large for the highlight layer: a hidden copy of that layer, holding the
- * text up to the offset, wraps exactly like the textarea.
- */
-function measureTop(ta: HTMLTextAreaElement, offset: number): number {
-  const parent = ta.parentElement;
-  if (!parent) return 0;
-  const mirror = document.createElement("pre");
-  mirror.className = "editor-highlight";
-  mirror.setAttribute("aria-hidden", "true");
-  mirror.style.fontSize = ta.style.fontSize;
-  mirror.style.visibility = "hidden";
-  mirror.textContent = ta.value.slice(0, offset);
-  const marker = document.createElement("span");
-  marker.textContent = "​"; // zero-width space
-  mirror.appendChild(marker);
-  parent.appendChild(mirror);
-  const top = marker.offsetTop;
-  mirror.remove();
-  return top;
 }
 
 /** Find and replace in the open note (#547), above the editor's panes. */

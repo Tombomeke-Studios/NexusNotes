@@ -20,6 +20,8 @@ interface RightPanelProps {
   tab: RightTab;
   onTabChange: (tab: RightTab) => void;
   onNavigateToNote: (noteId: string) => void;
+  /** Goes to a heading of the open note, given where its line starts (the outline). */
+  onJumpToHeading?: (offset: number) => void;
   /** Creates a note from a ghost node in the local graph (#147). */
   onCreateNote?: (title: string) => void;
   onTagClick: (tag: string) => void;
@@ -46,25 +48,6 @@ function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
 }
 
-/**
- * Scrolls the markdown preview pane to the index-th heading. DOM-based so
- * the panel stays decoupled from the editor component tree.
- */
-function scrollPreviewToHeading(index: number) {
-  const preview = document.querySelector(".editor-preview");
-  if (!preview) return;
-  const el = preview.querySelectorAll("h1, h2, h3, h4")[index];
-  if (!el) return;
-  // No explicit behavior: the preview's CSS scroll-behavior makes it smooth,
-  // or instant under reduced motion (#426).
-  preview.scrollTo({
-    top:
-      preview.scrollTop +
-      (el.getBoundingClientRect().top - preview.getBoundingClientRect().top) -
-      14,
-  });
-}
-
 export function RightPanel({
   note,
   content,
@@ -72,6 +55,7 @@ export function RightPanel({
   tab,
   onTabChange,
   onNavigateToNote,
+  onJumpToHeading,
   onCreateNote,
   onTagClick,
   vault = null,
@@ -122,7 +106,7 @@ export function RightPanel({
               key={h.index}
               className={`outline-item${h.level === 1 ? " outline-item--top" : ""}`}
               style={{ paddingLeft: 8 + (h.level - 1) * 14 }}
-              onClick={() => scrollPreviewToHeading(h.index)}
+              onClick={() => onJumpToHeading?.(h.offset)}
             >
               {h.text}
             </button>

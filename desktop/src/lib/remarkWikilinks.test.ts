@@ -1,30 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { expandText as expand, remarkWikilinks } from "./remarkWikilinks";
 
-const WIKI_RE = /\[\[([^[\]|#[]+?)(?:#([^[\]|]+?))?(?:\|([^\]]+?))?\]\]/g;
-
+/** The real plugin's nodes, flattened to what the tests compare. */
 function expandText(value: string): Array<{ type: string; value?: string; url?: string; label?: string }> {
-  const result: Array<{ type: string; value?: string; url?: string; label?: string }> = [];
-  let lastIndex = 0;
-  WIKI_RE.lastIndex = 0;
-
-  let match: RegExpExecArray | null;
-  while ((match = WIKI_RE.exec(value)) !== null) {
-    if (match.index > lastIndex) {
-      result.push({ type: "text", value: value.slice(lastIndex, match.index) });
-    }
-    const title = match[1].trim();
-    const anchor = match[2]?.trim() ?? "";
-    const alias = match[3]?.trim() ?? "";
-    const url = `wikilink://${encodeURIComponent(title)}${anchor ? `#${encodeURIComponent(anchor)}` : ""}`;
-    result.push({ type: "link", url, label: alias || title });
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < value.length) {
-    result.push({ type: "text", value: value.slice(lastIndex) });
-  }
-
-  return result;
+  return expand(value).map((n) => (n.type === "link" ? { type: "link", url: n.url, label: n.children[0].value } : n));
 }
 
 describe("remarkWikilinks (expandText logic)", () => {
@@ -40,7 +19,7 @@ describe("remarkWikilinks (expandText logic)", () => {
     const result = expandText("[[My Note#Section]]");
     expect(result).toHaveLength(1);
     expect(result[0].url).toBe("wikilink://My%20Note#Section");
-    expect(result[0].label).toBe("My Note");
+    expect(result[0].label).toBe("My Note › Section");
   });
 
   it("parses a wikilink with alias", () => {
@@ -82,5 +61,40 @@ describe("remarkWikilinks (expandText logic)", () => {
   it("handles empty string", () => {
     const result = expandText("");
     expect(result).toHaveLength(0);
+  });
+});
+
+describe("remarkWikilinks — sections and edge cases (#558)", () => {
+  it("links a heading of the same note with [[#Section]]", () => {
+    expect(expandText("see [[#Open questions]]")).toEqual([
+      { type: "text", value: "see " },
+      { type: "link", url: "wikilink://#Open%20questions", label: "Open questions" },
+    ]);
+    expect(expandText("[[#Top|back up]]")[0].label).toBe("back up");
+  });
+
+  it("leaves links that point nowhere as text", () => {
+    expect(expandText("[[]] and [[|x]]")).toEqual([{ type: "text", value: "[[]] and [[|x]]" }]);
+  });
+
+  it("keeps the text between an empty link and a real one", () => {
+    expect(expandText("[[]] then [[A]]!")).toEqual([
+      { type: "text", value: "[[]] then " },
+      { type: "link", url: "wikilink://A", label: "A" },
+      { type: "text", value: "!" },
+    ]);
+  });
+
+  it("rewrites text nodes in the tree and leaves the others alone", () => {
+    const tree = {
+      type: "root",
+      children: [
+        { type: "paragraph", children: [{ type: "text", value: "a [[B]]" }] },
+        { type: "code", value: "[[C]]" },
+      ],
+    };
+    remarkWikilinks()(tree);
+    expect(tree.children[0].children).toHaveLength(2);
+    expect(tree.children[1]).toEqual({ type: "code", value: "[[C]]" });
   });
 });

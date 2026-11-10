@@ -33,6 +33,24 @@ describe("toast store", () => {
     expect(getToasts()).toHaveLength(1);
   });
 
+  it("updates a keyed toast in place, so no second copy is on screen while the old one leaves (#604)", () => {
+    toast("First");
+    const progress = toast("Importing 6 of 7…", { key: "import", duration: 60_000 });
+    const before = getToasts()[1];
+    const done = toast("Imported 7 notes", { key: "import", kind: "success" });
+    expect(done).toBe(progress);
+    expect(getToasts().map((t) => t.message)).toEqual(["First", "Imported 7 notes"]);
+    const after = getToasts()[1];
+    expect(after).not.toBe(before);
+    expect([after.id, after.kind, after.duration]).toEqual([progress, "success", 3500]);
+  });
+
+  it("drops the action of a keyed toast when its replacement has none", () => {
+    toast("Moved to Trash", { key: "trash", action: { label: "Undo", onClick: () => {} } });
+    toast("Trash emptied", { key: "trash" });
+    expect(getToasts()[0].action).toBeUndefined();
+  });
+
   it("returns a stable snapshot between changes", () => {
     toast("x");
     expect(getToasts()).toBe(getToasts());

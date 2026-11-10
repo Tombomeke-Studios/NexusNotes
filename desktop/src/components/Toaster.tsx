@@ -24,18 +24,28 @@ export function Toaster() {
 
 function ToastItem({ toast }: { toast: Toast }) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const start = () => {
+  /** The pointer or the focus is on the toast: it stays. */
+  const held = useRef(false);
+  const run = () => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => dismissToast(toast.id), toast.duration);
   };
-  const pause = () => clearTimeout(timer.current);
+  const start = () => {
+    held.current = false;
+    run();
+  };
+  const pause = () => {
+    held.current = true;
+    clearTimeout(timer.current);
+  };
 
   useEffect(() => {
-    start();
-    return pause;
-    // One timer per toast; restarted only by pointer/focus leaving.
+    if (!held.current) run();
+    return () => clearTimeout(timer.current);
+    // One timer per toast, restarted by pointer/focus leaving and when the
+    // toast is updated in place (same key: a new object with the same id).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast.id]);
+  }, [toast]);
 
   return (
     <motion.div

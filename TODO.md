@@ -49,6 +49,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [x] `fix/graph-narrow-toolbar`: in a narrow graph pane the toolbar moves below the search box and the tip below both; desktop developer, after `fix/sync-event-handling` (#580)
 - [x] `fix/graph-folder-colours`: each folder gets its own colour-blind-safe graph colour, assigned per vault in sorted order; desktop developer (#593)
 - [x] `fix/graph-tip-placement`: compact graph tip, and the graph fits into the space the top and bottom chrome leave free; desktop developer (#594)
+- [x] `fix/idle-and-toast-polish`: a postponed auto-lock backs off instead of saving every 15 s (#603); the import progress toast turns into the summary (#604)
 - [ ] `fix/rename-echo`: tag rename and note moves go through the save path; backend and data developer, after `feature/e2ee-drafts` (#564)
 - [x] Sprint 2: Trash with 30-day restore, first after offline (#569) — backend (`feature/trash-backend`: trash/restore/purge API, retention job, MCP delete trashes) and desktop (`feature/trash-desktop`: delete moves to the Trash, Trash panel, sync events, conversion refusal)
 - [ ] Sprint 2: links to attached files open the file (#566), update links on rename (#570), editor basics after a keymap decision (#571), rename folders and Move to… (#573)

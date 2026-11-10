@@ -12,7 +12,7 @@ export interface Toast {
   kind: ToastKind;
   /** Milliseconds on screen while not hovered or focused. */
   duration: number;
-  /** Toasts with the same key replace each other rather than stacking. */
+  /** A toast with the same key is updated in place (same id) rather than stacked. */
   key?: string;
   /** One button next to the message (e.g. "Open"); clicking it also closes the toast. */
   action?: ToastAction;
@@ -45,11 +45,13 @@ export function toast(
     action,
   }: { kind?: ToastKind; duration?: number; key?: string; action?: ToastAction } = {},
 ): number {
-  const id = nextId++;
+  // A toast with the same key is updated in place and keeps its id (#604):
+  // one that was replaced by a new toast stayed on screen, fading, next to it.
+  const existing = key ? toasts.find((t) => t.key === key) : undefined;
+  const id = existing?.id ?? nextId++;
   const item: Toast = { id, message, kind, duration: duration ?? (kind === "error" ? 6000 : DEFAULT_DURATION), key };
   if (action) item.action = action;
-  const rest = key ? toasts.filter((t) => t.key !== key) : toasts;
-  set([...rest, item].slice(-MAX_TOASTS));
+  set(existing ? toasts.map((t) => (t === existing ? item : t)) : [...toasts, item].slice(-MAX_TOASTS));
   return id;
 }
 

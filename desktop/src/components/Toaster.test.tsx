@@ -48,6 +48,40 @@ describe("Toaster", () => {
     expect(getToasts()).toHaveLength(0);
   });
 
+  it("shows one toast for a progress message and its summary, timed from the summary (#604)", () => {
+    render(<Toaster />);
+    act(() => {
+      toast("Importing 6 of 7…", { key: "import", duration: 60_000 });
+    });
+    act(() => {
+      vi.advanceTimersByTime(900);
+      toast("Imported 7 notes", { key: "import", duration: 1000 });
+    });
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status").textContent).toContain("Imported 7 notes");
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(getToasts()).toHaveLength(1);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(getToasts()).toHaveLength(0);
+  });
+
+  it("keeps an updated toast while the pointer is still over it", () => {
+    render(<Toaster />);
+    act(() => {
+      toast("Importing 1 of 7…", { key: "import", duration: 1000 });
+    });
+    fireEvent.mouseEnter(screen.getByRole("status"));
+    act(() => {
+      toast("Importing 6 of 7…", { key: "import", duration: 1000 });
+      vi.advanceTimersByTime(5000);
+    });
+    expect(getToasts()).toHaveLength(1);
+  });
+
   it("can be closed by hand", () => {
     render(<Toaster />);
     act(() => {

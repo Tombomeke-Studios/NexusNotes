@@ -987,6 +987,10 @@ export default function App() {
       setNoteList((prev) => [...prev.filter((n) => !ids.has(n.id)), ...created]);
       const { message, kind } = summarizeImport({ created, ...result });
       toast(message, { key: "import", kind, duration: message.length > 60 ? 12_000 : undefined });
+    } catch (err) {
+      // A file that can't be read: say so rather than leave the progress toast up.
+      const reason = err instanceof Error && err.message ? `: ${err.message}` : "";
+      toast(`Couldn't import${reason}.`, { key: "import", kind: "error" });
     } finally {
       importingInto.current = null;
     }

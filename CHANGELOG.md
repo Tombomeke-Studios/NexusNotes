@@ -162,6 +162,12 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   running, and restarts the bundled one if it exits.
 
 ### Fixed
+- Importing a folder no longer leaves a faded "Importing 6 of 7…" message behind the final
+  summary: the progress message turns into the summary. An import that can't read a file
+  now says so.
+- An auto-lock that can't go ahead because a note couldn't be saved no longer tries again
+  every 15 seconds for as long as you are away: it waits longer after each attempt (up to
+  five minutes) and starts over when you come back.
 - Graph folders no longer share or nearly share a colour (such as Examples and Daily): each
   folder of a vault gets its own from a colour-blind-safe palette, the same in the full graph,
   the local graph and the legend.

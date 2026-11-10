@@ -7,6 +7,19 @@ import { NOT_SAVED_YET, type SaveError, type SaveOutcome } from "./useNoteSave";
 /** How often the idle clock is looked at; an auto-lock lands at most this late. */
 export const IDLE_CHECK_MS = 15_000;
 
+/** The longest wait between two attempts of an auto-lock that keeps being postponed (#603). */
+export const MAX_AUTO_RETRY_MS = 5 * 60_000;
+
+/**
+ * How long a postponed auto-lock waits before its next attempt: one idle
+ * tick after the first failure, then doubling up to the cap. Each attempt
+ * saves the vault again, so without this an unsaved note (a conflict, say)
+ * meant a request every tick for as long as the user was away.
+ */
+export function autoRetryDelay(failures: number): number {
+  return Math.min(IDLE_CHECK_MS * 2 ** Math.max(0, failures - 1), MAX_AUTO_RETRY_MS);
+}
+
 /** What counts as using the app: any keyboard, mouse, touch or focus activity. */
 export const ACTIVITY_EVENTS = ["keydown", "pointerdown", "pointermove", "wheel", "touchstart", "focusin", "focus"] as const;
 
@@ -115,7 +128,8 @@ type Mode = "manual" | "auto" | "expired";
  * save fails, the text is sealed into encrypted drafts (#549) and the lock
  * goes ahead; only if that fails too does the vault stay unlocked: a manual
  * lock reports it in `failure` (the failed-save form: retry / keep editing),
- * an auto-lock shows a toast and tries again on the next idle tick. `locking` lists the vaults a lock is
+ * an auto-lock shows a toast and tries again while the user is away, less
+ * and less often (#603). `locking` lists the vaults a lock is
  * saving right now; their editor should be read-only meanwhile, so an
  * auto-lock that is under way finishes even when the user comes back. Each
  * vault locks on its own; the others stay as they are.
@@ -136,6 +150,9 @@ export function useVaultLock(deps: VaultLockDeps) {
   const autoRunning = useRef(false);
   /** An auto-lock postponed in this idle stretch already said so. */
   const postponeToasted = useRef(false);
+  /** Auto-locks postponed in a row in this idle stretch, and when the next may run (#603). */
+  const autoFailures = useRef(0);
+  const nextAutoAt = useRef(0);
   /** The open vault an auto-lock closed: the user gets the unlock dialog on return. */
   const returnPrompt = useRef<string | null>(null);
 
@@ -208,8 +225,13 @@ export function useVaultLock(deps: VaultLockDeps) {
       if (autoRunning.current) return;
       autoRunning.current = true;
       try {
+        let postponed = false;
         for (const vault of depsRef.current.vaults()) {
-          if (canLockVault(vault)) await run(vault.id, mode);
+          if (canLockVault(vault) && !(await run(vault.id, mode))) postponed = true;
+        }
+        if (mode === "auto") {
+          autoFailures.current = postponed ? autoFailures.current + 1 : 0;
+          nextAutoAt.current = postponed ? Date.now() + autoRetryDelay(autoFailures.current) : 0;
         }
       } finally {
         autoRunning.current = false;
@@ -251,6 +273,8 @@ export function useVaultLock(deps: VaultLockDeps) {
       if (limit > 0 && now - lastActivity.current >= limit) void lockAll("expired");
       lastActivity.current = now;
       postponeToasted.current = false;
+      autoFailures.current = 0;
+      nextAutoAt.current = 0;
       const id = returnPrompt.current;
       if (id === null) return;
       returnPrompt.current = null;
@@ -269,7 +293,8 @@ export function useVaultLock(deps: VaultLockDeps) {
     if (!minutes || minutes <= 0) return;
     const limit = minutes * 60_000;
     const timer = setInterval(() => {
-      if (Date.now() - lastActivity.current >= limit) void lockAll("auto");
+      const now = Date.now();
+      if (now - lastActivity.current >= limit && now >= nextAutoAt.current) void lockAll("auto");
     }, IDLE_CHECK_MS);
     return () => clearInterval(timer);
   }, [minutes, lockAll]);

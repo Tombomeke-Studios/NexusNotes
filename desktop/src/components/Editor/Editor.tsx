@@ -1,4 +1,11 @@
 import { headingSlug } from "../../lib/outline";
+import {
+  previewHeadingElement,
+  requestedHeading,
+  scrollPreviewTo,
+  scrollSourceTo,
+  type HeadingRequest,
+} from "../../lib/headingJump";
 import { highlightMarkdown } from "../../lib/mdHighlight";
 import { LinkPreview } from "./LinkPreview";
 import { FindBar, type FindRequest } from "./FindBar";
@@ -65,7 +72,8 @@ interface EditorProps {
   onRename: (title: string) => void;
   onRenameCommit: (title: string) => void;
   onCreateNote: (title: string) => void;
-  onNavigateToNote: (noteId: string) => void;
+  /** Opens a note; with `section`, at that heading (`[[Note#Section]]`, #558). */
+  onNavigateToNote: (noteId: string, section?: string) => void;
   /** Suspend autosave (e.g. while a close-confirmation dialog is open). */
   paused?: boolean;
   /** Bump the nonce to insert text at the cursor (template insertion, #155). */
@@ -99,6 +107,10 @@ interface EditorProps {
   readOnly?: boolean;
   /** Bumped each time a save of this note completes; the title flashes (#430). */
   savedFlash?: number;
+  /** Bump the nonce to go to a heading of the open note (outline panel, section links, #558). */
+  headingRequest?: HeadingRequest | null;
+  /** The request was looked at; `found` says whether the note has that heading. */
+  onHeadingHandled?: (request: HeadingRequest, found: boolean) => void;
 }
 
 export interface ReplaceRequest {
@@ -140,6 +152,8 @@ export function Editor({
   vault = null,
   readOnly = false,
   savedFlash = 0,
+  headingRequest = null,
+  onHeadingHandled,
 }: EditorProps) {
   // A completed save flashes the title once (#430); cleared when it ends.
   const [titleFlash, setTitleFlash] = useState(false);
@@ -147,6 +161,8 @@ export function Editor({
     if (savedFlash > 0) setTitleFlash(true);
   }, [savedFlash]);
   const [content, setContent] = useState("");
+  /** The note whose text `content` holds (it follows the note one render later). */
+  const [loadedNoteId, setLoadedNoteId] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [splitDragging, setSplitDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -228,6 +244,7 @@ export function Editor({
         saveTimerRef.current = undefined;
       }
       setContent(initialTextRef.current ?? note.content);
+      setLoadedNoteId(note.id);
       setHasChanges(false);
       prevNoteIdRef.current = note.id;
     }
@@ -265,6 +282,34 @@ export function Editor({
     setHasChanges(false);
     onReplaceAppliedRef.current?.(replaceRequest);
   }, [replaceRequest]);
+
+  // Going to a heading (#558): the reading pane scrolls to it, the source
+  // pane puts the caret on its line. Waits until the requested note's text is
+  // the one on screen.
+  const goToHeading = useCallback((request: Pick<HeadingRequest, "offset" | "section">): boolean => {
+    const text = contentRef.current;
+    const heading = requestedHeading(text, request);
+    if (!heading) return false;
+    const preview = previewRef.current;
+    const el = preview && previewHeadingElement(preview, text, heading);
+    if (preview && el) scrollPreviewTo(preview, el);
+    const ta = textareaRef.current;
+    if (ta) {
+      scrollSourceTo(ta, highlightRef.current, heading.offset);
+      // With the source alone on screen the caret is the only sign of the jump.
+      if (!preview) ta.focus();
+    }
+    return true;
+  }, []);
+  const handledHeadingNonce = useRef(0);
+  const onHeadingHandledRef = useRef(onHeadingHandled);
+  onHeadingHandledRef.current = onHeadingHandled;
+  useEffect(() => {
+    if (!headingRequest || headingRequest.nonce === handledHeadingNonce.current) return;
+    if (loadedNoteId !== headingRequest.noteId || noteRef.current?.id !== headingRequest.noteId) return;
+    handledHeadingNonce.current = headingRequest.nonce;
+    onHeadingHandledRef.current?.(headingRequest, goToHeading(headingRequest));
+  }, [headingRequest, loadedNoteId, goToHeading]);
 
   // Load the note's attachments so ![[image]] embeds resolve (#153).
   useEffect(() => {
@@ -530,6 +575,19 @@ export function Editor({
         const raw = href.slice("wikilink://".length);
         const hashIdx = raw.indexOf("#");
         const title = decodeURIComponent(hashIdx >= 0 ? raw.slice(0, hashIdx) : raw);
+        const section = hashIdx >= 0 ? decodeURIComponent(raw.slice(hashIdx + 1)) : "";
+        if (!title) {
+          // [[#Section]]: a heading of this note (#558).
+          return (
+            <button
+              className="wikilink wikilink--resolved"
+              onClick={() => goToHeading({ section })}
+              aria-label={`Go to ${section}`}
+            >
+              {children}
+            </button>
+          );
+        }
         const targetId = notesByTitle.get(title.toLowerCase());
         if (targetId) {
           return (
@@ -537,13 +595,13 @@ export function Editor({
               className="wikilink wikilink--resolved"
               onClick={() => {
                 hideLinkPreview();
-                onNavigateToNote(targetId);
+                onNavigateToNote(targetId, section || undefined);
               }}
               onMouseEnter={(e) => showLinkPreview(targetId, e.currentTarget, 350)}
               onMouseLeave={hideLinkPreview}
               onFocus={(e) => showLinkPreview(targetId, e.currentTarget, 0)}
               onBlur={hideLinkPreview}
-              aria-label={`Open ${title}`}
+              aria-label={section ? `Open ${title}, section ${section}` : `Open ${title}`}
             >
               {children}
             </button>
@@ -589,7 +647,7 @@ export function Editor({
         </a>
       );
     },
-    [notesByTitle, onNavigateToNote, onCreateNote, onTagClick, showLinkPreview, hideLinkPreview],
+    [notesByTitle, goToHeading, onNavigateToNote, onCreateNote, onTagClick, showLinkPreview, hideLinkPreview],
   );
 
   if (!note) {

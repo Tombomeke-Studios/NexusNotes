@@ -6,6 +6,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 ## [Unreleased]
 
 ### Added
+- Links to a section: `[[Note#Heading]]` opens the note at that heading (it shows as
+  "Note › Heading"), and `[[#Heading]]` jumps to a heading of the note you are in. A link
+  to a heading the note doesn't have opens the note and says so.
 - Trash in the app: deleting a note, a selection or a folder now moves it to the vault's
   Trash ("You can restore it for 30 days"). The Trash entry at the bottom of the sidebar shows
   how many notes are in it and opens a list with when each was deleted and when it goes for
@@ -165,6 +168,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
 - Graph folders no longer share or nearly share a colour (such as Examples and Daily): each
   folder of a vault gets its own from a colour-blind-safe palette, the same in the full graph,
   the local graph and the legend.
+- The Outline panel now works while only the source is shown: clicking a heading puts the
+  cursor on its line (in split view both panes follow). It also lands on the right heading
+  when two share a name or a quote contains one, and no longer lists `#` lines inside
+  `~~~` code blocks.
 - The graph's one-time tip is shorter and smaller, and the graph opens fitted into the space
   between the search box, toolbar and tip on top and the legend and zoom bar below, so none
   of them cover notes.

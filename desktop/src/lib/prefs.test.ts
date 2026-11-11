@@ -38,6 +38,14 @@ describe("prefs", () => {
     }
   });
 
+  it("keeps spell check off by default and remembers turning it on (#572)", () => {
+    expect(loadPrefs().spellCheck).toBe(false);
+    expect(savePrefs({ spellCheck: true }).spellCheck).toBe(true);
+    expect(loadPrefs().spellCheck).toBe(true);
+    localStorage.setItem(PREFS_STORAGE_KEY, JSON.stringify({ spellCheck: "yes" }));
+    expect(loadPrefs().spellCheck).toBe(false);
+  });
+
   it("defaults motion to following the system setting", () => {
     expect(loadPrefs().motion).toBe("system");
   });

@@ -18,6 +18,10 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   their history and attachments. Trashed notes are left out of lists, search, links, tags and
   history. Editors can trash and restore; only the vault owner can purge a note or empty the
   trash. An AI client's `delete_note` now moves the note to the trash.
+- Settings > Appearance has a "Check spelling" switch: turn it on to have misspelled words
+  underlined while you write, in your system's language. It is off by default because
+  Markdown syntax and code trip it. The switches in Settings are now announced as on/off
+  switches by screen readers.
 - Text typed in an end-to-end encrypted vault is no longer lost when the app crashes or the
   connection drops: unsaved changes are kept on your device encrypted with the vault's key,
   and restored and saved after you unlock the vault again. Locking a vault while offline now

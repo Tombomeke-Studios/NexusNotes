@@ -51,9 +51,17 @@ interface SettingsProps {
   onClose: () => void;
 }
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+/** An on/off switch; `label` names it for screen readers (the visible label sits beside it). */
+export function Toggle({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {
   return (
-    <button className={`settings-toggle${on ? " settings-toggle--on" : ""}`} onClick={onToggle}>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      className={`settings-toggle${on ? " settings-toggle--on" : ""}`}
+      onClick={onToggle}
+    >
       <span className="settings-toggle-knob" />
     </button>
   );
@@ -235,8 +243,22 @@ export function Settings({
                     <div className="settings-row-sub">Word count, cursor position, sync state</div>
                   </div>
                   <Toggle
+                    label="Show status bar"
                     on={prefs.showStatusBar}
                     onToggle={() => onUpdatePrefs({ showStatusBar: !prefs.showStatusBar })}
+                  />
+                </div>
+                <div className="settings-row">
+                  <div>
+                    <div className="settings-row-label">Check spelling</div>
+                    <div className="settings-row-sub">
+                      Underlines misspelled words while you write, in your system's language
+                    </div>
+                  </div>
+                  <Toggle
+                    label="Check spelling"
+                    on={prefs.spellCheck}
+                    onToggle={() => onUpdatePrefs({ spellCheck: !prefs.spellCheck })}
                   />
                 </div>
                 <div className="settings-row settings-row--stacked">

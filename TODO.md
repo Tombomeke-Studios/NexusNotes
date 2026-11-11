@@ -651,6 +651,7 @@ Primary focus: desktop application (Tauri + React) and its backend (Go sync serv
 - [ ] Add word-wrap and line-length ruler settings
 - [ ] Add sandboxed metadata query blocks (equivalent to `dataview`-style queries)
 - [ ] Write tests for all markdown parser extensions
+- [x] `feature/code-copy`: Copy button on code blocks in the reading view (#615)
 
 ---
 

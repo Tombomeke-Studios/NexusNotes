@@ -23,6 +23,9 @@ before 1.0.0 a minor bump may change the API. See [docs/deployment.md](docs/depl
   and restored and saved after you unlock the vault again. Locking a vault while offline now
   works too; its unsaved changes wait encrypted on the device. Names of empty folders in
   encrypted vaults are stored encrypted as well.
+- Code blocks in the reading view have a Copy button: it appears when you point at the block
+  (or reach it with the keyboard) and puts the code on the clipboard, confirming with
+  "Copied".
 - Link autocomplete: typing `[[` in the editor opens a list of matching notes at the caret
   (exact and prefix matches first, then fuzzy ones, with the folder dimmed alongside). ↑/↓
   choose, Enter or Tab insert `[[Title]]` (Ctrl+Z undoes it), Esc closes; after `[[Title#`

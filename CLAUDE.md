@@ -204,6 +204,7 @@ it is what it exists for:
 | `src/components/Sidebar/` | Left panel: file tree, filters, tag chips, in-vault search |
 | `src/components/RightPanel/` | Right panel: outline, backlinks, local graph, Files (attachments, #238), note info |
 | `src/components/Search/Snippet.tsx` + `src/lib/snippet.ts` | Renders search snippets as text with `<em>` highlights (snippets are raw note text; never render them as HTML) |
+| `src/components/Editor/CodeBlock.tsx` | A fenced code block in the reading view: language label and a Copy button (#615) shown on hover or keyboard focus |
 | `src/components/Skeleton.tsx` | Loading placeholders (#434-#437): file tree rows, note lines, graph nodes; the shared CSS-only `.skeleton` shimmer lives in index.css |
 | `src/lib/toast.ts` + `src/components/Toaster.tsx` | Toast notifications (#429): call `toast(message, { kind, key, action })` from anywhere (an optional `action` adds one button, e.g. "Open"); the Toaster (mounted once in App) slides them in bottom-right, auto-dismisses (paused on hover/focus) |
 | `src/lib/shortcuts.ts` + `src/components/Help/ShortcutsDialog.tsx` | All keyboard shortcuts in one grouped list (keep in step with App.tsx's handlers) and the `?` reference dialog (#452) |

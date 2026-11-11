@@ -31,6 +31,7 @@ import { wikiUrlTransform } from "../../lib/markdownUrls";
 import { ApiError, type Attachment } from "../../lib/api";
 import { listAttachments, uploadAttachment, onAttachmentsChanged } from "../../lib/attachmentClient";
 import { AttachmentImage } from "./AttachmentImage";
+import { CodeBlock } from "./CodeBlock";
 import "./Editor.css";
 
 hljs.registerLanguage("javascript", javascript);
@@ -483,21 +484,6 @@ export function Editor({
     [],
   );
 
-  const renderPre = useCallback(
-    ({ children, ...rest }: React.HTMLAttributes<HTMLPreElement> & { children?: React.ReactNode }) => {
-      // Extract the fenced language from the child <code class="language-xxx">
-      const child = children as { props?: { className?: string } } | undefined;
-      const lang = /language-(\w+)/.exec(child?.props?.className || "")?.[1];
-      return (
-        <div className="code-block">
-          {lang && <span className="code-lang">{lang}</span>}
-          <pre {...rest}>{children}</pre>
-        </div>
-      );
-    },
-    [],
-  );
-
   // Renders an ![[image]] embed (attachment:// url) via the authenticated
   // loader; falls back to a normal <img> for ordinary markdown images (#153).
   const renderImage = useCallback(
@@ -770,7 +756,7 @@ export function Editor({
             <div className="markdown-body-inner">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkImageEmbeds, remarkWikilinks, remarkTags, remarkCallouts]}
-                components={{ code: renderCode, pre: renderPre, a: renderAnchor, input: renderCheckbox, img: renderImage }}
+                components={{ code: renderCode, pre: CodeBlock, a: renderAnchor, input: renderCheckbox, img: renderImage }}
                 urlTransform={wikiUrlTransform}
               >
                 {content}

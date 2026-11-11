@@ -273,17 +273,61 @@
   margin: 1em 0;
 }
 
-.code-lang {
+/* Language label and Copy button (#615), in the block's top-right corner. */
+.code-tools {
   position: absolute;
-  top: 9px;
-  right: 12px;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
+}
+
+.code-lang {
   font-size: 10px;
   color: var(--text-faint);
   font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   pointer-events: none;
-  z-index: 1;
+}
+
+.code-copy {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease-out, color var(--duration-fast) ease-out;
+}
+
+.code-block:hover .code-copy,
+.code-copy:focus-visible,
+.code-copy--copied,
+.code-copy--failed {
+  opacity: 1;
+}
+
+.code-copy:hover {
+  color: var(--text-primary);
+}
+
+.code-copy--copied {
+  color: var(--success);
+}
+
+.code-copy-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .markdown-body pre {

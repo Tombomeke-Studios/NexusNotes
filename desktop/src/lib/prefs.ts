@@ -14,6 +14,8 @@ export interface WorkspacePrefs {
   /** Reduced motion: follow the OS, always reduce, or keep full motion (lib/motion.ts). */
   motion: MotionPreference;
   showStatusBar: boolean;
+  /** Underline misspelled words in the source pane (#572); off by default, Markdown trips it. */
+  spellCheck: boolean;
   viewMode: ViewMode;
   leftOpen: boolean;
   rightOpen: boolean;
@@ -39,6 +41,7 @@ export const DEFAULT_PREFS: WorkspacePrefs = {
   fontSize: 14,
   motion: "system",
   showStatusBar: true,
+  spellCheck: false,
   viewMode: "split",
   leftOpen: true,
   rightOpen: true,
@@ -77,7 +80,7 @@ function sanitize(raw: Partial<WorkspacePrefs> & { reduceMotion?: unknown }): Wo
       prefs[key] = clamp(v, min, max);
     }
   }
-  for (const key of ["showStatusBar", "leftOpen", "rightOpen", "graphCurved", "graphArrows"] as const) {
+  for (const key of ["showStatusBar", "spellCheck", "leftOpen", "rightOpen", "graphCurved", "graphArrows"] as const) {
     const v = raw[key];
     if (typeof v === "boolean") prefs[key] = v;
   }

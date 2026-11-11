@@ -2207,6 +2207,7 @@ export default function App() {
                 (activeVaultId !== null && vaultLock.locking.includes(activeVaultId))
               }
               savedFlash={savedFlash}
+              spellCheck={prefs.spellCheck}
             />
           )}
         </div>

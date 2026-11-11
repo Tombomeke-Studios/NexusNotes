@@ -99,6 +99,8 @@ interface EditorProps {
   readOnly?: boolean;
   /** Bumped each time a save of this note completes; the title flashes (#430). */
   savedFlash?: number;
+  /** Underline misspelled words in the source pane (#572). */
+  spellCheck?: boolean;
 }
 
 export interface ReplaceRequest {
@@ -140,6 +142,7 @@ export function Editor({
   vault = null,
   readOnly = false,
   savedFlash = 0,
+  spellCheck = false,
 }: EditorProps) {
   // A completed save flashes the title once (#430); cleared when it ends.
   const [titleFlash, setTitleFlash] = useState(false);
@@ -731,7 +734,7 @@ export function Editor({
                 uploadFiles(files);
               }
             }}
-            spellCheck={false}
+            spellCheck={spellCheck}
             placeholder="Start writing..."
           />
           {/* [[link]] autocomplete (#548); remounts with the textarea. */}
